@@ -1,7 +1,11 @@
+#ifdef USE_JKBMS_CONTROLLER
+
 #include <numeric>
 
 #include "JkBmsSerialMessage.h"
 #include "MessageOutput.h"
+
+static const char TAG[] = "[JkBms::SerialMessage]";
 
 namespace JkBms {
 
@@ -224,7 +228,7 @@ SerialResponse::SerialResponse(tData&& raw, uint8_t protocolVersion)
                 _dp.add<Label::ProtocolVersion>(get<uint8_t>(pos));
                 break;
             default:
-                MessageOutput.printf("unknown field type 0x%02x\r\n", fieldType);
+                MessageOutput.printf("%s unknown field type 0x%02x\r\n", TAG, fieldType);
                 break;
         }
     }
@@ -303,7 +307,7 @@ void SerialMessage::processBatteryCurrent(SerialMessage::tData::const_iterator& 
         return;
     }
 
-    MessageOutput.println("cannot decode battery current field without knowing the protocol version");
+    MessageOutput.printf("%s cannot decode battery current field without knowing the protocol version\r\n", TAG);
 }
 
 template<typename T>
@@ -330,21 +334,21 @@ void SerialMessage::updateChecksum()
 bool SerialMessage::isValid() const {
     uint16_t const actualStartMarker = get<uint16_t>(_raw.cbegin());
     if (actualStartMarker != startMarker) {
-        MessageOutput.printf("JkBms::SerialMessage: invalid start marker %04x, expected 0x%04x\r\n",
+        MessageOutput.printf("%s invalid start marker %04x, expected 0x%04x\r\n", TAG,
             actualStartMarker, startMarker);
         return false;
     }
 
     uint16_t const frameLength = get<uint16_t>(_raw.cbegin()+2);
     if (frameLength != _raw.size() - 2) {
-        MessageOutput.printf("JkBms::SerialMessage: unexpected frame length %04x, expected 0x%04x\r\n",
+        MessageOutput.printf("%s unexpected frame length %04x, expected 0x%04x\r\n", TAG,
             frameLength, _raw.size() - 2);
         return false;
     }
 
     uint8_t const actualEndMarker = *(_raw.cend()-5);
     if (actualEndMarker != endMarker) {
-        MessageOutput.printf("JkBms::SerialMessage: invalid end marker %02x, expected 0x%02x\r\n",
+        MessageOutput.printf("%s invalid end marker %02x, expected 0x%02x\r\n", TAG,
             actualEndMarker, endMarker);
         return false;
     }
@@ -352,7 +356,7 @@ bool SerialMessage::isValid() const {
     uint16_t const actualChecksum = get<uint16_t>(_raw.cend()-2);
     uint16_t const expectedChecksum = calcChecksum();
     if (actualChecksum != expectedChecksum) {
-        MessageOutput.printf("JkBms::SerialMessage: invalid checksum 0x%04x, expected 0x%04x\r\n",
+        MessageOutput.printf("%s invalid checksum 0x%04x, expected 0x%04x\r\n", TAG,
             actualChecksum, expectedChecksum);
         return false;
     }
@@ -361,3 +365,5 @@ bool SerialMessage::isValid() const {
 }
 
 } /* namespace JkBms */
+
+#endif
