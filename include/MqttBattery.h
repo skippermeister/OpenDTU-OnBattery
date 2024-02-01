@@ -1,3 +1,5 @@
+#ifdef USE_MQTT_BATTERY
+
 #pragma once
 
 #include "Battery.h"
@@ -20,3 +22,5 @@ class MqttBattery : public BatteryProvider {
         void onMqttMessage(espMqttClientTypes::MessageProperties const& properties,
                 char const* topic, uint8_t const* payload, size_t len, size_t index, size_t total);
 };
+
+#endif
