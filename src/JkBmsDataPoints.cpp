@@ -1,3 +1,5 @@
+#ifdef USE_JKBMS_CONTROLLER
+
 #include <stdio.h>
 
 #include "JkBmsDataPoints.h"
@@ -61,3 +63,5 @@ void DataPointContainer::updateFrom(DataPointContainer const& source)
 }
 
 } /* namespace JkBms */
+
+#endif
