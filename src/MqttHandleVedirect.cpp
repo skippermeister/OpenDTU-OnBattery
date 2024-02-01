@@ -2,23 +2,22 @@
 /*
  * Copyright (C) 2022 Helge Erbe and others
  */
-#include "VictronMppt.h"
 #include "MqttHandleVedirect.h"
-#include "MqttSettings.h"
 #include "MessageOutput.h"
-
-
-
+#include "MqttSettings.h"
+#include "VictronMppt.h"
 
 MqttHandleVedirectClass MqttHandleVedirect;
 
 // #define MQTTHANDLEVEDIRECT_DEBUG
+MqttHandleVedirectClass::MqttHandleVedirectClass()
+    : _loopTask(TASK_IMMEDIATE, TASK_FOREVER, std::bind(&MqttHandleVedirectClass::loop, this))
+{
+}
 
 void MqttHandleVedirectClass::init(Scheduler& scheduler)
 {
     scheduler.addTask(_loopTask);
-    _loopTask.setCallback(std::bind(&MqttHandleVedirectClass::loop, this));
-    _loopTask.setIterations(TASK_FOREVER);
     _loopTask.enable();
 
     // initially force a full publish
@@ -32,35 +31,31 @@ void MqttHandleVedirectClass::forceUpdate()
     _nextPublishFull = 1;
 }
 
-
 void MqttHandleVedirectClass::loop()
 {
     CONFIG_T& config = Configuration.get();
 
-    if (!MqttSettings.getConnected() || !config.Vedirect.Enabled) {
+    if (!MqttSettings.getConnected() || !config.Vedirect.Enabled || !VictronMppt.isDataValid()) {
         return;
     }
 
-    if (!VictronMppt.isDataValid()) {
-        return;
-    }
-
-    if ((millis() >= _nextPublishFull) || (millis() >= _nextPublishUpdatesOnly)) {
+    if ((millis() - _nextPublishFull >= ((config.Mqtt.PublishInterval * 3) - 1) * 1000)
+        || (millis() - _nextPublishUpdatesOnly >= (config.Mqtt.PublishInterval * 1000))) {
         // determine if this cycle should publish full values or updates only
-        if (_nextPublishFull <= _nextPublishUpdatesOnly) {
+        if (_nextPublishFull + ((config.Mqtt.PublishInterval * 3) - 1) * 1000 <= _nextPublishUpdatesOnly + config.Mqtt.PublishInterval * 1000) {
             _PublishFull = true;
         } else {
             _PublishFull = !config.Vedirect.UpdatesOnly;
         }
 
-        #ifdef MQTTHANDLEVEDIRECT_DEBUG
+#ifdef MQTTHANDLEVEDIRECT_DEBUG
         MessageOutput.printf("\r\n\r\nMqttHandleVedirectClass::loop millis %lu   _nextPublishUpdatesOnly %u   _nextPublishFull %u\r\n", millis(), _nextPublishUpdatesOnly, _nextPublishFull);
         if (_PublishFull) {
             MessageOutput.println("MqttHandleVedirectClass::loop publish full");
         } else {
             MessageOutput.println("MqttHandleVedirectClass::loop publish updates only");
         }
-        #endif
+#endif
 
         auto spMpptData = VictronMppt.getData();
         String value;
@@ -71,11 +66,11 @@ void MqttHandleVedirectClass::loop()
         if (_PublishFull || spMpptData->PID != _kvFrame.PID)
             MqttSettings.publish(topic + "PID", spMpptData->getPidAsString().data());
         if (_PublishFull || strcmp(spMpptData->SER, _kvFrame.SER) != 0)
-            MqttSettings.publish(topic + "SER", spMpptData->SER );
+            MqttSettings.publish(topic + "SER", spMpptData->SER);
         if (_PublishFull || strcmp(spMpptData->FW, _kvFrame.FW) != 0)
             MqttSettings.publish(topic + "FW", spMpptData->FW);
         if (_PublishFull || spMpptData->LOAD != _kvFrame.LOAD)
-            MqttSettings.publish(topic + "LOAD", spMpptData->LOAD == true ? "ON": "OFF");
+            MqttSettings.publish(topic + "LOAD", spMpptData->LOAD == true ? "ON" : "OFF");
         if (_PublishFull || spMpptData->CS != _kvFrame.CS)
             MqttSettings.publish(topic + "CS", spMpptData->getCsAsString().data());
         if (_PublishFull || spMpptData->ERR != _kvFrame.ERR)
@@ -141,19 +136,24 @@ void MqttHandleVedirectClass::loop()
         }
 
         // now calculate next points of time to publish
-        _nextPublishUpdatesOnly = millis() + (config.Mqtt.PublishInterval * 1000);
+        _nextPublishUpdatesOnly = millis();
 
         if (_PublishFull) {
             // when Home Assistant MQTT-Auto-Discovery is active,
             // and "enable expiration" is active, all values must be published at
             // least once before the announced expiry interval is reached
-            if ((config.Vedirect.UpdatesOnly) && (config.Mqtt.Hass.Enabled) && (config.Mqtt.Hass.Expire)) {
-                _nextPublishFull = millis() + (((config.Mqtt.PublishInterval * 3) - 1) * 1000);
+            if (config.Vedirect.UpdatesOnly
+#ifdef USE_HASS
+                && config.Mqtt.Hass.Enabled && config.Mqtt.Hass.Expire
+#endif
+                )
+            {
+                _nextPublishFull = millis();
 
-                #ifdef MQTTHANDLEVEDIRECT_DEBUG
+#ifdef MQTTHANDLEVEDIRECT_DEBUG
                 uint32_t _tmpNextFullSeconds = (config.Mqtt_PublishInterval * 3) - 1;
                 MessageOutput.printf("MqttHandleVedirectClass::loop _tmpNextFullSeconds %u - _nextPublishFull %u \r\n", _tmpNextFullSeconds, _nextPublishFull);
-                #endif
+#endif
 
             } else {
                 // no future publish full needed
@@ -161,8 +161,8 @@ void MqttHandleVedirectClass::loop()
             }
         }
 
-        #ifdef MQTTHANDLEVEDIRECT_DEBUG
+#ifdef MQTTHANDLEVEDIRECT_DEBUG
         MessageOutput.printf("MqttHandleVedirectClass::loop _nextPublishUpdatesOnly %u   _nextPublishFull %u\r\n", _nextPublishUpdatesOnly, _nextPublishFull);
-        #endif
+#endif
     }
 }
