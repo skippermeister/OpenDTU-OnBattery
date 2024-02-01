@@ -13,8 +13,12 @@ NtpSettingsClass::NtpSettingsClass()
 
 void NtpSettingsClass::init()
 {
+    MessageOutput.print("Initialize NTP... ");
+
     setServer();
     setTimezone();
+
+    MessageOutput.println("done");
 }
 
 void NtpSettingsClass::setServer()
