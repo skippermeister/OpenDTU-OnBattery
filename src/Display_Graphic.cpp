@@ -2,17 +2,25 @@
 /*
  * Copyright (C) 2023-2024 Thomas Basler and others
  */
+#ifdef USE_DISPLAY_GRAPHIC
+
 #include "Display_Graphic.h"
+#include "Configuration.h"
 #include "Datastore.h"
+#include "MessageOutput.h"
+#include "PinMapping.h"
 #include <NetworkSettings.h>
 #include <map>
 #include <time.h>
+#include "PowerMeter.h"
 
-std::map<DisplayType_t, std::function<U8G2*(uint8_t, uint8_t, uint8_t, uint8_t)>> display_types = {
-    { DisplayType_t::PCD8544, [](uint8_t reset, uint8_t clock, uint8_t data, uint8_t cs) { return new U8G2_PCD8544_84X48_F_4W_HW_SPI(U8G2_R0, cs, data, reset); } },
-    { DisplayType_t::SSD1306, [](uint8_t reset, uint8_t clock, uint8_t data, uint8_t cs) { return new U8G2_SSD1306_128X64_NONAME_F_HW_I2C(U8G2_R0, reset, clock, data); } },
-    { DisplayType_t::SH1106, [](uint8_t reset, uint8_t clock, uint8_t data, uint8_t cs) { return new U8G2_SH1106_128X64_NONAME_F_HW_I2C(U8G2_R0, reset, clock, data); } },
-    { DisplayType_t::SSD1309, [](uint8_t reset, uint8_t clock, uint8_t data, uint8_t cs) { return new U8G2_SSD1309_128X64_NONAME0_F_HW_I2C(U8G2_R0, reset, clock, data); } },
+std::map<DisplayType_t, std::function<U8G2*(uint8_t, uint8_t, uint8_t, uint8_t, uint8_t)>> display_types = {
+    { DisplayType_t::PCD8544_HW_SPI, [](uint8_t reset, uint8_t clock, uint8_t data, uint8_t cs, uint8_t dc) { return new U8G2_PCD8544_84X48_F_4W_HW_SPI(U8G2_R0, cs, data, reset); } },
+    { DisplayType_t::PCD8544_SW_SPI, [](uint8_t reset, uint8_t clock, uint8_t data, uint8_t cs, uint8_t dc) { return new U8G2_PCD8544_84X48_F_4W_SW_SPI(U8G2_R2, clock, data, cs, dc, reset); } },
+    { DisplayType_t::SSD1306, [](uint8_t reset, uint8_t clock, uint8_t data, uint8_t cs, uint8_t dc) { return new U8G2_SSD1306_128X64_NONAME_F_HW_I2C(U8G2_R0, reset, clock, data); } },
+    { DisplayType_t::SH1106, [](uint8_t reset, uint8_t clock, uint8_t data, uint8_t cs, uint8_t dc) { return new U8G2_SH1106_128X64_NONAME_F_HW_I2C(U8G2_R0, reset, clock, data); } },
+    { DisplayType_t::SSD1309, [](uint8_t reset, uint8_t clock, uint8_t data, uint8_t cs, uint8_t dc) { return new U8G2_SSD1309_128X64_NONAME0_F_HW_I2C(U8G2_R0, reset, clock, data); } },
+    { DisplayType_t::ST7567_GM12864I_59N, [](uint8_t reset, uint8_t clock, uint8_t data, uint8_t cs, uint8_t dc) { return new U8G2_ST7567_ENH_DG128064I_F_HW_I2C(U8G2_R0, reset, clock, data); } },
 };
 
 // Language defintion, respect order in languages[] and translation lists
@@ -30,6 +38,8 @@ const uint8_t languages[] = {
 static const char* const i18n_offline[] = { "Offline", "Offline", "Offline" };
 static const char* const i18n_current_power_w[] = { "%.0f W", "%.0f W", "%.0f W" };
 static const char* const i18n_current_power_kw[] = { "%.1f kW", "%.1f kW", "%.1f kW" };
+static const char* const i18n_meter_power_w[] = { "G: %3.0f W", "G: %3.0f W", "G: %3.0f W" };
+static const char* const i18n_meter_power_kw[] = { "G: %2.1f kW", "G: %2.1f kW", "G: %2.1f kW" };
 static const char* const i18n_yield_today_wh[] = { "today: %4.0f Wh", "Heute: %4.0f Wh", "auj.: %4.0f Wh" };
 static const char* const i18n_yield_total_kwh[] = { "total: %.1f kWh", "Ges.: %.1f kWh", "total: %.1f kWh" };
 static const char* const i18n_date_format[] = { "%m/%d/%Y %H:%M", "%d.%m.%Y %H:%M", "%d/%m/%Y %H:%M" };
@@ -44,21 +54,49 @@ DisplayGraphicClass::~DisplayGraphicClass()
     delete _display;
 }
 
-void DisplayGraphicClass::init(Scheduler& scheduler, const DisplayType_t type, const uint8_t data, const uint8_t clk, const uint8_t cs, const uint8_t reset)
+void DisplayGraphicClass::init(Scheduler& scheduler)
 {
-    _display_type = type;
+    MessageOutput.print("Initialize Display... ");
+
+    _previousMillis.set(_interval * 2);
+
+    const PinMapping_t& pin = PinMapping.get();
+    _display_type = static_cast<DisplayType_t>(pin.display_type);
     if (isValidDisplay()) {
         auto constructor = display_types[_display_type];
-        _display = constructor(reset, clk, data, cs);
+        _display = constructor(
+            pin.display_reset < 0 ? 255 : pin.display_reset,
+            pin.display_clk < 0 ? 255 : pin.display_clk,
+            pin.display_data < 0 ? 255 : pin.display_data,
+            pin.display_cs < 0 ? 255 : pin.display_cs,
+            pin.display_cs < 0 ? 255 : pin.display_dc);
+        if (_display_type == DisplayType_t::ST7567_GM12864I_59N) {
+            _display->setI2CAddress(0x3F << 1);
+        }
         _display->begin();
         setContrast(DISPLAY_CONTRAST);
         setStatus(true);
+#ifdef USE_DISPLAY_GRAPHIC_DIAGRAM
         _diagram.init(scheduler, _display);
-
+#endif
         scheduler.addTask(_loopTask);
         _loopTask.setInterval(_period);
         _loopTask.enable();
+
+    } else {
+        MessageOutput.println("none configured. ");
     }
+
+    const Display_CONFIG_T& cDisplay = Configuration.get().Display;
+    setOrientation(cDisplay.Rotation);
+    enablePowerSafe = cDisplay.PowerSafe;
+    enableScreensaver = cDisplay.ScreenSaver;
+    setContrast(cDisplay.Contrast);
+    setLanguage(cDisplay.Language);
+    setDiagramMode(static_cast<DiagramMode_t>(cDisplay.Diagram.Mode));
+    setStartupDisplay();
+
+    MessageOutput.println("done");
 }
 
 void DisplayGraphicClass::calcLineHeights()
@@ -75,7 +113,10 @@ void DisplayGraphicClass::setFont(const uint8_t line)
 {
     switch (line) {
     case 0:
-        _display->setFont((_isLarge) ? u8g2_font_ncenB14_tr : u8g2_font_logisoso16_tr);
+        //        _display->setFont((_isLarge) ? u8g2_font_ncenB14_tr : u8g2_font_logisoso16_tr);
+        //        _display->setFont((_isLarge) ? u8g2_font_ncenB12_tr : u8g2_font_logisoso16_tr);
+        // Daten visualisieren #168
+        _display->setFont((_isLarge) ? u8g2_font_ncenB10_tr : u8g2_font_ncenB10_tr);
         break;
     case 3:
         _display->setFont(u8g2_font_5x8_tr);
@@ -99,6 +140,7 @@ void DisplayGraphicClass::printText(const char* text, const uint8_t line)
     if (!_isLarge) {
         dispX = (line == 0) ? 5 : 0;
     } else {
+#ifdef USE_DISPLAY_GRAPHIC_DIAGRAM
         switch (line) {
         case 0:
             if (_diagram_mode == DiagramMode_t::Small) {
@@ -117,15 +159,25 @@ void DisplayGraphicClass::printText(const char* text, const uint8_t line)
             dispX = 5;
             break;
         }
+#else
+        dispX = (line == 0) ? 20 : 5;
+#endif
     }
 
     dispX += enableScreensaver ? (_mExtra % 7) : 0;
     _display->drawStr(dispX, _lineOffsets[line], text);
 }
 
+void DisplayGraphicClass::setDiagramMode(DiagramMode_t mode)
+{
+    if (mode < DiagramMode_t::DisplayMode_Max) {
+        _diagram_mode = mode;
+    }
+}
+
 void DisplayGraphicClass::setOrientation(const uint8_t rotation)
 {
-    if (!isValidDisplay()) {
+    if (_display_type == DisplayType_t::None) {
         return;
     }
 
@@ -153,13 +205,6 @@ void DisplayGraphicClass::setLanguage(const uint8_t language)
     _display_language = language < sizeof(languages) / sizeof(languages[0]) ? language : DISPLAY_LANGUAGE;
 }
 
-void DisplayGraphicClass::setDiagramMode(DiagramMode_t mode)
-{
-    if (mode < DiagramMode_t::DisplayMode_Max) {
-        _diagram_mode = mode;
-    }
-}
-
 void DisplayGraphicClass::setStartupDisplay()
 {
     if (!isValidDisplay()) {
@@ -171,10 +216,12 @@ void DisplayGraphicClass::setStartupDisplay()
     _display->sendBuffer();
 }
 
+#ifdef USE_DISPLAY_GRAPHIC_DIAGRAM
 DisplayGraphicDiagramClass& DisplayGraphicClass::Diagram()
 {
     return _diagram;
 }
+#endif
 
 void DisplayGraphicClass::loop()
 {
@@ -187,6 +234,7 @@ void DisplayGraphicClass::loop()
     //=====> Actual Production ==========
     if (Datastore.getIsAtLeastOneReachable()) {
         displayPowerSave = false;
+#ifdef USE_DISPLAY_GRAPHIC_DIAGRAM
         if (_isLarge) {
             uint8_t screenSaverOffsetX = enableScreensaver ? (_mExtra % 7) : 0;
             switch (_diagram_mode) {
@@ -204,16 +252,30 @@ void DisplayGraphicClass::loop()
                 break;
             }
         }
+#endif
         if (showText) {
-            const float watts = Datastore.getTotalAcPowerEnabled();
-            if (watts > 999) {
-                snprintf(_fmtText, sizeof(_fmtText), i18n_current_power_kw[_display_language], watts / 1000);
+            // if power meter is enabled, show the power meter value every 5 seconds for 5 seconds
+            if(Configuration.get().PowerMeter.Enabled && (millis() / 1000) % 10 >= 5)
+            {
+                const float watts = PowerMeter.getPowerTotal(false);
+                if (PowerMeter.getPowerTotal(false) > 999) {
+                    snprintf(_fmtText, sizeof(_fmtText), i18n_meter_power_kw[_display_language], watts / 1000);
+                } else {
+                    snprintf(_fmtText, sizeof(_fmtText), i18n_meter_power_w[_display_language], watts);
+                }
             } else {
-                snprintf(_fmtText, sizeof(_fmtText), i18n_current_power_w[_display_language], watts);
+                const float watts = Datastore.getTotalAcPowerEnabled();
+                if (watts > 999) {
+                    snprintf(_fmtText, sizeof(_fmtText), i18n_current_power_kw[_display_language], watts / 1000);
+                } else {
+                    snprintf(_fmtText, sizeof(_fmtText), i18n_current_power_w[_display_language], watts);
+                }
             }
+
             printText(_fmtText, 0);
         }
-        _previousMillis = millis();
+
+        _previousMillis.reset();
     }
     //<=======================
 
@@ -221,12 +283,13 @@ void DisplayGraphicClass::loop()
     else {
         printText(i18n_offline[_display_language], 0);
         // check if it's time to enter power saving mode
-        if (millis() - _previousMillis >= (_interval * 2)) {
+        if (_previousMillis.occured()) {
             displayPowerSave = enablePowerSafe;
         }
     }
     //<=======================
 
+    //=====> Today & Total Production =======
     if (showText) {
         //=====> Today & Total Production =======
         snprintf(_fmtText, sizeof(_fmtText), i18n_yield_today_wh[_display_language], Datastore.getTotalAcYieldDayEnabled());
@@ -273,3 +336,5 @@ void DisplayGraphicClass::setStatus(const bool turnOn)
 }
 
 DisplayGraphicClass Display;
+
+#endif
