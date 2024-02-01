@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright (C) 2023-2024 Thomas Basler and others
+ * Copyright (C) 2023 Thomas Basler and others
  */
+#ifdef USE_LED_SINGLE
+
 #include "Led_Single.h"
 #include "Configuration.h"
 #include "Datastore.h"
+#include "MessageOutput.h"
 #include "MqttSettings.h"
 #include "NetworkSettings.h"
 #include "PinMapping.h"
@@ -45,6 +48,8 @@ LedSingleClass::LedSingleClass()
 
 void LedSingleClass::init(Scheduler& scheduler)
 {
+    MessageOutput.print("Initialize LEDs... ");
+
     bool ledActive = false;
 
     _blinkTimeout.set(500);
@@ -69,12 +74,14 @@ void LedSingleClass::init(Scheduler& scheduler)
         scheduler.addTask(_setTask);
         _setTask.enable();
     }
+
+    MessageOutput.println("done");
 }
 
 void LedSingleClass::setLoop()
 {
     if (_allMode == LedState_t::On) {
-        const CONFIG_T& config = Configuration.get();
+        const Mqtt_CONFIG_T& cMqtt = Configuration.get().Mqtt;
 
         // Update network status
         _ledMode[0] = LedState_t::Off;
@@ -84,7 +91,7 @@ void LedSingleClass::setLoop()
         }
 
         struct tm timeinfo;
-        if (getLocalTime(&timeinfo, 5) && (!config.Mqtt.Enabled || (config.Mqtt.Enabled && MqttSettings.getConnected()))) {
+        if (getLocalTime(&timeinfo, 5) && (!cMqtt.Enabled || (cMqtt.Enabled && MqttSettings.getConnected()))) {
             _ledMode[0] = LedState_t::On;
         }
 
@@ -155,3 +162,5 @@ void LedSingleClass::turnAllOn()
 {
     _allMode = LedState_t::On;
 }
+
+#endif
