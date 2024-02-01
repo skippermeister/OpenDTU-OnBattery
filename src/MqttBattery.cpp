@@ -1,3 +1,5 @@
+#ifdef USE_MQTT_BATTERY
+
 #include <functional>
 
 #include "Configuration.h"
@@ -63,3 +65,5 @@ void MqttBattery::onMqttMessage(espMqttClientTypes::MessageProperties const& pro
                 static_cast<uint8_t>(soc), topic);
     }
 }
+
+#endif
