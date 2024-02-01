@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
+#ifdef USE_HASS
+
 #pragma once
 
 #include <ArduinoJson.h>
@@ -81,3 +83,5 @@ private:
 };
 
 extern MqttHandleHassClass MqttHandleHass;
+
+#endif
