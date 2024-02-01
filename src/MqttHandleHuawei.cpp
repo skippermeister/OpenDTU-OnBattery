@@ -2,6 +2,8 @@
 /*
  * Copyright (C) 2022 Thomas Basler and others
  */
+#ifdef CHARGER_HUAWEI
+
 #include "MqttHandleHuawei.h"
 #include "MessageOutput.h"
 #include "MqttSettings.h"
@@ -159,3 +161,5 @@ void MqttHandleHuaweiClass::onMqttMessage(Topic t,
             break;
     }
 }
+
+#endif
