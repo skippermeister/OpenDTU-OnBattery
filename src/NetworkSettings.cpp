@@ -23,6 +23,8 @@ NetworkSettingsClass::NetworkSettingsClass()
 
 void NetworkSettingsClass::init(Scheduler& scheduler)
 {
+    MessageOutput.print("Initialize Network... ");
+
     using std::placeholders::_1;
 
     WiFi.setScanMethod(WIFI_ALL_CHANNEL_SCAN);
@@ -33,6 +35,10 @@ void NetworkSettingsClass::init(Scheduler& scheduler)
 
     scheduler.addTask(_loopTask);
     _loopTask.enable();
+
+    _lastTimerCall.set(1000);
+
+    MessageOutput.println("done")
 }
 
 void NetworkSettingsClass::NetworkEvent(const WiFiEvent_t event)
@@ -211,7 +217,7 @@ void NetworkSettingsClass::loop()
         applyConfig();
     }
 
-    if (millis() - _lastTimerCall > 1000) {
+    if (_lastTimerCall.occured()) {
         if (_adminEnabled && _adminTimeoutCounterMax > 0) {
             _adminTimeoutCounter++;
             if (_adminTimeoutCounter % 10 == 0) {
@@ -220,7 +226,7 @@ void NetworkSettingsClass::loop()
         }
         _connectTimeoutTimer++;
         _connectRedoTimer++;
-        _lastTimerCall = millis();
+        _lastTimerCall.reset();
     }
     if (_adminEnabled) {
         // Don't disable the admin mode when network is not available
