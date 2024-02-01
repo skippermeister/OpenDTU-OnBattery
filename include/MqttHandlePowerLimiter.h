@@ -3,23 +3,26 @@
 
 #include "Configuration.h"
 #include <espMqttClient.h>
+#include <MeanWell_can.h>
 #include <TaskSchedulerDeclarations.h>
+#include <TimeoutHelper.h>
 #include <mutex>
 #include <deque>
 #include <functional>
 
 class MqttHandlePowerLimiterClass {
 public:
+    MqttHandlePowerLimiterClass();
     void init(Scheduler& scheduler);
 
 private:
     void loop();
-    void onCmdMode(const espMqttClientTypes::MessageProperties& properties, const char* topic, const uint8_t* payload, size_t len, size_t index, size_t total);
 
     Task _loopTask;
 
-    uint32_t _lastPublishStats;
-    uint32_t _lastPublish;
+    void onCmdMode(const espMqttClientTypes::MessageProperties& properties, const char* topic, const uint8_t* payload, size_t len, size_t index, size_t total);
+
+    TimeoutHelper _lastPublish;
 
     // MQTT callbacks to process updates on subscribed topics are executed in
     // the MQTT thread's context. we use this queue to switch processing the
