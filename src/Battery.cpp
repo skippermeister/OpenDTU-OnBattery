@@ -1,13 +1,19 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include "Battery.h"
+#include "DalyBmsController.h"
+#include "JkBmsController.h"
 #include "MessageOutput.h"
 #include "MqttSettings.h"
 #include "PylontechCanReceiver.h"
-#include "JkBmsController.h"
+#include "PylontechRS485Receiver.h"
 #include "VictronSmartShunt.h"
-#include "MqttBattery.h"
 
 BatteryClass Battery;
+
+BatteryClass::BatteryClass()
+    : _loopTask(TASK_IMMEDIATE, TASK_FOREVER, std::bind(&BatteryClass::loop, this))
+{
+}
 
 std::shared_ptr<BatteryStats const> BatteryClass::getStats() const
 {
@@ -24,8 +30,6 @@ std::shared_ptr<BatteryStats const> BatteryClass::getStats() const
 void BatteryClass::init(Scheduler& scheduler)
 {
     scheduler.addTask(_loopTask);
-    _loopTask.setCallback(std::bind(&BatteryClass::loop, this));
-    _loopTask.setIterations(TASK_FOREVER);
     _loopTask.enable();
 
     this->updateSettings();
@@ -40,31 +44,55 @@ void BatteryClass::updateSettings()
         _upProvider = nullptr;
     }
 
-    CONFIG_T& config = Configuration.get();
-    if (!config.Battery.Enabled) { return; }
+    Battery_CONFIG_T& cBattery = Configuration.get().Battery;
 
-    bool verboseLogging = config.Battery.VerboseLogging;
+    if (!cBattery.Enabled) {
+        return;
+    }
 
-    switch (config.Battery.Provider) {
-        case 0:
-            _upProvider = std::make_unique<PylontechCanReceiver>();
-            if (!_upProvider->init(verboseLogging)) { _upProvider = nullptr; }
-            break;
-        case 1:
-            _upProvider = std::make_unique<JkBms::Controller>();
-            if (!_upProvider->init(verboseLogging)) { _upProvider = nullptr; }
-            break;
-        case 2:
-            _upProvider = std::make_unique<MqttBattery>();
-            if (!_upProvider->init(verboseLogging)) { _upProvider = nullptr; }
-            break;
-        case 3:
-            _upProvider = std::make_unique<VictronSmartShunt>();
-            if (!_upProvider->init(verboseLogging)) { _upProvider = nullptr; }
-            break;
-        default:
-            MessageOutput.printf("Unknown battery provider: %d\r\n", config.Battery.Provider);
-            break;
+    switch (cBattery.Provider) {
+    case 0: // Initialize Pylontech Battery / RS485 bus
+        _upProvider = std::make_unique<PylontechRS485Receiver>();
+        if (!_upProvider->init()) {
+            _upProvider = nullptr;
+        }
+        break;
+#ifdef USE_PYLONTECH_CAN_RECEIVER
+    case 1: // Initialize Pylontech Battery / CAN0 bus
+    case 2: // Initialize Pylontech Battery / MCP2515 bus
+        _upProvider = std::make_unique<PylontechCanReceiver>();
+        if (!_upProvider->init()) {
+            _upProvider = nullptr;
+        }
+        break;
+#endif
+#ifdef USE_JKBMS_CONTROLLER
+    case 3:
+        _upProvider = std::make_unique<JkBms::Controller>();
+        if (!_upProvider->init()) {
+            _upProvider = nullptr;
+        }
+        break;
+#endif
+#ifdef USE_VICTRON_SMART_SHUNT
+    case 4:
+        _upProvider = std::make_unique<VictronSmartShunt>();
+        if (!_upProvider->init()) {
+            _upProvider = nullptr;
+        }
+        break;
+#endif
+#ifdef USE_DALYBMS_CONTROLLER
+    case 5:
+        _upProvider = std::make_unique<DalyBMS::Controller>();
+        if (!_upProvider->init()) {
+            _upProvider = nullptr;
+        }
+        break;
+#endif
+    default:
+        MessageOutput.printf("Unknown battery provider: %d\r\n", cBattery.Provider);
+        break;
     }
 }
 
@@ -72,18 +100,17 @@ void BatteryClass::loop()
 {
     std::lock_guard<std::mutex> lock(_mutex);
 
-    if (!_upProvider) { return; }
+    if (!_upProvider) {
+        return;
+    }
 
     _upProvider->loop();
 
-    CONFIG_T& config = Configuration.get();
-
-    if (!MqttSettings.getConnected()
-            || (millis() - _lastMqttPublish) < (config.Mqtt.PublishInterval * 1000)) {
+    if (!MqttSettings.getConnected() || !_lastMqttPublish.occured()) {
         return;
     }
 
     _upProvider->getStats()->mqttPublish();
 
-    _lastMqttPublish = millis();
+    _lastMqttPublish.set(Configuration.get().Mqtt.PublishInterval * 1000);
 }
