@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright (C) 2022-2024 Thomas Basler and others
+ * Copyright (C) 2022 Thomas Basler and others
  */
+#ifdef USE_HASS
+
 #include "MqttHandleHass.h"
 #include "MqttHandleInverter.h"
 #include "MqttSettings.h"
@@ -46,17 +48,12 @@ void MqttHandleHassClass::forceUpdate()
 
 void MqttHandleHassClass::publishConfig()
 {
-    if (!Configuration.get().Mqtt.Hass.Enabled) {
-        return;
-    }
-
-    if (!MqttSettings.getConnected() && Hoymiles.isAllRadioIdle()) {
-        return;
-    }
-
     const CONFIG_T& config = Configuration.get();
+    if (!config.Mqtt.Hass.Enabled || (!MqttSettings.getConnected() && Hoymiles.isAllRadioIdle()) ) {
+        return;
+    }
 
-    // publish DTU sensors
+     // publish DTU sensors
     publishDtuSensor("IP", "", "diagnostic", "mdi:network-outline", "", "");
     publishDtuSensor("WiFi Signal", "signal_strength", "diagnostic", "", "dBm", "rssi");
     publishDtuSensor("Uptime", "duration", "diagnostic", "", "s", "");
@@ -121,9 +118,7 @@ void MqttHandleHassClass::publishInverterField(std::shared_ptr<InverterAbstract>
         chanNum = channel;
     }
 
-    const String configTopic = "sensor/dtu_" + serial
-        + "/" + "ch" + chanNum + "_" + fieldName
-        + "/config";
+    const String configTopic = "sensor/dtu_" + serial + "/" + "ch" + chanNum + "_" + fieldName + "/config";
 
     if (!clear) {
         const String stateTopic = MqttSettings.getPrefix() + MqttHandleInverter.getTopic(inv, type, channel, fieldType.fieldId);
@@ -134,7 +129,7 @@ void MqttHandleHassClass::publishInverterField(std::shared_ptr<InverterAbstract>
         if (type != TYPE_DC) {
             name = fieldName;
         } else {
-            name = "CH" + chanNum + " " + fieldName;
+            name = " CH" + chanNum + " " + fieldName;
         }
 
         DynamicJsonDocument root(1024);
@@ -179,10 +174,6 @@ void MqttHandleHassClass::publishInverterButton(std::shared_ptr<InverterAbstract
     buttonId.replace(" ", "_");
     buttonId.toLowerCase();
 
-    const String configTopic = "button/dtu_" + serial
-        + "/" + buttonId
-        + "/config";
-
     const String cmdTopic = MqttSettings.getPrefix() + serial + "/" + subTopic;
 
     DynamicJsonDocument root(1024);
@@ -205,6 +196,7 @@ void MqttHandleHassClass::publishInverterButton(std::shared_ptr<InverterAbstract
     createInverterInfo(root, inv);
 
     String buffer;
+    const String configTopic = "button/dtu_" + serial + "/" + buttonId + "/config";
     serializeJson(root, buffer);
     publish(configTopic, buffer);
 }
@@ -219,10 +211,6 @@ void MqttHandleHassClass::publishInverterNumber(
     String buttonId = caption;
     buttonId.replace(" ", "_");
     buttonId.toLowerCase();
-
-    const String configTopic = "number/dtu_" + serial
-        + "/" + buttonId
-        + "/config";
 
     const String cmdTopic = MqttSettings.getPrefix() + serial + "/" + commandTopic;
     const String statTopic = MqttSettings.getPrefix() + serial + "/" + stateTopic;
@@ -248,6 +236,7 @@ void MqttHandleHassClass::publishInverterNumber(
 
     String buffer;
     serializeJson(root, buffer);
+    const String configTopic = "number/dtu_" + serial + "/" + buttonId + "/config";
     publish(configTopic, buffer);
 }
 
@@ -258,10 +247,6 @@ void MqttHandleHassClass::publishInverterBinarySensor(std::shared_ptr<InverterAb
     String sensorId = caption;
     sensorId.replace(" ", "_");
     sensorId.toLowerCase();
-
-    const String configTopic = "binary_sensor/dtu_" + serial
-        + "/" + sensorId
-        + "/config";
 
     const String statTopic = MqttSettings.getPrefix() + serial + "/" + subTopic;
 
@@ -280,6 +265,7 @@ void MqttHandleHassClass::publishInverterBinarySensor(std::shared_ptr<InverterAb
 
     String buffer;
     serializeJson(root, buffer);
+    const String configTopic = "binary_sensor/dtu_" + serial + "/" + sensorId + "/config";
     publish(configTopic, buffer);
 }
 
@@ -323,8 +309,8 @@ void MqttHandleHassClass::publishDtuSensor(const char* name, const char* device_
     createDtuInfo(root);
 
     String buffer;
-    const String configTopic = "sensor/" + getDtuUniqueId() + "/" + id + "/config";
     serializeJson(root, buffer);
+    const String configTopic = "sensor/" + getDtuUniqueId() + "/" + id + "/config";
     publish(configTopic, buffer);
 }
 
@@ -360,8 +346,8 @@ void MqttHandleHassClass::publishDtuBinarySensor(const char* name, const char* d
     createDtuInfo(root);
 
     String buffer;
-    const String configTopic = "binary_sensor/" + getDtuUniqueId() + "/" + id + "/config";
     serializeJson(root, buffer);
+    const String configTopic = "binary_sensor/" + getDtuUniqueId() + "/" + id + "/config";
     publish(configTopic, buffer);
 }
 
@@ -426,3 +412,5 @@ void MqttHandleHassClass::publish(const String& subtopic, const String& payload)
     topic += subtopic;
     MqttSettings.publishGeneric(topic, payload, Configuration.get().Mqtt.Hass.Retain);
 }
+
+#endif
