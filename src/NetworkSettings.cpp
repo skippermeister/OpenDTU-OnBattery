@@ -9,7 +9,9 @@
 #include "Utils.h"
 #include "defaults.h"
 #include <ESPmDNS.h>
+#ifdef OPENDTU_ETHERNET
 #include <ETH.h>
+#endif
 
 NetworkSettingsClass::NetworkSettingsClass()
     : _loopTask(TASK_IMMEDIATE, TASK_FOREVER, std::bind(&NetworkSettingsClass::loop, this))
@@ -36,6 +38,7 @@ void NetworkSettingsClass::init(Scheduler& scheduler)
 void NetworkSettingsClass::NetworkEvent(const WiFiEvent_t event)
 {
     switch (event) {
+#ifdef OPENDTU_ETHERNET
     case ARDUINO_EVENT_ETH_START:
         MessageOutput.println("ETH start");
         if (_networkMode == network_mode::Ethernet) {
@@ -66,6 +69,7 @@ void NetworkSettingsClass::NetworkEvent(const WiFiEvent_t event)
             raiseEvent(network_event::NETWORK_DISCONNECTED);
         }
         break;
+#endif
     case ARDUINO_EVENT_WIFI_STA_CONNECTED:
         MessageOutput.println("WiFi connected");
         if (_networkMode == network_mode::WiFi) {
@@ -164,10 +168,12 @@ void NetworkSettingsClass::setupMode()
         }
     }
 
+#ifdef OPENDTU_ETHERNET
     if (PinMapping.isValidEthConfig()) {
         PinMapping_t& pin = PinMapping.get();
         ETH.begin(pin.eth_phy_addr, pin.eth_power, pin.eth_mdc, pin.eth_mdio, pin.eth_type, pin.eth_clk_mode);
     }
+#endif
 }
 
 void NetworkSettingsClass::enableAdminMode()
@@ -185,6 +191,7 @@ String NetworkSettingsClass::getApName() const
 
 void NetworkSettingsClass::loop()
 {
+#ifdef OPENDTU_ETHERNET
     if (_ethConnected) {
         if (_networkMode != network_mode::Ethernet) {
             // Do stuff when switching to Ethernet mode
@@ -194,7 +201,9 @@ void NetworkSettingsClass::loop()
             setStaticIp();
             setHostname();
         }
-    } else if (_networkMode != network_mode::WiFi) {
+    } else 
+#endif
+    if (_networkMode != network_mode::WiFi) {
         // Do stuff when switching to Ethernet mode
         MessageOutput.println("Switch to WiFi mode");
         _networkMode = network_mode::WiFi;
@@ -291,13 +300,16 @@ void NetworkSettingsClass::setHostname()
         WiFi.mode(WIFI_MODE_APSTA);
         WiFi.mode(WIFI_MODE_STA);
         setupMode();
-    } else if (_networkMode == network_mode::Ethernet) {
+    }
+#ifdef OPENDTU_ETHERNET
+    else if (_networkMode == network_mode::Ethernet) {
         if (ETH.setHostname(getHostname().c_str())) {
             MessageOutput.println("done");
         } else {
             MessageOutput.println("failed");
         }
     }
+#endif
 }
 
 void NetworkSettingsClass::setStaticIp()
@@ -317,7 +329,9 @@ void NetworkSettingsClass::setStaticIp()
                 IPAddress(Configuration.get().WiFi.Dns2));
             MessageOutput.println("done");
         }
-    } else if (_networkMode == network_mode::Ethernet) {
+    }
+#ifdef OPENDTU_ETHERNET
+    else if (_networkMode == network_mode::Ethernet) {
         if (Configuration.get().WiFi.Dhcp) {
             MessageOutput.print("Configuring Ethernet DHCP IP... ");
             ETH.config(INADDR_NONE, INADDR_NONE, INADDR_NONE, INADDR_NONE);
@@ -333,14 +347,17 @@ void NetworkSettingsClass::setStaticIp()
             MessageOutput.println("done");
         }
     }
+#endif
 }
 
 IPAddress NetworkSettingsClass::localIP() const
 {
     switch (_networkMode) {
+#ifdef OPENDTU_ETHERNET
     case network_mode::Ethernet:
         return ETH.localIP();
         break;
+#endif
     case network_mode::WiFi:
         return WiFi.localIP();
         break;
@@ -352,9 +369,11 @@ IPAddress NetworkSettingsClass::localIP() const
 IPAddress NetworkSettingsClass::subnetMask() const
 {
     switch (_networkMode) {
+#ifdef OPENDTU_ETHERNET
     case network_mode::Ethernet:
         return ETH.subnetMask();
         break;
+#endif
     case network_mode::WiFi:
         return WiFi.subnetMask();
         break;
@@ -366,9 +385,11 @@ IPAddress NetworkSettingsClass::subnetMask() const
 IPAddress NetworkSettingsClass::gatewayIP() const
 {
     switch (_networkMode) {
+#ifdef OPENDTU_ETHERNET
     case network_mode::Ethernet:
         return ETH.gatewayIP();
         break;
+#endif
     case network_mode::WiFi:
         return WiFi.gatewayIP();
         break;
@@ -380,9 +401,11 @@ IPAddress NetworkSettingsClass::gatewayIP() const
 IPAddress NetworkSettingsClass::dnsIP(const uint8_t dns_no) const
 {
     switch (_networkMode) {
+#ifdef OPENDTU_ETHERNET
     case network_mode::Ethernet:
         return ETH.dnsIP(dns_no);
         break;
+#endif
     case network_mode::WiFi:
         return WiFi.dnsIP(dns_no);
         break;
@@ -394,9 +417,11 @@ IPAddress NetworkSettingsClass::dnsIP(const uint8_t dns_no) const
 String NetworkSettingsClass::macAddress() const
 {
     switch (_networkMode) {
+#ifdef OPENDTU_ETHERNET
     case network_mode::Ethernet:
         return ETH.macAddress();
         break;
+#endif
     case network_mode::WiFi:
         return WiFi.macAddress();
         break;
@@ -446,7 +471,11 @@ String NetworkSettingsClass::getHostname()
 
 bool NetworkSettingsClass::isConnected() const
 {
+#ifdef OPENDTU_ETHERNET
     return WiFi.localIP()[0] != 0 || ETH.localIP()[0] != 0;
+#else
+    return WiFi.localIP()[0] != 0;
+#endif
 }
 
 network_mode NetworkSettingsClass::NetworkMode() const
