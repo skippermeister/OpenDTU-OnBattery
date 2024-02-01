@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
+#ifdef USE_LED_SINGLE
+
 #pragma once
 
 #include "PinMapping.h"
@@ -37,3 +39,5 @@ private:
 };
 
 extern LedSingleClass LedSingle;
+
+#endif
