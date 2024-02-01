@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
+#ifdef CHARGER_HUAWEI
+
 #pragma once
 
 #include <cstdint>
@@ -154,3 +156,5 @@ private:
 
 extern HuaweiCanClass HuaweiCan;
 extern HuaweiCanCommClass HuaweiCanComm;
+
+#endif
