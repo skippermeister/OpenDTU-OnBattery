@@ -1,3 +1,5 @@
+#ifdef USE_JKBMS_CONTROLLER
+
 #include <Arduino.h>
 #include "Configuration.h"
 #include "HardwareSerial.h"
@@ -8,6 +10,8 @@
 #include <frozen/map.h>
 
 //#define JKBMS_DUMMY_SERIAL
+
+static const char TAG[] = "[JK BMS]";
 
 #ifdef JKBMS_DUMMY_SERIAL
 class DummySerial {
@@ -203,20 +207,21 @@ HardwareSerial HwSerial(2);
 
 namespace JkBms {
 
-bool Controller::init(bool verboseLogging)
+bool Controller::init()
 {
-    _verboseLogging = verboseLogging;
+    _verboseLogging = Battery._verbose_logging;
+
+    _lastStatusPrinted.set(10 * 1000);
 
     std::string ifcType = "transceiver";
     if (Interface::Transceiver != getInterface()) { ifcType = "TTL-UART"; }
     MessageOutput.printf("[JK BMS] Initialize %s interface...\r\n", ifcType.c_str());
 
     const PinMapping_t& pin = PinMapping.get();
-    MessageOutput.printf("[JK BMS] rx = %d, rxen = %d, tx = %d, txen = %d\r\n",
-            pin.battery_rx, pin.battery_rxen, pin.battery_tx, pin.battery_txen);
+    MessageOutput.printf("%s rx = %d, tx = %d, rts = %d\r\n", TAG, pin.battery_rx, pin.battery_tx, pin.battery_rts);
 
     if (pin.battery_rx < 0 || pin.battery_tx < 0) {
-        MessageOutput.println("[JK BMS] Invalid RX/TX pin config");
+        MessageOutput.printf("%s Invalid RX/TX pin config\r\n", TAG);
         return false;
     }
 
@@ -225,16 +230,13 @@ bool Controller::init(bool verboseLogging)
 
     if (Interface::Transceiver != getInterface()) { return true; }
 
-    _rxEnablePin = pin.battery_rxen;
-    _txEnablePin = pin.battery_txen;
-
-    if (_rxEnablePin < 0 || _txEnablePin < 0) {
-        MessageOutput.println("[JK BMS] Invalid transceiver pin config");
+    if (pin.battery_rts < 0) {
+        MessageOutput.printf("%s Invalid transceiver pin config\r\n", TAG);
         return false;
     }
 
-    pinMode(_rxEnablePin, OUTPUT);
-    pinMode(_txEnablePin, OUTPUT);
+    HwSerial.setPins(pin.battery_rx, pin.battery_tx, UART_PIN_NO_CHANGE, pin.battery_rts);
+    ESP_ERROR_CHECK(uart_set_mode(2, UART_MODE_RS485_HALF_DUPLEX));
 
     return true;
 }
@@ -242,16 +244,13 @@ bool Controller::init(bool verboseLogging)
 void Controller::deinit()
 {
     HwSerial.end();
-
-    if (_rxEnablePin > 0) { pinMode(_rxEnablePin, INPUT); }
-    if (_txEnablePin > 0) { pinMode(_txEnablePin, INPUT); }
 }
 
 Controller::Interface Controller::getInterface() const
 {
-    CONFIG_T& config = Configuration.get();
-    if (0x00 == config.Battery.JkBmsInterface) { return Interface::Uart; }
-    if (0x01 == config.Battery.JkBmsInterface) { return Interface::Transceiver; }
+    Battery_CONFIG_T& cBattery = Configuration.get().Battery;
+    if (0x00 == cBattery.JkBms.Interface) { return Interface::Uart; }
+    if (0x01 == cBattery.JkBms.Interface) { return Interface::Transceiver; }
     return Interface::Invalid;
 }
 
@@ -276,13 +275,12 @@ frozen::string const& Controller::getStatusText(Controller::Status status)
 
 void Controller::announceStatus(Controller::Status status)
 {
-    if (_lastStatus == status && millis() < _lastStatusPrinted + 10 * 1000) { return; }
+    if ((_lastStatus == status) && !_lastStatusPrinted.occured()) { return; }
 
-    MessageOutput.printf("[%11.3f] JK BMS: %s\r\n",
-        static_cast<double>(millis())/1000, getStatusText(status).data());
+    MessageOutput.printf("%s %s\r\n", TAG, getStatusText(status).data());
 
     _lastStatus = status;
-    _lastStatusPrinted = millis();
+    _lastStatusPrinted.reset();
 }
 
 void Controller::sendRequest(uint8_t pollInterval)
@@ -301,17 +299,10 @@ void Controller::sendRequest(uint8_t pollInterval)
 
     SerialCommand readAll(SerialCommand::Command::ReadAll);
 
-    if (Interface::Transceiver == getInterface()) {
-        digitalWrite(_rxEnablePin, HIGH); // disable reception (of our own data)
-        digitalWrite(_txEnablePin, HIGH); // enable transmission
-    }
-
     HwSerial.write(readAll.data(), readAll.size());
 
     if (Interface::Transceiver == getInterface()) {
         HwSerial.flush();
-        digitalWrite(_rxEnablePin, LOW); // enable reception
-        digitalWrite(_txEnablePin, LOW); // disable transmission (free the bus)
     }
 
     _lastRequest = millis();
@@ -322,8 +313,8 @@ void Controller::sendRequest(uint8_t pollInterval)
 
 void Controller::loop()
 {
-    CONFIG_T& config = Configuration.get();
-    uint8_t pollInterval = config.Battery.JkBmsPollingInterval;
+    Battery_CONFIG_T& cBattery = Configuration.get().Battery;
+    uint8_t pollInterval = cBattery.JkBms.PollingInterval;
 
     while (HwSerial.available()) {
         rxData(HwSerial.read());
@@ -385,13 +376,11 @@ void Controller::frameComplete()
     announceStatus(Status::FrameCompleted);
 
     if (_verboseLogging) {
-        double ts = static_cast<double>(millis())/1000;
-        MessageOutput.printf("[%11.3f] JK BMS: raw data (%d Bytes):",
-            ts, _buffer.size());
+        MessageOutput.printf("%s raw data (%d Bytes):", TAG, _buffer.size());
         for (size_t ctr = 0; ctr < _buffer.size(); ++ctr) {
             if (ctr % 16 == 0) {
-                MessageOutput.printf("\r\n[%11.3f] JK BMS:", ts);
-            }
+               MessageOutput.printf("\r\n%s ", TAG);
+             }
             MessageOutput.printf(" %02x", _buffer[ctr]);
         }
         MessageOutput.println();
@@ -418,7 +407,7 @@ void Controller::processDataPoints(DataPointContainer const& dataPoints)
 
     auto iter = dataPoints.cbegin();
     while ( iter != dataPoints.cend() ) {
-        MessageOutput.printf("[%11.3f] JK BMS: %s: %s%s\r\n",
+        MessageOutput.printf("%s:[%11.3f] %s: %s%s\r\n", TAG,
             static_cast<double>(iter->second.getTimestamp())/1000,
             iter->second.getLabelText().c_str(),
             iter->second.getValueText().c_str(),
@@ -428,3 +417,5 @@ void Controller::processDataPoints(DataPointContainer const& dataPoints)
 }
 
 } /* namespace JkBms */
+
+#endif
