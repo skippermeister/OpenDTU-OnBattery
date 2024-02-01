@@ -3,40 +3,77 @@
  * Copyright (C) 2022 Thomas Basler and others
  */
 
-#include "Battery.h"
-#include "PowerMeter.h"
 #include "PowerLimiter.h"
+#include "Battery.h"
 #include "Configuration.h"
 #include "MqttSettings.h"
 #include "NetworkSettings.h"
+#include "PinMapping.h"
+#include "PowerMeter.h"
+#ifdef CHARGER_HUAWEI
 #include "Huawei_can.h"
-#include <VictronMppt.h>
+#else
+#include "MeanWell_can.h"
+#endif
 #include "MessageOutput.h"
-#include <ctime>
+#include "SunPosition.h"
+#include <VictronMppt.h>
 #include <cmath>
+#include <ctime>
 #include <frozen/map.h>
+
+const char TAG[] = "[PowerLimiter]";
 
 PowerLimiterClass PowerLimiter;
 
-void PowerLimiterClass::init(Scheduler& scheduler) 
-{ 
+PowerLimiterClass::PowerLimiterClass()
+    : _loopTask(TASK_IMMEDIATE, TASK_FOREVER, std::bind(&PowerLimiterClass::loop, this))
+{
+}
+
+void PowerLimiterClass::init(Scheduler& scheduler)
+{
+    MessageOutput.print("Initialize Power Limiter... ");
+
     scheduler.addTask(_loopTask);
-    _loopTask.setCallback(std::bind(&PowerLimiterClass::loop, this));
-    _loopTask.setIterations(TASK_FOREVER);
     _loopTask.enable();
+
+    _lastStatusPrinted.set(10 * 1000);
+
+    const PowerLimiter_CONFIG_T& cPL = Configuration.get().PowerLimiter;
+
+    MessageOutput.printf("switch DC power of inverter channel %d off. ", cPL.InverterChannelId);
+    digitalWrite(PinMapping.get().pre_charge, HIGH);
+    pinMode(PinMapping.get().pre_charge, OUTPUT);
+    digitalWrite(PinMapping.get().pre_charge, HIGH); // MOSfet gate off
+    digitalWrite(PinMapping.get().full_power, HIGH);
+    pinMode(PinMapping.get().full_power, OUTPUT);
+    digitalWrite(PinMapping.get().full_power, HIGH); // MOSfet gate off
+    _preChargePowerState = 0;
+    _lastPreCharge = millis();
+    _preChargeDelay = 0;
+
+    if (Configuration.get().Inverter[cPL.InverterId].Serial > 0) {
+        // switch PowerMOSFETs for inverter DC power off (battery powered Hoymiles inverter)
+        Hoymiles.getInverterByPos(cPL.InverterId)->setConnected(false);
+        MessageOutput.println("done");
+    } else {
+        MessageOutput.println("no Inverter for Powerlimiter configured");
+    }
 }
 
 frozen::string const& PowerLimiterClass::getStatusText(PowerLimiterClass::Status status)
 {
     static const frozen::string missing = "programmer error: missing status text";
 
-    static const frozen::map<Status, frozen::string, 19> texts = {
+    static const frozen::map<Status, frozen::string, 24> texts = {
         { Status::Initializing, "initializing (should not see me)" },
         { Status::DisabledByConfig, "disabled by configuration" },
         { Status::DisabledByMqtt, "disabled by MQTT" },
         { Status::WaitingForValidTimestamp, "waiting for valid date and time to be available" },
         { Status::PowerMeterDisabled, "no power meter is configured/enabled" },
-        { Status::PowerMeterTimeout, "power meter readings are outdated" },
+        { Status::PowerMeterTimeoutWarning, "warning, power meter readings are outdated more than 30 seconds" },
+        { Status::PowerMeterTimeout, "power meter readings are outdated more than 1 minute" },
         { Status::PowerMeterPending, "waiting for sufficiently recent power meter reading" },
         { Status::InverterInvalid, "invalid inverter selection/configuration" },
         { Status::InverterChanged, "target inverter changed" },
@@ -50,10 +87,17 @@ frozen::string const& PowerLimiterClass::getStatusText(PowerLimiterClass::Status
         { Status::NoVeDirect, "VE.Direct disabled, connection broken, or data outdated" },
         { Status::Settling, "waiting for the system to settle" },
         { Status::Stable, "the system is stable, the last power limit is still valid" },
+        { Status::LowerLimitUndercut, "calculated power limit undercuts configured lower limit" },
+        { Status::TemperatureRange, "temperatue out of recommended discharge range (-10°C ~ 50°C)" },
+        { Status::BatteryNotInitialized, "battery is not initialized" },
+        { Status::DisconnectFromBattery, "disconnect inverter from battery" }
+        //        { Status::WaitingInverterPowerOn, "waiting till Inverter is startet (DC power on)"}
     };
 
     auto iter = texts.find(status);
-    if (iter == texts.end()) { return missing; }
+    if (iter == texts.end()) {
+        return missing;
+    }
 
     return iter->second;
 }
@@ -63,58 +107,100 @@ void PowerLimiterClass::announceStatus(PowerLimiterClass::Status status)
     // this method is called with high frequency. print the status text if
     // the status changed since we last printed the text of another one.
     // otherwise repeat the info with a fixed interval.
-    if (_lastStatus == status && millis() < _lastStatusPrinted + 10 * 1000) { return; }
+    if (_lastStatus == status && !_lastStatusPrinted.occured()) {
+        return;
+    }
 
     // after announcing once that the DPL is disabled by configuration, it
     // should just be silent while it is disabled.
-    if (status == Status::DisabledByConfig && _lastStatus == status) { return; }
-
-    MessageOutput.printf("[%11.3f] DPL: %s\r\n",
-        static_cast<double>(millis())/1000, getStatusText(status).data());
-
-    _lastStatus = status;
-    _lastStatusPrinted = millis();
-}
-
-/**
- * returns true if the inverter state was changed or is about to change, i.e.,
- * if it is actually in need of a shutdown. returns false otherwise, i.e., the
- * inverter is already (assumed to be) shut down.
- */
-bool PowerLimiterClass::shutdown(PowerLimiterClass::Status status)
-{
-    announceStatus(status);
-
-    if (_inverter == nullptr || !_inverter->isProducing() ||
-            (_shutdownTimeout > 0 && _shutdownTimeout < millis()) ) {
-        // we are actually (already) done with shutting down the inverter,
-        // or a shutdown attempt was initiated but it timed out.
-        _inverter = nullptr;
-        _shutdownTimeout = 0;
-        return false;
+    if (status == Status::DisabledByConfig && _lastStatus == status) {
+        return;
     }
 
-    if (!_inverter->isReachable()) { return true; } // retry later (until timeout)
+    MessageOutput.printf("%s %s\r\n", TAG, getStatusText(status).data());
+
+    _lastStatus = status;
+    _lastStatusPrinted.reset();
+}
+
+bool PowerLimiterClass::shutdown(PowerLimiterClass::Status status)
+{
+    if (_lastStatus != Status::DisconnectFromBattery)
+        announceStatus(status);
+
+    PowerLimiter_CONFIG_T& cPL = Configuration.get().PowerLimiter;
+
+    if (_inverter == nullptr || !_inverter->isProducing() || (_shutdownTimeout > 0 && (millis() - _shutdownTimeout > 30 * 1000))) {
+
+        if (_preChargePowerState != 0 && (millis() - _shutdownTimeout > 30 * 1000)) { // at minimum wait 30 seconds to switch off the MOSfets
+
+            if (_inverter)
+                MessageOutput.printf("%s%s inverter %d is %s producing. AC power: %.1f\r\n", TAG, __FUNCTION__,
+                    cPL.InverterId,
+                    _inverter->isProducing() ? "still" : "not",
+                    _inverter->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_PAC));
+
+            MessageOutput.printf("%s%s: switch DC power of inverter id %d at channel %d OFF\r\n", TAG, __FUNCTION__,
+                cPL.InverterId,
+                cPL.InverterChannelId);
+
+            digitalWrite(PinMapping.get().full_power, HIGH); // MOSfet gate off
+            digitalWrite(PinMapping.get().pre_charge, HIGH); // MOSfet gate off
+
+            _preChargePowerState = 0;
+            if (_inverter)
+                _inverter->setConnected(false);
+
+            _lastPreCharge = millis();
+            _preChargeDelay = 0;
+
+            _inverter = nullptr;
+            _shutdownTimeout = 0;
+            return false;
+
+        } else if (_preChargePowerState == 0) {
+
+            _inverter = nullptr;
+            _shutdownTimeout = 0;
+            return false;
+        }
+
+        return true;
+    }
+
+    if (!_inverter->isReachable()) {
+        return true;
+    } // retry later (until timeout)
+
+    if (_shutdownTimeout > 0 && _inverter->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_PAC) > 0.0) {
+        return true;
+    }
 
     // retry shutdown for a maximum amount of time before giving up
-    if (_shutdownTimeout == 0) { _shutdownTimeout = millis() + 10 * 1000; }
+    if (_shutdownTimeout == 0) {
+        _shutdownTimeout = millis();
+        if (_shutdownTimeout == 0)
+            _shutdownTimeout++;
+    }
 
     auto lastLimitCommandState = _inverter->SystemConfigPara()->getLastLimitCommandSuccess();
-    if (CMD_PENDING == lastLimitCommandState) { return true; }
+    if (CMD_PENDING == lastLimitCommandState) {
+        return true;
+    }
 
     auto lastPowerCommandState = _inverter->PowerCommand()->getLastPowerCommandSuccess();
-    if (CMD_PENDING == lastPowerCommandState) { return true; }
+    if (CMD_PENDING == lastPowerCommandState) {
+        return true;
+    }
 
-    CONFIG_T& config = Configuration.get();
-    commitPowerLimit(_inverter, config.PowerLimiter.LowerPowerLimit, false);
+    commitPowerLimit(_inverter, cPL.LowerPowerLimit, false);
 
     return true;
 }
 
 void PowerLimiterClass::loop()
 {
-    CONFIG_T const& config = Configuration.get();
-    _verboseLogging = config.PowerLimiter.VerboseLogging;
+    PowerLimiter_CONFIG_T& cPL = Configuration.get().PowerLimiter;
 
     // we know that the Hoymiles library refuses to send any message to any
     // inverter until the system has valid time information. until then we can
@@ -132,8 +218,20 @@ void PowerLimiterClass::loop()
         return;
     }
 
-    if (!config.PowerLimiter.Enabled) {
+    static bool lastState = false;
+    if (!cPL.Enabled) {
         shutdown(Status::DisabledByConfig);
+        lastState = false;
+        return;
+    }
+
+    if (!Battery.getStats()->isDischargeTemperatureValid()) {
+        shutdown(Status::TemperatureRange);
+        return;
+    }
+
+    if (!Battery.getStats()->initialized()) {
+        shutdown(Status::BatteryNotInitialized);
         return;
     }
 
@@ -142,8 +240,7 @@ void PowerLimiterClass::loop()
         return;
     }
 
-    std::shared_ptr<InverterAbstract> currentInverter =
-        Hoymiles.getInverterByPos(config.PowerLimiter.InverterId);
+    std::shared_ptr<InverterAbstract> currentInverter = Hoymiles.getInverterByPos(cPL.InverterId);
 
     // in case of (newly) broken configuration, shut down
     // the last inverter we worked with (if any)
@@ -161,6 +258,90 @@ void PowerLimiterClass::loop()
 
     // update our pointer as the configuration might have changed
     _inverter = currentInverter;
+
+    if (Configuration.get().Battery.Enabled // Battery must be enabled
+        && !SunPosition.isAnnouceDayPeriod() //
+        && _inverter->getEnablePolling() // Inverter connected to Battery must be enabled for polling
+        && _inverter->getEnableCommands() // Inverter connected to Battery must be enabled to receive commands
+        && Battery.getStats()->getSoC() >= cPL.BatterySocStopThreshold // Battery SoC must be geater than equal StopThreshold
+        && MeanWellCan._rp.operation == 0) // only if Charger is off
+    {
+        switch (_preChargePowerState) {
+        case 0:
+            if ((millis() - _lastPreCharge > _preChargeDelay) && (Battery.getStats()->getSoC() >= cPL.BatterySocStartThreshold || (Battery.getStats()->getSoC() > cPL.BatterySocStopThreshold && lastState == false))) {
+                MessageOutput.printf("%s%s: switch DC power of inverter id %d at channel %d OFF\r\n", TAG, __FUNCTION__, cPL.InverterId, cPL.InverterChannelId);
+                digitalWrite(PinMapping.get().pre_charge, HIGH); // MOSfet gate off
+                digitalWrite(PinMapping.get().full_power, HIGH); // MOSfet gate off
+                _batteryDischargeEnabled = false;
+                _inverter->setConnected(false);
+
+                _lastPreCharge = millis();
+                _preChargeDelay = 30 * 1000; // 30 seconds wait before start again
+                _preChargePowerState = 1;
+            }
+            return;
+
+        case 1: // switch pre charge MosFET to load capacities of Inverter (soft power on)
+            if (millis() - _lastPreCharge > _preChargeDelay) {
+                MessageOutput.printf("%s%s: switch DC pre charging of inverter id %d at channel %d ON\r\n", TAG, __FUNCTION__, cPL.InverterId, cPL.InverterChannelId);
+                digitalWrite(PinMapping.get().full_power, HIGH); // MOSfet gate off
+                digitalWrite(PinMapping.get().pre_charge, LOW); // MOSfet gate on
+
+                _lastPreCharge = millis();
+                _preChargeDelay = 5 * 1000; // 5 seconds pre charge
+                _preChargePowerState = 2;
+            }
+            return;
+
+        case 2: // after pre charge time (5 seconds delay) switch the full power MosFET
+            if (millis() - _lastPreCharge > _preChargeDelay) {
+                MessageOutput.printf("%s%s: switch DC full power of inverter %d at channel %d ON\r\n", TAG, __FUNCTION__, cPL.InverterId, cPL.InverterChannelId);
+                digitalWrite(PinMapping.get().full_power, LOW); // MOSfet gate on
+                digitalWrite(PinMapping.get().pre_charge, HIGH); // MOSfet gate off
+                _inverter->setConnected(true);
+
+                if (!isStopThresholdReached() && !isStartThresholdReached() && cPL.Enabled != lastState) {
+                    if (_verbose_logging)
+                        MessageOutput.printf("%s%s: initial condition (discharging allowed)\r\n", TAG, __FUNCTION__);
+                    _batteryDischargeEnabled = true;
+                    lastState = true;
+                }
+
+                _lastPreCharge = millis();
+                _preChargeDelay = 60 * 1000; // give 60 seconds to start Inverter
+                _preChargePowerState = 3;
+            }
+            return;
+
+        case 3:
+            //                announceStatus(Status::WaitingInverterPowerOn);
+            if (millis() - _lastPreCharge > _preChargeDelay) {
+                _preChargeDelay = 5 * 1000; // at minimum 5 seconds delay
+                _lastPreCharge = millis();
+                _preChargePowerState = 4;
+            }
+            return;
+
+        case 4:
+            break;
+        }
+    } else {
+        shutdown(Status::DisconnectFromBattery);
+        return;
+        /*
+                // minimum time between start of inverter DC power and switch off DC power 30 seconds
+                if ( (millis() - _lastPreCharge > 30 * 1000) && _preChargePowerState == 0) {
+                    MessageOutput.printf("%s%s: switch DC power of inverter id %d at channel %d OFF\r\n", TAG, __FUNCTION__, cPL.InverterId, cPL.InverterChannelId);
+                    digitalWrite(PinMapping.get().full_power, HIGH);    // MOSfet gate off
+                    digitalWrite(PinMapping.get().pre_charge, HIGH);    // MOSfet gate off
+                    _preChargeDelay= 30* 1000;
+                    _lastPreCharge = millis();
+                    _preChargePowerState = 0;
+                    _inverter->setConnected(false);
+                }
+                if (_preChargePowerState == 0) return;
+        */
+    }
 
     // data polling is disabled or the inverter is deemed offline
     if (!_inverter->isReachable()) {
@@ -198,12 +379,17 @@ void PowerLimiterClass::loop()
 
     // the normal mode of operation requires a valid
     // power meter reading to calculate a power limit
-    if (!config.PowerMeter.Enabled) {
+    if (!Configuration.get().PowerMeter.Enabled) {
         shutdown(Status::PowerMeterDisabled);
         return;
     }
 
+    // after 30 seconds no power meter values we warn,
+    // after 1 minute no power meter values we shutdown the inverter
+    // it seems to be that shelly3EM sometimes logs off from WLAN and reports for more than 30 seconds no values
     if (millis() - PowerMeter.getLastPowerMeterUpdate() > (30 * 1000)) {
+        return announceStatus(Status::PowerMeterTimeoutWarning);
+    } else if (millis() - PowerMeter.getLastPowerMeterUpdate() > (60 * 1000)) {
         shutdown(Status::PowerMeterTimeout);
         return;
     }
@@ -211,49 +397,49 @@ void PowerLimiterClass::loop()
     // concerns both power limits and start/stop/restart commands and is
     // only updated if a respective response was received from the inverter
     auto lastUpdateCmd = std::max(
-            _inverter->SystemConfigPara()->getLastUpdateCommand(),
-            _inverter->PowerCommand()->getLastUpdateCommand());
+        _inverter->SystemConfigPara()->getLastUpdateCommand(),
+        _inverter->PowerCommand()->getLastUpdateCommand());
 
     // wait for power meter and inverter stat updates after a settling phase
-    auto settlingEnd = lastUpdateCmd + 3 * 1000;
+    if (millis() - lastUpdateCmd < 3 * 1000) {
+        return announceStatus(Status::Settling);
+    }
 
-    if (millis() < settlingEnd) { return announceStatus(Status::Settling); }
-
-    if (_inverter->Statistics()->getLastUpdate() <= settlingEnd) {
+    if (_inverter->Statistics()->getLastUpdate() - lastUpdateCmd <= 3 * 1000) {
         return announceStatus(Status::InverterStatsPending);
     }
 
-    if (PowerMeter.getLastPowerMeterUpdate() <= settlingEnd) {
+    if (PowerMeter.getLastPowerMeterUpdate() - lastUpdateCmd <= 3 * 1000) {
         return announceStatus(Status::PowerMeterPending);
     }
 
     // since _lastCalculation and _calculationBackoffMs are initialized to
     // zero, this test is passed the first time the condition is checked.
-    if (millis() < (_lastCalculation + _calculationBackoffMs)) {
+    if (millis() - _lastCalculation < _calculationBackoffMs) {
         return announceStatus(Status::Stable);
     }
 
-    if (_verboseLogging) {
-        MessageOutput.println("[DPL::loop] ******************* ENTER **********************");
+    if (_verbose_logging) {
+        MessageOutput.printf("%s ******************* ENTER **********************\r\n", TAG);
     }
 
     // Check if next inverter restart time is reached
-    if ((_nextInverterRestart > 1) && (_nextInverterRestart <= millis())) {
-        MessageOutput.println("[DPL::loop] send inverter restart");
+    if ((_nextInverterRestart > 1) && (millis() - _nextInverterRestart > 0)) {
+        MessageOutput.printf("%s%s: send inverter restart\r\n", TAG, __FUNCTION__);
         _inverter->sendRestartControlRequest();
         calcNextInverterRestart();
     }
 
     // Check if NTP time is set and next inverter restart not calculated yet
-    if ((config.PowerLimiter.RestartHour >= 0)  && (_nextInverterRestart == 0) ) {
+    if ((cPL.RestartHour >= 0) && (_nextInverterRestart == 0)) {
         // check every 5 seconds
-        if (_nextCalculateCheck < millis()) {
+        if (millis() - _nextCalculateCheck > 5 * 1000) {
             struct tm timeinfo;
             if (getLocalTime(&timeinfo, 5)) {
                 calcNextInverterRestart();
             } else {
-                MessageOutput.println("[DPL::loop] inverter restart calculation: NTP not ready");
-                _nextCalculateCheck += 5000;
+                MessageOutput.printf("%s%s: inverter restart calculation: NTP not ready\r\n", TAG, __FUNCTION__);
+                _nextCalculateCheck = millis();
             }
         }
     }
@@ -261,71 +447,80 @@ void PowerLimiterClass::loop()
     // Battery charging cycle conditions
     // First we always disable discharge if the battery is empty
     if (isStopThresholdReached()) {
-      // Disable battery discharge when empty
-      _batteryDischargeEnabled = false;
+        // Disable battery discharge when empty
+        if (_verbose_logging)
+            MessageOutput.printf("%s%s: Stop threshold reached (no discharging)\r\n", TAG, __FUNCTION__);
+        _batteryDischargeEnabled = false;
     } else {
-      // UI: Solar Passthrough Enabled -> false
-      // Battery discharge can be enabled when start threshold is reached
-      if (!config.PowerLimiter.SolarPassThroughEnabled && isStartThresholdReached()) {
-        _batteryDischargeEnabled = true;
-      }
-
-      // UI: Solar Passthrough Enabled -> true && EMPTY_AT_NIGHT
-      if (config.PowerLimiter.SolarPassThroughEnabled && config.PowerLimiter.BatteryDrainStategy == EMPTY_AT_NIGHT) {
-        if(isStartThresholdReached()) {
-            // In this case we should only discharge the battery as long it is above startThreshold
+        // UI: Solar Passthrough Enabled -> false
+        // Battery discharge can be enabled when start threshold is reached
+        if (!cPL.SolarPassThroughEnabled && isStartThresholdReached()) {
+            if (_verbose_logging)
+                MessageOutput.printf("%s%s: Solar passthroug is disabled and start threshold reached (discharging allowed)\r\n", TAG, __FUNCTION__);
             _batteryDischargeEnabled = true;
         }
-        else {
-            // In this case we should only discharge the battery when there is no sunshine
-            _batteryDischargeEnabled = !canUseDirectSolarPower();
+
+        // UI: Solar Passthrough Enabled -> true && EMPTY_AT_NIGHT
+        if (cPL.SolarPassThroughEnabled && cPL.BatteryDrainStategy == EMPTY_AT_NIGHT) {
+            if (isStartThresholdReached()) {
+                // In this case we should only discharge the battery as long it is above startThreshold
+                if (_verbose_logging)
+                    MessageOutput.printf("%s%s: Start threshold reached (discharging)\r\n", TAG, __FUNCTION__);
+                _batteryDischargeEnabled = true;
+            } else {
+                // In this case we should only discharge the battery when there is no sunshine
+                _batteryDischargeEnabled = !canUseDirectSolarPower();
+                if (_verbose_logging)
+                    MessageOutput.printf("%s%s: discharging is %s\r\n", TAG, __FUNCTION__, _batteryDischargeEnabled ? "allowed" : "prevented");
+            }
         }
-      }
 
-      // UI: Solar Passthrough Enabled -> true && EMPTY_WHEN_FULL
-      // Battery discharge can be enabled when start threshold is reached
-      if (config.PowerLimiter.SolarPassThroughEnabled && isStartThresholdReached() && config.PowerLimiter.BatteryDrainStategy == EMPTY_WHEN_FULL) {
-        _batteryDischargeEnabled = true;
-      }
+        // UI: Solar Passthrough Enabled -> true && EMPTY_WHEN_FULL
+        // Battery discharge can be enabled when start threshold is reached
+        if (cPL.SolarPassThroughEnabled && isStartThresholdReached() && cPL.BatteryDrainStategy == EMPTY_WHEN_FULL) {
+            if (_verbose_logging)
+                MessageOutput.printf("%s%s: Solar pass through, start threshold reached, EMPTY_WHEN_FULL\r\n", TAG, __FUNCTION__);
+            _batteryDischargeEnabled = true;
+        }
     }
 
-    if (_verboseLogging) {
-        MessageOutput.printf("[DPL::loop] battery interface %s, SoC: %d %%, StartTH: %d %%, StopTH: %d %%, SoC age: %d s\r\n",
-                (config.Battery.Enabled?"enabled":"disabled"),
-                Battery.getStats()->getSoC(),
-                config.PowerLimiter.BatterySocStartThreshold,
-                config.PowerLimiter.BatterySocStopThreshold,
-                Battery.getStats()->getSoCAgeSeconds());
+    if (_verbose_logging) {
+        MessageOutput.printf("%s%s: battery interface %s, SoC: %d %%, StartTH: %d %%, StopTH: %d %%, SoC age: %d s\r\n", TAG, __FUNCTION__,
+            (Configuration.get().Battery.Enabled ? "enabled" : "disabled"),
+            Battery.getStats()->getSoC(),
+            cPL.BatterySocStartThreshold,
+            cPL.BatterySocStopThreshold,
+            Battery.getStats()->getSoCAgeSeconds());
 
-        float dcVoltage = _inverter->Statistics()->getChannelFieldValue(TYPE_DC, (ChannelNum_t)config.PowerLimiter.InverterChannelId, FLD_UDC);
-        MessageOutput.printf("[DPL::loop] dcVoltage: %.2f V, loadCorrectedVoltage: %.2f V, StartTH: %.2f V, StopTH: %.2f V\r\n",
-                dcVoltage, getLoadCorrectedVoltage(),
-                config.PowerLimiter.VoltageStartThreshold,
-                config.PowerLimiter.VoltageStopThreshold);
+        float dcVoltage = _inverter->Statistics()->getChannelFieldValue(TYPE_DC, (ChannelNum_t)cPL.InverterChannelId, FLD_UDC);
+        MessageOutput.printf("%s%s: dcVoltage: %.2f V, loadCorrectedVoltage: %.2f V, StartTH: %.2f V, StopTH: %.2f V\r\n", TAG, __FUNCTION__,
+            dcVoltage, getLoadCorrectedVoltage(),
+            cPL.VoltageStartThreshold,
+            cPL.VoltageStopThreshold);
 
-        MessageOutput.printf("[DPL::loop] StartTH reached: %s, StopTH reached: %s, inverter %s producing\r\n",
-                (isStartThresholdReached()?"yes":"no"),
-                (isStopThresholdReached()?"yes":"no"),
-                (_inverter->isProducing()?"is":"is NOT"));
+        MessageOutput.printf("%s%s: StartTH reached: %s, StopTH reached: %s, inverter %s producing\r\n", TAG, __FUNCTION__,
+            (isStartThresholdReached() ? "yes" : "no"),
+            (isStopThresholdReached() ? "yes" : "no"),
+            (_inverter->isProducing() ? "is" : "is NOT"));
 
-        MessageOutput.printf("[DPL::loop] SolarPT %s, Drain Strategy: %i, canUseDirectSolarPower: %s\r\n",
-                (config.PowerLimiter.SolarPassThroughEnabled?"enabled":"disabled"),
-                config.PowerLimiter.BatteryDrainStategy, (canUseDirectSolarPower()?"yes":"no"));
+        MessageOutput.printf("%s%s: SolarPT %s, Drain Strategy: %i, canUseDirectSolarPower: %s\r\n", TAG, __FUNCTION__,
+            (cPL.SolarPassThroughEnabled ? "enabled" : "disabled"),
+            cPL.BatteryDrainStategy, (canUseDirectSolarPower() ? "yes" : "no"));
 
-        MessageOutput.printf("[DPL::loop] battery discharging %s, PowerMeter: %d W, target consumption: %d W\r\n",
-                (_batteryDischargeEnabled?"allowed":"prevented"),
-                static_cast<int32_t>(round(PowerMeter.getPowerTotal())),
-                config.PowerLimiter.TargetPowerConsumption);
+        MessageOutput.printf("%s%s: battery discharging %s, PowerMeter: %d W, target consumption: %d W\r\n", TAG, __FUNCTION__,
+            (_batteryDischargeEnabled ? "allowed" : "prevented"),
+            static_cast<int32_t>(round(PowerMeter.getPowerTotal())),
+            cPL.TargetPowerConsumption);
     }
 
-    // Calculate and set Power Limit (NOTE: might reset _inverter to nullptr!)
+    // Calculate and set Power Limit
     int32_t newPowerLimit = calcPowerLimit(_inverter, canUseDirectSolarPower(), _batteryDischargeEnabled);
     bool limitUpdated = setNewPowerLimit(_inverter, newPowerLimit);
 
-    if (_verboseLogging) {
-        MessageOutput.printf("[DPL::loop] ******************* Leaving PL, calculated limit: %d W, requested limit: %d W (%s)\r\n",
-                newPowerLimit, _lastRequestedPowerLimit,
-                (limitUpdated?"updated from calculated":"kept last requested"));
+    if (_verbose_logging) {
+        MessageOutput.printf("%s ******************* Leaving PL, calculated limit: %d W, requested limit: %d W (%s)\r\n", TAG,
+            newPowerLimit, _lastRequestedPowerLimit,
+            (limitUpdated ? "updated from calculated" : "kept last requested"));
     }
 
     _lastCalculation = millis();
@@ -346,17 +541,18 @@ void PowerLimiterClass::loop()
  */
 int32_t PowerLimiterClass::inverterPowerDcToAc(std::shared_ptr<InverterAbstract> inverter, int32_t dcPower)
 {
-    CONFIG_T& config = Configuration.get();
+    PowerLimiter_CONFIG_T& cPL = Configuration.get().PowerLimiter;
 
-    float inverterEfficiencyPercent = inverter->Statistics()->getChannelFieldValue(
-        TYPE_AC, CH0, FLD_EFF);
+    float inverterEfficiencyPercent = inverter->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_EFF);
 
     // fall back to hoymiles peak efficiency as per datasheet if inverter
     // is currently not producing (efficiency is zero in that case)
-    float inverterEfficiencyFactor = (inverterEfficiencyPercent > 0) ? inverterEfficiencyPercent/100 : 0.967;
+    float inverterEfficiencyFactor = (inverterEfficiencyPercent > 0) ? inverterEfficiencyPercent / 100 : 0.967;
+    if (_verbose_logging)
+        MessageOutput.printf("%s%s: efficency %f, factor %.3f%%\r\n", TAG, __FUNCTION__, inverterEfficiencyPercent, inverterEfficiencyFactor);
 
     // account for losses between solar charger and inverter (cables, junctions...)
-    float lossesFactor = 1.00 - static_cast<float>(config.PowerLimiter.SolarPassThroughLosses)/100;
+    float lossesFactor = 1.00 - static_cast<float>(cPL.SolarPassThroughLosses) / 100;
 
     return dcPower * inverterEfficiencyFactor * lossesFactor;
 }
@@ -380,43 +576,42 @@ void PowerLimiterClass::unconditionalSolarPassthrough(std::shared_ptr<InverterAb
     announceStatus(Status::UnconditionalSolarPassthrough);
 }
 
-uint8_t PowerLimiterClass::getPowerLimiterState() {
+uint8_t PowerLimiterClass::getPowerLimiterState()
+{
     if (_inverter == nullptr || !_inverter->isReachable()) {
         return PL_UI_STATE_INACTIVE;
     }
 
     if (_inverter->isProducing() && _batteryDischargeEnabled) {
-      return PL_UI_STATE_USE_SOLAR_AND_BATTERY;
+        return PL_UI_STATE_USE_SOLAR_AND_BATTERY;
     }
 
     if (_inverter->isProducing() && !_batteryDischargeEnabled) {
-      return PL_UI_STATE_USE_SOLAR_ONLY;
+        return PL_UI_STATE_USE_SOLAR_ONLY;
     }
 
-    if(!_inverter->isProducing()) {
-       return PL_UI_STATE_CHARGING;
+    if (!_inverter->isProducing()) {
+        return PL_UI_STATE_CHARGING;
     }
 
     return PL_UI_STATE_INACTIVE;
 }
 
-int32_t PowerLimiterClass::getLastRequestedPowerLimit() {
-	    return _lastRequestedPowerLimit;
+int32_t PowerLimiterClass::getLastRequestedPowerLimit()
+{
+    return _lastRequestedPowerLimit;
 }
 
 bool PowerLimiterClass::canUseDirectSolarPower()
 {
-    CONFIG_T& config = Configuration.get();
-
-    if (!config.PowerLimiter.SolarPassThroughEnabled
-            || isBelowStopThreshold()
-            || !VictronMppt.isDataValid()) {
+    if (!Configuration.get().PowerLimiter.SolarPassThroughEnabled
+        || isBelowStopThreshold()
+        || !VictronMppt.isDataValid()) {
         return false;
     }
 
     return VictronMppt.getPowerOutputWatts() >= 20; // enough power?
 }
-
 
 // Logic table
 // | Case # | batteryDischargeEnabled | solarPowerEnabled | useFullSolarPassthrough | Result                                                      |
@@ -428,59 +623,69 @@ bool PowerLimiterClass::canUseDirectSolarPower()
 
 int32_t PowerLimiterClass::calcPowerLimit(std::shared_ptr<InverterAbstract> inverter, bool solarPowerEnabled, bool batteryDischargeEnabled)
 {
-    CONFIG_T& config = Configuration.get();
-    
+    PowerLimiter_CONFIG_T& cPL = Configuration.get().PowerLimiter;
+
     int32_t acPower = 0;
     int32_t newPowerLimit = round(PowerMeter.getPowerTotal());
 
     if (!solarPowerEnabled && !batteryDischargeEnabled) {
-      // Case 1 - No energy sources available
-      return 0;
+        // Case 1 - No energy sources available
+        return 0;
     }
 
-    if (config.PowerLimiter.IsInverterBehindPowerMeter) {
+    if (cPL.IsInverterBehindPowerMeter) {
         // If the inverter the behind the power meter (part of measurement),
         // the produced power of this inverter has also to be taken into account.
         // We don't use FLD_PAC from the statistics, because that
         // data might be too old and unreliable.
-        acPower = static_cast<int>(inverter->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_PAC)); 
+        //        acPower = static_cast<int>(inverter->Statistics()->getChannelFieldValue(TYPE_AC, (ChannelNum_t) cPL.InverterChannelId, FLD_PAC));
+        acPower = static_cast<int>(inverter->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_PAC));
+        if (_verbose_logging)
+            MessageOutput.printf("%s%s: Inverter acPower %d W\r\n", TAG, __FUNCTION__, acPower);
         newPowerLimit += acPower;
     }
 
     // We're not trying to hit 0 exactly but take an offset into account
-    // This means we never fully compensate the used power with the inverter 
+    // This means we never fully compensate the used power with the inverter
     // Case 3
-    newPowerLimit -= config.PowerLimiter.TargetPowerConsumption;
+    newPowerLimit -= cPL.TargetPowerConsumption;
 
-    // At this point we've calculated the required energy to compensate for household consumption. 
+    // At this point we've calculated the required energy to compensate for household consumption.
     // If the battery is enabled this can always be supplied since we assume that the battery can supply unlimited power
     // The next step is to determine if the Solar power as provided by the Victron charger
     // actually constrains or dictates another inverter power value
     int32_t adjustedVictronChargePower = inverterPowerDcToAc(inverter, getSolarChargePower());
 
     // Battery can be discharged and we should output max (Victron solar power || power meter value)
-    if(batteryDischargeEnabled && useFullSolarPassthrough()) {
-      // Case 5
-      newPowerLimit = newPowerLimit > adjustedVictronChargePower ? newPowerLimit : adjustedVictronChargePower;
+    if (batteryDischargeEnabled && useFullSolarPassthrough()) {
+        // Case 5
+        newPowerLimit = newPowerLimit > adjustedVictronChargePower ? newPowerLimit : adjustedVictronChargePower;
     } else {
-      // We check if the PSU is on and disable the Power Limiter in this case. 
-      // The PSU should reduce power or shut down first before the Power Limiter kicks in
-      // The only case where this is not desired is if the battery is over the Full Solar Passthrough Threshold
-      // In this case the Power Limiter should start. The PSU will shutdown when the Power Limiter is active
-      if (HuaweiCan.getAutoPowerStatus()) {
-        return 0;
-      }
+        // We check if the PSU is on and disable the Power Limiter in this case.
+        // The PSU should reduce power or shut down first before the Power Limiter kicks in
+        // The only case where this is not desired is if the battery is over the Full Solar Passthrough Threshold
+        // In this case the Power Limiter should start. The PSU will shutdown when the Power Limiter is active
+#ifdef CHARGER_HUAWEI
+        if (HuaweiCan.getAutoPowerStatus()) {
+#else
+        if (MeanWellCan.getAutoPowerStatus()) {
+#endif
+            return 0;
+        }
     }
 
     // We should use Victron solar power only (corrected by efficiency factor)
     if (solarPowerEnabled && !batteryDischargeEnabled) {
         // Case 2 - Limit power to solar power only
-        if (_verboseLogging) {
-            MessageOutput.printf("[DPL::loop] Consuming Solar Power Only -> adjustedVictronChargePower: %d W, newPowerLimit: %d W\r\n",
+        if (_verbose_logging) {
+            MessageOutput.printf("%s%s: Consuming Solar Power Only -> adjustedVictronChargePower: %d, powerConsumption: %d\r\n", TAG, __FUNCTION__,
                 adjustedVictronChargePower, newPowerLimit);
         }
-
         newPowerLimit = std::min(newPowerLimit, adjustedVictronChargePower);
+    }
+
+    if (_verbose_logging) {
+        MessageOutput.printf("%s%s: newPowerLimit %d W\r\n", TAG, __FUNCTION__, newPowerLimit);
     }
 
     return newPowerLimit;
@@ -491,12 +696,12 @@ void PowerLimiterClass::commitPowerLimit(std::shared_ptr<InverterAbstract> inver
     // disable power production as soon as possible.
     // setting the power limit is less important.
     if (!enablePowerProduction && inverter->isProducing()) {
-        MessageOutput.println("[DPL::commitPowerLimit] Stopping inverter...");
+        MessageOutput.printf("%s%s: Stopping inverter enablePowerProduction: %d, isProducing: %d ...\r\n", TAG, __FUNCTION__, enablePowerProduction, inverter->isProducing());
         inverter->sendPowerControlRequest(false);
     }
 
     inverter->sendActivePowerControlRequest(static_cast<float>(limit),
-            PowerLimitControlType::AbsolutNonPersistent);
+        PowerLimitControlType::AbsolutNonPersistent);
 
     _lastRequestedPowerLimit = limit;
     _lastPowerLimitMillis = millis();
@@ -504,7 +709,7 @@ void PowerLimiterClass::commitPowerLimit(std::shared_ptr<InverterAbstract> inver
     // enable power production only after setting the desired limit,
     // such that an older, greater limit will not cause power spikes.
     if (enablePowerProduction && !inverter->isProducing()) {
-        MessageOutput.println("[DPL::commitPowerLimit] Starting up inverter...");
+        MessageOutput.printf("%s%s: Starting up inverter...\r\n", TAG, __FUNCTION__);
         inverter->sendPowerControlRequest(true);
     }
 }
@@ -517,17 +722,20 @@ void PowerLimiterClass::commitPowerLimit(std::shared_ptr<InverterAbstract> inver
  */
 bool PowerLimiterClass::setNewPowerLimit(std::shared_ptr<InverterAbstract> inverter, int32_t newPowerLimit)
 {
-    CONFIG_T& config = Configuration.get();
+    PowerLimiter_CONFIG_T& cPL = Configuration.get().PowerLimiter;
 
     // Stop the inverter if limit is below threshold.
-    if (newPowerLimit < config.PowerLimiter.LowerPowerLimit) {
+    if (newPowerLimit < cPL.LowerPowerLimit) {
         // the status must not change outside of loop(). this condition is
         // communicated through log messages already.
+        if (_verbose_logging)
+            MessageOutput.printf("%s%s: newPowerLimit %d < LowPowerLimit, %d\r\n", TAG, __FUNCTION__,
+                newPowerLimit, cPL.LowerPowerLimit);
         return shutdown();
     }
 
     // enforce configured upper power limit
-    int32_t effPowerLimit = std::min(newPowerLimit, config.PowerLimiter.UpperPowerLimit);
+    int32_t effPowerLimit = std::min(newPowerLimit, cPL.UpperPowerLimit);
 
     // scale the power limit by the amount of all inverter channels devided by
     // the amount of producing inverter channels. the inverters limit each of
@@ -541,8 +749,9 @@ bool PowerLimiterClass::setNewPowerLimit(std::shared_ptr<InverterAbstract> inver
         }
     }
     if ((dcProdChnls > 0) && (dcProdChnls != dcTotalChnls)) {
-        MessageOutput.printf("[DPL::setNewPowerLimit] %d channels total, %d producing channels, scaling power limit\r\n",
-                dcTotalChnls, dcProdChnls);
+        if (_verbose_logging) {
+            MessageOutput.printf("%s%s: %d channels total, %d producing channels, scaling power limit\r\n", TAG, __FUNCTION__, dcTotalChnls, dcProdChnls);
+        }
         effPowerLimit = round(effPowerLimit * static_cast<float>(dcTotalChnls) / dcProdChnls);
     }
 
@@ -550,23 +759,25 @@ bool PowerLimiterClass::setNewPowerLimit(std::shared_ptr<InverterAbstract> inver
 
     // Check if the new value is within the limits of the hysteresis
     auto diff = std::abs(effPowerLimit - _lastRequestedPowerLimit);
-    auto hysteresis = config.PowerLimiter.TargetPowerConsumptionHysteresis;
+    auto hysteresis = cPL.TargetPowerConsumptionHysteresis;
 
     // (re-)send power limit in case the last was sent a long time ago. avoids
     // staleness in case a power limit update was not received by the inverter.
     auto ageMillis = millis() - _lastPowerLimitMillis;
 
     if (diff < hysteresis && ageMillis < 60 * 1000) {
-        if (_verboseLogging) {
-            MessageOutput.printf("[DPL::setNewPowerLimit] requested: %d W, last limit: %d W, diff: %d W, hysteresis: %d W, age: %ld ms\r\n",
-                    newPowerLimit, _lastRequestedPowerLimit, diff, hysteresis, ageMillis);
+        if (_verbose_logging) {
+            MessageOutput.printf("%s%s: requested: %d W, last limit: %d W, diff: %d W, hysteresis: %d W, age: %ld ms\r\n",
+                TAG, __FUNCTION__,
+                newPowerLimit, _lastRequestedPowerLimit, diff, hysteresis, ageMillis);
         }
         return false;
     }
 
-    if (_verboseLogging) {
-        MessageOutput.printf("[DPL::setNewPowerLimit] requested: %d W, (re-)sending limit: %d W\r\n",
-                newPowerLimit, effPowerLimit);
+    if (_verbose_logging) {
+        MessageOutput.printf("%s%s: requested: %d W, (re-)sending limit: %d W\r\n",
+            TAG, __FUNCTION__,
+            newPowerLimit, effPowerLimit);
     }
 
     commitPowerLimit(inverter, effPowerLimit, true);
@@ -586,83 +797,82 @@ float PowerLimiterClass::getLoadCorrectedVoltage()
 {
     if (!_inverter) {
         // there should be no need to call this method if no target inverter is known
-        MessageOutput.println("DPL getLoadCorrectedVoltage: no inverter (programmer error)");
+        MessageOutput.println(F("DPL getLoadCorrectedVoltage: no inverter (programmer error)"));
         return 0.0;
     }
 
-    CONFIG_T& config = Configuration.get();
+    PowerLimiter_CONFIG_T& cPL = Configuration.get().PowerLimiter;
 
-    auto channel = static_cast<ChannelNum_t>(config.PowerLimiter.InverterChannelId);
+    auto channel = static_cast<ChannelNum_t>(cPL.InverterChannelId);
     float acPower = _inverter->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_PAC);
+    if (_verbose_logging)
+        MessageOutput.printf("%s%s: acPower %.1f\r\n", TAG, __FUNCTION__, acPower);
     float dcVoltage = _inverter->Statistics()->getChannelFieldValue(TYPE_DC, channel, FLD_UDC);
 
     if (dcVoltage <= 0.0) {
         return 0.0;
     }
 
-    return dcVoltage + (acPower * config.PowerLimiter.VoltageLoadCorrectionFactor);
+    return dcVoltage + (acPower * cPL.VoltageLoadCorrectionFactor);
 }
 
 bool PowerLimiterClass::testThreshold(float socThreshold, float voltThreshold,
-        std::function<bool(float, float)> compare)
+    std::function<bool(float, float)> compare)
 {
-    CONFIG_T& config = Configuration.get();
-
     // prefer SoC provided through battery interface
-    if (config.Battery.Enabled && socThreshold > 0.0
-            && Battery.getStats()->isValid()
-            && Battery.getStats()->getSoCAgeSeconds() < 60) {
-              return compare(Battery.getStats()->getSoC(), socThreshold);
+    if (Configuration.get().Battery.Enabled && socThreshold > 0.0
+        && Battery.getStats()->isValid()
+        && Battery.getStats()->getSoCAgeSeconds() < 60) {
+        return compare(Battery.getStats()->getSoC(), socThreshold);
     }
 
     // use voltage threshold as fallback
-    if (voltThreshold <= 0.0) { return false; }
+    if (voltThreshold <= 0.0) {
+        return false;
+    }
 
     return compare(getLoadCorrectedVoltage(), voltThreshold);
 }
 
 bool PowerLimiterClass::isStartThresholdReached()
 {
-    CONFIG_T& config = Configuration.get();
+    PowerLimiter_CONFIG_T& cPL = Configuration.get().PowerLimiter;
 
     return testThreshold(
-            config.PowerLimiter.BatterySocStartThreshold,
-            config.PowerLimiter.VoltageStartThreshold,
-            [](float a, float b) -> bool { return a >= b; }
-    );
+        cPL.BatterySocStartThreshold,
+        cPL.VoltageStartThreshold,
+        [](float a, float b) -> bool { return a >= b; });
 }
 
 bool PowerLimiterClass::isStopThresholdReached()
 {
-    CONFIG_T& config = Configuration.get();
+    PowerLimiter_CONFIG_T& cPL = Configuration.get().PowerLimiter;
 
     return testThreshold(
-            config.PowerLimiter.BatterySocStopThreshold,
-            config.PowerLimiter.VoltageStopThreshold,
-            [](float a, float b) -> bool { return a <= b; }
-    );
+        cPL.BatterySocStopThreshold,
+        cPL.VoltageStopThreshold,
+        [](float a, float b) -> bool { return a <= b; });
 }
 
 bool PowerLimiterClass::isBelowStopThreshold()
 {
-    CONFIG_T& config = Configuration.get();
+    PowerLimiter_CONFIG_T& cPL = Configuration.get().PowerLimiter;
 
     return testThreshold(
-            config.PowerLimiter.BatterySocStopThreshold,
-            config.PowerLimiter.VoltageStopThreshold,
-            [](float a, float b) -> bool { return a < b; }
-    );
+        cPL.BatterySocStopThreshold,
+        cPL.VoltageStopThreshold,
+        [](float a, float b) -> bool { return a < b; });
 }
 
 /// @brief calculate next inverter restart in millis
 void PowerLimiterClass::calcNextInverterRestart()
 {
-    CONFIG_T& config = Configuration.get();
+    PowerLimiter_CONFIG_T& cPL = Configuration.get().PowerLimiter;
 
     // first check if restart is configured at all
-    if (config.PowerLimiter.RestartHour < 0) {
+    if (cPL.RestartHour < 0) {
         _nextInverterRestart = 1;
-        MessageOutput.println("[DPL::calcNextInverterRestart] _nextInverterRestart disabled");
+        MessageOutput.printf("%s%s: disabled\r\n", TAG, __FUNCTION__);
         return;
     }
 
@@ -671,47 +881,47 @@ void PowerLimiterClass::calcNextInverterRestart()
     if (getLocalTime(&timeinfo, 5)) {
         // calculation first step is offset to next restart in minutes
         uint16_t dayMinutes = timeinfo.tm_hour * 60 + timeinfo.tm_min;
-        uint16_t targetMinutes = config.PowerLimiter.RestartHour * 60;
-        if (config.PowerLimiter.RestartHour > timeinfo.tm_hour) {
+        uint16_t targetMinutes = cPL.RestartHour * 60;
+        if (cPL.RestartHour > timeinfo.tm_hour) {
             // next restart is on the same day
             _nextInverterRestart = targetMinutes - dayMinutes;
         } else {
             // next restart is on next day
             _nextInverterRestart = 1440 - dayMinutes + targetMinutes;
         }
-        if (_verboseLogging) {
-            MessageOutput.printf("[DPL::calcNextInverterRestart] Localtime read %d %d / configured RestartHour %d\r\n", timeinfo.tm_hour, timeinfo.tm_min, config.PowerLimiter.RestartHour);
-            MessageOutput.printf("[DPL::calcNextInverterRestart] dayMinutes %d / targetMinutes %d\r\n", dayMinutes, targetMinutes);
-            MessageOutput.printf("[DPL::calcNextInverterRestart] next inverter restart in %d minutes\r\n", _nextInverterRestart);
+        if (_verbose_logging) {
+            MessageOutput.printf("%s%s: Localtime read %d %d / configured RestartHour %d\r\n", TAG, __FUNCTION__, timeinfo.tm_hour, timeinfo.tm_min, cPL.RestartHour);
+            MessageOutput.printf("%s%s: dayMinutes %d / targetMinutes %d\r\n", TAG, __FUNCTION__, dayMinutes, targetMinutes);
+            MessageOutput.printf("%s%s: next inverter restart in %d minutes\r\n", TAG, __FUNCTION__, _nextInverterRestart);
         }
         // then convert unit for next restart to milliseconds and add current uptime millis()
         _nextInverterRestart *= 60000;
         _nextInverterRestart += millis();
     } else {
-        MessageOutput.println("[DPL::calcNextInverterRestart] getLocalTime not successful, no calculation");
+        MessageOutput.printf("%s%s: getLocalTime not successful, no calculation\r\n", TAG, __FUNCTION__);
         _nextInverterRestart = 0;
     }
-    MessageOutput.printf("[DPL::calcNextInverterRestart] _nextInverterRestart @ %d millis\r\n", _nextInverterRestart);
+    MessageOutput.printf("%s%s: _nextInverterRestart @ %d millis\r\n", TAG, __FUNCTION__, _nextInverterRestart);
 }
 
 bool PowerLimiterClass::useFullSolarPassthrough()
 {
-    CONFIG_T& config = Configuration.get();
+    PowerLimiter_CONFIG_T& cPL = Configuration.get().PowerLimiter;
 
     // We only do full solar PT if general solar PT is enabled
-    if(!config.PowerLimiter.SolarPassThroughEnabled) {
-      return false;
+    if (!cPL.SolarPassThroughEnabled) {
+        return false;
     }
 
-    if (testThreshold(config.PowerLimiter.FullSolarPassThroughSoc,
-                      config.PowerLimiter.FullSolarPassThroughStartVoltage,
-                      [](float a, float b) -> bool { return a >= b; })) {
+    if (testThreshold(cPL.FullSolarPassThroughSoc,
+            cPL.FullSolarPassThroughStartVoltage,
+            [](float a, float b) -> bool { return a >= b; })) {
         _fullSolarPassThroughEnabled = true;
     }
 
-    if (testThreshold(config.PowerLimiter.FullSolarPassThroughSoc,
-                      config.PowerLimiter.FullSolarPassThroughStopVoltage,
-                      [](float a, float b) -> bool { return a < b; })) {
+    if (testThreshold(cPL.FullSolarPassThroughSoc,
+            cPL.FullSolarPassThroughStopVoltage,
+            [](float a, float b) -> bool { return a < b; })) {
         _fullSolarPassThroughEnabled = false;
     }
 
