@@ -3,6 +3,8 @@
 
 #include <TaskSchedulerDeclarations.h>
 #include <mutex>
+// Daten visualisieren #168
+#include <array>
 
 class DatastoreClass {
 public:
@@ -57,6 +59,9 @@ public:
     // True if all enabled inverters are reachable
     bool getIsAllEnabledReachable();
 
+    // Daten visualisieren #168
+    std::array<float, 24> getHourlyPowerData();
+
 private:
     void loop();
 
@@ -80,6 +85,10 @@ private:
     bool _isAllEnabledProducing = false;
     bool _isAllEnabledReachable = false;
     bool _isAtLeastOnePollEnabled = false;
+
+    // Daten visualisieren #168
+    int8_t _currentDay = -1;
+    std::array<float, 24> _hourlyPowerData = { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
 };
 
 extern DatastoreClass Datastore;
