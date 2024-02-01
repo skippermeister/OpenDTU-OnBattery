@@ -16,8 +16,10 @@
 
 class MqttHandleVedirectClass {
 public:
+    MqttHandleVedirectClass();
     void init(Scheduler& scheduler);
     void forceUpdate();
+
 private:
     void loop();
     VeDirectMpptController::veMpptStruct _kvFrame{};
