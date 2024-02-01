@@ -4,6 +4,7 @@
  */
 #include "WebApi.h"
 #include "Configuration.h"
+#include "MessageOutput.h"
 #include "defaults.h"
 #include <AsyncJson.h>
 
@@ -14,6 +15,8 @@ WebApiClass::WebApiClass()
 
 void WebApiClass::init(Scheduler& scheduler)
 {
+    MessageOutput.print("Initialize WebApi... ");
+
     _webApiConfig.init(_server, scheduler);
     _webApiDevice.init(_server, scheduler);
     _webApiDevInfo.init(_server, scheduler);
@@ -28,7 +31,9 @@ void WebApiClass::init(Scheduler& scheduler)
     _webApiNetwork.init(_server, scheduler);
     _webApiNtp.init(_server, scheduler);
     _webApiPower.init(_server, scheduler);
+#ifdef USE_PROMETHEUS
     _webApiPrometheus.init(_server, scheduler);
+#endif
     _webApiSecurity.init(_server, scheduler);
     _webApiSysstatus.init(_server, scheduler);
     _webApiWebapp.init(_server, scheduler);
@@ -37,13 +42,25 @@ void WebApiClass::init(Scheduler& scheduler)
     _webApiBattery.init(_server, scheduler);
     _webApiPowerMeter.init(_server, scheduler);
     _webApiPowerLimiter.init(_server, scheduler);
+    _webApiZeroExport.init(_server, scheduler);
     _webApiWsVedirectLive.init(_server, scheduler);
     _webApiVedirect.init(_server, scheduler);
+#ifdef USE_REFUsol_INVERTER
+    _webApiWsREFUsolLive.init(_server, scheduler);
+    _webApiREFUsol.init(_server, scheduler);
+#endif
+#ifdef CHARGER_HUAWEI
     _webApiWsHuaweiLive.init(_server, scheduler);
     _webApiHuaweiClass.init(_server, scheduler);
+#else
+    _webApiWsMeanWellLive.init(_server, scheduler);
+    _webApiMeanWellClass.init(_server, scheduler);
+#endif
     _webApiWsBatteryLive.init(_server, scheduler);
 
     _server.begin();
+
+    MessageOutput.println("done");
 }
 
 bool WebApiClass::checkCredentials(AsyncWebServerRequest* request)
@@ -87,7 +104,7 @@ void WebApiClass::writeConfig(JsonVariant& retMsg, const WebApiError code, const
         retMsg["message"] = "Write failed!";
         retMsg["code"] = WebApiError::GenericWriteFailed;
     } else {
-        retMsg["type"] = "success";
+        retMsg["type"] = Success;
         retMsg["message"] = message;
         retMsg["code"] = code;
     }
