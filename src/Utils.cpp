@@ -59,9 +59,16 @@ int Utils::getTimezoneOffset()
 
 void Utils::restartDtu()
 {
+#ifdef USE_LED_SINGLE
     LedSingle.turnAllOff();
+#endif
+#ifdef USE_LED_STRIP
+    LedStrip.turnAllOff();
+#endif
+#ifdef USE_DISPLAY_GRAPHIC
     Display.setStatus(false);
     yield();
+#endif
     delay(1000);
     yield();
     ESP.restart();
