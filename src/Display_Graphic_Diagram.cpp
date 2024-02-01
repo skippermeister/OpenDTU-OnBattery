@@ -2,6 +2,10 @@
 /*
  * Copyright (C) 2023-2024 Thomas Basler and others
  */
+
+#ifdef USE_DISPLAY_GRAPHIC
+#ifdef USE_DISPLAY_GRAPHIC_DIAGRAM
+
 #include "Display_Graphic_Diagram.h"
 #include "Configuration.h"
 #include "Datastore.h"
@@ -60,9 +64,6 @@ void DisplayGraphicDiagramClass::updatePeriod()
 
 void DisplayGraphicDiagramClass::redraw(uint8_t screenSaverOffsetX, uint8_t xPos, uint8_t yPos, uint8_t width, uint8_t height, bool isFullscreen)
 {
-    _chartWidth = width;
-
-    // screenSaverOffsetX expected to be in range 0..6
     const uint8_t graphPosX = xPos + ((screenSaverOffsetX > 3) ? 1 : 0);
     const uint8_t graphPosY = yPos + ((screenSaverOffsetX > 3) ? 1 : 0);
 
@@ -134,3 +135,5 @@ void DisplayGraphicDiagramClass::redraw(uint8_t screenSaverOffsetX, uint8_t xPos
             graphPosX + i / scaleFactorX, horizontal_line_y - std::max<int16_t>(0, _graphValues[i] / scaleFactorY - 0.5));
     }
 }
+#endif
+#endif
