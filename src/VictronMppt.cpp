@@ -6,14 +6,20 @@
 
 VictronMpptClass VictronMppt;
 
+const char TAG[] = "[VictronMppt]";
+
 void VictronMpptClass::init(Scheduler& scheduler)
 {
+    MessageOutput.print("Initialize VE.Direct interface... ");
+
     scheduler.addTask(_loopTask);
     _loopTask.setCallback(std::bind(&VictronMpptClass::loop, this));
     _loopTask.setIterations(TASK_FOREVER);
     _loopTask.enable();
 
     this->updateSettings();
+
+    MessageOutput.println("done");
 }
 
 void VictronMpptClass::updateSettings()
@@ -22,22 +28,21 @@ void VictronMpptClass::updateSettings()
 
     _controllers.clear();
 
-    CONFIG_T& config = Configuration.get();
-    if (!config.Vedirect.Enabled) { return; }
+    if (!Configuration.get().Vedirect.Enabled) { return; }
 
     const PinMapping_t& pin = PinMapping.get();
     int8_t rx = pin.victron_rx;
     int8_t tx = pin.victron_tx;
 
-    MessageOutput.printf("[VictronMppt] rx = %d, tx = %d\r\n", rx, tx);
+    MessageOutput.printf("RS232 port rx = %d, tx = %d. ", rx, tx);
 
     if (rx < 0) {
-        MessageOutput.println("[VictronMppt] invalid pin config");
+        MessageOutput.println("Invalid pin config !");
         return;
     }
 
     auto upController = std::make_unique<VeDirectMpptController>();
-    upController->init(rx, tx, &MessageOutput, config.Vedirect.VerboseLogging);
+    upController->init(rx, tx, &MessageOutput, _verboseLogging);
     _controllers.push_back(std::move(upController));
 }
 
@@ -86,7 +91,7 @@ VeDirectMpptController::spData_t VictronMpptClass::getData(size_t idx) const
     std::lock_guard<std::mutex> lock(_mutex);
 
     if (_controllers.empty() || idx >= _controllers.size()) {
-        MessageOutput.printf("ERROR: MPPT controller index %d is out of bounds (%d controllers)\r\n",
+        MessageOutput.printf("%s ERROR: MPPT controller index %d is out of bounds (%d controllers)\r\n", TAG,
                 idx, _controllers.size());
         return std::make_shared<VeDirectMpptController::veMpptStruct>();
     }
