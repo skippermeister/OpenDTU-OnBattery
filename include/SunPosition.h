@@ -10,6 +10,7 @@ public:
     SunPositionClass();
     void init(Scheduler& scheduler);
 
+    bool isAnnouceDayPeriod() const;
     bool isDayPeriod() const;
     bool isSunsetAvailable() const;
     bool sunsetTime(struct tm* info) const;
