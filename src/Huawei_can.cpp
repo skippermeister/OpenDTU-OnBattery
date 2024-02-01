@@ -2,6 +2,8 @@
 /*
  * Copyright (C) 2023 Malte Schmidt and others
  */
+#ifdef CHARGER_HUAWEI
+
 #include "Huawei_can.h"
 #include "MessageOutput.h"
 #include "PowerMeter.h"
@@ -464,3 +466,4 @@ bool HuaweiCanClass::getAutoPowerStatus() {
   return _autoPowerEnabled;
 }
 
+#endif
