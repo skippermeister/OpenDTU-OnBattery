@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright (C) 2023-2024 Thomas Basler and others
+ * Copyright (C) 2023 Thomas Basler and others
  */
 #include "InverterSettings.h"
 #include "Configuration.h"
@@ -33,43 +33,46 @@ InverterSettingsClass::InverterSettingsClass()
 
 void InverterSettingsClass::init(Scheduler& scheduler)
 {
+    MessageOutput.print("initialize Hoymiles interface... ");
+
+    Hoymiles.setMessageOutput(&MessageOutput);
+    Hoymiles.init();
+
     const CONFIG_T& config = Configuration.get();
     const PinMapping_t& pin = PinMapping.get();
 
     // Initialize inverter communication
     MessageOutput.print("Initialize Hoymiles interface... ");
-
-    Hoymiles.setMessageOutput(&MessageOutput);
-    Hoymiles.init();
-
-    if (PinMapping.isValidNrf24Config() || PinMapping.isValidCmt2300Config()) {
+    if (PinMapping.isValidNrf24Config()
+#ifdef USE_RADIO_CMT
+        || PinMapping.isValidCmt2300Config()
+#endif
+    ) {
         if (PinMapping.isValidNrf24Config()) {
             SPIClass* spiClass = new SPIClass(SPI_NRF);
             spiClass->begin(pin.nrf24_clk, pin.nrf24_miso, pin.nrf24_mosi, pin.nrf24_cs);
             Hoymiles.initNRF(spiClass, pin.nrf24_en, pin.nrf24_irq);
         }
 
+#ifdef USE_RADIO_CMT
         if (PinMapping.isValidCmt2300Config()) {
             Hoymiles.initCMT(pin.cmt_sdio, pin.cmt_clk, pin.cmt_cs, pin.cmt_fcs, pin.cmt_gpio2, pin.cmt_gpio3);
-            MessageOutput.println(F("  Setting country mode... "));
-            Hoymiles.getRadioCmt()->setCountryMode(static_cast<CountryModeId_t>(config.Dtu.Cmt.CountryMode));
-            MessageOutput.println(F("  Setting CMT target frequency... "));
+            MessageOutput.println("  Setting CMT target frequency... ");
             Hoymiles.getRadioCmt()->setInverterTargetFrequency(config.Dtu.Cmt.Frequency);
         }
-
+#endif
         MessageOutput.println("  Setting radio PA level... ");
         Hoymiles.getRadioNrf()->setPALevel((rf24_pa_dbm_e)config.Dtu.Nrf.PaLevel);
+#ifdef USE_RADIO_CMT
         Hoymiles.getRadioCmt()->setPALevel(config.Dtu.Cmt.PaLevel);
-
+#endif
         MessageOutput.println("  Setting DTU serial... ");
         Hoymiles.getRadioNrf()->setDtuSerial(config.Dtu.Serial);
+#ifdef USE_RADIO_CMT
         Hoymiles.getRadioCmt()->setDtuSerial(config.Dtu.Serial);
-
+#endif
         MessageOutput.println("  Setting poll interval... ");
         Hoymiles.setPollInterval(config.Dtu.PollInterval);
-
-        MessageOutput.println("  Setting verbosity... ");
-        Hoymiles.setVerboseLogging(config.Dtu.VerboseLogging);
 
         for (uint8_t i = 0; i < INV_MAX_COUNT; i++) {
             if (config.Inverter[i].Serial > 0) {
@@ -109,6 +112,7 @@ void InverterSettingsClass::init(Scheduler& scheduler)
 void InverterSettingsClass::settingsLoop()
 {
     const CONFIG_T& config = Configuration.get();
+    const boolean isDayPeriod = SunPosition.isDayPeriod();
 
     for (uint8_t i = 0; i < INV_MAX_COUNT; i++) {
         auto const& inv_cfg = config.Inverter[i];
@@ -120,8 +124,8 @@ void InverterSettingsClass::settingsLoop()
             continue;
         }
 
-        inv->setEnablePolling(inv_cfg.Poll_Enable && (SunPosition.isDayPeriod() || inv_cfg.Poll_Enable_Night));
-        inv->setEnableCommands(inv_cfg.Command_Enable && (SunPosition.isDayPeriod() || inv_cfg.Command_Enable_Night));
+        inv->setEnablePolling((inv_cfg.Poll_Enable_Day && isDayPeriod) || (!isDayPeriod && inv_cfg.Poll_Enable_Night));
+        inv->setEnableCommands((inv_cfg.Command_Enable_Day && isDayPeriod) || (!isDayPeriod && inv_cfg.Command_Enable_Night));
     }
 }
 
