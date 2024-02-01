@@ -205,8 +205,8 @@ public:
 
     bool getLastPowerCommandSuccess(void) { return _lastPowerCommandSuccess; };
 
-    bool getVerboseLogging(void) { return _verbose_logging; };
-    void setVerboseLogging(bool logging) { _verbose_logging = logging; };
+    bool getVerboseLogging(void) { return _verboseLogging; };
+    void setVerboseLogging(bool logging) { _verboseLogging = logging; };
 
     bool updateAvailable(uint32_t since) const { return _lastUpdate > since; }
 
@@ -259,7 +259,7 @@ private:
     bool _autoPowerActive = false;
     bool _setupParameter = true;
 
-    bool _verbose_logging = false;
+    bool _verboseLogging = false;
 
     const uint8_t ChargerID = 0x03;
 };
