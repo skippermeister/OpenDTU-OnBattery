@@ -1,37 +1,42 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #pragma once
 
+#include <AsyncJson.h>
+#include <TimeoutHelper.h>
 #include <stdint.h>
 #include <memory>
 #include <mutex>
 #include <TaskSchedulerDeclarations.h>
-
 #include "BatteryStats.h"
 
 class BatteryProvider {
-    public:
-        // returns true if the provider is ready for use, false otherwise
-        virtual bool init(bool verboseLogging) = 0;
+public:
+    // returns true if the provider is ready for use, false otherwise
+    virtual bool init() = 0;
 
-        virtual void deinit() = 0;
-        virtual void loop() = 0;
-        virtual std::shared_ptr<BatteryStats> getStats() const = 0;
+    virtual void deinit() = 0;
+    virtual void loop() = 0;
+    virtual std::shared_ptr<BatteryStats> getStats() const = 0;
 };
 
 class BatteryClass {
-    public:
-        void init(Scheduler&);
-        void updateSettings();
+public:
+    BatteryClass();
+    void init(Scheduler&);
+    void updateSettings();
 
-        std::shared_ptr<BatteryStats const> getStats() const;
-    private:
-        void loop();
+    std::shared_ptr<BatteryStats const> getStats() const;
 
-        Task _loopTask;
+    bool _verbose_logging = false;
 
-        uint32_t _lastMqttPublish = 0;
-        mutable std::mutex _mutex;
-        std::unique_ptr<BatteryProvider> _upProvider = nullptr;
+private:
+    void loop();
+
+    Task _loopTask;
+
+    TimeoutHelper _lastMqttPublish;
+    mutable std::mutex _mutex;
+    std::unique_ptr<BatteryProvider> _upProvider = nullptr;
 };
 
 extern BatteryClass Battery;
