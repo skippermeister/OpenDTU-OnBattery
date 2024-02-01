@@ -35,6 +35,9 @@ public:
     // sum of today's yield of all MPPT charge controllers in kWh
     double getYieldDay() const;
 
+    bool getVerboseLogging(void) { return _verboseLogging; };
+    void setVerboseLogging(bool logging) { _verboseLogging = logging; };
+
 private:
     void loop();
     VictronMpptClass(VictronMpptClass const& other) = delete;
@@ -47,6 +50,8 @@ private:
     mutable std::mutex _mutex;
     using controller_t = std::unique_ptr<VeDirectMpptController>;
     std::vector<controller_t> _controllers;
+
+    bool _verboseLogging = false;
 };
 
 extern VictronMpptClass VictronMppt;
