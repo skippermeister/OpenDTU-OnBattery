@@ -1,29 +1,33 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
+#ifdef USE_HASS
 
-#include "PylontechCanReceiver.h"
-#include "Battery.h"
 #include "MqttHandlePylontechHass.h"
+#include "Battery.h"
 #include "Configuration.h"
-#include "MqttSettings.h"
 #include "MessageOutput.h"
+#include "MqttSettings.h"
+#include "PylontechCanReceiver.h"
 #include "Utils.h"
 
 MqttHandlePylontechHassClass MqttHandlePylontechHass;
 
+MqttHandlePylontechHassClass::MqttHandlePylontechHassClass()
+    : _loopTask(TASK_IMMEDIATE, TASK_FOREVER, std::bind(&MqttHandlePylontechHassClass::loop, this))
+{
+}
+
 void MqttHandlePylontechHassClass::init(Scheduler& scheduler)
 {
     scheduler.addTask(_loopTask);
-    _loopTask.setCallback(std::bind(&MqttHandlePylontechHassClass::loop, this));
-    _loopTask.setIterations(TASK_FOREVER);
     _loopTask.enable();
 }
 
 void MqttHandlePylontechHassClass::loop()
 {
-    CONFIG_T& config = Configuration.get();
-    if (!config.Battery.Enabled) {
+    if (!Configuration.get().Battery.Enabled) {
         return;
     }
+
     if (_updateForced) {
         publishConfig();
         _updateForced = false;
@@ -47,11 +51,7 @@ void MqttHandlePylontechHassClass::forceUpdate()
 void MqttHandlePylontechHassClass::publishConfig()
 {
     CONFIG_T& config = Configuration.get();
-    if ((!config.Mqtt.Hass.Enabled) || (!config.Battery.Enabled)) {
-        return;
-    }
-
-    if (!MqttSettings.getConnected()) {
+    if (!config.Mqtt.Hass.Enabled || !config.Battery.Enabled || !MqttSettings.getConnected()) {
         return;
     }
 
@@ -65,8 +65,8 @@ void MqttHandlePylontechHassClass::publishConfig()
     publishSensor("State of Charge (SOC)", NULL, "stateOfCharge", "battery", "measurement", "%");
     publishSensor("State of Health (SOH)", "mdi:heart-plus", "stateOfHealth", NULL, "measurement", "%");
     publishSensor("Charge voltage (BMS)", NULL, "settings/chargeVoltage", "voltage", "measurement", "V");
-    publishSensor("Charge current limit", NULL, "settings/chargeCurrentLimitation", "current", "measurement", "A");
-    publishSensor("Discharge current limit", NULL, "settings/dischargeCurrentLimitation", "current", "measurement", "A");
+    publishSensor("Charge current limit", NULL, "settings/chargeCurrentLimit", "current", "measurement", "A");
+    publishSensor("Discharge current limit", NULL, "settings/dischargeCurrentLimit", "current", "measurement", "A");
 
     publishBinarySensor("Alarm Discharge current", "mdi:alert", "alarm/overCurrentDischarge", "1", "0");
     publishBinarySensor("Warning Discharge current", "mdi:alert-outline", "warning/highCurrentDischarge", "1", "0");
@@ -96,7 +96,7 @@ void MqttHandlePylontechHassClass::publishConfig()
     yield();
 }
 
-void MqttHandlePylontechHassClass::publishSensor(const char* caption, const char* icon, const char* subTopic, const char* deviceClass, const char* stateClass, const char* unitOfMeasurement )
+void MqttHandlePylontechHassClass::publishSensor(const char* caption, const char* icon, const char* subTopic, const char* deviceClass, const char* stateClass, const char* unitOfMeasurement)
 {
     String sensorId = caption;
     sensorId.replace(" ", "_");
@@ -104,10 +104,6 @@ void MqttHandlePylontechHassClass::publishSensor(const char* caption, const char
     sensorId.replace("(", "");
     sensorId.replace(")", "");
     sensorId.toLowerCase();
-
-    String configTopic = "sensor/dtu_battery_" + serial
-        + "/" + sensorId
-        + "/config";
 
     String statTopic = MqttSettings.getPrefix() + "battery/";
     // omit serial to avoid a breaking change
@@ -144,10 +140,10 @@ void MqttHandlePylontechHassClass::publishSensor(const char* caption, const char
         root["stat_cla"] = stateClass;
     }
 
-    char buffer[512];
+    String buffer;
     serializeJson(root, buffer);
+    String configTopic = "sensor/dtu_battery_" + serial + "/" + sensorId + "/config";
     publish(configTopic, buffer);
-
 }
 
 void MqttHandlePylontechHassClass::publishBinarySensor(const char* caption, const char* icon, const char* subTopic, const char* payload_on, const char* payload_off)
@@ -158,10 +154,6 @@ void MqttHandlePylontechHassClass::publishBinarySensor(const char* caption, cons
     sensorId.replace("(", "");
     sensorId.replace(")", "");
     sensorId.toLowerCase();
-
-    String configTopic = "binary_sensor/dtu_battery_" + serial
-        + "/" + sensorId
-        + "/config";
 
     String statTopic = MqttSettings.getPrefix() + "battery/";
     // omit serial to avoid a breaking change
@@ -186,8 +178,9 @@ void MqttHandlePylontechHassClass::publishBinarySensor(const char* caption, cons
     JsonObject deviceObj = root.createNestedObject("dev");
     createDeviceInfo(deviceObj);
 
-    char buffer[512];
+    String buffer;
     serializeJson(root, buffer);
+    String configTopic = "binary_sensor/dtu_battery_" + serial + "/" + sensorId + "/config";
     publish(configTopic, buffer);
 }
 
@@ -205,5 +198,7 @@ void MqttHandlePylontechHassClass::publish(const String& subtopic, const String&
 {
     String topic = Configuration.get().Mqtt.Hass.Topic;
     topic += subtopic;
-    MqttSettings.publishGeneric(topic.c_str(), payload.c_str(), Configuration.get().Mqtt.Hass.Retain);
+    MqttSettings.publishGeneric(topic, payload, Configuration.get().Mqtt.Hass.Retain);
 }
+
+#endif
