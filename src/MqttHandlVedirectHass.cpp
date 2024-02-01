@@ -2,6 +2,8 @@
 /*
  * Copyright (C) 2022 Thomas Basler and others
  */
+#ifdef USE_HASS
+
 #include "MqttHandleVedirectHass.h"
 #include "Configuration.h"
 #include "MqttSettings.h"
@@ -12,11 +14,14 @@
 
 MqttHandleVedirectHassClass MqttHandleVedirectHass;
 
+MqttHandleVedirectHassClass::MqttHandleVedirectHassClass()
+    : _loopTask(TASK_IMMEDIATE, TASK_FOREVER, std::bind(&MqttHandleVedirectHassClass::loop, this))
+{
+}
+
 void MqttHandleVedirectHassClass::init(Scheduler& scheduler)
 {
     scheduler.addTask(_loopTask);
-    _loopTask.setCallback(std::bind(&MqttHandleVedirectHassClass::loop, this));
-    _loopTask.setIterations(TASK_FOREVER);
     _loopTask.enable();
 }
 
@@ -47,16 +52,8 @@ void MqttHandleVedirectHassClass::forceUpdate()
 
 void MqttHandleVedirectHassClass::publishConfig()
 {
-    if ((!Configuration.get().Mqtt.Hass.Enabled) ||
-       (!Configuration.get().Vedirect.Enabled)) {
-        return;
-    }
-
-    if (!MqttSettings.getConnected()) {
-        return;
-    }
-    // ensure data is revieved from victron
-    if (!VictronMppt.isDataValid()) {
+    if (!Configuration.get().Mqtt.Hass.Enabled || !Configuration.get().Vedirect.Enabled || !MqttSettings.getConnected() || !VictronMppt.isDataValid()) // and ensure data is revieved from victron
+    {
         return;
     }
 
@@ -138,8 +135,9 @@ void MqttHandleVedirectHassClass::publishSensor(const char* caption, const char*
         root["stat_cla"] = stateClass;
     }
 
-    char buffer[512];
+    String buffer;
     serializeJson(root, buffer);
+    String configTopic = "sensor/dtu_victron_" + serial + "/" + sensorId + "/config";
     publish(configTopic, buffer);
 
 }
@@ -153,10 +151,6 @@ void MqttHandleVedirectHassClass::publishBinarySensor(const char* caption, const
     sensorId.replace("(", "");
     sensorId.replace(")", "");
     sensorId.toLowerCase();
-
-    String configTopic = "binary_sensor/dtu_victron_" + serial
-        + "/" + sensorId
-        + "/config";
 
     String statTopic = MqttSettings.getPrefix() + "victron/";
     statTopic.concat(serial);
@@ -180,8 +174,9 @@ void MqttHandleVedirectHassClass::publishBinarySensor(const char* caption, const
     JsonObject deviceObj = root.createNestedObject("dev");
     createDeviceInfo(deviceObj);
 
-    char buffer[512];
+    String buffer;
     serializeJson(root, buffer);
+    String configTopic = "binary_sensor/dtu_victron_" + serial + "/" + sensorId + "/config";
     publish(configTopic, buffer);
 }
 
@@ -203,3 +198,5 @@ void MqttHandleVedirectHassClass::publish(const String& subtopic, const String& 
     topic += subtopic;
     MqttSettings.publishGeneric(topic.c_str(), payload.c_str(), Configuration.get().Mqtt.Hass.Retain);
 }
+
+#endif
