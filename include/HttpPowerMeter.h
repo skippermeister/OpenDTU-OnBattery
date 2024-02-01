@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
+#ifdef CHARGER_HUAWEI
+
 #pragma once
 
 #include <stdint.h>
@@ -31,3 +33,5 @@ private:
 };
 
 extern HttpPowerMeterClass HttpPowerMeter;
+
+#endif
