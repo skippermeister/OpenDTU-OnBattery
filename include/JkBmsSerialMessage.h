@@ -1,3 +1,5 @@
+#ifdef USE_JKBMS_CONTROLLER
+
 #pragma once
 
 #include <utility>
@@ -91,3 +93,5 @@ class SerialCommand : public SerialMessage {
 };
 
 } /* namespace JkBms */
+
+#endif
