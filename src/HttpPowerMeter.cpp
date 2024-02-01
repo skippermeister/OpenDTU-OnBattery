@@ -210,7 +210,8 @@ bool HttpPowerMeterClass::tryGetFloatValueForPhase(int phase, int httpCode, cons
         if (!json.get(value, jsonPath)) {
             snprintf_P(httpPowerMeterError, sizeof(httpPowerMeterError), PSTR("[HttpPowerMeter] Couldn't find a value for phase %i with Json query \"%s\""), phase, jsonPath);
         }else {
-            power[phase] = value.to<float>();
+            POWERMETER_HTTP_PHASE_CONFIG_T* Phase = Configuration.get().PowerMeter.Http.Phase;
+            power[phase] = value.to<float>() * (Phase[phase].Unit == PowerMeterUnits::kW ? 0.001 : Phase[phase].Unit == PowerMeterUnits::W ? 1.0 : 1000.0);
             //MessageOutput.printf("Power for Phase %i: %5.2fW\r\n", phase, power[phase]);
             success = true;
         }
