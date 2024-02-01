@@ -3,6 +3,7 @@
 
 #include <DNSServer.h>
 #include <TaskSchedulerDeclarations.h>
+#include <TimeoutHelper.h>
 #include <WiFi.h>
 #include <vector>
 
@@ -74,7 +75,7 @@ private:
     uint32_t _adminTimeoutCounterMax = 0;
     uint32_t _connectTimeoutTimer = 0;
     uint32_t _connectRedoTimer = 0;
-    uint32_t _lastTimerCall = 0;
+    TimeoutHelper _lastTimerCall;
     IPAddress _apIp;
     IPAddress _apNetmask;
     std::unique_ptr<DNSServer> _dnsServer;
