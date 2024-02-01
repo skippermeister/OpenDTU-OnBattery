@@ -4,6 +4,7 @@
  */
 #include "SunPosition.h"
 #include "Configuration.h"
+#include "MessageOutput.h"
 #include "Utils.h"
 #include <Arduino.h>
 
@@ -16,8 +17,12 @@ SunPositionClass::SunPositionClass()
 
 void SunPositionClass::init(Scheduler& scheduler)
 {
+    MessageOutput.print("Initialize SunPosition... ");
+
     scheduler.addTask(_loopTask);
     _loopTask.enable();
+
+    MessageOutput.println("done.");
 }
 
 void SunPositionClass::loop()
@@ -25,6 +30,19 @@ void SunPositionClass::loop()
     if (_doRecalc || checkRecalcDayChanged()) {
         updateSunData();
     }
+}
+
+bool SunPositionClass::isAnnouceDayPeriod() const
+{
+    if (!_isValidInfo) {
+        return true;
+    }
+
+    struct tm timeinfo;
+    getLocalTime(&timeinfo, 5);
+    const uint32_t minutesPastMidnight = timeinfo.tm_hour * 60 + timeinfo.tm_min;
+    // 2 minutes before sunrise we state the annoucement of the sunrise
+    return (minutesPastMidnight >= _sunriseMinutes - 60000L * 2) && (minutesPastMidnight < _sunriseMinutes);
 }
 
 bool SunPositionClass::isDayPeriod() const
@@ -78,10 +96,10 @@ void SunPositionClass::updateSunData()
         return;
     }
 
-    CONFIG_T const& config = Configuration.get();
+    Ntp_CONFIG_T const& cNtp = Configuration.get().Ntp;
 
     double sunset_type;
-    switch (config.Ntp.SunsetType) {
+    switch (cNtp.SunsetType) {
     case 0:
         sunset_type = SunSet::SUNSET_OFFICIAL;
         break;
@@ -99,7 +117,7 @@ void SunPositionClass::updateSunData()
     const int offset = Utils::getTimezoneOffset() / 3600;
 
     SunSet sun;
-    sun.setPosition(config.Ntp.Latitude, config.Ntp.Longitude, offset);
+    sun.setPosition(cNtp.Latitude, cNtp.Longitude, offset);
     sun.setCurrentDate(1900 + timeinfo.tm_year, timeinfo.tm_mon + 1, timeinfo.tm_mday);
 
     const double sunriseRaw = sun.calcCustomSunrise(sunset_type);
