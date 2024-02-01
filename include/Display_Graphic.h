@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
+#ifdef USE_DISPLAY_GRAPHIC
+
 #pragma once
 
 #include "Display_Graphic_Diagram.h"
 #include "defaults.h"
 #include <TaskSchedulerDeclarations.h>
+#include <TimeoutHelper.h>
 #include <U8g2lib.h>
 
 #define CHART_HEIGHT 20 // chart area hight in pixels
@@ -20,6 +23,8 @@ enum DisplayType_t {
     SSD1306,
     SH1106,
     SSD1309,
+    ST7567_GM12864I_59N,
+    ePaper154,
     DisplayType_Max,
 };
 
@@ -35,7 +40,7 @@ public:
     DisplayGraphicClass();
     ~DisplayGraphicClass();
 
-    void init(Scheduler& scheduler, const DisplayType_t type, const uint8_t data, const uint8_t clk, const uint8_t cs, const uint8_t reset);
+    void init(Scheduler& scheduler);
     void setContrast(const uint8_t contrast);
     void setStatus(const bool turnOn);
     void setOrientation(const uint8_t rotation = DISPLAY_ROTATION);
@@ -43,13 +48,16 @@ public:
     void setDiagramMode(DiagramMode_t mode);
     void setStartupDisplay();
 
+#ifdef USE_DISPLAY_GRAPHIC_DIAGRAM
     DisplayGraphicDiagramClass& Diagram();
+#endif
 
     bool enablePowerSafe = true;
     bool enableScreensaver = true;
 
 private:
     void loop();
+
     void printText(const char* text, const uint8_t line);
     void calcLineHeights();
     void setFont(const uint8_t line);
@@ -58,7 +66,9 @@ private:
     Task _loopTask;
 
     U8G2* _display;
+#ifdef USE_DISPLAY_GRAPHIC_DIAGRAM
     DisplayGraphicDiagramClass _diagram;
+#endif
 
     bool _displayTurnedOn;
 
@@ -68,10 +78,12 @@ private:
     uint8_t _mExtra;
     const uint16_t _period = 1000;
     const uint16_t _interval = 60000; // interval at which to power save (milliseconds)
-    uint32_t _previousMillis = 0;
+    TimeoutHelper _previousMillis;
     char _fmtText[32];
     bool _isLarge = false;
     uint8_t _lineOffsets[5];
 };
 
 extern DisplayGraphicClass Display;
+
+#endif
