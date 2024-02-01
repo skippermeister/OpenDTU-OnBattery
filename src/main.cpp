@@ -2,34 +2,50 @@
 /*
  * Copyright (C) 2022-2024 Thomas Basler and others
  */
+#include "Battery.h"
 #include "Configuration.h"
 #include "Datastore.h"
 #include "Display_Graphic.h"
 #include "InverterSettings.h"
 #include "Led_Single.h"
+#include "Led_Strip.h"
 #include "MessageOutput.h"
+// #include "PylontechCanReceiver.h"
+// #include "PylontechRS485Receiver.h"
+#include "REFUsolRS485Receiver.h"
 #include "VictronMppt.h"
-#include "Battery.h"
+#ifdef CHARGER_HUAWEI
 #include "Huawei_can.h"
+#else
+#include "MeanWell_can.h"
+#endif
+#include "ModbusDTU.h"
 #include "MqttHandleDtu.h"
 #include "MqttHandleHass.h"
-#include "MqttHandleVedirectHass.h"
-#include "MqttHandlePylontechHass.h"
 #include "MqttHandleInverter.h"
 #include "MqttHandleInverterTotal.h"
+#include "MqttHandlePylontechHass.h"
+#include "MqttHandleREFUsol.h"
 #include "MqttHandleVedirect.h"
+#include "MqttHandleVedirectHass.h"
+#ifdef CHARGER_HUAWEI
 #include "MqttHandleHuawei.h"
+#else
+#include "MqttHandleMeanWell.h"
+#endif
 #include "MqttHandlePowerLimiter.h"
+#include "MqttHandleZeroExport.h"
 #include "MqttSettings.h"
 #include "NetworkSettings.h"
 #include "NtpSettings.h"
 #include "PinMapping.h"
+#include "PowerLimiter.h"
+#include "PowerMeter.h"
 #include "Scheduler.h"
 #include "SunPosition.h"
 #include "Utils.h"
 #include "WebApi.h"
-#include "PowerMeter.h"
-#include "PowerLimiter.h"
+#include "ZeroExport.h"
 #include "defaults.h"
 #include <Arduino.h>
 #include <LittleFS.h>
@@ -47,8 +63,7 @@ void setup()
         yield();
 #endif
     MessageOutput.init(scheduler);
-    MessageOutput.println();
-    MessageOutput.println("Starting OpenDTU");
+    MessageOutput.println("\r\nStarting OpenDTU-onBattery");
 
     // Initialize file system
     MessageOutput.print("Initialize FS... ");
@@ -78,34 +93,19 @@ void setup()
         MessageOutput.print("migrated... ");
         Configuration.migrate();
     }
-    auto& config = Configuration.get();
     MessageOutput.println("done");
 
-    // Load PinMapping
-    MessageOutput.print("Reading PinMapping... ");
-    if (PinMapping.init(String(Configuration.get().Dev_PinMapping))) {
-        MessageOutput.print("found valid mapping ");
-    } else {
-        MessageOutput.print("using default config ");
-    }
-    const auto& pin = PinMapping.get();
-    MessageOutput.println("done");
+    CONFIG_T& config = Configuration.get();
+    PinMapping.init(String(Configuration.get().Dev_PinMapping)); // Load PinMapping
 
     // Initialize WiFi
-    MessageOutput.print("Initialize Network... ");
     NetworkSettings.init(scheduler);
-    MessageOutput.println("done");
     NetworkSettings.applyConfig();
+    vTaskDelay(1000); // FIXME
 
-    // Initialize NTP
-    MessageOutput.print("Initialize NTP... ");
-    NtpSettings.init();
-    MessageOutput.println("done");
+    NtpSettings.init(); // Initialize NTP
 
-    // Initialize SunPosition
-    MessageOutput.print("Initialize SunPosition... ");
-    SunPosition.init(scheduler);
-    MessageOutput.println("done");
+    SunPosition.init(scheduler); // Initialize SunPosition
 
     // Initialize MqTT
     MessageOutput.print("Initialize MqTT... ");
@@ -114,45 +114,44 @@ void setup()
     MqttHandleInverter.init(scheduler);
     MqttHandleInverterTotal.init(scheduler);
     MqttHandleVedirect.init(scheduler);
+#ifdef USE_REFUsol_INVERTER
+    MqttHandleREFUsol.init(scheduler);
+#endif
+
+#ifdef USE_HASS
     MqttHandleHass.init(scheduler);
     MqttHandleVedirectHass.init(scheduler);
+    MqttHandlePylontechHass.init(scheduler);
+#endif
+
+#ifdef CHARGER_HUAWEI
     MqttHandleHuawei.init(scheduler);
+#else
+    MqttHandleMeanWell.init(scheduler);
+#endif
     MqttHandlePowerLimiter.init(scheduler);
+    MqttHandleZeroExport.init(scheduler);
     MessageOutput.println("done");
 
-    // Initialize WebApi
-    MessageOutput.print("Initialize WebApi... ");
-    WebApi.init(scheduler);
-    MessageOutput.println("done");
+    WebApi.init(scheduler); // Initialize WebApi
 
-    // Initialize Display
-    MessageOutput.print("Initialize Display... ");
-    Display.init(
-        scheduler,
-        static_cast<DisplayType_t>(pin.display_type),
-        pin.display_data,
-        pin.display_clk,
-        pin.display_cs,
-        pin.display_reset);
-    Display.setOrientation(config.Display.Rotation);
-    Display.enablePowerSafe = config.Display.PowerSafe;
-    Display.enableScreensaver = config.Display.ScreenSaver;
-    Display.setContrast(config.Display.Contrast);
-    Display.setLanguage(config.Display.Language);
-    Display.setDiagramMode(static_cast<DiagramMode_t>(config.Display.Diagram.Mode));
-    Display.setStartupDisplay();
-    MessageOutput.println("done");
+#ifdef USE_DISPLAY_GRAPHIC
+    Display.init(scheduler); // Initialize Display
+#endif
 
-    // Initialize Single LEDs
-    MessageOutput.print("Initialize LEDs... ");
-    LedSingle.init(scheduler);
-    MessageOutput.println("done");
+#ifdef USE_LED_SINGLE
+    LedSingle.init(scheduler); // Initialize Single LEDs
+#endif
+#ifdef USE_LED_STRIP
+    // Initialize LED WS2812
+    LEDStrip.init(scheduler);
+#endif
 
     // Check for default DTU serial
     MessageOutput.print("Check for default DTU serial... ");
     if (config.Dtu.Serial == DTU_SERIAL) {
         MessageOutput.print("generate serial based on ESP chip id: ");
-        const uint64_t dtuId = Utils::generateDtuSerial();
+        uint64_t dtuId = Utils::generateDtuSerial();
         MessageOutput.printf("%0x%08x... ",
             ((uint32_t)((dtuId >> 32) & 0xFFFFFFFF)),
             ((uint32_t)(dtuId & 0xFFFFFFFF)));
@@ -160,31 +159,32 @@ void setup()
         Configuration.write();
     }
     MessageOutput.println("done");
-    MessageOutput.println("done");
 
     InverterSettings.init(scheduler);
 
     Datastore.init(scheduler);
 
-    VictronMppt.init(scheduler);
+    VictronMppt.init(scheduler); // Initialize ve.direct communication
+#ifdef USE_REFUsol_INVERTER
+    REFUsol.init(scheduler); // Initialize REFUsol communication
+#endif
+    PowerMeter.init(scheduler); // Power meter
+    PowerLimiter.init(scheduler); // Dynamic power limiter
+    ZeroExport.init(scheduler); // Dynamic Zero Eport limiter
 
-    // Power meter
-    PowerMeter.init(scheduler);
-
-    // Dynamic power limiter
-    PowerLimiter.init(scheduler);
-
-    // Initialize Huawei AC-charger PSU / CAN bus
-    MessageOutput.println("Initialize Huawei AC charger interface... ");
-    if (PinMapping.isValidHuaweiConfig()) {
-        MessageOutput.printf("Huawei AC-charger miso = %d, mosi = %d, clk = %d, irq = %d, cs = %d, power_pin = %d\r\n", pin.huawei_miso, pin.huawei_mosi, pin.huawei_clk, pin.huawei_irq, pin.huawei_cs, pin.huawei_power);
-        HuaweiCan.init(scheduler, pin.huawei_miso, pin.huawei_mosi, pin.huawei_clk, pin.huawei_irq, pin.huawei_cs, pin.huawei_power);
-        MessageOutput.println("done");
-    } else {
-        MessageOutput.println("Invalid pin config");
-    }
+#ifdef CHARGER_HUAWEI
+    HuaweiCan.init(scheduler); // Initialize Huawei AC-charger PSU / CAN bus
+#else
+    MeanWellCan.init(scheduler); // Initialize MeanWell NPB-1200-48 AC-charger PSU / CAN bus
+#endif
 
     Battery.init(scheduler);
+
+#ifdef USE_ModbusDTU
+    ModbusDtu.init(scheduler);
+#endif
+
+    MessageOutput.printf("Free heap: %d\r\n", xPortGetFreeHeapSize());
 }
 
 void loop()
