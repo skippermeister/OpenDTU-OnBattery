@@ -109,7 +109,7 @@ void PowerMeterClass::onMqttMessage(const espMqttClientTypes::MessageProperties&
             return;
         }
 
-        if (_verbose_logging) {
+        if (_verboseLogging) {
             MessageOutput.printf("%s Updated from '%s', TotalPower: %5.2f\r\n", TAG, topic, getPowerTotal(false));
         }
 
@@ -203,7 +203,7 @@ void PowerMeterClass::loop()
     float PowerTotal = getPowerTotal(false);
     PowerMeter.setHousePower(PowerTotal + Datastore.getTotalAcPowerEnabled());
 
-    if (_verbose_logging)
+    if (_verboseLogging)
         MessageOutput.printf("%s TotalPower: %5.1fW, HousePower: %5.1fW\r\n", TAG, PowerTotal, getHousePower());
 
     mqtt();
