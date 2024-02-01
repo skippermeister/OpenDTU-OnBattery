@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
+#ifdef USE_HASS
+
 #pragma once
 
 #include <ArduinoJson.h>
@@ -7,6 +9,7 @@
 
 class MqttHandleVedirectHassClass {
 public:
+    MqttHandleVedirectHassClass();
     void init(Scheduler& scheduler);
     void publishConfig();
     void forceUpdate();
@@ -25,3 +28,5 @@ private:
 };
 
 extern MqttHandleVedirectHassClass MqttHandleVedirectHass;
+
+#endif
