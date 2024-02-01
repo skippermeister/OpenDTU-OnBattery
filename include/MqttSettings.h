@@ -22,6 +22,9 @@ public:
 
     String getPrefix() const;
 
+    bool getVerboseLogging(void) { return _verboseLogging; };
+    void setVerboseLogging(bool logging) { _verboseLogging = logging; };
+
 private:
     void NetworkEvent(network_event event);
 
