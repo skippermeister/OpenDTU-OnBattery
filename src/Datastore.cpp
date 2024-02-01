@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright (C) 2023-2024 Thomas Basler and others
+ * Copyright (C) 2023 Thomas Basler and others
  */
 #include "Datastore.h"
 #include "Configuration.h"
+#include "MessageOutput.h"
 #include <Hoymiles.h>
 
 DatastoreClass Datastore;
@@ -15,8 +16,12 @@ DatastoreClass::DatastoreClass()
 
 void DatastoreClass::init(Scheduler& scheduler)
 {
+    MessageOutput.print("initialize Datastore... ");
+
     scheduler.addTask(_loopTask);
     _loopTask.enable();
+
+    MessageOutput.println("done");
 }
 
 void DatastoreClass::loop()
@@ -82,7 +87,7 @@ void DatastoreClass::loop()
         }
 
         for (auto& c : inv->Statistics()->getChannelsByType(TYPE_AC)) {
-            if (cfg->Poll_Enable) {
+            if (cfg->Poll_Enable_Day || cfg->Poll_Enable_Night) {
                 _totalAcYieldTotalEnabled += inv->Statistics()->getChannelFieldValue(TYPE_AC, c, FLD_YT);
                 _totalAcYieldDayEnabled += inv->Statistics()->getChannelFieldValue(TYPE_AC, c, FLD_YD);
 
@@ -107,6 +112,26 @@ void DatastoreClass::loop()
             }
         }
     }
+
+    // Daten visualisieren #168
+    struct tm timeinfo;
+
+    if (getLocalTime(&timeinfo, 50)) {
+        if (_currentDay != timeinfo.tm_mday && timeinfo.tm_sec > 10) {
+            _currentDay = timeinfo.tm_mday;
+            for (uint8_t i = 0; i < _hourlyPowerData.size(); i++) {
+                _hourlyPowerData[i] = 0.0f;
+            }
+        }
+
+        uint8_t currentHour = timeinfo.tm_hour;
+        float previousSum = 0.0f;
+        for (uint8_t hour = 0; hour < currentHour; hour++) {
+            previousSum += _hourlyPowerData[hour];
+        }
+        _hourlyPowerData[currentHour] = _totalAcYieldDayEnabled - previousSum;
+    }
+    // Daten visualisieren #168
 
     _isAtLeastOneProducing = isProducing > 0;
     _isAtLeastOneReachable = isReachable > 0;
@@ -157,25 +182,25 @@ float DatastoreClass::getTotalDcIrradiation()
     return _totalDcIrradiation;
 }
 
-uint32_t DatastoreClass::getTotalAcYieldTotalDigits()
+unsigned int DatastoreClass::getTotalAcYieldTotalDigits()
 {
     std::lock_guard<std::mutex> lock(_mutex);
     return _totalAcYieldTotalDigits;
 }
 
-uint32_t DatastoreClass::getTotalAcYieldDayDigits()
+unsigned int DatastoreClass::getTotalAcYieldDayDigits()
 {
     std::lock_guard<std::mutex> lock(_mutex);
     return _totalAcYieldDayDigits;
 }
 
-uint32_t DatastoreClass::getTotalAcPowerDigits()
+unsigned int DatastoreClass::getTotalAcPowerDigits()
 {
     std::lock_guard<std::mutex> lock(_mutex);
     return _totalAcPowerDigits;
 }
 
-uint32_t DatastoreClass::getTotalDcPowerDigits()
+unsigned int DatastoreClass::getTotalDcPowerDigits()
 {
     std::lock_guard<std::mutex> lock(_mutex);
     return _totalDcPowerDigits;
@@ -209,4 +234,12 @@ bool DatastoreClass::getIsAtLeastOnePollEnabled()
 {
     std::lock_guard<std::mutex> lock(_mutex);
     return _isAtLeastOnePollEnabled;
+}
+
+// Daten visualisieren #168
+// local storage for hourly power to display in WebUI
+std::array<float, 24> DatastoreClass::getHourlyPowerData()
+{
+    std::lock_guard<std::mutex> lock(_mutex);
+    return _hourlyPowerData;
 }
