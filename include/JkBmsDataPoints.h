@@ -1,3 +1,5 @@
+#ifdef USE_JKBMS_CONTROLLER
+
 #pragma once
 
 #include <Arduino.h>
@@ -302,3 +304,5 @@ class DataPointContainer {
 };
 
 } /* namespace JkBms */
+
+#endif
