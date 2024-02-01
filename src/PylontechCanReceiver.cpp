@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
+#ifdef USE_PYLONTECH_CAN_RECEIVER
+
 #include "PylontechCanReceiver.h"
 #include "Configuration.h"
 #include "MessageOutput.h"
@@ -341,4 +343,6 @@ void PylontechCanReceiver::dummyData()
 
     issues = (issues + 1) % 5;
 }
+#endif
+
 #endif
