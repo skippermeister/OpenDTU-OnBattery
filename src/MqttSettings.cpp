@@ -29,8 +29,8 @@ void MqttSettingsClass::NetworkEvent(network_event event)
 void MqttSettingsClass::onMqttConnect(const bool sessionPresent)
 {
     MessageOutput.println("Connected to MQTT.");
-    const CONFIG_T& config = Configuration.get();
-    publish(config.Mqtt.Lwt.Topic, config.Mqtt.Lwt.Value_Online);
+    const Mqtt_CONFIG_T& cMqtt = Configuration.get().Mqtt;
+    publish(cMqtt.Lwt.Topic, cMqtt.Lwt.Value_Online);
 
     std::lock_guard<std::mutex> lock(_clientLock);
     if (_mqttClient != nullptr) {
@@ -115,31 +115,30 @@ void MqttSettingsClass::performConnect()
         }
 
         MessageOutput.println("Connecting to MQTT...");
-        const CONFIG_T& config = Configuration.get();
-        _verboseLogging = config.Mqtt.VerboseLogging;
-        const String willTopic = getPrefix() + config.Mqtt.Lwt.Topic;
+        const Mqtt_CONFIG_T& cMqtt = Configuration.get().Mqtt;
+        const String willTopic = getPrefix() + cMqtt.Lwt.Topic;
         const String clientId = NetworkSettings.getApName();
-        if (config.Mqtt.Tls.Enabled) {
-            static_cast<espMqttClientSecure*>(_mqttClient)->setCACert(config.Mqtt.Tls.RootCaCert);
-            static_cast<espMqttClientSecure*>(_mqttClient)->setServer(config.Mqtt.Hostname, config.Mqtt.Port);
-            if (config.Mqtt.Tls.CertLogin) {
-                static_cast<espMqttClientSecure*>(_mqttClient)->setCertificate(config.Mqtt.Tls.ClientCert);
-                static_cast<espMqttClientSecure*>(_mqttClient)->setPrivateKey(config.Mqtt.Tls.ClientKey);
+        if (cMqtt.Tls.Enabled) {
+            static_cast<espMqttClientSecure*>(_mqttClient)->setCACert(cMqtt.Tls.RootCaCert);
+            static_cast<espMqttClientSecure*>(_mqttClient)->setServer(cMqtt.Hostname, cMqtt.Port);
+            if (cMqtt.Tls.CertLogin) {
+                static_cast<espMqttClientSecure*>(_mqttClient)->setCertificate(cMqtt.Tls.ClientCert);
+                static_cast<espMqttClientSecure*>(_mqttClient)->setPrivateKey(cMqtt.Tls.ClientKey);
             } else {
-                static_cast<espMqttClientSecure*>(_mqttClient)->setCredentials(config.Mqtt.Username, config.Mqtt.Password);
+                static_cast<espMqttClientSecure*>(_mqttClient)->setCredentials(cMqtt.Username, cMqtt.Password);
             }
-            static_cast<espMqttClientSecure*>(_mqttClient)->setWill(willTopic.c_str(), 2, config.Mqtt.Retain, config.Mqtt.Lwt.Value_Offline);
+            static_cast<espMqttClientSecure*>(_mqttClient)->setWill(willTopic.c_str(), 2, cMqtt.Retain, cMqtt.Lwt.Value_Offline);
             static_cast<espMqttClientSecure*>(_mqttClient)->setClientId(clientId.c_str());
-            static_cast<espMqttClientSecure*>(_mqttClient)->setCleanSession(config.Mqtt.CleanSession);
+            static_cast<espMqttClientSecure*>(_mqttClient)->setCleanSession(cMqtt.CleanSession);
             static_cast<espMqttClientSecure*>(_mqttClient)->onConnect(std::bind(&MqttSettingsClass::onMqttConnect, this, _1));
             static_cast<espMqttClientSecure*>(_mqttClient)->onDisconnect(std::bind(&MqttSettingsClass::onMqttDisconnect, this, _1));
             static_cast<espMqttClientSecure*>(_mqttClient)->onMessage(std::bind(&MqttSettingsClass::onMqttMessage, this, _1, _2, _3, _4, _5, _6));
         } else {
-            static_cast<espMqttClient*>(_mqttClient)->setServer(config.Mqtt.Hostname, config.Mqtt.Port);
-            static_cast<espMqttClient*>(_mqttClient)->setCredentials(config.Mqtt.Username, config.Mqtt.Password);
-            static_cast<espMqttClient*>(_mqttClient)->setWill(willTopic.c_str(), config.Mqtt.Lwt.Qos, config.Mqtt.Retain, config.Mqtt.Lwt.Value_Offline);
+            static_cast<espMqttClient*>(_mqttClient)->setServer(cMqtt.Hostname, cMqtt.Port);
+            static_cast<espMqttClient*>(_mqttClient)->setCredentials(cMqtt.Username, cMqtt.Password);
+            static_cast<espMqttClient*>(_mqttClient)->setWill(willTopic.c_str(), cMqtt.Lwt.Qos, cMqtt.Retain, cMqtt.Lwt.Value_Offline);
             static_cast<espMqttClient*>(_mqttClient)->setClientId(clientId.c_str());
-            static_cast<espMqttClient*>(_mqttClient)->setCleanSession(config.Mqtt.CleanSession);
+            static_cast<espMqttClient*>(_mqttClient)->setCleanSession(cMqtt.CleanSession);
             static_cast<espMqttClient*>(_mqttClient)->onConnect(std::bind(&MqttSettingsClass::onMqttConnect, this, _1));
             static_cast<espMqttClient*>(_mqttClient)->onDisconnect(std::bind(&MqttSettingsClass::onMqttDisconnect, this, _1));
             static_cast<espMqttClient*>(_mqttClient)->onMessage(std::bind(&MqttSettingsClass::onMqttMessage, this, _1, _2, _3, _4, _5, _6));
@@ -150,8 +149,8 @@ void MqttSettingsClass::performConnect()
 
 void MqttSettingsClass::performDisconnect()
 {
-    const CONFIG_T& config = Configuration.get();
-    publish(config.Mqtt.Lwt.Topic, config.Mqtt.Lwt.Value_Offline);
+    const Mqtt_CONFIG_T& cMqtt = Configuration.get().Mqtt;
+    publish(cMqtt.Lwt.Topic, cMqtt.Lwt.Value_Offline);
     std::lock_guard<std::mutex> lock(_clientLock);
     if (_mqttClient == nullptr) {
         return;
