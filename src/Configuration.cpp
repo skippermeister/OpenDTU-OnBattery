@@ -50,6 +50,11 @@ bool ConfigurationClass::write()
     JsonObject mdns = doc.createNestedObject("mdns");
     mdns["enabled"] = config.Mdns.Enabled;
 
+#ifdef USE_ModbusDTU
+    JsonObject modbus = doc.createNestedObject("modbus");
+    modbus["enabled"] = config.Modbus.Fronius_SM_Simulation_Enabled;
+#endif
+
     JsonObject ntp = doc.createNestedObject("ntp");
     ntp["server"] = config.Ntp.Server;
     ntp["timezone"] = config.Ntp.Timezone;
@@ -60,7 +65,6 @@ bool ConfigurationClass::write()
 
     JsonObject mqtt = doc.createNestedObject("mqtt");
     mqtt["enabled"] = config.Mqtt.Enabled;
-    mqtt["verbose_logging"] = config.Mqtt.VerboseLogging;
     mqtt["hostname"] = config.Mqtt.Hostname;
     mqtt["port"] = config.Mqtt.Port;
     mqtt["username"] = config.Mqtt.Username;
@@ -83,17 +87,18 @@ bool ConfigurationClass::write()
     mqtt_tls["client_cert"] = config.Mqtt.Tls.ClientCert;
     mqtt_tls["client_key"] = config.Mqtt.Tls.ClientKey;
 
+#ifdef USE_HASS
     JsonObject mqtt_hass = mqtt.createNestedObject("hass");
     mqtt_hass["enabled"] = config.Mqtt.Hass.Enabled;
     mqtt_hass["retain"] = config.Mqtt.Hass.Retain;
     mqtt_hass["topic"] = config.Mqtt.Hass.Topic;
     mqtt_hass["individual_panels"] = config.Mqtt.Hass.IndividualPanels;
     mqtt_hass["expire"] = config.Mqtt.Hass.Expire;
+#endif
 
     JsonObject dtu = doc.createNestedObject("dtu");
     dtu["serial"] = config.Dtu.Serial;
-    dtu["poll_interval"] = config.Dtu.PollInterval;
-    dtu["verbose_logging"] = config.Dtu.VerboseLogging;
+    dtu["pollinterval"] = config.Dtu.PollInterval;
     dtu["nrf_pa_level"] = config.Dtu.Nrf.PaLevel;
     dtu["cmt_pa_level"] = config.Dtu.Cmt.PaLevel;
     dtu["cmt_frequency"] = config.Dtu.Cmt.Frequency;
@@ -106,6 +111,7 @@ bool ConfigurationClass::write()
     JsonObject device = doc.createNestedObject("device");
     device["pinmapping"] = config.Dev_PinMapping;
 
+#ifdef USE_DISPLAY_GRAPHIC
     JsonObject display = device.createNestedObject("display");
     display["powersafe"] = config.Display.PowerSafe;
     display["screensaver"] = config.Display.ScreenSaver;
@@ -114,12 +120,15 @@ bool ConfigurationClass::write()
     display["language"] = config.Display.Language;
     display["diagram_duration"] = config.Display.Diagram.Duration;
     display["diagram_mode"] = config.Display.Diagram.Mode;
+#endif
 
+#ifdef USE_LED_SINGLE
     JsonArray leds = device.createNestedArray("led");
     for (uint8_t i = 0; i < PINMAPPING_LED_COUNT; i++) {
         JsonObject led = leds.createNestedObject();
         led["brightness"] = config.Led_Single[i].Brightness;
     }
+#endif
 
     JsonArray inverters = doc.createNestedArray("inverters");
     for (uint8_t i = 0; i < INV_MAX_COUNT; i++) {
@@ -127,10 +136,10 @@ bool ConfigurationClass::write()
         inv["serial"] = config.Inverter[i].Serial;
         inv["name"] = config.Inverter[i].Name;
         inv["order"] = config.Inverter[i].Order;
-        inv["poll_enable"] = config.Inverter[i].Poll_Enable;
         inv["poll_enable_night"] = config.Inverter[i].Poll_Enable_Night;
-        inv["command_enable"] = config.Inverter[i].Command_Enable;
+        inv["poll_enable_day"] = config.Inverter[i].Poll_Enable_Day;
         inv["command_enable_night"] = config.Inverter[i].Command_Enable_Night;
+        inv["command_enable_day"] = config.Inverter[i].Command_Enable_Day;
         inv["reachable_threshold"] = config.Inverter[i].ReachableThreshold;
         inv["zero_runtime"] = config.Inverter[i].ZeroRuntimeDataIfUnrechable;
         inv["zero_day"] = config.Inverter[i].ZeroYieldDayOnMidnight;
@@ -147,43 +156,50 @@ bool ConfigurationClass::write()
 
     JsonObject vedirect = doc.createNestedObject("vedirect");
     vedirect["enabled"] = config.Vedirect.Enabled;
-    vedirect["verbose_logging"] = config.Vedirect.VerboseLogging;
-    vedirect["updates_only"] = config.Vedirect.UpdatesOnly;
+    vedirect["updatesonly"] = config.Vedirect.UpdatesOnly;
+
+#ifdef USE_REFUsol_INVERTER
+    JsonObject refusol = doc.createNestedObject("refusol");
+    refusol["enabled"] = config.REFUsol.Enabled;
+    refusol["updatesonly"] = config.REFUsol.UpdatesOnly;
+    refusol["pollinterval"] = config.REFUsol.PollInterval;
+#endif
 
     JsonObject powermeter = doc.createNestedObject("powermeter");
     powermeter["enabled"] = config.PowerMeter.Enabled;
-    powermeter["verbose_logging"] = config.PowerMeter.VerboseLogging;
-    powermeter["interval"] = config.PowerMeter.Interval;
+    powermeter["pollinterval"] = config.PowerMeter.PollInterval;
+    powermeter["updatesonly"] = config.PowerMeter.UpdatesOnly;
     powermeter["source"] = config.PowerMeter.Source;
-    powermeter["mqtt_topic_powermeter_1"] = config.PowerMeter.MqttTopicPowerMeter1;
-    powermeter["mqtt_topic_powermeter_2"] = config.PowerMeter.MqttTopicPowerMeter2;
-    powermeter["mqtt_topic_powermeter_3"] = config.PowerMeter.MqttTopicPowerMeter3;
-    powermeter["sdmbaudrate"] = config.PowerMeter.SdmBaudrate;
-    powermeter["sdmaddress"] = config.PowerMeter.SdmAddress;
-    powermeter["http_individual_requests"] = config.PowerMeter.HttpIndividualRequests;
+    powermeter["mqtt_topic_powermeter_1"] = config.PowerMeter.Mqtt.TopicPowerMeter1;
+    powermeter["mqtt_topic_powermeter_2"] = config.PowerMeter.Mqtt.TopicPowerMeter2;
+    powermeter["mqtt_topic_powermeter_3"] = config.PowerMeter.Mqtt.TopicPowerMeter3;
+    powermeter["sdmbaudrate"] = config.PowerMeter.Sdm.Baudrate;
+    powermeter["sdmaddress"] = config.PowerMeter.Sdm.Address;
+    powermeter["http_individual_requests"] = config.PowerMeter.Http.IndividualRequests;
 
     JsonArray powermeter_http_phases = powermeter.createNestedArray("http_phases");
     for (uint8_t i = 0; i < POWERMETER_MAX_PHASES; i++) {
         JsonObject powermeter_phase = powermeter_http_phases.createNestedObject();
 
-        powermeter_phase["enabled"] = config.PowerMeter.Http_Phase[i].Enabled;
-        powermeter_phase["url"] = config.PowerMeter.Http_Phase[i].Url;
-        powermeter_phase["auth_type"] = config.PowerMeter.Http_Phase[i].AuthType;
-        powermeter_phase["username"] = config.PowerMeter.Http_Phase[i].Username;
-        powermeter_phase["password"] = config.PowerMeter.Http_Phase[i].Password;
-        powermeter_phase["header_key"] = config.PowerMeter.Http_Phase[i].HeaderKey;
-        powermeter_phase["header_value"] = config.PowerMeter.Http_Phase[i].HeaderValue;
-        powermeter_phase["timeout"] = config.PowerMeter.Http_Phase[i].Timeout;
-        powermeter_phase["json_path"] = config.PowerMeter.Http_Phase[i].JsonPath;
+        powermeter_phase["enabled"] = config.PowerMeter.Http.Phase[i].Enabled;
+        powermeter_phase["url"] = config.PowerMeter.Http.Phase[i].Url;
+        powermeter_phase["auth_type"] = config.PowerMeter.Http.Phase[i].AuthType;
+        powermeter_phase["username"] = config.PowerMeter.Http.Phase[i].Username;
+        powermeter_phase["password"] = config.PowerMeter.Http.Phase[i].Password;
+        powermeter_phase["header_key"] = config.PowerMeter.Http.Phase[i].HeaderKey;
+        powermeter_phase["header_value"] = config.PowerMeter.Http.Phase[i].HeaderValue;
+        powermeter_phase["timeout"] = config.PowerMeter.Http.Phase[i].Timeout;
+        powermeter_phase["json_path"] = config.PowerMeter.Http.Phase[i].JsonPath;
+        powermeter_phase["unit"] = config.PowerMeter.Http.Phase[i].Unit;
     }
 
     JsonObject powerlimiter = doc.createNestedObject("powerlimiter");
     powerlimiter["enabled"] = config.PowerLimiter.Enabled;
-    powerlimiter["verbose_logging"] = config.PowerLimiter.VerboseLogging;
-    powerlimiter["solar_passtrough_enabled"] = config.PowerLimiter.SolarPassThroughEnabled;
+    powerlimiter["updatesonly"] = config.PowerLimiter.UpdatesOnly;
+    powerlimiter["pollinterval"] = config.PowerLimiter.PollInterval;
+    powerlimiter["solar_passthrough_enabled"] = config.PowerLimiter.SolarPassThroughEnabled;
     powerlimiter["solar_passtrough_losses"] = config.PowerLimiter.SolarPassThroughLosses;
     powerlimiter["battery_drain_strategy"] = config.PowerLimiter.BatteryDrainStategy;
-    powerlimiter["interval"] = config.PowerLimiter.Interval;
     powerlimiter["is_inverter_behind_powermeter"] = config.PowerLimiter.IsInverterBehindPowerMeter;
     powerlimiter["inverter_id"] = config.PowerLimiter.InverterId;
     powerlimiter["inverter_channel_id"] = config.PowerLimiter.InverterChannelId;
@@ -203,20 +219,50 @@ bool ConfigurationClass::write()
 
     JsonObject battery = doc.createNestedObject("battery");
     battery["enabled"] = config.Battery.Enabled;
-    battery["verbose_logging"] = config.Battery.VerboseLogging;
+    battery["updatesonly"] = config.Battery.UpdatesOnly;
+    battery["pollinterval"] = config.Battery.PollInterval;
     battery["provider"] = config.Battery.Provider;
-    battery["jkbms_interface"] = config.Battery.JkBmsInterface;
-    battery["jkbms_polling_interval"] = config.Battery.JkBmsPollingInterval;
-    battery["mqtt_topic"] = config.Battery.MqttTopic;
+#ifdef USE_JKBMS_CONTROLLER
+    battery["jkbms_interface"] = config.Battery.JkBms.Interface;
+    battery["jkbms_polling_interval"] = config.Battery.JkBms.PollingInterval;
+#endif
+#ifdef USE_DALYBMS_CONTROLLER
+    battery["dalybms_polling_interval"] = config.Battery.DalyBms.PollingInterval;
+#else
+#endif
+    battery["min_charge_temp"] = config.Battery.MinChargeTemperature;
+    battery["max_charge_temp"] = config.Battery.MaxChargeTemperature;
+    battery["min_discharge_temp"] = config.Battery.MinDischargeTemperature;
+    battery["max_discharge_temp"] = config.Battery.MaxDischargeTemperature;
 
+#ifdef CHARGER_HUAWEI
     JsonObject huawei = doc.createNestedObject("huawei");
     huawei["enabled"] = config.Huawei.Enabled;
-    huawei["can_controller_frequency"] = config.Huawei.CAN_Controller_Frequency;
+    huawei["can_controller_frequency"] = config.MPC2515.Controller_Frequency;
     huawei["auto_power_enabled"] = config.Huawei.Auto_Power_Enabled;
     huawei["voltage_limit"] = config.Huawei.Auto_Power_Voltage_Limit;
     huawei["enable_voltage_limit"] = config.Huawei.Auto_Power_Enable_Voltage_Limit;
     huawei["lower_power_limit"] = config.Huawei.Auto_Power_Lower_Power_Limit;
     huawei["upper_power_limit"] = config.Huawei.Auto_Power_Upper_Power_Limit;
+#else
+    JsonObject meanwell = doc.createNestedObject("meanwell");
+    meanwell["enabled"] = config.MeanWell.Enabled;
+    meanwell["pollinterval"] = config.MeanWell.PollInterval;
+    meanwell["min_voltage"] = config.MeanWell.MinVoltage;
+    meanwell["max_voltage"] = config.MeanWell.MaxVoltage;
+    meanwell["min_current"] = config.MeanWell.MinCurrent;
+    meanwell["max_current"] = config.MeanWell.MaxCurrent;
+    meanwell["hysteresis"] = config.MeanWell.Hysteresis;
+#endif
+
+    JsonObject zeroExport = doc.createNestedObject("zeroExport");
+    zeroExport["enabled"] = config.ZeroExport.Enabled;
+    zeroExport["updatesonly"] = config.ZeroExport.UpdatesOnly;
+    zeroExport["InverterId"] = config.ZeroExport.InverterId;
+    zeroExport["PowerHysteresis"] = config.ZeroExport.PowerHysteresis;
+    zeroExport["MaxGrid"] = config.ZeroExport.MaxGrid;
+    zeroExport["MinimumLimit"] = config.ZeroExport.MinimumLimit;
+    zeroExport["Tn"] = config.ZeroExport.Tn;
 
     // Serialize JSON to file
     if (serializeJson(doc, f) == 0) {
@@ -294,6 +340,11 @@ bool ConfigurationClass::read()
     JsonObject mdns = doc["mdns"];
     config.Mdns.Enabled = mdns["enabled"] | MDNS_ENABLED;
 
+#ifdef USE_ModbusDTU
+    JsonObject modbus = doc["modbus"];
+    config.Modbus.Fronius_SM_Simulation_Enabled = modbus["enabled"] | FRONIUS_SM_SIMULATION_ENABLED;
+#endif
+
     JsonObject ntp = doc["ntp"];
     strlcpy(config.Ntp.Server, ntp["server"] | NTP_SERVER, sizeof(config.Ntp.Server));
     strlcpy(config.Ntp.Timezone, ntp["timezone"] | NTP_TIMEZONE, sizeof(config.Ntp.Timezone));
@@ -304,7 +355,6 @@ bool ConfigurationClass::read()
 
     JsonObject mqtt = doc["mqtt"];
     config.Mqtt.Enabled = mqtt["enabled"] | MQTT_ENABLED;
-    config.Mqtt.VerboseLogging = mqtt["verbose_logging"] | VERBOSE_LOGGING;
     strlcpy(config.Mqtt.Hostname, mqtt["hostname"] | MQTT_HOST, sizeof(config.Mqtt.Hostname));
     config.Mqtt.Port = mqtt["port"] | MQTT_PORT;
     strlcpy(config.Mqtt.Username, mqtt["username"] | MQTT_USER, sizeof(config.Mqtt.Username));
@@ -327,17 +377,18 @@ bool ConfigurationClass::read()
     strlcpy(config.Mqtt.Tls.ClientCert, mqtt_tls["client_cert"] | MQTT_TLSCLIENTCERT, sizeof(config.Mqtt.Tls.ClientCert));
     strlcpy(config.Mqtt.Tls.ClientKey, mqtt_tls["client_key"] | MQTT_TLSCLIENTKEY, sizeof(config.Mqtt.Tls.ClientKey));
 
+#ifdef USE_HASS
     JsonObject mqtt_hass = mqtt["hass"];
     config.Mqtt.Hass.Enabled = mqtt_hass["enabled"] | MQTT_HASS_ENABLED;
     config.Mqtt.Hass.Retain = mqtt_hass["retain"] | MQTT_HASS_RETAIN;
     config.Mqtt.Hass.Expire = mqtt_hass["expire"] | MQTT_HASS_EXPIRE;
     config.Mqtt.Hass.IndividualPanels = mqtt_hass["individual_panels"] | MQTT_HASS_INDIVIDUALPANELS;
     strlcpy(config.Mqtt.Hass.Topic, mqtt_hass["topic"] | MQTT_HASS_TOPIC, sizeof(config.Mqtt.Hass.Topic));
+#endif
 
     JsonObject dtu = doc["dtu"];
     config.Dtu.Serial = dtu["serial"] | DTU_SERIAL;
-    config.Dtu.PollInterval = dtu["poll_interval"] | DTU_POLL_INTERVAL;
-    config.Dtu.VerboseLogging = dtu["verbose_logging"] | VERBOSE_LOGGING;
+    config.Dtu.PollInterval = dtu["pollinterval"] | DTU_POLLINTERVAL;
     config.Dtu.Nrf.PaLevel = dtu["nrf_pa_level"] | DTU_NRF_PA_LEVEL;
     config.Dtu.Cmt.PaLevel = dtu["cmt_pa_level"] | DTU_CMT_PA_LEVEL;
     config.Dtu.Cmt.Frequency = dtu["cmt_frequency"] | DTU_CMT_FREQUENCY;
@@ -350,6 +401,7 @@ bool ConfigurationClass::read()
     JsonObject device = doc["device"];
     strlcpy(config.Dev_PinMapping, device["pinmapping"] | DEV_PINMAPPING, sizeof(config.Dev_PinMapping));
 
+#ifdef USE_DISPLAY_GRAPHIC
     JsonObject display = device["display"];
     config.Display.PowerSafe = display["powersafe"] | DISPLAY_POWERSAFE;
     config.Display.ScreenSaver = display["screensaver"] | DISPLAY_SCREENSAVER;
@@ -358,12 +410,15 @@ bool ConfigurationClass::read()
     config.Display.Language = display["language"] | DISPLAY_LANGUAGE;
     config.Display.Diagram.Duration = display["diagram_duration"] | DISPLAY_DIAGRAM_DURATION;
     config.Display.Diagram.Mode = display["diagram_mode"] | DISPLAY_DIAGRAM_MODE;
+#endif
 
+#ifdef USE_LED_SINGLE
     JsonArray leds = device["led"];
     for (uint8_t i = 0; i < PINMAPPING_LED_COUNT; i++) {
         JsonObject led = leds[i].as<JsonObject>();
         config.Led_Single[i].Brightness = led["brightness"] | LED_BRIGHTNESS;
     }
+#endif
 
     JsonArray inverters = doc["inverters"];
     for (uint8_t i = 0; i < INV_MAX_COUNT; i++) {
@@ -372,10 +427,10 @@ bool ConfigurationClass::read()
         strlcpy(config.Inverter[i].Name, inv["name"] | "", sizeof(config.Inverter[i].Name));
         config.Inverter[i].Order = inv["order"] | 0;
 
-        config.Inverter[i].Poll_Enable = inv["poll_enable"] | true;
         config.Inverter[i].Poll_Enable_Night = inv["poll_enable_night"] | true;
-        config.Inverter[i].Command_Enable = inv["command_enable"] | true;
+        config.Inverter[i].Poll_Enable_Day = inv["poll_enable_day"] | true;
         config.Inverter[i].Command_Enable_Night = inv["command_enable_night"] | true;
+        config.Inverter[i].Command_Enable_Day = inv["command_enable_day"] | true;
         config.Inverter[i].ReachableThreshold = inv["reachable_threshold"] | REACHABLE_THRESHOLD;
         config.Inverter[i].ZeroRuntimeDataIfUnrechable = inv["zero_runtime"] | false;
         config.Inverter[i].ZeroYieldDayOnMidnight = inv["zero_day"] | false;
@@ -391,43 +446,50 @@ bool ConfigurationClass::read()
 
     JsonObject vedirect = doc["vedirect"];
     config.Vedirect.Enabled = vedirect["enabled"] | VEDIRECT_ENABLED;
-    config.Vedirect.VerboseLogging = vedirect["verbose_logging"] | VEDIRECT_VERBOSE_LOGGING;
-    config.Vedirect.UpdatesOnly = vedirect["updates_only"] | VEDIRECT_UPDATESONLY;
+    config.Vedirect.UpdatesOnly = vedirect["updatesonly"] | VEDIRECT_UPDATESONLY;
+
+#ifdef USE_REFUsol_INVERTER
+    JsonObject refusol = doc["refusol"];
+    config.REFUsol.Enabled = refusol["enabled"] | REFUsol_ENABLED;
+    config.REFUsol.UpdatesOnly = refusol["updatesonly"] | REFUsol_UPDATESONLY;
+    config.REFUsol.PollInterval = refusol["pollinterval"] | REFUsol_POLLINTERVAL;
+#endif
 
     JsonObject powermeter = doc["powermeter"];
     config.PowerMeter.Enabled = powermeter["enabled"] | POWERMETER_ENABLED;
-    config.PowerMeter.VerboseLogging = powermeter["verbose_logging"] | VERBOSE_LOGGING;
-    config.PowerMeter.Interval =  powermeter["interval"] | POWERMETER_INTERVAL;
-    config.PowerMeter.Source =  powermeter["source"] | POWERMETER_SOURCE;
-    strlcpy(config.PowerMeter.MqttTopicPowerMeter1, powermeter["mqtt_topic_powermeter_1"] | "", sizeof(config.PowerMeter.MqttTopicPowerMeter1));
-    strlcpy(config.PowerMeter.MqttTopicPowerMeter2, powermeter["mqtt_topic_powermeter_2"] | "", sizeof(config.PowerMeter.MqttTopicPowerMeter2));
-    strlcpy(config.PowerMeter.MqttTopicPowerMeter3, powermeter["mqtt_topic_powermeter_3"] | "", sizeof(config.PowerMeter.MqttTopicPowerMeter3));
-    config.PowerMeter.SdmBaudrate =  powermeter["sdmbaudrate"] | POWERMETER_SDMBAUDRATE;
-    config.PowerMeter.SdmAddress =  powermeter["sdmaddress"] | POWERMETER_SDMADDRESS;
-    config.PowerMeter.HttpIndividualRequests = powermeter["http_individual_requests"] | false;
+    config.PowerMeter.PollInterval = powermeter["pollinterval"] | POWERMETER_POLLINTERVAL;
+    config.PowerMeter.UpdatesOnly = powermeter["updatesonly"] | POWERMETER_UPDATESONLY;
+    config.PowerMeter.Source = powermeter["source"] | POWERMETER_SOURCE;
+    strlcpy(config.PowerMeter.Mqtt.TopicPowerMeter1, powermeter["mqtt_topic_powermeter_1"] | "", sizeof(config.PowerMeter.Mqtt.TopicPowerMeter1));
+    strlcpy(config.PowerMeter.Mqtt.TopicPowerMeter2, powermeter["mqtt_topic_powermeter_2"] | "", sizeof(config.PowerMeter.Mqtt.TopicPowerMeter2));
+    strlcpy(config.PowerMeter.Mqtt.TopicPowerMeter3, powermeter["mqtt_topic_powermeter_3"] | "", sizeof(config.PowerMeter.Mqtt.TopicPowerMeter3));
+    config.PowerMeter.Sdm.Baudrate = powermeter["sdmbaudrate"] | POWERMETER_SDMBAUDRATE;
+    config.PowerMeter.Sdm.Address = powermeter["sdmaddress"] | POWERMETER_SDMADDRESS;
+    config.PowerMeter.Http.IndividualRequests = powermeter["http_individual_requests"] | false;
 
     JsonArray powermeter_http_phases = powermeter["http_phases"];
     for (uint8_t i = 0; i < POWERMETER_MAX_PHASES; i++) {
         JsonObject powermeter_phase = powermeter_http_phases[i].as<JsonObject>();
 
-        config.PowerMeter.Http_Phase[i].Enabled = powermeter_phase["enabled"] | (i == 0);
-        strlcpy(config.PowerMeter.Http_Phase[i].Url, powermeter_phase["url"] | "", sizeof(config.PowerMeter.Http_Phase[i].Url));
-        config.PowerMeter.Http_Phase[i].AuthType = powermeter_phase["auth_type"] | Auth::none;
-        strlcpy(config.PowerMeter.Http_Phase[i].Username, powermeter_phase["username"] | "", sizeof(config.PowerMeter.Http_Phase[i].Username));
-        strlcpy(config.PowerMeter.Http_Phase[i].Password, powermeter_phase["password"] | "", sizeof(config.PowerMeter.Http_Phase[i].Password));
-        strlcpy(config.PowerMeter.Http_Phase[i].HeaderKey, powermeter_phase["header_key"] | "", sizeof(config.PowerMeter.Http_Phase[i].HeaderKey));
-        strlcpy(config.PowerMeter.Http_Phase[i].HeaderValue, powermeter_phase["header_value"] | "", sizeof(config.PowerMeter.Http_Phase[i].HeaderValue));
-        config.PowerMeter.Http_Phase[i].Timeout = powermeter_phase["timeout"] | POWERMETER_HTTP_TIMEOUT;
-        strlcpy(config.PowerMeter.Http_Phase[i].JsonPath, powermeter_phase["json_path"] | "", sizeof(config.PowerMeter.Http_Phase[i].JsonPath));
+        config.PowerMeter.Http.Phase[i].Enabled = powermeter_phase["enabled"] | (i == 0);
+        strlcpy(config.PowerMeter.Http.Phase[i].Url, powermeter_phase["url"] | "", sizeof(config.PowerMeter.Http.Phase[i].Url));
+        config.PowerMeter.Http.Phase[i].AuthType = powermeter_phase["auth_type"] | Auth::none;
+        strlcpy(config.PowerMeter.Http.Phase[i].Username, powermeter_phase["username"] | "", sizeof(config.PowerMeter.Http.Phase[i].Username));
+        strlcpy(config.PowerMeter.Http.Phase[i].Password, powermeter_phase["password"] | "", sizeof(config.PowerMeter.Http.Phase[i].Password));
+        strlcpy(config.PowerMeter.Http.Phase[i].HeaderKey, powermeter_phase["header_key"] | "", sizeof(config.PowerMeter.Http.Phase[i].HeaderKey));
+        strlcpy(config.PowerMeter.Http.Phase[i].HeaderValue, powermeter_phase["header_value"] | "", sizeof(config.PowerMeter.Http.Phase[i].HeaderValue));
+        config.PowerMeter.Http.Phase[i].Timeout = powermeter_phase["timeout"] | POWERMETER_HTTP_TIMEOUT;
+        strlcpy(config.PowerMeter.Http.Phase[i].JsonPath, powermeter_phase["json_path"] | "", sizeof(config.PowerMeter.Http.Phase[i].JsonPath));
+        config.PowerMeter.Http.Phase[i].Unit = powermeter_phase["unit"] | PowerMeterUnits::W;
     }
 
     JsonObject powerlimiter = doc["powerlimiter"];
     config.PowerLimiter.Enabled = powerlimiter["enabled"] | POWERLIMITER_ENABLED;
-    config.PowerLimiter.VerboseLogging = powerlimiter["verbose_logging"] | VERBOSE_LOGGING;
-    config.PowerLimiter.SolarPassThroughEnabled = powerlimiter["solar_passtrough_enabled"] | POWERLIMITER_SOLAR_PASSTHROUGH_ENABLED;
+    config.PowerLimiter.SolarPassThroughEnabled = powerlimiter["solar_passthrough_enabled"] | POWERLIMITER_SOLAR_PASSTHROUGH_ENABLED;
     config.PowerLimiter.SolarPassThroughLosses = powerlimiter["solar_passthrough_losses"] | POWERLIMITER_SOLAR_PASSTHROUGH_LOSSES;
     config.PowerLimiter.BatteryDrainStategy = powerlimiter["battery_drain_strategy"] | POWERLIMITER_BATTERY_DRAIN_STRATEGY;
-    config.PowerLimiter.Interval =  powerlimiter["interval"] | POWERLIMITER_INTERVAL;
+    config.PowerLimiter.PollInterval = powerlimiter["pollinterval"] | POWERLIMITER_POLLINTERVAL;
+    config.PowerLimiter.UpdatesOnly = powerlimiter["updatesonly"] | POWERLIMITER_UPDATESONLY;
     config.PowerLimiter.IsInverterBehindPowerMeter = powerlimiter["is_inverter_behind_powermeter"] | POWERLIMITER_IS_INVERTER_BEHIND_POWER_METER;
     config.PowerLimiter.InverterId = powerlimiter["inverter_id"] | POWERLIMITER_INVERTER_ID;
     config.PowerLimiter.InverterChannelId = powerlimiter["inverter_channel_id"] | POWERLIMITER_INVERTER_CHANNEL_ID;
@@ -447,20 +509,47 @@ bool ConfigurationClass::read()
 
     JsonObject battery = doc["battery"];
     config.Battery.Enabled = battery["enabled"] | BATTERY_ENABLED;
-    config.Battery.VerboseLogging = battery["verbose_logging"] | VERBOSE_LOGGING;
+    config.Battery.UpdatesOnly = battery["updatesonly"] | BATTERY_UPDATESONLY;
+    config.Battery.PollInterval = battery["pollinterval"] | BATTERY_POLLINTERVAL;
     config.Battery.Provider = battery["provider"] | BATTERY_PROVIDER;
-    config.Battery.JkBmsInterface = battery["jkbms_interface"] | BATTERY_JKBMS_INTERFACE;
-    config.Battery.JkBmsPollingInterval = battery["jkbms_polling_interval"] | BATTERY_JKBMS_POLLING_INTERVAL;
-    strlcpy(config.Battery.MqttTopic, battery["mqtt_topic"] | "", sizeof(config.Battery.MqttTopic));
+#ifdef USE_JKBMS_CONTROLLER
+    config.Battery.JkBms.Interface = battery["jkbms_interface"] | BATTERY_JKBMS_INTERFACE;
+    config.Battery.JkBms.PollingInterval = battery["jkbms_polling_interval"] | BATTERY_JKBMS_POLLING_INTERVAL;
+#endif
+    config.Battery.MinChargeTemperature = battery["min_charge_temp"] | BATTERY_MIN_CHARGE_TEMPERATURE;
+    config.Battery.MaxChargeTemperature = battery["max_charge_temp"] | BATTERY_MAX_CHARGE_TEMPERATURE;
+    config.Battery.MinDischargeTemperature = battery["min_discharge_temp"] | BATTERY_MIN_DISCHARGE_TEMPERATURE;
+    config.Battery.MaxDischargeTemperature = battery["max_discharge_temp"] | BATTERY_MAX_DISCHARGE_TEMPERATURE;
 
+#ifdef CHARGER_HUAWEI
     JsonObject huawei = doc["huawei"];
     config.Huawei.Enabled = huawei["enabled"] | HUAWEI_ENABLED;
-    config.Huawei.CAN_Controller_Frequency = huawei["can_controller_frequency"] | HUAWEI_CAN_CONTROLLER_FREQUENCY;
+    config.MPC2515.Controller_Frequency = huawei["can_controller_frequency"] | MCP2515_CAN_CONTROLLER_FREQUENCY;
     config.Huawei.Auto_Power_Enabled = huawei["auto_power_enabled"] | false;
     config.Huawei.Auto_Power_Voltage_Limit = huawei["voltage_limit"] | HUAWEI_AUTO_POWER_VOLTAGE_LIMIT;
-    config.Huawei.Auto_Power_Enable_Voltage_Limit =  huawei["enable_voltage_limit"] | HUAWEI_AUTO_POWER_ENABLE_VOLTAGE_LIMIT;
+    config.Huawei.Auto_Power_Enable_Voltage_Limit = huawei["enable_voltage_limit"] | HUAWEI_AUTO_POWER_ENABLE_VOLTAGE_LIMIT;
     config.Huawei.Auto_Power_Lower_Power_Limit = huawei["lower_power_limit"] | HUAWEI_AUTO_POWER_LOWER_POWER_LIMIT;
     config.Huawei.Auto_Power_Upper_Power_Limit = huawei["upper_power_limit"] | HUAWEI_AUTO_POWER_UPPER_POWER_LIMIT;
+#else
+    JsonObject meanwell = doc["meanwell"];
+    config.MeanWell.Enabled = meanwell["enabled"] | MEANWELL_ENABLED;
+    config.MeanWell.UpdatesOnly = meanwell["updatesonly"] | MEANWELL_UPDATESONLY;
+    config.MeanWell.PollInterval = meanwell["pollinterval"] | MEANWELL_POLLINTERVAL;
+    config.MeanWell.MinVoltage = meanwell["min_voltage"] | MEANWELL_MINVOLTAGE;
+    config.MeanWell.MaxVoltage = meanwell["max_voltage"] | MEANWELL_MAXVOLTAGE;
+    config.MeanWell.MinCurrent = meanwell["min_current"] | MEANWELL_MINCURRENT;
+    config.MeanWell.MaxCurrent = meanwell["max_current"] | MEANWELL_MAXCURRENT;
+    config.MeanWell.Hysteresis = meanwell["hystersis"] | MEANWELL_HYSTERESIS;
+#endif
+
+    JsonObject zeroExport = doc["zeroExport"];
+    config.ZeroExport.Enabled = zeroExport["enabled"] | ZERO_EXPORT_ENABLED;
+    config.ZeroExport.UpdatesOnly = zeroExport["updatesonly"] | ZERO_EXPORT_UPDATESONLY;
+    config.ZeroExport.InverterId = zeroExport["InverterId"] | ZERO_EXPORT_INVERTER_ID;
+    config.ZeroExport.PowerHysteresis = zeroExport["PowerHysteresis"] | ZERO_EXPORT_POWER_HYSTERESIS;
+    config.ZeroExport.MaxGrid = zeroExport["MaxGrid"] | ZERO_EXPORT_MAX_GRID;
+    config.ZeroExport.MinimumLimit = zeroExport["MinimumLimit"] | ZERO_EXPORT_MINIMUM_LIMIT;
+    config.ZeroExport.Tn = zeroExport["Tn"] | ZERO_EXPORT_TN;
 
     f.close();
     return true;
@@ -486,28 +575,29 @@ void ConfigurationClass::migrate()
         MessageOutput.printf("Failed to read file, cancel migration: %s\r\n", error.c_str());
         return;
     }
-
-    if (config.Cfg.Version < 0x00011700) {
-        JsonArray inverters = doc["inverters"];
-        for (uint8_t i = 0; i < INV_MAX_COUNT; i++) {
-            JsonObject inv = inverters[i].as<JsonObject>();
-            JsonArray channels = inv["channels"];
-            for (uint8_t c = 0; c < INV_MAX_CHAN_COUNT; c++) {
-                config.Inverter[i].channel[c].MaxChannelPower = channels[c];
-                strlcpy(config.Inverter[i].channel[c].Name, "", sizeof(config.Inverter[i].channel[c].Name));
+    /*
+        if (config.Cfg.Version < 0x00011700) {
+            JsonArray inverters = doc["inverters"];
+            for (uint8_t i = 0; i < INV_MAX_COUNT; i++) {
+                JsonObject inv = inverters[i].as<JsonObject>();
+                JsonArray channels = inv["channels"];
+                for (uint8_t c = 0; c < INV_MAX_CHAN_COUNT; c++) {
+                    config.Inverter[i].channel[c].MaxChannelPower = channels[c];
+                    strlcpy(config.Inverter[i].channel[c].Name, "", sizeof(config.Inverter[i].channel[c].Name));
+                }
             }
         }
-    }
 
-    if (config.Cfg.Version < 0x00011800) {
-        JsonObject mqtt = doc["mqtt"];
-        config.Mqtt.PublishInterval = mqtt["publish_invterval"];
-    }
+        if (config.Cfg.Version < 0x00011800) {
+            JsonObject mqtt = doc["mqtt"];
+            config.Mqtt.PublishInterval = mqtt["publish_invterval"];
+        }
 
-    if (config.Cfg.Version < 0x00011900) {
-        JsonObject dtu = doc["dtu"];
-        config.Dtu.Nrf.PaLevel = dtu["pa_level"];
-    }
+        if  (config.Cfg.Version < 0x00011900) {
+            JsonObject dtu = doc["dtu"];
+            config.Dtu.Nrf.PaLevel = dtu["pa_level"];
+        }
+    */
 
     if (config.Cfg.Version < 0x00011a00) {
         // This migration fixes this issue: https://github.com/espressif/arduino-esp32/issues/8828
@@ -517,12 +607,12 @@ void ConfigurationClass::migrate()
         nvs_flash_init();
     }
 
+    f.close();
+
     if (config.Cfg.Version < 0x00011b00) {
         // Convert from kHz to Hz
         config.Dtu.Cmt.Frequency *= 1000;
     }
-
-    f.close();
 
     config.Cfg.Version = CONFIG_VERSION;
     write();
@@ -542,10 +632,10 @@ INVERTER_CONFIG_T* ConfigurationClass::getFreeInverterSlot()
         }
     }
 
-    return nullptr;
+    return NULL;
 }
 
-INVERTER_CONFIG_T* ConfigurationClass::getInverterConfig(const uint64_t serial)
+INVERTER_CONFIG_T* ConfigurationClass::getInverterConfig(uint64_t serial)
 {
     for (uint8_t i = 0; i < INV_MAX_COUNT; i++) {
         if (config.Inverter[i].Serial == serial) {
@@ -553,7 +643,7 @@ INVERTER_CONFIG_T* ConfigurationClass::getInverterConfig(const uint64_t serial)
         }
     }
 
-    return nullptr;
+    return NULL;
 }
 
 ConfigurationClass Configuration;
