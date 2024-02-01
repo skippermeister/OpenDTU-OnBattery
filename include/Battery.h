@@ -27,7 +27,7 @@ public:
 
     std::shared_ptr<BatteryStats const> getStats() const;
 
-    bool _verbose_logging = false;
+    bool _verboseLogging = false;
 
 private:
     void loop();
