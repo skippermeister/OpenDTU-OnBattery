@@ -1,5 +1,8 @@
+#ifdef USE_JKBMS_CONTROLLER
+
 #pragma once
 
+#include <TimeoutHelper.h>
 #include <memory>
 #include <vector>
 #include <frozen/string.h>
@@ -64,7 +67,7 @@ class Controller : public BatteryProvider {
         int8_t _rxEnablePin = -1;
         int8_t _txEnablePin = -1;
         Status _lastStatus = Status::Initializing;
-        uint32_t _lastStatusPrinted = 0;
+        TimeoutHelper _lastStatusPrinted;
         uint32_t _lastRequest = 0;
         uint16_t _frameLength = 0;
         uint8_t _protocolVersion = -1;
@@ -74,3 +77,5 @@ class Controller : public BatteryProvider {
 };
 
 } /* namespace JkBms */
+
+#endif
