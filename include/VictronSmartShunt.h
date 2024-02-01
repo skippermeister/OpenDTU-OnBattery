@@ -5,13 +5,12 @@
 
 class VictronSmartShunt : public BatteryProvider {
 public:
-    bool init(bool verboseLogging) final;
+    bool init() final;
     void deinit() final { }
     void loop() final;
     std::shared_ptr<BatteryStats> getStats() const final { return _stats; }
 
 private:
     uint32_t _lastUpdate = 0;
-    std::shared_ptr<VictronSmartShuntStats> _stats =
-        std::make_shared<VictronSmartShuntStats>();
+    std::shared_ptr<VictronSmartShuntStats> _stats = std::make_shared<VictronSmartShuntStats>();
 };
