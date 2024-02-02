@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
+#ifdef CHARGER_HUAWEI
+
 #pragma once
 
 #include <ESPAsyncWebServer.h>
@@ -17,3 +19,5 @@ private:
     
     AsyncWebServer* _server;
 };
+
+#endif
