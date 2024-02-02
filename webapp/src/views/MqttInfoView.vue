@@ -7,66 +7,66 @@
                         <tr>
                             <th>{{ $t('mqttinfo.Status') }}</th>
                             <td>
-                                <StatusBadge :status="mqttDataList.mqtt_enabled" true_text="mqttinfo.Enabled" false_text="mqttinfo.Disabled" />
-                            </td>
-                        </tr>
-                        <tr>
-                            <th>{{ $t('mqttinfo.VerboseLogging') }}</th>
-                            <td>
-                                <StatusBadge :status="mqttDataList.mqtt_verbose_logging" true_text="mqttinfo.Enabled" false_text="mqttinfo.Disabled" />
+                                <StatusBadge :status="mqttDataList.enabled" true_text="mqttinfo.Enabled" false_text="mqttinfo.Disabled" />
                             </td>
                         </tr>
                         <tr>
                             <th>{{ $t('mqttinfo.Server') }}</th>
-                            <td>{{ mqttDataList.mqtt_hostname }}</td>
+                            <td>{{ mqttDataList.hostname }}</td>
                         </tr>
                         <tr>
                             <th>{{ $t('mqttinfo.Port') }}</th>
-                            <td>{{ mqttDataList.mqtt_port }}</td>
+                            <td>{{ mqttDataList.port }}</td>
                         </tr>
                         <tr>
                             <th>{{ $t('mqttinfo.Username') }}</th>
-                            <td>{{ mqttDataList.mqtt_username }}</td>
+                            <td>{{ mqttDataList.username }}</td>
                         </tr>
                         <tr>
                             <th>{{ $t('mqttinfo.BaseTopic') }}</th>
-                            <td>{{ mqttDataList.mqtt_topic }}</td>
+                            <td>{{ mqttDataList.topic }}</td>
                         </tr>
                         <tr>
                             <th>{{ $t('mqttinfo.PublishInterval') }}</th>
-                            <td>{{ $t('mqttinfo.Seconds', { sec: mqttDataList.mqtt_publish_interval }) }}</td>
+                            <td>{{ $t('mqttinfo.Seconds', { sec: mqttDataList.publish_interval }) }}</td>
                         </tr>
                         <tr>
                             <th>{{ $t('mqttinfo.CleanSession') }}</th>
                             <td>
-                                <StatusBadge :status="mqttDataList.mqtt_clean_session" true_text="mqttinfo.Enabled" false_text="mqttinfo.Disabled" />
+                                <StatusBadge :status="mqttDataList.clean_session" true_text="mqttinfo.Enabled" false_text="mqttinfo.Disabled" />
                             </td>
                         </tr>
                         <tr>
                             <th>{{ $t('mqttinfo.Retain') }}</th>
                             <td>
-                                <StatusBadge :status="mqttDataList.mqtt_retain" true_text="mqttinfo.Enabled" false_text="mqttinfo.Disabled" />
+                                <StatusBadge :status="mqttDataList.retain" true_text="mqttinfo.Enabled" false_text="mqttinfo.Disabled" />
                             </td>
                         </tr>
                         <tr>
                             <th>{{ $t('mqttinfo.Tls') }}</th>
                             <td>
-                                <StatusBadge :status="mqttDataList.mqtt_tls" true_text="mqttinfo.Enabled" false_text="mqttinfo.Disabled" />
+                                <StatusBadge :status="mqttDataList.tls" true_text="mqttinfo.Enabled" false_text="mqttinfo.Disabled" />
                             </td>
                         </tr>
-                        <tr v-show="mqttDataList.mqtt_tls">
+                        <tr v-show="mqttDataList.tls">
                             <th>{{ $t('mqttinfo.RootCertifcateInfo') }}</th>
-                            <td>{{ mqttDataList.mqtt_root_ca_cert_info }}</td>
+                            <td>{{ mqttDataList.root_ca_cert_info }}</td>
                         </tr>
                         <tr>
                             <th>{{ $t('mqttinfo.TlsCertLogin') }}</th>
                             <td>
-                                <StatusBadge :status="mqttDataList.mqtt_tls_cert_login" true_text="mqttinfo.Enabled" false_text="mqttinfo.Disabled" />
+                                <StatusBadge :status="mqttDataList.tls_cert_login" true_text="mqttinfo.Enabled" false_text="mqttinfo.Disabled" />
                             </td>
                         </tr>
-                        <tr v-show="mqttDataList.mqtt_tls_cert_login">
+                        <tr v-show="mqttDataList.tls_cert_login">
                             <th>{{ $t('mqttinfo.ClientCertifcateInfo') }}</th>
-                            <td>{{ mqttDataList.mqtt_client_cert_info }}</td>
+                            <td>{{ mqttDataList.client_cert_info }}</td>
+                        </tr>
+                        <tr>
+                            <th>{{ $t('mqttinfo.VerboseLogging') }}</th>
+                            <td>
+                                <StatusBadge :status="mqttDataList.verbose_logging" true_text="mqttinfo.Enabled" false_text="mqttinfo.Disabled" />
+                            </td>
                         </tr>
                     </tbody>
                 </table>
@@ -80,29 +80,29 @@
                         <tr>
                             <th>{{ $t('mqttinfo.Status') }}</th>
                             <td>
-                                <StatusBadge :status="mqttDataList.mqtt_hass_enabled" true_text="mqttinfo.Enabled" false_text="mqttinfo.Disabled" />
+                                <StatusBadge :status="mqttDataList.hass_enabled" true_text="mqttinfo.Enabled" false_text="mqttinfo.Disabled" />
                             </td>
                         </tr>
                         <tr>
                             <th>{{ $t('mqttinfo.BaseTopic') }}</th>
-                            <td>{{ mqttDataList.mqtt_hass_topic }}</td>
+                            <td>{{ mqttDataList.hass_topic }}</td>
                         </tr>
                         <tr>
                             <th>{{ $t('mqttinfo.Retain') }}</th>
                             <td>
-                                <StatusBadge :status="mqttDataList.mqtt_hass_retain" true_text="mqttinfo.Enabled" false_text="mqttinfo.Disabled" />
+                                <StatusBadge :status="mqttDataList.hass_retain" true_text="mqttinfo.Enabled" false_text="mqttinfo.Disabled" />
                             </td>
                         </tr>
                         <tr>
                             <th>{{ $t('mqttinfo.Expire') }}</th>
                             <td>
-                                <StatusBadge :status="mqttDataList.mqtt_hass_expire" true_text="mqttinfo.Enabled" false_text="mqttinfo.Disabled" />
+                                <StatusBadge :status="mqttDataList.hass_expire" true_text="mqttinfo.Enabled" false_text="mqttinfo.Disabled" />
                             </td>
                         </tr>
                         <tr>
                             <th>{{ $t('mqttinfo.IndividualPanels') }}</th>
                             <td>
-                                <StatusBadge :status="mqttDataList.mqtt_hass_individualpanels" true_text="mqttinfo.Enabled" false_text="mqttinfo.Disabled" />
+                                <StatusBadge :status="mqttDataList.hass_individualpanels" true_text="mqttinfo.Enabled" false_text="mqttinfo.Disabled" />
                             </td>
                         </tr>
                     </tbody>
@@ -117,7 +117,7 @@
                         <tr>
                             <th>{{ $t('mqttinfo.ConnectionStatus') }}</th>
                             <td>
-                                <StatusBadge :status="mqttDataList.mqtt_connected" true_text="mqttinfo.Connected" false_text="mqttinfo.Disconnected" />
+                                <StatusBadge :status="mqttDataList.connected" true_text="mqttinfo.Connected" false_text="mqttinfo.Disconnected" />
                             </td>
                         </tr>
                     </tbody>
