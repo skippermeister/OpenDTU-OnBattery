@@ -1,7 +1,8 @@
 <template>
     <BasePage :title="$t('home.LiveData')" :isLoading="dataLoading" :isWideScreen="true" :showWebSocket="true" :isWebsocketConnected="isWebsocketConnected" @reload="reloadData">
         <HintView :hints="liveData.hints" />
-        <InverterTotalInfo :totalData="liveData.total" :totalVeData="liveData.vedirect" :totalBattData="liveData.battery" :powerMeterData="liveData.power_meter" :huaweiData="liveData.huawei"/><br />
+        <InverterTotalInfo :totalData="liveData.total" :totalREFUsolData="liveData.refusol" :totalVeData="liveData.vedirect" :totalBattData="liveData.battery" :powerMeterData="liveData.power_meter" :meanwellData="liveData.meanwell"/><br />
+        <HoursChartElement :data="liveData.total.Hours" /><br />
         <div class="row gy-3">
             <div class="col-sm-3 col-md-2" :style="[inverterData.length == 1 ? { 'display': 'none' } : {}]">
                 <div class="nav nav-pills row-cols-sm-1" id="v-pills-tab" role="tablist" aria-orientation="vertical">
@@ -122,9 +123,10 @@
                 </div>
             </div>
         </div>
+        <REFUsolView v-if="liveData.refusol.enabled" />
         <VedirectView v-if="liveData.vedirect.enabled" />
         <BatteryView v-if="liveData.battery.enabled" />
-        <HuaweiView v-if="liveData.huawei.enabled" />
+        <MeanWellView v-if="liveData.meanwell.enabled" />
     </BasePage>
 
     <ModalDialog modalId="eventView" :title="$t('home.EventLog')" :loading="eventLogLoading">
@@ -255,8 +257,9 @@ import HintView from '@/components/HintView.vue';
 import InverterChannelInfo from "@/components/InverterChannelInfo.vue";
 import InverterTotalInfo from '@/components/InverterTotalInfo.vue';
 import ModalDialog from '@/components/ModalDialog.vue';
+import REFUsolView from '@/components/REFUsolView.vue';
 import VedirectView from '@/components/VedirectView.vue';
-import HuaweiView from '@/components/HuaweiView.vue'
+import MeanWellView from '@/components/MeanWellView.vue'
 import BatteryView from '@/components/BatteryView.vue'
 import type { DevInfoStatus } from '@/types/DevInfoStatus';
 import type { EventlogItems } from '@/types/EventlogStatus';
@@ -278,12 +281,22 @@ import {
     BIconSpeedometer,
     BIconToggleOff,
     BIconToggleOn,
-    BIconXCircleFill
+    BIconXCircleFill,
+    BIconArrowDownCircleFill,
+    BIconArrowUpCircleFill,
+    BIconCaretDownSquareFill,
+    BIconCaretUpSquareFill,
+    BIconSunFill,
+    BIconSunriseFill,
+    BIconSunsetFill,
+    BIconMoonFill
 } from 'bootstrap-icons-vue';
 import { defineComponent } from 'vue';
+import HoursChartElement from "@/components/HoursChartElement.vue";
 
 export default defineComponent({
     components: {
+        HoursChartElement,
         BasePage,
         BootstrapAlert,
         DevInfo,
@@ -304,8 +317,17 @@ export default defineComponent({
         BIconToggleOff,
         BIconToggleOn,
         BIconXCircleFill,
+        BIconArrowDownCircleFill,
+        BIconArrowUpCircleFill,
+        BIconCaretDownSquareFill,
+        BIconCaretUpSquareFill,
+        BIconSunFill,
+        BIconSunriseFill,
+        BIconSunsetFill,
+        BIconMoonFill,
+        REFUsolView,
         VedirectView,
-        HuaweiView,
+        MeanWellView,
         BatteryView
     },
     data() {
