@@ -7,6 +7,7 @@
 #include "MessageOutput.h"
 #include "JkBmsDataPoints.h"
 #include "JkBmsController.h"
+#include <driver/uart.h>
 #include <frozen/map.h>
 
 //#define JKBMS_DUMMY_SERIAL
