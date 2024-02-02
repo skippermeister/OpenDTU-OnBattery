@@ -97,10 +97,6 @@ void MqttHandleVedirectHassClass::publishSensor(const char* caption, const char*
     sensorId.replace(")", "");
     sensorId.toLowerCase();
 
-    String configTopic = "sensor/dtu_victron_" + serial
-        + "/" + sensorId
-        + "/config";
-
     String statTopic = MqttSettings.getPrefix() + "victron/";
     statTopic.concat(serial);
     statTopic.concat("/");
@@ -139,8 +135,8 @@ void MqttHandleVedirectHassClass::publishSensor(const char* caption, const char*
     serializeJson(root, buffer);
     String configTopic = "sensor/dtu_victron_" + serial + "/" + sensorId + "/config";
     publish(configTopic, buffer);
-
 }
+
 void MqttHandleVedirectHassClass::publishBinarySensor(const char* caption, const char* icon, const char* subTopic, const char* payload_on, const char* payload_off)
 {
     String serial = VictronMppt.getData()->SER;
