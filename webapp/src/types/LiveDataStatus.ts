@@ -5,6 +5,19 @@ export interface ValueObject {
     max: number;
 }
 
+export interface ArrayValueObject {
+    values: number[]; // values
+    u: string; // unit
+    d: number; // digits
+}
+
+export interface CellObject {
+    voltage: ValueObject[],
+    cellMinVoltage: ValueObject,
+    cellMaxVoltage: ValueObject,
+    cellDiffVoltage: ValueObject
+}
+
 export interface InverterStatistics {
     name: ValueObject,
     Power?: ValueObject;
@@ -41,6 +54,7 @@ export interface Total {
     Power: ValueObject;
     YieldDay: ValueObject;
     YieldTotal: ValueObject;
+    Hours: ArrayValueObject;
 }
 
 export interface Hints {
@@ -49,9 +63,19 @@ export interface Hints {
     radio_problem: boolean;
 }
 
+export interface REFUsol {
+    enabled: boolean;
+    total: Total;
+}
+
 export interface Vedirect {
     enabled: boolean;
     total: Total;
+}
+
+export interface MeanWell {
+  enabled: boolean;
+  Power: ValueObject;
 }
 
 export interface Huawei {
@@ -66,15 +90,17 @@ export interface Battery {
 
 export interface PowerMeter {
   enabled: boolean;
-  Power: ValueObject;
+  GridPower: ValueObject;
+  HousePower: ValueObject;
 }
 
 export interface LiveData {
     inverters: Inverter[];
     total: Total;
     hints: Hints;
+    refusol: REFUsol;
     vedirect: Vedirect;
-    huawei: Huawei;
+    meanwell: MeanWell;
     battery: Battery;
     power_meter: PowerMeter;
 }
