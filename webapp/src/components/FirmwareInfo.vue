@@ -23,10 +23,6 @@
                             </a></td>
                     </tr>
                     <tr>
-                        <th>{{ $t('firmwareinfo.FirmwareBranch') }}</th>
-                        <td>{{ systemStatus.git_branch }}</td>
-                    </tr>
-                    <tr>
                         <th>{{ $t('firmwareinfo.PioEnv') }}</th>
                         <td>{{ systemStatus.pioenv }}</td>
                     </tr>
@@ -99,9 +95,9 @@ export default defineComponent({
         },
         versionInfoUrl(): string {
             if (this.systemStatus.git_is_hash) {
-                return 'https://github.com/helgeerbe/OpenDTU-OnBattery/commits/' + this.systemStatus.git_hash;
+                return 'https://github.com/skippermeister/OpenDTU-OnBattery/commits/' + this.systemStatus.git_hash;
             }
-            return 'https://github.com/helgeerbe/OpenDTU-OnBattery/releases/tag/' + this.systemStatus.git_hash;
+            return 'https://github.com/skippermeister/OpenDTU-OnBattery/releases/tag/' + this.systemStatus.git_hash;
         }
     },
 });
