@@ -3,6 +3,7 @@
  * Copyright (C) 2022-2024 Thomas Basler and others
  */
 #include "WebApi_limit.h"
+#include "MessageOutput.h"
 #include "WebApi.h"
 #include "WebApi_errors.h"
 #include "defaults.h"
@@ -49,6 +50,11 @@ void WebApiLimitClass::onLimitStatus(AsyncWebServerRequest* request)
         root[serial]["limit_set_status"] = limitStatus;
     }
 
+    /*
+    String output;
+    serializeJsonPretty(root, output);
+    MessageOutput.println(output);
+    */
     response->setLength();
     request->send(response);
 }
@@ -61,10 +67,10 @@ void WebApiLimitClass::onLimitPost(AsyncWebServerRequest* request)
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& retMsg = response->getRoot();
-    retMsg["type"] = "warning";
+    retMsg["type"] = Warning;
 
     if (!request->hasParam("data", true)) {
-        retMsg["message"] = "No values found!";
+        retMsg["message"] = NoValuesFound;
         retMsg["code"] = WebApiError::GenericNoValueFound;
         response->setLength();
         request->send(response);
@@ -74,7 +80,7 @@ void WebApiLimitClass::onLimitPost(AsyncWebServerRequest* request)
     const String json = request->getParam("data", true)->value();
 
     if (json.length() > 1024) {
-        retMsg["message"] = "Data too large!";
+        retMsg["message"] = DataTooLarge;
         retMsg["code"] = WebApiError::GenericDataTooLarge;
         response->setLength();
         request->send(response);
@@ -85,7 +91,7 @@ void WebApiLimitClass::onLimitPost(AsyncWebServerRequest* request)
     const DeserializationError error = deserializeJson(root, json);
 
     if (error) {
-        retMsg["message"] = "Failed to parse data!";
+        retMsg["message"] = FailedToParseData;
         retMsg["code"] = WebApiError::GenericParseError;
         response->setLength();
         request->send(response);
@@ -103,7 +109,7 @@ void WebApiLimitClass::onLimitPost(AsyncWebServerRequest* request)
     }
 
     if (root["serial"].as<uint64_t>() == 0) {
-        retMsg["message"] = "Serial must be a number > 0!";
+        retMsg["message"] = SerialMustBeGreaterZero;
         retMsg["code"] = WebApiError::LimitSerialZero;
         response->setLength();
         request->send(response);
@@ -146,8 +152,8 @@ void WebApiLimitClass::onLimitPost(AsyncWebServerRequest* request)
 
     inv->sendActivePowerControlRequest(limit, type);
 
-    retMsg["type"] = "success";
-    retMsg["message"] = "Settings saved!";
+    retMsg["type"] = Success;
+    retMsg["message"] = SettingsSaved;
     retMsg["code"] = WebApiError::GenericSuccess;
 
     response->setLength();
