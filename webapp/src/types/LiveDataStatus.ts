@@ -98,6 +98,7 @@ export interface LiveData {
     inverters: Inverter[];
     total: Total;
     hints: Hints;
+    // huawei: Huawei; 
     refusol: REFUsol;
     vedirect: Vedirect;
     meanwell: MeanWell;
