@@ -26,10 +26,10 @@ void WebApiMaintenanceClass::onRebootPost(AsyncWebServerRequest* request)
 
     AsyncJsonResponse* response = new AsyncJsonResponse(false, MQTT_JSON_DOC_SIZE);
     auto& retMsg = response->getRoot();
-    retMsg["type"] = "warning";
+    retMsg["type"] = Warning;
 
     if (!request->hasParam("data", true)) {
-        retMsg["message"] = "No values found!";
+        retMsg["message"] = NoValuesFound;
         retMsg["code"] = WebApiError::GenericNoValueFound;
         response->setLength();
         request->send(response);
@@ -39,7 +39,7 @@ void WebApiMaintenanceClass::onRebootPost(AsyncWebServerRequest* request)
     const String json = request->getParam("data", true)->value();
 
     if (json.length() > MQTT_JSON_DOC_SIZE) {
-        retMsg["message"] = "Data too large!";
+        retMsg["message"] = DataTooLarge;
         retMsg["code"] = WebApiError::GenericDataTooLarge;
         response->setLength();
         request->send(response);
@@ -50,7 +50,7 @@ void WebApiMaintenanceClass::onRebootPost(AsyncWebServerRequest* request)
     const DeserializationError error = deserializeJson(root, json);
 
     if (error) {
-        retMsg["message"] = "Failed to parse data!";
+        retMsg["message"] = FailedToParseData;
         retMsg["code"] = WebApiError::GenericParseError;
         response->setLength();
         request->send(response);
@@ -58,7 +58,7 @@ void WebApiMaintenanceClass::onRebootPost(AsyncWebServerRequest* request)
     }
 
     if (!(root.containsKey("reboot"))) {
-        retMsg["message"] = "Values are missing!";
+        retMsg["message"] = ValuesAreMissing;
         retMsg["code"] = WebApiError::GenericValueMissing;
         response->setLength();
         request->send(response);
@@ -66,7 +66,7 @@ void WebApiMaintenanceClass::onRebootPost(AsyncWebServerRequest* request)
     }
 
     if (root["reboot"].as<bool>()) {
-        retMsg["type"] = "success";
+        retMsg["type"] = Success;
         retMsg["message"] = "Reboot triggered!";
         retMsg["code"] = WebApiError::MaintenanceRebootTriggered;
 
