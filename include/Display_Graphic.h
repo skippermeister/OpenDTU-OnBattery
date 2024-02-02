@@ -19,7 +19,8 @@
 
 enum DisplayType_t {
     None,
-    PCD8544,
+    PCD8544_HW_SPI,
+    PCD8544_SW_SPI,
     SSD1306,
     SH1106,
     SSD1309,
