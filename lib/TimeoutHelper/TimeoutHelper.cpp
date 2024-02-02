@@ -29,5 +29,10 @@ void TimeoutHelper::reset()
 
 bool TimeoutHelper::occured() const
 {
-    return millis() > (startMillis + timeout);
+    return (millis()-startMillis) > timeout;
+}
+
+uint32_t TimeoutHelper::elapsed() const
+{
+    return millis()-startMillis;
 }
