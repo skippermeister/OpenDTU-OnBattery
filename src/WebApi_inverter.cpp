@@ -5,6 +5,7 @@
 #include "WebApi_inverter.h"
 #include "Configuration.h"
 #include "MqttHandleHass.h"
+#include "SunPosition.h"
 #include "WebApi.h"
 #include "WebApi_errors.h"
 #include "defaults.h"
@@ -50,9 +51,9 @@ void WebApiInverterClass::onInverterList(AsyncWebServerRequest* request)
                 ((uint32_t)((config.Inverter[i].Serial >> 32) & 0xFFFFFFFF)),
                 ((uint32_t)(config.Inverter[i].Serial & 0xFFFFFFFF)));
             obj["serial"] = buffer;
-            obj["poll_enable"] = config.Inverter[i].Poll_Enable;
+            obj["poll_enable_day"] = config.Inverter[i].Poll_Enable_Day;
             obj["poll_enable_night"] = config.Inverter[i].Poll_Enable_Night;
-            obj["command_enable"] = config.Inverter[i].Command_Enable;
+            obj["command_enable_day"] = config.Inverter[i].Command_Enable_Day;
             obj["command_enable_night"] = config.Inverter[i].Command_Enable_Night;
             obj["reachable_threshold"] = config.Inverter[i].ReachableThreshold;
             obj["zero_runtime"] = config.Inverter[i].ZeroRuntimeDataIfUnrechable;
@@ -91,10 +92,10 @@ void WebApiInverterClass::onInverterAdd(AsyncWebServerRequest* request)
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& retMsg = response->getRoot();
-    retMsg["type"] = "warning";
+    retMsg["type"] = Warning;
 
     if (!request->hasParam("data", true)) {
-        retMsg["message"] = "No values found!";
+        retMsg["message"] = NoValuesFound;
         retMsg["code"] = WebApiError::GenericNoValueFound;
         response->setLength();
         request->send(response);
@@ -104,7 +105,7 @@ void WebApiInverterClass::onInverterAdd(AsyncWebServerRequest* request)
     const String json = request->getParam("data", true)->value();
 
     if (json.length() > 1024) {
-        retMsg["message"] = "Data too large!";
+        retMsg["message"] = DataTooLarge;
         retMsg["code"] = WebApiError::GenericDataTooLarge;
         response->setLength();
         request->send(response);
@@ -115,7 +116,7 @@ void WebApiInverterClass::onInverterAdd(AsyncWebServerRequest* request)
     const DeserializationError error = deserializeJson(root, json);
 
     if (error) {
-        retMsg["message"] = "Failed to parse data!";
+        retMsg["message"] = FailedToParseData;
         retMsg["code"] = WebApiError::GenericParseError;
         response->setLength();
         request->send(response);
@@ -124,7 +125,7 @@ void WebApiInverterClass::onInverterAdd(AsyncWebServerRequest* request)
 
     if (!(root.containsKey("serial")
             && root.containsKey("name"))) {
-        retMsg["message"] = "Values are missing!";
+        retMsg["message"] = ValuesAreMissing;
         retMsg["code"] = WebApiError::GenericValueMissing;
         response->setLength();
         request->send(response);
@@ -132,7 +133,7 @@ void WebApiInverterClass::onInverterAdd(AsyncWebServerRequest* request)
     }
 
     if (root["serial"].as<uint64_t>() == 0) {
-        retMsg["message"] = "Serial must be a number > 0!";
+        retMsg["message"] = SerialMustBeGreaterZero;
         retMsg["code"] = WebApiError::InverterSerialZero;
         response->setLength();
         request->send(response);
@@ -177,7 +178,9 @@ void WebApiInverterClass::onInverterAdd(AsyncWebServerRequest* request)
         }
     }
 
+#ifdef USE_HASS
     MqttHandleHass.forceUpdate();
+#endif
 }
 
 void WebApiInverterClass::onInverterEdit(AsyncWebServerRequest* request)
@@ -188,10 +191,10 @@ void WebApiInverterClass::onInverterEdit(AsyncWebServerRequest* request)
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& retMsg = response->getRoot();
-    retMsg["type"] = "warning";
+    retMsg["type"] = Warning;
 
     if (!request->hasParam("data", true)) {
-        retMsg["message"] = "No values found!";
+        retMsg["message"] = NoValuesFound;
         retMsg["code"] = WebApiError::GenericNoValueFound;
         response->setLength();
         request->send(response);
@@ -201,7 +204,7 @@ void WebApiInverterClass::onInverterEdit(AsyncWebServerRequest* request)
     const String json = request->getParam("data", true)->value();
 
     if (json.length() > 1024) {
-        retMsg["message"] = "Data too large!";
+        retMsg["message"] = DataTooLarge;
         retMsg["code"] = WebApiError::GenericDataTooLarge;
         response->setLength();
         request->send(response);
@@ -212,7 +215,7 @@ void WebApiInverterClass::onInverterEdit(AsyncWebServerRequest* request)
     const DeserializationError error = deserializeJson(root, json);
 
     if (error) {
-        retMsg["message"] = "Failed to parse data!";
+        retMsg["message"] = FailedToParseData;
         retMsg["code"] = WebApiError::GenericParseError;
         response->setLength();
         request->send(response);
@@ -236,7 +239,7 @@ void WebApiInverterClass::onInverterEdit(AsyncWebServerRequest* request)
     }
 
     if (root["serial"].as<uint64_t>() == 0) {
-        retMsg["message"] = "Serial must be a number > 0!";
+        retMsg["message"] = SerialMustBeGreaterZero;
         retMsg["code"] = WebApiError::InverterSerialZero;
         response->setLength();
         request->send(response);
@@ -275,9 +278,9 @@ void WebApiInverterClass::onInverterEdit(AsyncWebServerRequest* request)
         inverter.channel[arrayCount].MaxChannelPower = channel["max_power"].as<uint16_t>();
         inverter.channel[arrayCount].YieldTotalOffset = channel["yield_total_offset"].as<float>();
         strncpy(inverter.channel[arrayCount].Name, channel["name"] | "", sizeof(inverter.channel[arrayCount].Name));
-        inverter.Poll_Enable = root["poll_enable"] | true;
+        inverter.Poll_Enable_Day = root["poll_enable_day"] | true;
         inverter.Poll_Enable_Night = root["poll_enable_night"] | true;
-        inverter.Command_Enable = root["command_enable"] | true;
+        inverter.Command_Enable_Day = root["command_enable_day"] | true;
         inverter.Command_Enable_Night = root["command_enable_night"] | true;
         inverter.ReachableThreshold = root["reachable_threshold"] | REACHABLE_THRESHOLD;
         inverter.ZeroRuntimeDataIfUnrechable = root["zero_runtime"] | false;
@@ -307,8 +310,8 @@ void WebApiInverterClass::onInverterEdit(AsyncWebServerRequest* request)
     }
 
     if (inv != nullptr) {
-        inv->setEnablePolling(inverter.Poll_Enable);
-        inv->setEnableCommands(inverter.Command_Enable);
+        inv->setEnablePolling((inverter.Poll_Enable_Day && SunPosition.isDayPeriod()) || (!SunPosition.isDayPeriod() && inverter.Poll_Enable_Night));
+        inv->setEnableCommands((inverter.Command_Enable_Day && SunPosition.isDayPeriod()) || (!SunPosition.isDayPeriod() && inverter.Command_Enable_Night));
         inv->setReachableThreshold(inverter.ReachableThreshold);
         inv->setZeroValuesIfUnreachable(inverter.ZeroRuntimeDataIfUnrechable);
         inv->setZeroYieldDayOnMidnight(inverter.ZeroYieldDayOnMidnight);
@@ -319,7 +322,9 @@ void WebApiInverterClass::onInverterEdit(AsyncWebServerRequest* request)
         }
     }
 
+#ifdef USE_HASS
     MqttHandleHass.forceUpdate();
+#endif
 }
 
 void WebApiInverterClass::onInverterDelete(AsyncWebServerRequest* request)
@@ -330,10 +335,10 @@ void WebApiInverterClass::onInverterDelete(AsyncWebServerRequest* request)
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& retMsg = response->getRoot();
-    retMsg["type"] = "warning";
+    retMsg["type"] = Warning;
 
     if (!request->hasParam("data", true)) {
-        retMsg["message"] = "No values found!";
+        retMsg["message"] = NoValuesFound;
         retMsg["code"] = WebApiError::GenericNoValueFound;
         response->setLength();
         request->send(response);
@@ -343,7 +348,7 @@ void WebApiInverterClass::onInverterDelete(AsyncWebServerRequest* request)
     const String json = request->getParam("data", true)->value();
 
     if (json.length() > 1024) {
-        retMsg["message"] = "Data too large!";
+        retMsg["message"] = DataTooLarge;
         retMsg["code"] = WebApiError::GenericDataTooLarge;
         response->setLength();
         request->send(response);
@@ -354,7 +359,7 @@ void WebApiInverterClass::onInverterDelete(AsyncWebServerRequest* request)
     const DeserializationError error = deserializeJson(root, json);
 
     if (error) {
-        retMsg["message"] = "Failed to parse data!";
+        retMsg["message"] = FailedToParseData;
         retMsg["code"] = WebApiError::GenericParseError;
         response->setLength();
         request->send(response);
@@ -362,7 +367,7 @@ void WebApiInverterClass::onInverterDelete(AsyncWebServerRequest* request)
     }
 
     if (!(root.containsKey("id"))) {
-        retMsg["message"] = "Values are missing!";
+        retMsg["message"] = ValuesAreMissing;
         retMsg["code"] = WebApiError::GenericValueMissing;
         response->setLength();
         request->send(response);
@@ -390,7 +395,9 @@ void WebApiInverterClass::onInverterDelete(AsyncWebServerRequest* request)
     response->setLength();
     request->send(response);
 
+#ifdef USE_HASS
     MqttHandleHass.forceUpdate();
+#endif
 }
 
 void WebApiInverterClass::onInverterOrder(AsyncWebServerRequest* request)
@@ -401,10 +408,10 @@ void WebApiInverterClass::onInverterOrder(AsyncWebServerRequest* request)
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& retMsg = response->getRoot();
-    retMsg["type"] = "warning";
+    retMsg["type"] = Warning;
 
     if (!request->hasParam("data", true)) {
-        retMsg["message"] = "No values found!";
+        retMsg["message"] = NoValuesFound;
         retMsg["code"] = WebApiError::GenericNoValueFound;
         response->setLength();
         request->send(response);
@@ -414,7 +421,7 @@ void WebApiInverterClass::onInverterOrder(AsyncWebServerRequest* request)
     const String json = request->getParam("data", true)->value();
 
     if (json.length() > 1024) {
-        retMsg["message"] = "Data too large!";
+        retMsg["message"] = DataTooLarge;
         retMsg["code"] = WebApiError::GenericDataTooLarge;
         response->setLength();
         request->send(response);
@@ -425,7 +432,7 @@ void WebApiInverterClass::onInverterOrder(AsyncWebServerRequest* request)
     const DeserializationError error = deserializeJson(root, json);
 
     if (error) {
-        retMsg["message"] = "Failed to parse data!";
+        retMsg["message"] = FailedToParseData;
         retMsg["code"] = WebApiError::GenericParseError;
         response->setLength();
         request->send(response);
@@ -433,7 +440,7 @@ void WebApiInverterClass::onInverterOrder(AsyncWebServerRequest* request)
     }
 
     if (!(root.containsKey("order"))) {
-        retMsg["message"] = "Values are missing!";
+        retMsg["message"] = ValuesAreMissing;
         retMsg["code"] = WebApiError::GenericValueMissing;
         response->setLength();
         request->send(response);
