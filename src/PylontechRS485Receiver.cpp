@@ -11,7 +11,7 @@
 #include <Arduino.h>
 #include <ctime>
 
-const char TAG[] = "[Pylontech RS485]";
+static constexpr char TAG[] = "[Pylontech RS485]";
 
 bool PylontechRS485Receiver::init()
 {
