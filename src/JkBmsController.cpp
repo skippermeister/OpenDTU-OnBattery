@@ -11,7 +11,7 @@
 
 //#define JKBMS_DUMMY_SERIAL
 
-static const char TAG[] = "[JK BMS]";
+static constexpr char TAG[] = "[JK BMS]";
 
 #ifdef JKBMS_DUMMY_SERIAL
 class DummySerial {
