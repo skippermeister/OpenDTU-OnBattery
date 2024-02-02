@@ -11,6 +11,7 @@ class WebApiHuaweiClass {
 public:
     void init(AsyncWebServer& server, Scheduler& scheduler);
     void getJsonData(JsonVariant& root);
+
 private:
     void onStatus(AsyncWebServerRequest* request);
     void onAdminGet(AsyncWebServerRequest* request);
