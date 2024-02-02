@@ -3,6 +3,7 @@
 
 #include "VictronSmartShunt.h"
 #include "Configuration.h"
+#include "MessageOutput.h"
 #include "PinMapping.h"
 #include "MessageOutput.h"
 
