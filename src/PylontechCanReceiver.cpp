@@ -10,18 +10,20 @@
 
 //#define PYLONTECH_DUMMY
 
+static constexpr char TAG[] = "[Pylontech CAN]";
+
 bool PylontechCanReceiver::init()
 {
     _verboseLogging = Battery._verboseLogging;
 
-    MessageOutput.println("[Pylontech] Initialize interface...");
+    MessageOutput.printf("%s Initialize interface...", TAG);
 
     const PinMapping_t& pin = PinMapping.get();
-    MessageOutput.printf("[Pylontech] Interface rx = %d, tx = %d\r\n",
+    MessageOutput.printf(" Interface rx = %d, tx = %d",
             pin.battery_rx, pin.battery_tx);
 
     if (pin.battery_rx < 0 || pin.battery_tx < 0) {
-        MessageOutput.println("[Pylontech] Invalid pin config");
+        MessageOutput.println(" Invalid pin config");
         return false;
     }
 
@@ -37,33 +39,31 @@ bool PylontechCanReceiver::init()
     esp_err_t twaiLastResult = twai_driver_install(&g_config, &t_config, &f_config);
     switch (twaiLastResult) {
         case ESP_OK:
-            MessageOutput.println("[Pylontech] Twai driver installed");
+            MessageOutput.print(" Twai driver installed");
             break;
         case ESP_ERR_INVALID_ARG:
-            MessageOutput.println("[Pylontech] Twai driver install - invalid arg");
+            MessageOutput.println(" Twai driver install - invalid arg");
             return false;
-            break;
         case ESP_ERR_NO_MEM:
-            MessageOutput.println("[Pylontech] Twai driver install - no memory");
+            MessageOutput.println(" Twai driver install - no memory");
             return false;
-            break;
         case ESP_ERR_INVALID_STATE:
-            MessageOutput.println("[Pylontech] Twai driver install - invalid state");
+            MessageOutput.println(" Twai driver install - invalid state");
             return false;
-            break;
     }
 
     // Start TWAI driver
     twaiLastResult = twai_start();
     switch (twaiLastResult) {
         case ESP_OK:
-            MessageOutput.println("[Pylontech] Twai driver started");
+            MessageOutput.print(" and started");
             break;
         case ESP_ERR_INVALID_STATE:
-            MessageOutput.println("[Pylontech] Twai driver start - invalid state");
+            MessageOutput.println(" Twai driver start - invalid state");
             return false;
-            break;
     }
+
+    MessageOutput.println(" Done");
 
     return true;
 }
@@ -74,10 +74,10 @@ void PylontechCanReceiver::deinit()
     esp_err_t twaiLastResult = twai_stop();
     switch (twaiLastResult) {
         case ESP_OK:
-            MessageOutput.println("[Pylontech] Twai driver stopped");
+            MessageOutput.printf("%s Twai driver stopped", TAG);
             break;
         case ESP_ERR_INVALID_STATE:
-            MessageOutput.println("[Pylontech] Twai driver stop - invalid state");
+            MessageOutput.printf("%s Twai driver stop - invalid state", TAG);
             break;
     }
 
@@ -85,12 +85,13 @@ void PylontechCanReceiver::deinit()
     twaiLastResult = twai_driver_uninstall();
     switch (twaiLastResult) {
         case ESP_OK:
-            MessageOutput.println("[Pylontech] Twai driver uninstalled");
+            MessageOutput.print(" Twai driver uninstalled");
             break;
         case ESP_ERR_INVALID_STATE:
-            MessageOutput.println("[Pylontech] Twai driver uninstall - invalid state");
+            MessageOutput.print(" Twai driver uninstall - invalid state");
             break;
     }
+    MessageOutput.println();
 }
 
 void PylontechCanReceiver::loop()
@@ -105,10 +106,10 @@ void PylontechCanReceiver::loop()
     if (twaiLastResult != ESP_OK) {
         switch (twaiLastResult) {
             case ESP_ERR_INVALID_ARG:
-                MessageOutput.println("[Pylontech] Twai driver get status - invalid arg");
+                MessageOutput.print("%s Twai driver get status - invalid arg\r\n", TAG);
                 break;
             case ESP_ERR_INVALID_STATE:
-                MessageOutput.println("[Pylontech] Twai driver get status - invalid state");
+                MessageOutput.print("%s Twai driver get status - invalid state\r\n", TAG);
                 break;
         }
         return;
@@ -120,7 +121,7 @@ void PylontechCanReceiver::loop()
     // Wait for message to be received, function is blocking
     twai_message_t rx_message;
     if (twai_receive(&rx_message, pdMS_TO_TICKS(100)) != ESP_OK) {
-        MessageOutput.println("[Pylontech] Failed to receive message");
+        MessageOutput.printf("%s Failed to receive message\r\n", TAG);
         return;
     }
 
@@ -131,7 +132,7 @@ void PylontechCanReceiver::loop()
             _stats->_dischargeCurrentLimitation = this->scaleValue(this->readSignedInt16(rx_message.data + 4), 0.1);
 
             if (_verboseLogging) {
-                MessageOutput.printf("[Pylontech] chargeVoltage: %f chargeCurrentLimitation: %f dischargeCurrentLimitation: %f\n",
+                MessageOutput.printf("%s chargeVoltage: %f chargeCurrentLimitation: %f dischargeCurrentLimitation: %f\r\n", TAG,
                         _stats->_chargeVoltage, _stats->_chargeCurrentLimitation, _stats->_dischargeCurrentLimitation);
             }
             break;
@@ -142,7 +143,7 @@ void PylontechCanReceiver::loop()
             _stats->_stateOfHealth = this->readUnsignedInt16(rx_message.data + 2);
 
             if (_verboseLogging) {
-                MessageOutput.printf("[Pylontech] soc: %d soh: %d\n",
+                MessageOutput.printf("%s soc: %d soh: %d\r\n", TAG,
                         _stats->getSoC(), _stats->_stateOfHealth);
             }
             break;
@@ -154,7 +155,7 @@ void PylontechCanReceiver::loop()
             _stats->_temperature = this->scaleValue(this->readSignedInt16(rx_message.data + 4), 0.1);
 
             if (_verboseLogging) {
-                MessageOutput.printf("[Pylontech] voltage: %f current: %f temperature: %f\n",
+                MessageOutput.printf("%s voltage: %f current: %f temperature: %f\r\n", TAG,
                         _stats->_voltage, _stats->_current, _stats->_temperature);
             }
             break;
@@ -173,7 +174,7 @@ void PylontechCanReceiver::loop()
             _stats->_alarmOverCurrentCharge = this->getBit(alarmBits, 0);
 
             if (_verboseLogging) {
-                MessageOutput.printf("[Pylontech] Alarms: %d %d %d %d %d %d %d\n",
+                MessageOutput.printf("%s Alarms: %d %d %d %d %d %d %d\r\n", TAG, 
                         _stats->_alarmOverCurrentDischarge,
                         _stats->_alarmUnderTemperature,
                         _stats->_alarmOverTemperature,
@@ -195,7 +196,7 @@ void PylontechCanReceiver::loop()
             _stats->_warningHighCurrentCharge = this->getBit(warningBits, 0);
 
             if (_verboseLogging) {
-                MessageOutput.printf("[Pylontech] Warnings: %d %d %d %d %d %d %d\n",
+                MessageOutput.printf("%s Warnings: %d %d %d %d %d %d %d\r\n", TAG, 
                         _stats->_warningHighCurrentDischarge,
                         _stats->_warningLowTemperature,
                         _stats->_warningHighTemperature,
@@ -214,7 +215,7 @@ void PylontechCanReceiver::loop()
             if (manufacturer.isEmpty()) { break; }
 
             if (_verboseLogging) {
-                MessageOutput.printf("[Pylontech] Manufacturer: %s\n", manufacturer.c_str());
+                MessageOutput.printf("%s Manufacturer: %s\r\n", TAG, manufacturer.c_str());
             }
 
             _stats->setManufacturer(std::move(manufacturer));
@@ -228,7 +229,7 @@ void PylontechCanReceiver::loop()
             _stats->_chargeImmediately = this->getBit(chargeStatusBits, 5);
 
             if (_verboseLogging) {
-                MessageOutput.printf("[Pylontech] chargeStatusBits: %d %d %d\n",
+                MessageOutput.printf("%s chargeStatusBits: %d %d %d\r\n", TAG,
                     _stats->_chargeEnabled,
                     _stats->_dischargeEnabled,
                     _stats->_chargeImmediately);
