@@ -6,7 +6,7 @@
 
 VictronMpptClass VictronMppt;
 
-const char TAG[] = "[VictronMppt]";
+static constexpr char TAG[] = "[VictronMppt]";
 
 void VictronMpptClass::init(Scheduler& scheduler)
 {
