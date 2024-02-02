@@ -13,6 +13,8 @@
 
 WebApiWsBatteryLiveClass::WebApiWsBatteryLiveClass()
     : _ws("/batterylivedata")
+    , _wsCleanupTask(1 * TASK_SECOND, TASK_FOREVER, std::bind(&WebApiWsBatteryLiveClass::wsCleanupTaskCb, this))
+    , _sendDataTask(1 * TASK_SECOND, TASK_FOREVER, std::bind(&WebApiWsBatteryLiveClass::sendDataTaskCb, this))
 {
 }
 
@@ -32,15 +34,9 @@ void WebApiWsBatteryLiveClass::init(AsyncWebServer& server, Scheduler& scheduler
     _ws.onEvent(std::bind(&WebApiWsBatteryLiveClass::onWebsocketEvent, this, _1, _2, _3, _4, _5, _6));
 
     scheduler.addTask(_wsCleanupTask);
-    _wsCleanupTask.setCallback(std::bind(&WebApiWsBatteryLiveClass::wsCleanupTaskCb, this));
-    _wsCleanupTask.setIterations(TASK_FOREVER);
-    _wsCleanupTask.setInterval(1 * TASK_SECOND);
     _wsCleanupTask.enable();
 
     scheduler.addTask(_sendDataTask);
-    _sendDataTask.setCallback(std::bind(&WebApiWsBatteryLiveClass::sendDataTaskCb, this));
-    _sendDataTask.setIterations(TASK_FOREVER);
-    _sendDataTask.setInterval(1 * TASK_SECOND);
     _sendDataTask.enable();
 }
 
@@ -48,6 +44,12 @@ void WebApiWsBatteryLiveClass::wsCleanupTaskCb()
 {
     // see: https://github.com/me-no-dev/ESPAsyncWebServer#limiting-the-number-of-web-socket-clients
      _ws.cleanupClients();
+
+    if (Configuration.get().Security.AllowReadonly) {
+        _ws.setAuthentication("", "");
+    } else {
+        _ws.setAuthentication(AUTH_USERNAME, Configuration.get().Security.Password);
+    }
 }
 
 void WebApiWsBatteryLiveClass::sendDataTaskCb()
@@ -70,18 +72,12 @@ void WebApiWsBatteryLiveClass::sendDataTaskCb()
             String buffer;
             serializeJson(root, buffer);
 
-            if (Configuration.get().Security.AllowReadonly) {
-                _ws.setAuthentication("", "");
-            } else {
-                _ws.setAuthentication(AUTH_USERNAME, Configuration.get().Security.Password);
-            }
-
             _ws.textAll(buffer);
         }
     } catch (std::bad_alloc& bad_alloc) {
         MessageOutput.printf("Calling /api/batterylivedata/status has temporarily run out of resources. Reason: \"%s\".\r\n", bad_alloc.what());
     } catch (const std::exception& exc) {
-            MessageOutput.printf("Unknown exception in /api/batterylivedata/status. Reason: \"%s\".\r\n", exc.what());
+        MessageOutput.printf("Unknown exception in /api/batterylivedata/status. Reason: \"%s\".\r\n", exc.what());
     }
 }
 
