@@ -78,10 +78,10 @@ export interface MeanWell {
   Power: ValueObject;
 }
 
-export interface Huawei {
-  enabled: boolean;
-  Power: ValueObject;
-}
+// export interface Huawei {
+//   enabled: boolean;
+//   Power: ValueObject;
+// }
 
 export interface Battery {
   enabled: boolean;
