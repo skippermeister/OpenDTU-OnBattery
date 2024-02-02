@@ -6,25 +6,36 @@
 
         <form @submit="savePowerLimiterConfig">
             <CardElement :text="$t('powerlimiteradmin.General')" textVariant="text-bg-primary">
-                <InputElement :label="$t('powerlimiteradmin.Enable')"
+                <InputElement :label="$t('powerlimiteradmin.EnablePowerLimiter')"
                                 v-model="powerLimiterConfigList.enabled"
-                                type="checkbox" wide/>
+                                type="checkbox" wide4_1/>
+                
+                <InputElement v-show="powerLimiterConfigList.enabled"
+                                :label="$t('powermeteradmin.PollInterval')"
+                                v-model="powerLimiterConfigList.pollinterval"
+                                type="number" min="1" max="60" wide4_2
+                                :postfix="$t('powerlimiteradmin.Seconds')"/>
+
+                <InputElement v-show="powerLimiterConfigList.enabled"
+                                :label="$t('powerlimiteradmin.UpdatesOnly')"
+                                v-model="powerLimiterConfigList.updatesonly"
+                                type="checkbox" wide4_1/>
 
                 <InputElement v-show="powerLimiterConfigList.enabled"
                                 :label="$t('powerlimiteradmin.VerboseLogging')"
                                 v-model="powerLimiterConfigList.verbose_logging"
-                                type="checkbox" wide/>
+                                type="checkbox" wide4_1/>
 
                 <InputElement v-show="powerLimiterConfigList.enabled"
                                 :label="$t('powerlimiteradmin.EnableSolarPassthrough')"
                                 v-model="powerLimiterConfigList.solar_passthrough_enabled"
-                                type="checkbox" wide/>
+                                type="checkbox" wide4_1/>
                 
                 <div class="row mb-3" v-show="powerLimiterConfigList.enabled && powerLimiterConfigList.solar_passthrough_enabled">
-                    <label for="inputTimezone" class="col-sm-2 col-form-label">
+                    <label for="battery_drain_strategy" class="col-sm-4 col-form-label">
                         {{ $t('powerlimiteradmin.BatteryDrainStrategy') }}:
                     </label>
-                    <div class="col-sm-10">
+                    <div class="col-sm-3">
                         <select class="form-select" v-model="powerLimiterConfigList.battery_drain_strategy">
                             <option v-for="batteryDrainStrategy in batteryDrainStrategyList" :key="batteryDrainStrategy.key" :value="batteryDrainStrategy.key">
                                 {{ $t(batteryDrainStrategy.value) }}
@@ -36,8 +47,8 @@
                 <div class="alert alert-secondary" v-show="powerLimiterConfigList.enabled" role="alert" v-html="$t('powerlimiteradmin.SolarpassthroughInfo')"></div>
 
                 <div class="row mb-3" v-show="powerLimiterConfigList.enabled && powerLimiterConfigList.solar_passthrough_enabled">
-                    <label for="solarPassthroughLosses" class="col-sm-2 col-form-label">{{ $t('powerlimiteradmin.SolarPassthroughLosses') }}</label>
-                    <div class="col-sm-10">
+                    <label for="solarPassthroughLosses" class="col-sm-4 col-form-label">{{ $t('powerlimiteradmin.SolarPassthroughLosses') }}</label>
+                    <div class="col-sm-2">
                         <div class="input-group">
                             <input type="number" class="form-control" id="solarPassthroughLosses"
                                 placeholder="3" v-model="powerLimiterConfigList.solar_passthrough_losses"
@@ -47,14 +58,12 @@
                     </div>
                 </div>
 
-                <div class="alert alert-secondary" role="alert" v-show="powerLimiterConfigList.enabled && powerLimiterConfigList.solar_passthrough_enabled" v-html="$t('powerlimiteradmin.SolarPassthroughLossesInfo')"></div>
-
                 <div class="row mb-3" v-show="powerLimiterConfigList.enabled">
-                    <label for="inputTimezone" class="col-sm-2 col-form-label">
+                    <label for="inverter_id" class="col-sm-4 col-form-label">
                         {{ $t('powerlimiteradmin.InverterId') }}:
                         <BIconInfoCircle v-tooltip :title="$t('powerlimiteradmin.InverterIdHint')" />
                     </label>
-                    <div class="col-sm-10">
+                    <div class="col-sm-2">
                         <select class="form-select" v-model="powerLimiterConfigList.inverter_id">
                             <option v-for="inverter in inverterList" :key="inverter.key" :value="inverter.key">
                                 {{ inverter.value }}
@@ -64,11 +73,11 @@
                 </div>
 
                 <div class="row mb-3" v-show="powerLimiterConfigList.enabled">
-                    <label for="inputTimezone" class="col-sm-2 col-form-label">
+                    <label for="inverter_channel_id" class="col-sm-4 col-form-label">
                         {{ $t('powerlimiteradmin.InverterChannelId') }}:
                         <BIconInfoCircle v-tooltip :title="$t('powerlimiteradmin.InverterChannelIdHint')" />
                     </label>
-                    <div class="col-sm-10">
+                    <div class="col-sm-2">
                         <select class="form-select" v-model="powerLimiterConfigList.inverter_channel_id">
                             <option v-for="inverterChannel in inverterChannelList" :key="inverterChannel.key" :value="inverterChannel.key">
                                 {{ inverterChannel.value }}
@@ -78,10 +87,10 @@
                 </div>
 
                 <div class="row mb-3" v-show="powerLimiterConfigList.enabled">
-                    <label for="targetPowerConsumption" class="col-sm-2 col-form-label">{{ $t('powerlimiteradmin.TargetPowerConsumption') }}:
+                    <label for="targetPowerConsumption" class="col-sm-4 col-form-label">{{ $t('powerlimiteradmin.TargetPowerConsumption') }}:
                         <BIconInfoCircle v-tooltip :title="$t('powerlimiteradmin.TargetPowerConsumptionHint')" />
                     </label>
-                    <div class="col-sm-10">
+                    <div class="col-sm-2">
                         <div class="input-group">
                             <input type="number" class="form-control" id="targetPowerConsumption"
                                 placeholder="75" v-model="powerLimiterConfigList.target_power_consumption"
@@ -92,10 +101,10 @@
                 </div>
 
                 <div class="row mb-3" v-show="powerLimiterConfigList.enabled">
-                    <label for="targetPowerConsumptionHyteresis" class="col-sm-2 col-form-label">{{ $t('powerlimiteradmin.TargetPowerConsumptionHysteresis') }}:
+                    <label for="targetPowerConsumptionHyteresis" class="col-sm-4 col-form-label">{{ $t('powerlimiteradmin.TargetPowerConsumptionHysteresis') }}:
                         <BIconInfoCircle v-tooltip :title="$t('powerlimiteradmin.TargetPowerConsumptionHysteresisHint')" required/>
                     </label>
-                    <div class="col-sm-10">
+                    <div class="col-sm-2">
                         <div class="input-group">
                             <input type="number" class="form-control" id="targetPowerConsumptionHysteresis"
                                 placeholder="30" min="0" v-model="powerLimiterConfigList.target_power_consumption_hysteresis"
@@ -106,8 +115,8 @@
                 </div>
                 
                 <div class="row mb-3" v-show="powerLimiterConfigList.enabled">
-                    <label for="inputLowerPowerLimit" class="col-sm-2 col-form-label">{{ $t('powerlimiteradmin.LowerPowerLimit') }}:</label>
-                    <div class="col-sm-10">
+                    <label for="inputLowerPowerLimit" class="col-sm-4 col-form-label">{{ $t('powerlimiteradmin.LowerPowerLimit') }}:</label>
+                    <div class="col-sm-2">
                         <div class="input-group">
                             <input type="number" class="form-control" id="inputLowerPowerLimit"
                                 placeholder="50" min="10" v-model="powerLimiterConfigList.lower_power_limit"
@@ -118,8 +127,8 @@
                 </div>
 
                 <div class="row mb-3" v-show="powerLimiterConfigList.enabled">
-                    <label for="inputUpperPowerLimit" class="col-sm-2 col-form-label">{{ $t('powerlimiteradmin.UpperPowerLimit') }}:</label>
-                    <div class="col-sm-10">
+                    <label for="inputUpperPowerLimit" class="col-sm-4 col-form-label">{{ $t('powerlimiteradmin.UpperPowerLimit') }}:</label>
+                    <div class="col-sm-2">
                         <div class="input-group">
                             <input type="number" class="form-control" id="inputUpperPowerLimit"
                                 placeholder="800" v-model="powerLimiterConfigList.upper_power_limit"
@@ -131,20 +140,24 @@
             </CardElement>
 
             <CardElement :text="$t('powerlimiteradmin.PowerMeters')" textVariant="text-bg-primary" add-space
-                         v-show="powerLimiterConfigList.enabled"
-            >
-                <InputElement 
-                    :label="$t('powerlimiteradmin.InverterIsBehindPowerMeter')"
-                    v-model="powerLimiterConfigList.is_inverter_behind_powermeter"
-                    type="checkbox" wide/>
+                         v-show="powerLimiterConfigList.enabled">
+                <div class="row mb-3">
+                    <label class="col-sm-4 form-check-label" for="inputRetain">{{ $t('powerlimiteradmin.InverterIsBehindPowerMeter') }}</label>
+                    <div class="col-sm-2">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="inputIsInverterBehindPowerMeter"
+                                v-model="powerLimiterConfigList.is_inverter_behind_powermeter" required/>
+                        </div>
+                    </div>
+                </div>
             </CardElement>
 
             <CardElement :text="$t('powerlimiteradmin.Battery')" textVariant="text-bg-primary" add-space
                          v-show="powerLimiterConfigList.enabled"
             >
                 <div class="row mb-3">
-                    <label for="batterySocStartThreshold" class="col-sm-2 col-form-label">{{ $t('powerlimiteradmin.BatterySocStartThreshold') }}:</label>
-                    <div class="col-sm-10">
+                    <label for="batterySocStartThreshold" class="col-sm-4 col-form-label">{{ $t('powerlimiteradmin.BatterySocStartThreshold') }}:</label>
+                    <div class="col-sm-2">
                         <div class="input-group">
                             <input type="number" class="form-control" id="batterySocStartThreshold"
                                 placeholder="80" v-model="powerLimiterConfigList.battery_soc_start_threshold"
@@ -155,8 +168,8 @@
                 </div>
 
                 <div class="row mb-3">
-                    <label for="batterySocStopThreshold" class="col-sm-2 col-form-label">{{ $t('powerlimiteradmin.BatterySocStopThreshold') }}</label>
-                    <div class="col-sm-10">
+                    <label for="batterySocStopThreshold" class="col-sm-4 col-form-label">{{ $t('powerlimiteradmin.BatterySocStopThreshold') }}</label>
+                    <div class="col-sm-2">
                         <div class="input-group">
                             <input type="number" class="form-control" id="batterySocStopThreshold"
                                 placeholder="20" v-model="powerLimiterConfigList.battery_soc_stop_threshold"
@@ -167,10 +180,10 @@
                 </div>
 
                 <div class="row mb-3" v-show="powerLimiterConfigList.solar_passthrough_enabled">
-                    <label for="batterySocSolarPassthroughStartThreshold" class="col-sm-2 col-form-label">{{ $t('powerlimiteradmin.BatterySocSolarPassthroughStartThreshold') }}
+                    <label for="batterySocSolarPassthroughStartThreshold" class="col-sm-4 col-form-label">{{ $t('powerlimiteradmin.BatterySocSolarPassthroughStartThreshold') }}
                       <BIconInfoCircle v-tooltip :title="$t('powerlimiteradmin.BatterySocSolarPassthroughStartThresholdHint')" />
                     </label>
-                    <div class="col-sm-10">
+                    <div class="col-sm-2">
                         <div class="input-group">
                             <input type="number" class="form-control" id="batterySocSolarPassthroughStartThreshold"
                                 placeholder="20" v-model="powerLimiterConfigList.full_solar_passthrough_soc"
@@ -183,8 +196,8 @@
                 <div class="alert alert-secondary" role="alert" v-html="$t('powerlimiteradmin.BatterySocInfo')"></div>
 
                 <div class="row mb-3">
-                    <label for="inputVoltageStartThreshold" class="col-sm-2 col-form-label">{{ $t('powerlimiteradmin.VoltageStartThreshold') }}:</label>
-                    <div class="col-sm-10">
+                    <label for="inputVoltageStartThreshold" class="col-sm-4 col-form-label">{{ $t('powerlimiteradmin.VoltageStartThreshold') }}:</label>
+                    <div class="col-sm-2">
                         <div class="input-group">
                             <input type="number" step="0.01" class="form-control" id="inputVoltageStartThreshold"
                                 placeholder="50" v-model="powerLimiterConfigList.voltage_start_threshold"
@@ -195,11 +208,11 @@
                 </div>
 
                 <div class="row mb-3">
-                    <label for="inputVoltageStopThreshold" class="col-sm-2 col-form-label">{{ $t('powerlimiteradmin.VoltageStopThreshold') }}:</label>
-                    <div class="col-sm-10">
+                    <label for="inputVoltageStopThreshold" class="col-sm-4 col-form-label">{{ $t('powerlimiteradmin.VoltageStopThreshold') }}:</label>
+                    <div class="col-sm-2">
                         <div class="input-group">
                             <input type="number" step="0.01" class="form-control" id="inputVoltageStopThreshold"
-                                placeholder="49" v-model="powerLimiterConfigList.voltage_stop_threshold"
+                                placeholder="47.50" v-model="powerLimiterConfigList.voltage_stop_threshold"
                                 aria-describedby="voltageStopThresholdDescription" required/>
                             <span class="input-group-text" id="voltageStopThresholdDescription">V</span>
                         </div>
@@ -207,10 +220,10 @@
                 </div>
 
                 <div class="row mb-3" v-show="powerLimiterConfigList.solar_passthrough_enabled">
-                    <label for="inputVoltageSolarPassthroughStartThreshold" class="col-sm-2 col-form-label">{{ $t('powerlimiteradmin.VoltageSolarPassthroughStartThreshold') }}:
+                    <label for="inputVoltageSolarPassthroughStartThreshold" class="col-sm-4 col-form-label">{{ $t('powerlimiteradmin.VoltageSolarPassthroughStartThreshold') }}:
                       <BIconInfoCircle v-tooltip :title="$t('powerlimiteradmin.VoltageSolarPassthroughStartThresholdHint')" />
                     </label>
-                    <div class="col-sm-10">
+                    <div class="col-sm-2">
                         <div class="input-group">
                             <input type="number" step="0.01" class="form-control" id="inputVoltageSolarPassthroughStartThreshold"
                                 placeholder="49" v-model="powerLimiterConfigList.full_solar_passthrough_start_voltage"
@@ -221,8 +234,8 @@
                 </div>
 
                 <div class="row mb-3"  v-show="powerLimiterConfigList.solar_passthrough_enabled">
-                    <label for="inputVoltageSolarPassthroughStopThreshold" class="col-sm-2 col-form-label">{{ $t('powerlimiteradmin.VoltageSolarPassthroughStopThreshold') }}:</label>
-                    <div class="col-sm-10">
+                    <label for="inputVoltageSolarPassthroughStopThreshold" class="col-sm-4 col-form-label">{{ $t('powerlimiteradmin.VoltageSolarPassthroughStopThreshold') }}:</label>
+                    <div class="col-sm-2">
                         <div class="input-group">
                             <input type="number" step="0.01" class="form-control" id="inputVoltageSolarPassthroughStopThreshold"
                                 placeholder="49" v-model="powerLimiterConfigList.full_solar_passthrough_stop_voltage"
@@ -233,11 +246,11 @@
                 </div>
 
                 <div class="row mb-3">
-                    <label for="inputVoltageLoadCorrectionFactor" class="col-sm-2 col-form-label">{{ $t('powerlimiteradmin.VoltageLoadCorrectionFactor') }}:</label>
-                    <div class="col-sm-10">
+                    <label for="inputVoltageLoadCorrectionFactor" class="col-sm-4 col-form-label">{{ $t('powerlimiteradmin.VoltageLoadCorrectionFactor') }}:</label>
+                    <div class="col-sm-2">
                         <div class="input-group">
                             <input type="number" step="0.0001" class="form-control" id="inputVoltageLoadCorrectionFactor"
-                                placeholder="49" v-model="powerLimiterConfigList.voltage_load_correction_factor"
+                                placeholder="0.0001" v-model="powerLimiterConfigList.voltage_load_correction_factor"
                                 aria-describedby="voltageLoadCorrectionFactorDescription" required/>
                             <span class="input-group-text" id="voltageLoadCorrectionFactorDescription">V</span>
                         </div>
@@ -247,15 +260,16 @@
                 <div class="alert alert-secondary" role="alert" v-html="$t('powerlimiteradmin.VoltageLoadCorrectionInfo')"></div>
             </CardElement>
 
-            <CardElement :text="$t('powerlimiteradmin.InverterRestart')" textVariant="text-bg-primary" add-space
-                         v-show="powerLimiterConfigList.enabled"
-            >
-                <div class="row mb-3" v-show="powerLimiterConfigList.enabled">
-                    <label for="inputTimezone" class="col-sm-2 col-form-label">
+            <CardElement :text="$t('powerlimiteradmin.InverterRestart')" 
+                         textVariant="text-bg-primary"
+                         add-space
+                         v-show="powerLimiterConfigList.enabled">
+                <div class="row mb-3">
+                    <label for="inverter_restart_hour" class="col-sm-4 col-form-label">
                         {{ $t('powerlimiteradmin.InverterRestartHour') }}:
                         <BIconInfoCircle v-tooltip :title="$t('powerlimiteradmin.InverterRestartHint')" />
                     </label>
-                    <div class="col-sm-10">
+                    <div class="col-sm-2">
                         <select class="form-select" v-model="powerLimiterConfigList.inverter_restart_hour">
                             <option v-for="hour in restartHourList" :key="hour.key" :value="hour.key">
                                 {{ hour.value }}
@@ -274,9 +288,9 @@
 import { defineComponent } from 'vue';
 import BasePage from '@/components/BasePage.vue';
 import BootstrapAlert from "@/components/BootstrapAlert.vue";
+import FormFooter from '@/components/FormFooter.vue';
 import { handleResponse, authHeader } from '@/utils/authentication';
 import CardElement from '@/components/CardElement.vue';
-import FormFooter from '@/components/FormFooter.vue';
 import InputElement from '@/components/InputElement.vue';
 import { BIconInfoCircle } from 'bootstrap-icons-vue';
 import type { PowerLimiterConfig } from "@/types/PowerLimiterConfig";
@@ -285,8 +299,8 @@ export default defineComponent({
     components: {
         BasePage,
         BootstrapAlert,
-        CardElement,
         FormFooter,
+        CardElement,
         InputElement,
         BIconInfoCircle,
     },
@@ -298,14 +312,14 @@ export default defineComponent({
                 { key: 0, value: "ID 00" },
                 { key: 1, value: "ID 01" },
                 { key: 2, value: "ID 02" },
-                { key: 3, value: "ID 03" },
-                { key: 4, value: "ID 04" },
-                { key: 5, value: "ID 05" },
-                { key: 6, value: "ID 06" },
-                { key: 7, value: "ID 07" },
-                { key: 8, value: "ID 08" },
-                { key: 9, value: "ID 09" },
-                { key: 10, value: "ID 10" },
+//                { key: 3, value: "ID 03" },
+//                { key: 4, value: "ID 04" },
+//                { key: 5, value: "ID 05" },
+//                { key: 6, value: "ID 06" },
+//                { key: 7, value: "ID 07" },
+//                { key: 8, value: "ID 08" },
+//                { key: 9, value: "ID 09" },
+//                { key: 10, value: "ID 10" },
             ],
             inverterChannelList: [
                 { key: 0, value: "CH 0" },
