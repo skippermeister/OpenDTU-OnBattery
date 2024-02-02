@@ -2,6 +2,8 @@
 /*
  * Copyright (C) 2022-2024 Thomas Basler and others
  */
+#ifdef CHARGER_HUAWEI
+
 #include "WebApi_ws_Huawei.h"
 #include "AsyncJson.h"
 #include "Configuration.h"
@@ -13,6 +15,8 @@
 
 WebApiWsHuaweiLiveClass::WebApiWsHuaweiLiveClass()
     : _ws("/huaweilivedata")
+    , _wsCleanupTask(1 * TASK_SECOND, TASK_FOREVER, std::bind(&WebApiWsHuaweiLiveClass::wsCleanupTaskCb, this))
+    , _sendDataTask(1 * TASK_SECOND, TASK_FOREVER, std::bind(&WebApiWsHuaweiLiveClass::sendDataTaskCb, this))
 {
 }
 
@@ -32,15 +36,9 @@ void WebApiWsHuaweiLiveClass::init(AsyncWebServer& server, Scheduler& scheduler)
     _ws.onEvent(std::bind(&WebApiWsHuaweiLiveClass::onWebsocketEvent, this, _1, _2, _3, _4, _5, _6));
 
     scheduler.addTask(_wsCleanupTask);
-    _wsCleanupTask.setCallback(std::bind(&WebApiWsHuaweiLiveClass::wsCleanupTaskCb, this));
-    _wsCleanupTask.setIterations(TASK_FOREVER);
-    _wsCleanupTask.setInterval(1 * TASK_SECOND);
     _wsCleanupTask.enable();
 
     scheduler.addTask(_sendDataTask);
-    _sendDataTask.setCallback(std::bind(&WebApiWsHuaweiLiveClass::sendDataTaskCb, this));
-    _sendDataTask.setIterations(TASK_FOREVER);
-    _sendDataTask.setInterval(1 * TASK_SECOND);
     _sendDataTask.enable();
 }
 
@@ -48,6 +46,12 @@ void WebApiWsHuaweiLiveClass::wsCleanupTaskCb()
 {
     // see: https://github.com/me-no-dev/ESPAsyncWebServer#limiting-the-number-of-web-socket-clients
     _ws.cleanupClients();
+
+    if (Configuration.get().Security.AllowReadonly) {
+        _ws.setAuthentication("", "");
+    } else {
+        _ws.setAuthentication(AUTH_USERNAME, Configuration.get().Security.Password);
+    }
 }
 
 void WebApiWsHuaweiLiveClass::sendDataTaskCb()
@@ -66,12 +70,6 @@ void WebApiWsHuaweiLiveClass::sendDataTaskCb()
 
             String buffer;
             serializeJson(root, buffer);
-
-            if (Configuration.get().Security.AllowReadonly) {
-                _ws.setAuthentication("", "");
-            } else {
-                _ws.setAuthentication(AUTH_USERNAME, Configuration.get().Security.Password);
-            }
 
             _ws.textAll(buffer);
         }
@@ -107,7 +105,6 @@ void WebApiWsHuaweiLiveClass::generateJsonResponse(JsonVariant& root)
     root["output_temp"]["u"] = "°C";
     root["efficiency"]["v"] = rp->efficiency * 100;
     root["efficiency"]["u"] = "%";
-
 }
 
 void WebApiWsHuaweiLiveClass::onWebsocketEvent(AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType type, void* arg, uint8_t* data, size_t len)
@@ -147,3 +144,5 @@ void WebApiWsHuaweiLiveClass::onLivedataStatus(AsyncWebServerRequest* request)
         WebApi.sendTooManyRequests(request);
     }
 }
+
+#endif
