@@ -43,10 +43,8 @@ void MqttHandleHuaweiClass::init(Scheduler& scheduler)
     subscribe("limit_offline_current", Topic::LimitOfflineCurrent);
     subscribe("mode", Topic::Mode);
 
-    _lastPublish = millis();
-
+    _lastPublish.set(Configuration.get().Mqtt.PublishInterval * 1000);
 }
-
 
 void MqttHandleHuaweiClass::loop()
 {
