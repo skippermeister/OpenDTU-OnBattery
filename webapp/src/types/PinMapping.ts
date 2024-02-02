@@ -44,9 +44,16 @@ export interface Victron {
     tx: number;
 }
 
+export interface REFUsol {
+    rx: number;
+    tx: number;
+    rts: number;
+}
+
 export interface Battery {
     rx: number;
     tx: number;
+    rts: number;
 }
 
 export interface Device  {
@@ -57,6 +64,7 @@ export interface Device  {
     eth: Ethernet;
     display: Display;
     victron: Victron;
+    refusol: REFUsol;
     battery: Battery;
 }
 
