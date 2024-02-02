@@ -4,7 +4,6 @@
 #include <ESPAsyncWebServer.h>
 #include <TaskSchedulerDeclarations.h>
 
-
 class WebApiVedirectClass {
 public:
     void init(AsyncWebServer& server, Scheduler& scheduler);
