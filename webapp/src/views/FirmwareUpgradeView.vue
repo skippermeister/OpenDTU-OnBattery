@@ -9,8 +9,7 @@
         </div>
 
         <CardElement :text="$t('firmwareupgrade.OtaError')" textVariant="text-bg-danger" center-content
-                     v-if="!loading && !uploading && OTAError != ''"
-        >
+                     v-if="!loading && !uploading && OTAError != ''">
             <p class="h1 mb-2">
                 <BIconExclamationCircleFill />
             </p>
@@ -29,8 +28,7 @@
         </CardElement>
 
         <CardElement :text="$t('firmwareupgrade.OtaStatus')" textVariant="text-bg-success" center-content
-                     v-else-if="!loading && !uploading && OTASuccess"
-        >
+                     v-else-if="!loading && !uploading && OTASuccess">
             <span class="h1 mb-2">
                 <BIconCheckCircle />
             </span>
@@ -45,16 +43,14 @@
         </CardElement>
 
         <CardElement :text="$t('firmwareupgrade.FirmwareUpload')" textVariant="text-bg-primary" center-content
-                     v-else-if="!loading && !uploading"
-        >
+                     v-else-if="!loading && !uploading">
             <div class="form-group pt-2 mt-3">
                 <input class="form-control" type="file" ref="file" accept=".bin,.bin.gz" @change="uploadOTA" />
             </div>
         </CardElement>
 
         <CardElement :text="$t('firmwareupgrade.UploadProgress')" textVariant="text-bg-primary" center-content
-                     v-else-if="!loading && uploading"
-        >
+                     v-else-if="!loading && uploading">
             <div class="progress">
                 <div class="progress-bar" role="progressbar" :style="{ width: progress + '%' }"
                     v-bind:aria-valuenow="progress" aria-valuemin="0" aria-valuemax="100">
