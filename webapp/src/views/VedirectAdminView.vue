@@ -8,19 +8,18 @@
             <CardElement :text="$t('vedirectadmin.VedirectConfiguration')" textVariant="text-bg-primary">
                 <InputElement :label="$t('vedirectadmin.EnableVedirect')"
                               v-model="vedirectConfigList.vedirect_enabled"
-                              type="checkbox" wide/>
+                              type="checkbox" wide2_1/>
             </CardElement>
 
             <CardElement :text="$t('vedirectadmin.VedirectParameter')" textVariant="text-bg-primary" add-space
                          v-show="vedirectConfigList.vedirect_enabled">
+                <InputElement :label="$t('vedirectadmin.UpdatesOnly')"
+                              v-model="vedirectConfigList.vedirect_updatesonly"
+                              type="checkbox" wide4_1/>
 
                 <InputElement :label="$t('vedirectadmin.VerboseLogging')"
                               v-model="vedirectConfigList.verbose_logging"
-                              type="checkbox" wide/>
-
-                <InputElement :label="$t('vedirectadmin.UpdatesOnly')"
-                              v-model="vedirectConfigList.vedirect_updatesonly"
-                              type="checkbox" wide/>
+                              type="checkbox" wide4_1/>
             </CardElement>
 
             <FormFooter @reload="getVedirectConfig"/>
