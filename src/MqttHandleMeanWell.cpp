@@ -12,7 +12,7 @@
 #include "WebApi_MeanWell.h"
 #include <ctime>
 
-static const char TAG[] = "[MeanWell MQTT]";
+static constexpr char TAG[] = "[MeanWell MQTT]";
 
 MqttHandleMeanWellClass MqttHandleMeanWell;
 
