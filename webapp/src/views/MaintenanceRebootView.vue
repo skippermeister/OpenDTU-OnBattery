@@ -16,7 +16,8 @@
         {{ $t('maintenancereboot.RebootQuestion') }}
         <template #footer>
             <button type="button" class="btn btn-danger" @click="onReboot">
-                        {{ $t('maintenancereboot.Reboot') }}</button>
+                        {{ $t('maintenancereboot.Reboot') }}
+            </button>
         </template>
     </ModalDialog>
 </template>
