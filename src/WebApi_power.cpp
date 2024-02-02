@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright (C) 2022-2024 Thomas Basler and others
+ * Copyright (C) 2022 Thomas Basler and others
  */
 #include "WebApi_power.h"
+#include "ErrorMessages.h"
 #include "WebApi.h"
 #include "WebApi_errors.h"
 #include <AsyncJson.h>
@@ -54,10 +55,10 @@ void WebApiPowerClass::onPowerPost(AsyncWebServerRequest* request)
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& retMsg = response->getRoot();
-    retMsg["type"] = "warning";
+    retMsg["type"] = Warning;
 
     if (!request->hasParam("data", true)) {
-        retMsg["message"] = "No values found!";
+        retMsg["message"] = NoValuesFound;
         retMsg["code"] = WebApiError::GenericNoValueFound;
         response->setLength();
         request->send(response);
@@ -67,7 +68,7 @@ void WebApiPowerClass::onPowerPost(AsyncWebServerRequest* request)
     const String json = request->getParam("data", true)->value();
 
     if (json.length() > 1024) {
-        retMsg["message"] = "Data too large!";
+        retMsg["message"] = DataTooLarge;
         retMsg["code"] = WebApiError::GenericDataTooLarge;
         response->setLength();
         request->send(response);
@@ -78,7 +79,7 @@ void WebApiPowerClass::onPowerPost(AsyncWebServerRequest* request)
     const DeserializationError error = deserializeJson(root, json);
 
     if (error) {
-        retMsg["message"] = "Failed to parse data!";
+        retMsg["message"] = FailedToParseData;
         retMsg["code"] = WebApiError::GenericParseError;
         response->setLength();
         request->send(response);
@@ -88,7 +89,7 @@ void WebApiPowerClass::onPowerPost(AsyncWebServerRequest* request)
     if (!(root.containsKey("serial")
             && (root.containsKey("power")
                 || root.containsKey("restart")))) {
-        retMsg["message"] = "Values are missing!";
+        retMsg["message"] = ValuesAreMissing;
         retMsg["code"] = WebApiError::GenericValueMissing;
         response->setLength();
         request->send(response);
@@ -96,7 +97,7 @@ void WebApiPowerClass::onPowerPost(AsyncWebServerRequest* request)
     }
 
     if (root["serial"].as<uint64_t>() == 0) {
-        retMsg["message"] = "Serial must be a number > 0!";
+        retMsg["message"] = SerialMustBeGreaterZero;
         retMsg["code"] = WebApiError::PowerSerialZero;
         response->setLength();
         request->send(response);
@@ -122,8 +123,8 @@ void WebApiPowerClass::onPowerPost(AsyncWebServerRequest* request)
         }
     }
 
-    retMsg["type"] = "success";
-    retMsg["message"] = "Settings saved!";
+    retMsg["type"] = Success;
+    retMsg["message"] = SettingsSaved;
     retMsg["code"] = WebApiError::GenericSuccess;
 
     response->setLength();
