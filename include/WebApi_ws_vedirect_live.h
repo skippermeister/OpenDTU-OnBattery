@@ -4,6 +4,7 @@
 #include "ArduinoJson.h"
 #include <ESPAsyncWebServer.h>
 #include <TaskSchedulerDeclarations.h>
+#include <TimeoutHelper.h>
 #include <VeDirectMpptController.h>
 #include <mutex>
 
@@ -20,7 +21,7 @@ private:
     AsyncWebServer* _server;
     AsyncWebSocket _ws;
 
-    uint32_t _lastWsPublish = 0;
+    TimeoutHelper _lastWsPublish = 0;
     uint32_t _dataAgeMillis = 0;
     static constexpr uint16_t _responseSize = 1024 + 128;
 
