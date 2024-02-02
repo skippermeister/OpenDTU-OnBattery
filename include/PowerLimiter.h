@@ -2,13 +2,14 @@
 #pragma once
 
 #include "Configuration.h"
-#include <espMqttClient.h>
 #include <Arduino.h>
 #include <Hoymiles.h>
-#include <memory>
-#include <functional>
 #include <TaskSchedulerDeclarations.h>
+#include <TimeoutHelper.h>
+#include <espMqttClient.h>
 #include <frozen/string.h>
+#include <functional>
+#include <memory>
 
 #define PL_UI_STATE_INACTIVE 0
 #define PL_UI_STATE_CHARGING 1
@@ -20,10 +21,14 @@
 #define PL_MODE_SOLAR_PT_ONLY 2
 
 typedef enum {
-    EMPTY_WHEN_FULL= 0, 
+    SHUTDOWN = 0,
+    ACTIVE
+} plStates;
+
+typedef enum {
+    EMPTY_WHEN_FULL = 0,
     EMPTY_AT_NIGHT
 } batDrainStrategy;
-   
 
 class PowerLimiterClass {
 public:
@@ -33,6 +38,7 @@ public:
         DisabledByMqtt,
         WaitingForValidTimestamp,
         PowerMeterDisabled,
+        PowerMeterTimeoutWarning,
         PowerMeterTimeout,
         PowerMeterPending,
         InverterInvalid,
@@ -47,8 +53,14 @@ public:
         NoVeDirect,
         Settling,
         Stable,
+        LowerLimitUndercut,
+        TemperatureRange,
+        BatteryNotInitialized,
+        DisconnectFromBattery
+        //        WaitingInverterPowerOn
     };
 
+    PowerLimiterClass();
     void init(Scheduler& scheduler);
     uint8_t getPowerLimiterState();
     int32_t getLastRequestedPowerLimit();
@@ -63,6 +75,9 @@ public:
     Mode getMode() const { return _mode; }
     void calcNextInverterRestart();
 
+    bool getVerboseLogging(void) { return _verbose_logging; };
+    void setVerboseLogging(bool logging) { _verbose_logging = logging; };
+
 private:
     void loop();
 
@@ -71,8 +86,9 @@ private:
     int32_t _lastRequestedPowerLimit = 0;
     uint32_t _lastPowerLimitMillis = 0;
     uint32_t _shutdownTimeout = 0;
+    bool _shutdownInProgress;
     Status _lastStatus = Status::Initializing;
-    uint32_t _lastStatusPrinted = 0;
+    TimeoutHelper _lastStatusPrinted;
     uint32_t _lastCalculation = 0;
     static constexpr uint32_t _calculationBackoffMsDefault = 128;
     uint32_t _calculationBackoffMs = _calculationBackoffMsDefault;
@@ -82,7 +98,6 @@ private:
     uint32_t _nextInverterRestart = 0; // Values: 0->not calculated / 1->no restart configured / >1->time of next inverter restart in millis()
     uint32_t _nextCalculateCheck = 5000; // time in millis for next NTP check to calulate restart
     bool _fullSolarPassThroughEnabled = false;
-    bool _verboseLogging = true;
 
     frozen::string const& getStatusText(Status status);
     void announceStatus(Status status);
@@ -97,11 +112,16 @@ private:
     int32_t getSolarChargePower();
     float getLoadCorrectedVoltage();
     bool testThreshold(float socThreshold, float voltThreshold,
-            std::function<bool(float, float)> compare);
+        std::function<bool(float, float)> compare);
     bool isStartThresholdReached();
     bool isStopThresholdReached();
     bool isBelowStopThreshold();
     bool useFullSolarPassthrough();
+
+    int8_t _preChargePowerState;
+    uint32_t _preChargeDelay = 0;
+    uint32_t _lastPreCharge = 0;
+    bool _verbose_logging = false;
 };
 
 extern PowerLimiterClass PowerLimiter;
