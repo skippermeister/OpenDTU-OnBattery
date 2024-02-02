@@ -13,6 +13,7 @@
 
 class MqttHandleHuaweiClass {
 public:
+    MqttHandleHuaweiClass();
     void init(Scheduler& scheduler);
 
 private:
