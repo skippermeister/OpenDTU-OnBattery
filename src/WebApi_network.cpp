@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright (C) 2022-2024 Thomas Basler and others
+ * Copyright (C) 2022 Thomas Basler and others
  */
 #include "WebApi_network.h"
 #include "Configuration.h"
+#include "ErrorMessages.h"
 #include "NetworkSettings.h"
 #include "WebApi.h"
 #include "WebApi_errors.h"
@@ -60,19 +61,25 @@ void WebApiNetworkClass::onNetworkAdminGet(AsyncWebServerRequest* request)
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& root = response->getRoot();
-    const CONFIG_T& config = Configuration.get();
+    const WiFi_CONFIG_T& cWiFi = Configuration.get().WiFi;
 
-    root["hostname"] = config.WiFi.Hostname;
-    root["dhcp"] = config.WiFi.Dhcp;
-    root["ipaddress"] = IPAddress(config.WiFi.Ip).toString();
-    root["netmask"] = IPAddress(config.WiFi.Netmask).toString();
-    root["gateway"] = IPAddress(config.WiFi.Gateway).toString();
-    root["dns1"] = IPAddress(config.WiFi.Dns1).toString();
-    root["dns2"] = IPAddress(config.WiFi.Dns2).toString();
-    root["ssid"] = config.WiFi.Ssid;
-    root["password"] = config.WiFi.Password;
-    root["aptimeout"] = config.WiFi.ApTimeout;
-    root["mdnsenabled"] = config.Mdns.Enabled;
+    root["hostname"] = cWiFi.Hostname;
+    root["dhcp"] = cWiFi.Dhcp;
+    root["ipaddress"] = IPAddress(cWiFi.Ip).toString();
+    root["netmask"] = IPAddress(cWiFi.Netmask).toString();
+    root["gateway"] = IPAddress(cWiFi.Gateway).toString();
+    root["dns1"] = IPAddress(cWiFi.Dns1).toString();
+    root["dns2"] = IPAddress(cWiFi.Dns2).toString();
+    root["ssid"] = cWiFi.Ssid;
+    root["password"] = cWiFi.Password;
+    root["aptimeout"] = cWiFi.ApTimeout;
+    root["mdnsenabled"] = Configuration.get().Mdns.Enabled;
+
+#ifdef USE_ModbusDTU
+    root["froniussmmodbusenabled"] = Configuration.get().Modbus.Fronius_SM_Simulation_Enabled;
+#else
+    root["froniussmmodbusenabled"] = false;
+#endif
 
     response->setLength();
     request->send(response);
@@ -86,10 +93,10 @@ void WebApiNetworkClass::onNetworkAdminPost(AsyncWebServerRequest* request)
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& retMsg = response->getRoot();
-    retMsg["type"] = "warning";
+    retMsg["type"] = Warning;
 
     if (!request->hasParam("data", true)) {
-        retMsg["message"] = "No values found!";
+        retMsg["message"] = NoValuesFound;
         retMsg["code"] = WebApiError::GenericNoValueFound;
         response->setLength();
         request->send(response);
@@ -99,7 +106,7 @@ void WebApiNetworkClass::onNetworkAdminPost(AsyncWebServerRequest* request)
     const String json = request->getParam("data", true)->value();
 
     if (json.length() > 1024) {
-        retMsg["message"] = "Data too large!";
+        retMsg["message"] = DataTooLarge;
         retMsg["code"] = WebApiError::GenericDataTooLarge;
         response->setLength();
         request->send(response);
@@ -110,7 +117,7 @@ void WebApiNetworkClass::onNetworkAdminPost(AsyncWebServerRequest* request)
     const DeserializationError error = deserializeJson(root, json);
 
     if (error) {
-        retMsg["message"] = "Failed to parse data!";
+        retMsg["message"] = FailedToParseData;
         retMsg["code"] = WebApiError::GenericParseError;
         response->setLength();
         request->send(response);
@@ -127,7 +134,7 @@ void WebApiNetworkClass::onNetworkAdminPost(AsyncWebServerRequest* request)
             && root.containsKey("dns1")
             && root.containsKey("dns2")
             && root.containsKey("aptimeout"))) {
-        retMsg["message"] = "Values are missing!";
+        retMsg["message"] = ValuesAreMissing;
         retMsg["code"] = WebApiError::GenericValueMissing;
         response->setLength();
         request->send(response);
@@ -203,37 +210,44 @@ void WebApiNetworkClass::onNetworkAdminPost(AsyncWebServerRequest* request)
         return;
     }
 
-    CONFIG_T& config = Configuration.get();
-    config.WiFi.Ip[0] = ipaddress[0];
-    config.WiFi.Ip[1] = ipaddress[1];
-    config.WiFi.Ip[2] = ipaddress[2];
-    config.WiFi.Ip[3] = ipaddress[3];
-    config.WiFi.Netmask[0] = netmask[0];
-    config.WiFi.Netmask[1] = netmask[1];
-    config.WiFi.Netmask[2] = netmask[2];
-    config.WiFi.Netmask[3] = netmask[3];
-    config.WiFi.Gateway[0] = gateway[0];
-    config.WiFi.Gateway[1] = gateway[1];
-    config.WiFi.Gateway[2] = gateway[2];
-    config.WiFi.Gateway[3] = gateway[3];
-    config.WiFi.Dns1[0] = dns1[0];
-    config.WiFi.Dns1[1] = dns1[1];
-    config.WiFi.Dns1[2] = dns1[2];
-    config.WiFi.Dns1[3] = dns1[3];
-    config.WiFi.Dns2[0] = dns2[0];
-    config.WiFi.Dns2[1] = dns2[1];
-    config.WiFi.Dns2[2] = dns2[2];
-    config.WiFi.Dns2[3] = dns2[3];
-    strlcpy(config.WiFi.Ssid, root["ssid"].as<String>().c_str(), sizeof(config.WiFi.Ssid));
-    strlcpy(config.WiFi.Password, root["password"].as<String>().c_str(), sizeof(config.WiFi.Password));
-    strlcpy(config.WiFi.Hostname, root["hostname"].as<String>().c_str(), sizeof(config.WiFi.Hostname));
+    WiFi_CONFIG_T& cWiFi = Configuration.get().WiFi;
+    cWiFi.Ip[0] = ipaddress[0];
+    cWiFi.Ip[1] = ipaddress[1];
+    cWiFi.Ip[2] = ipaddress[2];
+    cWiFi.Ip[3] = ipaddress[3];
+    cWiFi.Netmask[0] = netmask[0];
+    cWiFi.Netmask[1] = netmask[1];
+    cWiFi.Netmask[2] = netmask[2];
+    cWiFi.Netmask[3] = netmask[3];
+    cWiFi.Gateway[0] = gateway[0];
+    cWiFi.Gateway[1] = gateway[1];
+    cWiFi.Gateway[2] = gateway[2];
+    cWiFi.Gateway[3] = gateway[3];
+    cWiFi.Dns1[0] = dns1[0];
+    cWiFi.Dns1[1] = dns1[1];
+    cWiFi.Dns1[2] = dns1[2];
+    cWiFi.Dns1[3] = dns1[3];
+    cWiFi.Dns2[0] = dns2[0];
+    cWiFi.Dns2[1] = dns2[1];
+    cWiFi.Dns2[2] = dns2[2];
+    cWiFi.Dns2[3] = dns2[3];
+    strlcpy(cWiFi.Ssid, root["ssid"].as<String>().c_str(), sizeof(cWiFi.Ssid));
+    strlcpy(cWiFi.Password, root["password"].as<String>().c_str(), sizeof(cWiFi.Password));
+    strlcpy(cWiFi.Hostname, root["hostname"].as<String>().c_str(), sizeof(cWiFi.Hostname));
     if (root["dhcp"].as<bool>()) {
-        config.WiFi.Dhcp = true;
+        cWiFi.Dhcp = true;
     } else {
-        config.WiFi.Dhcp = false;
+        cWiFi.Dhcp = false;
     }
-    config.WiFi.ApTimeout = root["aptimeout"].as<uint>();
-    config.Mdns.Enabled = root["mdnsenabled"].as<bool>();
+    cWiFi.ApTimeout = root["aptimeout"].as<uint>();
+
+    Mdns_CONFIG_T& cMdns = Configuration.get().Mdns;
+    cMdns.Enabled = root["mdnsenabled"].as<bool>();
+
+#ifdef USE_ModbusDTU
+    Modbus_CONFIG_T& cModbus = Configuration.get().Modbus;
+    cModbus.Fronius_SM_Simulation_Enabled = root["froniussmmodbusenabled"].as<bool>();
+#endif
 
     WebApi.writeConfig(retMsg);
 
