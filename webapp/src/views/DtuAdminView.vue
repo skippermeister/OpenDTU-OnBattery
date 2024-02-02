@@ -8,12 +8,12 @@
             <CardElement :text="$t('dtuadmin.DtuConfiguration')" textVariant="text-bg-primary">
                 <InputElement :label="$t('dtuadmin.Serial')"
                                 v-model="dtuConfigList.serial"
-                                type="number" min="1" max="199999999999"
+                                type="number" min="1" max="199999999999" wide3_3
                                 :tooltip="$t('dtuadmin.SerialHint')"/>
 
                 <InputElement :label="$t('dtuadmin.PollInterval')"
                                 v-model="dtuConfigList.pollinterval"
-                                type="number" min="1" max="86400"
+                                type="number" min="1" max="300" wide3_3
                                 :postfix="$t('dtuadmin.Seconds')"/>
 
                 <div class="row mb-3" v-if="dtuConfigList.nrf_enabled">
@@ -81,7 +81,7 @@
 
                 <InputElement :label="$t('dtuadmin.VerboseLogging')"
                                 v-model="dtuConfigList.verbose_logging"
-                                type="checkbox"/>
+                                type="checkbox"  wide3_2/>
                 
             </CardElement>
             <FormFooter @reload="getDtuConfig"/>
