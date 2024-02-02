@@ -9,7 +9,7 @@
 
 #ifdef USE_REFUsol_INVERTER
 
-const char TAG[] = "[REFUsol]";
+static constexpr char TAG[] = "[REFUsol]";
 
 #include "REFUsolRS485Receiver.h"
 #include "Configuration.h"
