@@ -9,7 +9,7 @@
 
 bool MqttBattery::init()
 {
-    _verboseLogging = Battery._verbose_logging;
+    _verboseLogging = Battery._verboseLogging;
 
     auto const& config = Configuration.get();
     _socTopic = config.Battery.MqttTopic;
