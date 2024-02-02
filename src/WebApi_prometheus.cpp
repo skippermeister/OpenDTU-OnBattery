@@ -1,15 +1,16 @@
 
 // SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright (C) 2022-2024 Thomas Basler and others
+ * Copyright (C) 2022-2023 Thomas Basler and others
  */
+#ifdef USE_PROMETHEUS
+
 #include "WebApi_prometheus.h"
 #include "Configuration.h"
 #include "MessageOutput.h"
 #include "NetworkSettings.h"
 #include "WebApi.h"
 #include <Hoymiles.h>
-#include "MessageOutput.h"
 
 void WebApiPrometheusClass::init(AsyncWebServer& server, Scheduler& scheduler)
 {
@@ -181,3 +182,5 @@ void WebApiPrometheusClass::addPanelInfo(AsyncResponseStream* stream, const Stri
         channel,
         config.Inverter[idx].channel[channel].YieldTotalOffset);
 }
+
+#endif
