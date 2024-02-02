@@ -14,7 +14,7 @@
 #include <SoftwareSerial.h>
 #include <ctime>
 
-static char TAG[] = "[PowerMeter]";
+static constexpr char TAG[] = "[PowerMeter]";
 
 PowerMeterClass PowerMeter;
 
