@@ -7,9 +7,12 @@ import DeviceAdminView from '@/views/DeviceAdminView.vue'
 import DtuAdminView from '@/views/DtuAdminView.vue';
 import FirmwareUpgradeView from '@/views/FirmwareUpgradeView.vue';
 import HomeView from '@/views/HomeView.vue';
+import REFUsolAdminView from '@/views/REFUsolAdminView.vue'
 import VedirectAdminView from '@/views/VedirectAdminView.vue'
+import ZeroExportAdminView from '@/views/ZeroExportAdminView.vue'
 import PowerMeterAdminView from '@/views/PowerMeterAdminView.vue'
 import PowerLimiterAdminView from '@/views/PowerLimiterAdminView.vue'
+import REFUsolInfoView from '@/views/REFUsolInfoView.vue'
 import VedirectInfoView from '@/views/VedirectInfoView.vue'
 import InverterAdminView from '@/views/InverterAdminView.vue';
 import LoginView from '@/views/LoginView.vue';
@@ -69,6 +72,11 @@ const router = createRouter({
         component: ConsoleInfoView
     },
     {
+        path: '/info/refusol',
+        name: 'REFUsol',
+        component: REFUsolInfoView
+    },
+    {
         path: '/info/vedirect',
         name: 'VE.Direct',
         component: VedirectInfoView
@@ -84,6 +92,11 @@ const router = createRouter({
         component: NtpAdminView
     },
     {
+        path: '/settings/refusol',
+        name: 'REFUsol Settings',
+        component: REFUsolAdminView
+    },
+    {
         path: '/settings/vedirect',
         name: 'VE.Direct Settings',
         component: VedirectAdminView
@@ -97,6 +110,11 @@ const router = createRouter({
         path: '/settings/powerlimiter',
         name: 'Power limiter Settings',
         component: PowerLimiterAdminView
+    },
+    {
+        path: '/settings/zeroexport',
+        name: 'Zero Export PID Controller Settings',
+        component: ZeroExportAdminView
     },
     {
         path: '/settings/battery',
