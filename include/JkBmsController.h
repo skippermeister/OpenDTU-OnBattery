@@ -64,16 +64,13 @@ class Controller : public BatteryProvider {
         }
 
         bool _verboseLogging = true;
-        int8_t _rxEnablePin = -1;
-        int8_t _txEnablePin = -1;
         Status _lastStatus = Status::Initializing;
         TimeoutHelper _lastStatusPrinted;
         uint32_t _lastRequest = 0;
         uint16_t _frameLength = 0;
         uint8_t _protocolVersion = -1;
         SerialResponse::tData _buffer = {};
-        std::shared_ptr<JkBmsBatteryStats> _stats =
-            std::make_shared<JkBmsBatteryStats>();
+        std::shared_ptr<JkBmsBatteryStats> _stats = std::make_shared<JkBmsBatteryStats>();
 };
 
 } /* namespace JkBms */
