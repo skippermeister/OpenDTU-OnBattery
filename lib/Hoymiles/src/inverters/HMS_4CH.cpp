@@ -2,6 +2,8 @@
 /*
  * Copyright (C) 2023 Thomas Basler and others
  */
+#ifdef USE_RADIO_CMT
+
 #include "HMS_4CH.h"
 
 static const byteAssign_t byteAssignment[] = {
@@ -73,3 +75,5 @@ uint8_t HMS_4CH::getByteAssignmentSize() const
 {
     return sizeof(byteAssignment) / sizeof(byteAssignment[0]);
 }
+
+#endif
