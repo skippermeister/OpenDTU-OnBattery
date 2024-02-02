@@ -5,7 +5,7 @@
 #include "JkBmsSerialMessage.h"
 #include "MessageOutput.h"
 
-static const char TAG[] = "[JkBms::SerialMessage]";
+static constexpr char TAG[] = "[JkBms::SerialMessage]";
 
 namespace JkBms {
 
