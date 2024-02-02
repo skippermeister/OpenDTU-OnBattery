@@ -9,7 +9,7 @@ class MqttBattery : public BatteryProvider {
     public:
         MqttBattery() = default;
 
-        bool init(b) final;
+        bool init() final;
         void deinit() final;
         void loop() final { return; } // this class is event-driven
         std::shared_ptr<BatteryStats> getStats() const final { return _stats; }
