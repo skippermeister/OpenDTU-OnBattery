@@ -10,9 +10,9 @@
 
 //#define PYLONTECH_DUMMY
 
-bool PylontechCanReceiver::init(bool verboseLogging)
+bool PylontechCanReceiver::init()
 {
-    _verboseLogging = verboseLogging;
+    _verboseLogging = Battery._verboseLogging;
 
     MessageOutput.println("[Pylontech] Initialize interface...");
 
