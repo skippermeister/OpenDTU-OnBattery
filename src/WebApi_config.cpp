@@ -56,10 +56,10 @@ void WebApiConfigClass::onConfigDelete(AsyncWebServerRequest* request)
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& retMsg = response->getRoot();
-    retMsg["type"] = "warning";
+    retMsg["type"] = Warning;
 
     if (!request->hasParam("data", true)) {
-        retMsg["message"] = "No values found!";
+        retMsg["message"] = NoValuesFound;
         retMsg["code"] = WebApiError::GenericNoValueFound;
         response->setLength();
         request->send(response);
@@ -69,7 +69,7 @@ void WebApiConfigClass::onConfigDelete(AsyncWebServerRequest* request)
     const String json = request->getParam("data", true)->value();
 
     if (json.length() > 1024) {
-        retMsg["message"] = "Data too large!";
+        retMsg["message"] = DataTooLarge;
         retMsg["code"] = WebApiError::GenericDataTooLarge;
         response->setLength();
         request->send(response);
@@ -80,7 +80,7 @@ void WebApiConfigClass::onConfigDelete(AsyncWebServerRequest* request)
     const DeserializationError error = deserializeJson(root, json);
 
     if (error) {
-        retMsg["message"] = "Failed to parse data!";
+        retMsg["message"] = FailedToParseData;
         retMsg["code"] = WebApiError::GenericDataTooLarge;
         response->setLength();
         request->send(response);
@@ -88,7 +88,7 @@ void WebApiConfigClass::onConfigDelete(AsyncWebServerRequest* request)
     }
 
     if (!(root.containsKey("delete"))) {
-        retMsg["message"] = "Values are missing!";
+        retMsg["message"] = ValuesAreMissing;
         retMsg["code"] = WebApiError::GenericValueMissing;
         response->setLength();
         request->send(response);
@@ -96,14 +96,14 @@ void WebApiConfigClass::onConfigDelete(AsyncWebServerRequest* request)
     }
 
     if (root["delete"].as<bool>() == false) {
-        retMsg["message"] = "Not deleted anything!";
+        retMsg["message"] = NotDeletedAnything;
         retMsg["code"] = WebApiError::ConfigNotDeleted;
         response->setLength();
         request->send(response);
         return;
     }
 
-    retMsg["type"] = "success";
+    retMsg["type"] = Success;
     retMsg["message"] = "Configuration resettet. Rebooting now...";
     retMsg["code"] = WebApiError::ConfigSuccess;
 
