@@ -25,7 +25,7 @@
 #include <math.h>
 #include <AsyncJson.h>
 
-static const char TAG[] = "[MEANWELL]";
+static constexpr char TAG[] = "[MEANWELL]";
 
 MeanWellCanClass MeanWellCan;
 
