@@ -5,11 +5,12 @@
         </BootstrapAlert>
         
         <form @submit="savePowerMeterConfig">
-            <CardElement :text="$t('powermeteradmin.PowerMeterConfiguration')"
-                    textVariant="text-bg-primary">
+            <CardElement :text="$t('powermeteradmin.PowerMeterConfiguration')" textVariant="text-bg-primary">
                 <div class="row mb-3">
-                    <label class="col-sm-2 form-check-label" for="inputPowerMeterEnable">{{ $t('powermeteradmin.PowerMeterEnable') }}</label>
-                    <div class="col-sm-10">
+                    <label class="col-sm-4 form-check-label" for="inputPowerMeterEnable">
+                        {{ $t('powermeteradmin.PowerMeterEnable') }}
+                    </label>
+                    <div class="col-sm-1">
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="inputPowerMeterEnable"
                                 v-model="powerMeterConfigList.enabled" />
@@ -17,31 +18,43 @@
                     </div>
                 </div>
 
-                <InputElement v-show="powerMeterConfigList.enabled"
-                              :label="$t('powermeteradmin.VerboseLogging')"
-                              v-model="powerMeterConfigList.verbose_logging"
-                              type="checkbox"/>
+                <div v-show="powerMeterConfigList.enabled">
+                    <InputElement :label="$t('powermeteradmin.PollInterval')"
+                              v-model="powerMeterConfigList.pollinterval"
+                              type="number" min="1" max="60" wide4_2
+                              :postfix="$t('powermeteradmin.Seconds')"/>
 
-                <div class="row mb-3" v-show="powerMeterConfigList.enabled">
-                    <label for="inputTimezone" class="col-sm-2 col-form-label">{{ $t('powermeteradmin.PowerMeterSource') }}</label>
-                    <div class="col-sm-10">
-                        <select class="form-select" v-model="powerMeterConfigList.source">
-                            <option v-for="source in powerMeterSourceList" :key="source.key" :value="source.key">
-                                {{ source.value }}
-                            </option>
-                        </select>
+                    <InputElement :label="$t('powermeteradmin.UpdatesOnly')"
+                              v-model="powerMeterConfigList.updatesonly"
+                              type="checkbox" wide4_1/>
+
+                    <InputElement :label="$t('powermeteradmin.VerboseLogging')"
+                              v-model="powerMeterConfigList.verbose_logging"
+                              type="checkbox" wide4_1/>
+
+                    <div class="row mb-3">
+                        <label for="powermeterSource" class="col-sm-4 col-form-label">
+                            {{ $t('powermeteradmin.PowerMeterSource') }}
+                        </label>
+                        <div class="col-sm-3">
+                            <select class="form-select" v-model="powerMeterConfigList.source">
+                                <option v-for="source in powerMeterSourceList" :key="source.key" :value="source.key">
+                                    {{ source.value }}
+                                </option>
+                            </select>
+                        </div>
                     </div>
                 </div>
             </CardElement>
 
-            <div v-if="powerMeterConfigList.enabled">
+            <div v-show="powerMeterConfigList.enabled">
                 <CardElement v-if="powerMeterConfigList.source === 0"
                         :text="$t('powermeteradmin.MQTT')"
                         textVariant="text-bg-primary"
                         add-space>
                     <div class="row mb-3">
-                        <label for="inputMqttTopicPowerMeter1" class="col-sm-2 col-form-label">{{ $t('powermeteradmin.MqttTopicPowerMeter1') }}:</label>
-                        <div class="col-sm-10">
+                        <label for="inputMqttTopicPowerMeter1" class="col-sm-4 col-form-label">{{ $t('powermeteradmin.MqttTopicPowerMeter1') }}:</label>
+                        <div class="col-sm-4">
                             <div class="input-group">
                                 <input type="text" class="form-control" id="inputMqttTopicPowerMeter1"
                                     placeholder="shellies/shellyem3/emeter/0/power" v-model="powerMeterConfigList.mqtt_topic_powermeter_1" />
@@ -50,8 +63,8 @@
                     </div>
 
                     <div class="row mb-3">
-                        <label for="inputMqttTopicPowerMeter2" class="col-sm-2 col-form-label">{{ $t('powermeteradmin.MqttTopicPowerMeter2') }}:</label>
-                        <div class="col-sm-10">
+                        <label for="inputMqttTopicPowerMeter2" class="col-sm-4 col-form-label">{{ $t('powermeteradmin.MqttTopicPowerMeter2') }}:</label>
+                        <div class="col-sm-4">
                             <div class="input-group">
                                 <input type="text" class="form-control" id="inputMqttTopicPowerMeter2"
                                     placeholder="shellies/shellyem3/emeter/1/power" v-model="powerMeterConfigList.mqtt_topic_powermeter_2" />
@@ -60,8 +73,8 @@
                     </div>
 
                     <div class="row mb-3">
-                        <label for="inputMqttTopicPowerMeter3" class="col-sm-2 col-form-label">{{ $t('powermeteradmin.MqttTopicPowerMeter3') }}:</label>
-                        <div class="col-sm-10">
+                        <label for="inputMqttTopicPowerMeter3" class="col-sm-4 col-form-label">{{ $t('powermeteradmin.MqttTopicPowerMeter3') }}:</label>
+                        <div class="col-sm-4">
                             <div class="input-group">
                                 <input type="text" class="form-control" id="inputMqttTopicPowerMeter3"
                                     placeholder="shellies/shellyem3/emeter/2/power" v-model="powerMeterConfigList.mqtt_topic_powermeter_3" />
@@ -75,8 +88,8 @@
                         textVariant="text-bg-primary"
                         add-space>
                     <div class="row mb-3">
-                        <label for="sdmbaudrate" class="col-sm-2 col-form-label">{{ $t('powermeteradmin.sdmbaudrate') }}:</label>
-                        <div class="col-sm-10">
+                        <label for="sdmbaudrate" class="col-sm-4 col-form-label">{{ $t('powermeteradmin.sdmbaudrate') }}:</label>
+                        <div class="col-sm-2">
                             <div class="input-group">
                                 <input type="text" class="form-control" id="sdmbaudrate"
                                     placeholder="9600" v-model="powerMeterConfigList.sdmbaudrate" />
@@ -85,8 +98,8 @@
                     </div>
                 
                     <div class="row mb-3">
-                        <label for="sdmaddress" class="col-sm-2 col-form-label">{{ $t('powermeteradmin.sdmaddress') }}:</label>
-                        <div class="col-sm-10">
+                        <label for="sdmaddress" class="col-sm-4 col-form-label">{{ $t('powermeteradmin.sdmaddress') }}:</label>
+                        <div class="col-sm-2">
                             <div class="input-group">
                                 <input type="text" class="form-control" id="sdmaddress"
                                     placeholder="1" v-model="powerMeterConfigList.sdmaddress" />
@@ -101,8 +114,7 @@
                             add-space>
                         <InputElement :label="$t('powermeteradmin.httpIndividualRequests')"
                             v-model="powerMeterConfigList.http_individual_requests"
-                            type="checkbox"
-                            wide />
+                            type="checkbox" wide4_1 />
                     </CardElement>
 
                     <CardElement
@@ -115,21 +127,21 @@
                             v-if="index > 0"
                             :label="$t('powermeteradmin.httpEnabled')"
                             v-model="http_phase.enabled"
-                            type="checkbox" wide />
+                            type="checkbox" placeholder={{index}} wide4_1 />
 
                         <div v-if="http_phase.enabled">
                             <div v-if="index == 0 || powerMeterConfigList.http_individual_requests">
                                 <InputElement :label="$t('powermeteradmin.httpUrl')"
                                     v-model="http_phase.url"
-                                    type="text"
+                                    type="text" wide4_4
                                     maxlength="1024"
                                     placeholder="http://admin:supersecret@mypowermeter.home/status"
                                     prefix="GET "
                                     :tooltip="$t('powermeteradmin.httpUrlDescription')" />
-                               
+
                                 <div class="row mb-3">
-                                    <label for="inputTimezone" class="col-sm-2 col-form-label">{{ $t('powermeteradmin.httpAuthorization') }}</label>
-                                    <div class="col-sm-10">
+                                    <label class="col-sm-4 col-form-label">{{ $t('powermeteradmin.httpAuthorization') }}</label>
+                                    <div class="col-sm-4">
                                         <select class="form-select" v-model="http_phase.auth_type">
                                             <option v-for="source in powerMeterAuthList" :key="source.key" :value="source.key">
                                                 {{ source.value }}
@@ -140,37 +152,43 @@
                                 <div v-if="http_phase.auth_type != 0">
                                     <InputElement :label="$t('powermeteradmin.httpUsername')"
                                         v-model="http_phase.username"
-                                        type="text" maxlength="64"/>
+                                        type="text" maxlength="64" wide4_4/>
 
                                     <InputElement :label="$t('powermeteradmin.httpPassword')"
                                         v-model="http_phase.password"
-                                        type="password" maxlength="64"/>
+                                        type="password" maxlength="64" wide4_4/>
                                 </div>
 
                                 <InputElement :label="$t('powermeteradmin.httpHeaderKey')"
                                     v-model="http_phase.header_key"
-                                    type="text"
-                                    maxlength="64"
+                                    type="text" maxlength="64" wide4_4
                                     :tooltip="$t('powermeteradmin.httpHeaderKeyDescription')" />
 
                                 <InputElement :label="$t('powermeteradmin.httpHeaderValue')"
                                     v-model="http_phase.header_value"
-                                    type="text"
-                                    maxlength="256" />
+                                    type="text" maxlength="256" wide4_4/>
 
                                 <InputElement :label="$t('powermeteradmin.httpTimeout')"
                                     v-model="http_phase.timeout"
-                                    type="number"
+                                    type="number" wide4_2
                                     :postfix="$t('powermeteradmin.milliSeconds')" />
                             </div>
 
                             <InputElement :label="$t('powermeteradmin.httpJsonPath')"
                                 v-model="http_phase.json_path"
-                                type="text"
-                                maxlength="256"
-                                placeholder="total_power"
+                                type="text" maxlength="256" placeholder="total_power" wide4_4
                                 :tooltip="$t('powermeteradmin.httpJsonPathDescription')" />
 
+                            <div class="row mb-3">
+                                <label class="col-sm-4 col-form-label">{{ $t('powermeteradmin.Units') }}</label>
+                                <div class="col-sm-2">
+                                    <select class="form-select" v-model="http_phase.unit">
+                                        <option v-for="source in powerMeterUnitsList" :key="source.key" :value="source.key">
+                                            {{ source.value }}
+                                        </option>
+                                    </select>
+                                </div>
+                            </div>
                             <div class="text-center mb-3">
                                 <button type="button" class="btn btn-danger" @click="testHttpRequest(index)">
                                     {{ $t('powermeteradmin.testHttpRequest') }}
@@ -212,8 +230,8 @@
 import { defineComponent } from 'vue';
 import BasePage from '@/components/BasePage.vue';
 import BootstrapAlert from "@/components/BootstrapAlert.vue";
-import CardElement from '@/components/CardElement.vue';
 import FormFooter from '@/components/FormFooter.vue';
+import CardElement from '@/components/CardElement.vue';
 import InputElement from '@/components/InputElement.vue';
 import { handleResponse, authHeader } from '@/utils/authentication';
 import type { PowerMeterHttpPhaseConfig, PowerMeterConfig } from "@/types/PowerMeterConfig";
@@ -222,8 +240,8 @@ export default defineComponent({
     components: {
         BasePage,
         BootstrapAlert,
-        CardElement,
         FormFooter,
+        CardElement,
         InputElement
     },
     data() {
@@ -235,12 +253,17 @@ export default defineComponent({
                 { key: 1, value: this.$t('powermeteradmin.typeSDM1ph') },
                 { key: 2, value: this.$t('powermeteradmin.typeSDM3ph') },
                 { key: 3, value: this.$t('powermeteradmin.typeHTTP') },
-                { key: 4, value: this.$t('powermeteradmin.typeSML') },
+                { key: 4, value: this.$t('powermeteradmin.typeSML') }
             ],
             powerMeterAuthList: [
                 { key: 0, value: "None" },
                 { key: 1, value: "Basic" },
-                { key: 2, value: "Digest" },
+                { key: 2, value: "Digest" }
+            ],
+            powerMeterUnitsList: [
+                { key: 0, value: "Kilowatt" },
+                { key: 1, value: "Watt" },
+                { key: 2, value: "Milliwatt" }
             ],
             alertMessage: "",
             alertType: "info",
