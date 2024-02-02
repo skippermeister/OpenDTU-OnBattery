@@ -22,7 +22,7 @@
 #include <ctime>
 #include <frozen/map.h>
 
-const char TAG[] = "[PowerLimiter]";
+static constexpr char TAG[] = "[PowerLimiter]";
 
 PowerLimiterClass PowerLimiter;
 
