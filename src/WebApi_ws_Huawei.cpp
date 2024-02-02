@@ -76,7 +76,7 @@ void WebApiWsHuaweiLiveClass::sendDataTaskCb()
     } catch (std::bad_alloc& bad_alloc) {
         MessageOutput.printf("Calling /api/huaweilivedata/status has temporarily run out of resources. Reason: \"%s\".\r\n", bad_alloc.what());
     } catch (const std::exception& exc) {
-            MessageOutput.printf("Unknown exception in /api/huaweilivedata/status. Reason: \"%s\".\r\n", exc.what());
+        MessageOutput.printf("Unknown exception in /api/huaweilivedata/status. Reason: \"%s\".\r\n", exc.what());
     }
 }
 
