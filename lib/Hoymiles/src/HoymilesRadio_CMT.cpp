@@ -2,6 +2,8 @@
 /*
  * Copyright (C) 2023-2024 Thomas Basler and others
  */
+#ifdef USE_RADIO_CMT
+
 #include "HoymilesRadio_CMT.h"
 #include "Hoymiles.h"
 #include "crc.h"
@@ -283,3 +285,5 @@ void HoymilesRadio_CMT::sendEsbPacket(CommandAbstract& cmd)
     _busyFlag = true;
     _rxTimeout.set(cmd.getTimeout());
 }
+
+#endif
