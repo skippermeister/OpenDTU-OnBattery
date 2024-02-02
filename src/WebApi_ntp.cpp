@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright (C) 2022-2024 Thomas Basler and others
+ * Copyright (C) 2022 Thomas Basler and others
  */
 #include "WebApi_ntp.h"
 #include "Configuration.h"
+#include "ErrorMessages.h"
 #include "NtpSettings.h"
 #include "SunPosition.h"
 #include "WebApi.h"
@@ -32,11 +33,11 @@ void WebApiNtpClass::onNtpStatus(AsyncWebServerRequest* request)
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& root = response->getRoot();
-    const CONFIG_T& config = Configuration.get();
+    const Ntp_CONFIG_T& cNtp = Configuration.get().Ntp;
 
-    root["ntp_server"] = config.Ntp.Server;
-    root["ntp_timezone"] = config.Ntp.Timezone;
-    root["ntp_timezone_descr"] = config.Ntp.TimezoneDescr;
+    root["ntp_server"] = cNtp.Server;
+    root["ntp_timezone"] = cNtp.Timezone;
+    root["ntp_timezone_descr"] = cNtp.TimezoneDescr;
 
     struct tm timeinfo;
     if (!getLocalTime(&timeinfo, 5)) {
@@ -77,14 +78,14 @@ void WebApiNtpClass::onNtpAdminGet(AsyncWebServerRequest* request)
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& root = response->getRoot();
-    const CONFIG_T& config = Configuration.get();
+    const Ntp_CONFIG_T& cNtp = Configuration.get().Ntp;
 
-    root["ntp_server"] = config.Ntp.Server;
-    root["ntp_timezone"] = config.Ntp.Timezone;
-    root["ntp_timezone_descr"] = config.Ntp.TimezoneDescr;
-    root["longitude"] = config.Ntp.Longitude;
-    root["latitude"] = config.Ntp.Latitude;
-    root["sunsettype"] = config.Ntp.SunsetType;
+    root["ntp_server"] = cNtp.Server;
+    root["ntp_timezone"] = cNtp.Timezone;
+    root["ntp_timezone_descr"] = cNtp.TimezoneDescr;
+    root["longitude"] = cNtp.Longitude;
+    root["latitude"] = cNtp.Latitude;
+    root["sunsettype"] = cNtp.SunsetType;
 
     response->setLength();
     request->send(response);
@@ -98,10 +99,10 @@ void WebApiNtpClass::onNtpAdminPost(AsyncWebServerRequest* request)
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& retMsg = response->getRoot();
-    retMsg["type"] = "warning";
+    retMsg["type"] = Warning;
 
     if (!request->hasParam("data", true)) {
-        retMsg["message"] = "No values found!";
+        retMsg["message"] = NoValuesFound;
         retMsg["code"] = WebApiError::GenericNoValueFound;
         response->setLength();
         request->send(response);
@@ -111,7 +112,7 @@ void WebApiNtpClass::onNtpAdminPost(AsyncWebServerRequest* request)
     const String json = request->getParam("data", true)->value();
 
     if (json.length() > 1024) {
-        retMsg["message"] = "Data too large!";
+        retMsg["message"] = DataTooLarge;
         retMsg["code"] = WebApiError::GenericDataTooLarge;
         response->setLength();
         request->send(response);
@@ -122,7 +123,7 @@ void WebApiNtpClass::onNtpAdminPost(AsyncWebServerRequest* request)
     const DeserializationError error = deserializeJson(root, json);
 
     if (error) {
-        retMsg["message"] = "Failed to parse data!";
+        retMsg["message"] = FailedToParseData;
         retMsg["code"] = WebApiError::GenericParseError;
         response->setLength();
         request->send(response);
@@ -134,7 +135,7 @@ void WebApiNtpClass::onNtpAdminPost(AsyncWebServerRequest* request)
             && root.containsKey("longitude")
             && root.containsKey("latitude")
             && root.containsKey("sunsettype"))) {
-        retMsg["message"] = "Values are missing!";
+        retMsg["message"] = ValuesAreMissing;
         retMsg["code"] = WebApiError::GenericValueMissing;
         response->setLength();
         request->send(response);
@@ -168,13 +169,13 @@ void WebApiNtpClass::onNtpAdminPost(AsyncWebServerRequest* request)
         return;
     }
 
-    CONFIG_T& config = Configuration.get();
-    strlcpy(config.Ntp.Server, root["ntp_server"].as<String>().c_str(), sizeof(config.Ntp.Server));
-    strlcpy(config.Ntp.Timezone, root["ntp_timezone"].as<String>().c_str(), sizeof(config.Ntp.Timezone));
-    strlcpy(config.Ntp.TimezoneDescr, root["ntp_timezone_descr"].as<String>().c_str(), sizeof(config.Ntp.TimezoneDescr));
-    config.Ntp.Latitude = root["latitude"].as<double>();
-    config.Ntp.Longitude = root["longitude"].as<double>();
-    config.Ntp.SunsetType = root["sunsettype"].as<uint8_t>();
+    Ntp_CONFIG_T& cNtp = Configuration.get().Ntp;
+    strlcpy(cNtp.Server, root["ntp_server"].as<String>().c_str(), sizeof(cNtp.Server));
+    strlcpy(cNtp.Timezone, root["ntp_timezone"].as<String>().c_str(), sizeof(cNtp.Timezone));
+    strlcpy(cNtp.TimezoneDescr, root["ntp_timezone_descr"].as<String>().c_str(), sizeof(cNtp.TimezoneDescr));
+    cNtp.Latitude = root["latitude"].as<double>();
+    cNtp.Longitude = root["longitude"].as<double>();
+    cNtp.SunsetType = root["sunsettype"].as<uint8_t>();
 
     WebApi.writeConfig(retMsg);
 
@@ -222,10 +223,10 @@ void WebApiNtpClass::onNtpTimePost(AsyncWebServerRequest* request)
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& retMsg = response->getRoot();
-    retMsg["type"] = "warning";
+    retMsg["type"] = Warning;
 
     if (!request->hasParam("data", true)) {
-        retMsg["message"] = "No values found!";
+        retMsg["message"] = NoValuesFound;
         retMsg["code"] = WebApiError::GenericNoValueFound;
         response->setLength();
         request->send(response);
@@ -235,7 +236,7 @@ void WebApiNtpClass::onNtpTimePost(AsyncWebServerRequest* request)
     const String json = request->getParam("data", true)->value();
 
     if (json.length() > 1024) {
-        retMsg["message"] = "Data too large!";
+        retMsg["message"] = DataTooLarge;
         retMsg["code"] = WebApiError::GenericDataTooLarge;
         response->setLength();
         request->send(response);
@@ -246,7 +247,7 @@ void WebApiNtpClass::onNtpTimePost(AsyncWebServerRequest* request)
     const DeserializationError error = deserializeJson(root, json);
 
     if (error) {
-        retMsg["message"] = "Failed to parse data!";
+        retMsg["message"] = FailedToParseData;
         retMsg["code"] = WebApiError::GenericParseError;
         response->setLength();
         request->send(response);
@@ -259,7 +260,7 @@ void WebApiNtpClass::onNtpTimePost(AsyncWebServerRequest* request)
             && root.containsKey("hour")
             && root.containsKey("minute")
             && root.containsKey("second"))) {
-        retMsg["message"] = "Values are missing!";
+        retMsg["message"] = ValuesAreMissing;
         retMsg["code"] = WebApiError::GenericValueMissing;
         response->setLength();
         request->send(response);
@@ -339,7 +340,7 @@ void WebApiNtpClass::onNtpTimePost(AsyncWebServerRequest* request)
     struct timeval now = { .tv_sec = t, .tv_usec = 0 };
     settimeofday(&now, NULL);
 
-    retMsg["type"] = "success";
+    retMsg["type"] = Success;
     retMsg["message"] = "Time updated!";
     retMsg["code"] = WebApiError::NtpTimeUpdated;
 
