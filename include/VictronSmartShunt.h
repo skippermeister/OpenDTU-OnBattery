@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
+#ifdef USE_VICTRON_SMART_SHUNT
+
 #pragma once
 
 #include "Battery.h"
@@ -14,3 +16,5 @@ private:
     uint32_t _lastUpdate = 0;
     std::shared_ptr<VictronSmartShuntStats> _stats = std::make_shared<VictronSmartShuntStats>();
 };
+
+#endif
