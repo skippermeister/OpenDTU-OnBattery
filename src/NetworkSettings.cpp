@@ -273,16 +273,18 @@ void NetworkSettingsClass::loop()
 
 void NetworkSettingsClass::applyConfig()
 {
+    WiFi_CONFIG_T& cWiFi = Configuration.get().WiFi;
+
     setHostname();
-    if (!strcmp(Configuration.get().WiFi.Ssid, "")) {
+    if (!strcmp(cWiFi.Ssid, "")) {
         return;
     }
     MessageOutput.print("Configuring WiFi STA using ");
-    if (strcmp(WiFi.SSID().c_str(), Configuration.get().WiFi.Ssid) || strcmp(WiFi.psk().c_str(), Configuration.get().WiFi.Password)) {
+    if (strcmp(WiFi.SSID().c_str(), c.WiFi.Ssid) || strcmp(WiFi.psk().c_str(), cWiFi.Password)) {
         MessageOutput.print("new credentials... ");
         WiFi.begin(
-            Configuration.get().WiFi.Ssid,
-            Configuration.get().WiFi.Password,
+            cWiFi.Ssid,
+            cWiFi.Password,
             WIFI_ALL_CHANNEL_SCAN);
     } else {
         MessageOutput.print("existing credentials... ");
@@ -320,36 +322,38 @@ void NetworkSettingsClass::setHostname()
 
 void NetworkSettingsClass::setStaticIp()
 {
+    WiFi_CONFIG_T& cWiFi = Configuration.get().WiFi;
+
     if (_networkMode == network_mode::WiFi) {
-        if (Configuration.get().WiFi.Dhcp) {
+        if (cWiFi.Dhcp) {
             MessageOutput.print("Configuring WiFi STA DHCP IP... ");
             WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE);
             MessageOutput.println("done");
         } else {
             MessageOutput.print("Configuring WiFi STA static IP... ");
             WiFi.config(
-                IPAddress(Configuration.get().WiFi.Ip),
-                IPAddress(Configuration.get().WiFi.Gateway),
-                IPAddress(Configuration.get().WiFi.Netmask),
-                IPAddress(Configuration.get().WiFi.Dns1),
-                IPAddress(Configuration.get().WiFi.Dns2));
+                IPAddress(cWiFi.Ip),
+                IPAddress(cWiFi.Gateway),
+                IPAddress(cWiFi.Netmask),
+                IPAddress(cWiFi.Dns1),
+                IPAddress(cWiFi.Dns2));
             MessageOutput.println("done");
         }
     }
 #ifdef OPENDTU_ETHERNET
     else if (_networkMode == network_mode::Ethernet) {
-        if (Configuration.get().WiFi.Dhcp) {
+        if (cWiFi.Dhcp) {
             MessageOutput.print("Configuring Ethernet DHCP IP... ");
             ETH.config(INADDR_NONE, INADDR_NONE, INADDR_NONE, INADDR_NONE);
             MessageOutput.println("done");
         } else {
             MessageOutput.print("Configuring Ethernet static IP... ");
             ETH.config(
-                IPAddress(Configuration.get().WiFi.Ip),
-                IPAddress(Configuration.get().WiFi.Gateway),
-                IPAddress(Configuration.get().WiFi.Netmask),
-                IPAddress(Configuration.get().WiFi.Dns1),
-                IPAddress(Configuration.get().WiFi.Dns2));
+                IPAddress(cWiFi.Ip),
+                IPAddress(cWiFi.Gateway),
+                IPAddress(cWiFi.Netmask),
+                IPAddress(cWiFi.Dns1),
+                IPAddress(cWiFi.Dns2));
             MessageOutput.println("done");
         }
     }
@@ -438,13 +442,12 @@ String NetworkSettingsClass::macAddress() const
 
 String NetworkSettingsClass::getHostname()
 {
-    const CONFIG_T& config = Configuration.get();
     char preparedHostname[WIFI_MAX_HOSTNAME_STRLEN + 1];
     char resultHostname[WIFI_MAX_HOSTNAME_STRLEN + 1];
     uint8_t pos = 0;
 
     const uint32_t chipId = Utils::getChipId();
-    snprintf(preparedHostname, WIFI_MAX_HOSTNAME_STRLEN + 1, config.WiFi.Hostname, chipId);
+    snprintf(preparedHostname, WIFI_MAX_HOSTNAME_STRLEN + 1, Configuration.get().WiFi.Hostname, chipId);
 
     const char* pC = preparedHostname;
     while (*pC && pos < WIFI_MAX_HOSTNAME_STRLEN) { // while !null and not over length
