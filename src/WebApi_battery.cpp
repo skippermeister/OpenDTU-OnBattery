@@ -8,6 +8,7 @@
 #include "Battery.h"
 #include "Configuration.h"
 #include "PylontechCanReceiver.h"
+#include "PylontechRS485Receiver.h"
 #include "WebApi.h"
 #include "WebApi_battery.h"
 #include "WebApi_errors.h"
@@ -32,14 +33,29 @@ void WebApiBatteryClass::onStatus(AsyncWebServerRequest* request)
     
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& root = response->getRoot();
-    const CONFIG_T& config = Configuration.get();
+    const Battery_CONFIG_T& cBattery = Configuration.get().Battery;
 
-    root["enabled"] = config.Battery.Enabled;
-    root["verbose_logging"] = config.Battery.VerboseLogging;
-    root["provider"] = config.Battery.Provider;
-    root["jkbms_interface"] = config.Battery.JkBmsInterface;
-    root["jkbms_polling_interval"] = config.Battery.JkBmsPollingInterval;
-    root["mqtt_topic"] = config.Battery.MqttTopic;
+    root["enabled"] = cBattery.Enabled;
+    root["provider"] = cBattery.Provider;
+    root["can_controller_frequency"] = Configuration.get().MCP2515.Controller_Frequency;
+#ifdef USE_JKBMS_CONTROLLER
+    root["jkbms_interface"] = cBattery.JkBms.Interface;
+    root["jkbms_polling_interval"] = cBattery.JkBms.PollingInterval;
+#else
+    root["jkbms_interface"] = 0;
+    root["jkbms_polling_interval"] = 0;
+#endif
+#ifdef USE_MQTT_BATTERY
+    root["mqtt_topic"] = cBattery.MqttTopic;
+#else
+    root["mqtt_topic"] = "";
+#endif
+    root["updatesonly"] = cBattery.UpdatesOnly;
+    root["min_charge_temp"] = cBattery.MinChargeTemperature;
+    root["max_charge_temp"] = cBattery.MaxChargeTemperature;
+    root["min_discharge_temp"] = cBattery.MinDischargeTemperature;
+    root["max_discharge_temp"] = cBattery.MaxDischargeTemperature;
+    root["verbose_logging"] = Battery._verboseLogging;
 
     response->setLength();
     request->send(response);
@@ -58,10 +74,10 @@ void WebApiBatteryClass::onAdminPost(AsyncWebServerRequest* request)
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& retMsg = response->getRoot();
-    retMsg["type"] = "warning";
+    retMsg["type"] = Warning;
 
     if (!request->hasParam("data", true)) {
-        retMsg["message"] = "No values found!";
+        retMsg["message"] = NoValuesFound;
         retMsg["code"] = WebApiError::GenericNoValueFound;
         response->setLength();
         request->send(response);
@@ -70,40 +86,70 @@ void WebApiBatteryClass::onAdminPost(AsyncWebServerRequest* request)
 
     String json = request->getParam("data", true)->value();
 
-    if (json.length() > 1024) {
-        retMsg["message"] = "Data too large!";
+    if (json.length() > 2048) {
+        retMsg["message"] = DataTooLarge;
         retMsg["code"] = WebApiError::GenericDataTooLarge;
         response->setLength();
         request->send(response);
         return;
     }
 
-    DynamicJsonDocument root(1024);
+    DynamicJsonDocument root(2048);
     DeserializationError error = deserializeJson(root, json);
 
     if (error) {
-        retMsg["message"] = "Failed to parse data!";
+        retMsg["message"] = FailedToParseData;
         retMsg["code"] = WebApiError::GenericParseError;
         response->setLength();
         request->send(response);
         return;
     }
 
-    if (!root.containsKey("enabled") || !root.containsKey("provider")) {
-        retMsg["message"] = "Values are missing!";
+    if (!(root.containsKey("enabled") 
+            && root.containsKey("pollinterval")
+            && root.containsKey("updatesonly")
+            && root.containsKey("provider")
+            && root.containsKey("min_charge_temp")
+            && root.containsKey("max_charge_temp")
+            && root.containsKey("min_discharge_temp")
+            && root.containsKey("max_discharge_temp")
+            && root.containsKey("verbose_logging"))) {
+        retMsg["message"] = ValuesAreMissing;
         retMsg["code"] = WebApiError::GenericValueMissing;
         response->setLength();
         request->send(response);
         return;
     }
 
-    CONFIG_T& config = Configuration.get();
-    config.Battery.Enabled = root["enabled"].as<bool>();
-    config.Battery.VerboseLogging = root["verbose_logging"].as<bool>();
-    config.Battery.Provider = root["provider"].as<uint8_t>();
-    config.Battery.JkBmsInterface = root["jkbms_interface"].as<uint8_t>();
-    config.Battery.JkBmsPollingInterval = root["jkbms_polling_interval"].as<uint8_t>();
-    strlcpy(config.Battery.MqttTopic, root["mqtt_topic"].as<String>().c_str(), sizeof(config.Battery.MqttTopic));
+    if (root["pollinterval"].as<uint32_t>() == 0) {
+        retMsg["message"] = "Poll interval must be a number between 5 and 65535!";
+        retMsg["code"] = WebApiError::MqttPublishInterval;
+        retMsg["param"]["min"] = 5;
+        retMsg["param"]["max"] = 65535;
+
+        response->setLength();
+        request->send(response);
+        return;
+    }
+
+    Battery_CONFIG_T& cBattery = Configuration.get().Battery;
+    cBattery.Enabled = root["enabled"].as<bool>();
+    cBattery.UpdatesOnly = root["updatesonly"].as<bool>();
+    cBattery.Provider = root["provider"].as<uint8_t>();
+    Configuration.get().MCP2515.Controller_Frequency = root["can_controller_frequency"].as<uint32_t>();
+#ifdef USE_JKBMS_CONTROLLER
+    cBattery.JkBms.Interface = root["jkbms_interface"].as<uint8_t>();
+    cBattery.JkBms.PollingInterval = root["pollinterval"].as<uint32_t>(); // root["jkbms_polling_interval"].as<uint8_t>();
+#endif
+    cBattery.PollInterval = root["pollinterval"].as<uint32_t>();
+    cBattery.MinChargeTemperature = root["min_charge_temp"].as<int8_t>();
+    cBattery.MaxChargeTemperature = root["max_charge_temp"].as<int8_t>();
+    cBattery.MinDischargeTemperature = root["min_discharge_temp"].as<int8_t>();
+    cBattery.MaxDischargeTemperature = root["max_discharge_temp"].as<int8_t>();
+#ifdef USE_MQTT_BATTERY
+    strlcpy(cBattery.MqttTopic, root["mqtt_topic"].as<String>().c_str(), sizeof(cBattery.MqttTopic));
+#endif
+    Battery._verboseLogging = root["verbose_logging"].as<bool>();
     
     WebApi.writeConfig(retMsg);
 
