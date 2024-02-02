@@ -9,7 +9,7 @@
 #include "DalyBmsController.h"
 #include <frozen/map.h>
 
-const const char TAG[] = "[Daly BMS]";
+static constexpr char TAG[] = "[Daly BMS]";
 
 HardwareSerial HwSerial(2);
 
