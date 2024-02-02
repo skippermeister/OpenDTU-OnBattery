@@ -8,11 +8,11 @@
             <CardElement :text="$t('securityadmin.AdminPassword')" textVariant="text-bg-primary">
                 <InputElement :label="$t('securityadmin.Password')"
                               v-model="securityConfigList.password"
-                              type="password" maxlength="64"/>
+                              type="password" maxlength="64" wide2_4/>
 
                 <InputElement :label="$t('securityadmin.RepeatPassword')"
                               v-model="passwordRepeat"
-                              type="password" maxlength="64"/>
+                              type="password" maxlength="64" wide2_4/>
 
                 <div class="alert alert-secondary" role="alert" v-html="$t('securityadmin.PasswordHint')"></div>
             </CardElement>
@@ -20,7 +20,7 @@
             <CardElement :text="$t('securityadmin.Permissions')" textVariant="text-bg-primary" add-space>
                 <InputElement :label="$t('securityadmin.ReadOnly')"
                               v-model="securityConfigList.allow_readonly"
-                              type="checkbox" wide/>
+                              type="checkbox" wide5_1/>
             </CardElement>
 
             <FormFooter @reload="getPasswordConfig"/>
