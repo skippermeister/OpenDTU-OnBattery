@@ -10,9 +10,9 @@ export interface Inverter {
     name: string;
     type: string;
     order: number;
-    poll_enable: boolean;
+    poll_enable_day: boolean;
     poll_enable_night: boolean;
-    command_enable: boolean;
+    command_enable_day: boolean;
     command_enable_night: boolean;
     reachable_threshold: number;
     zero_runtime: boolean;
