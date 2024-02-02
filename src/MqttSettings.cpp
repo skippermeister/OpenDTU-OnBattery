@@ -92,8 +92,7 @@ void MqttSettingsClass::onMqttDisconnect(espMqttClientTypes::DisconnectReason re
 void MqttSettingsClass::onMqttMessage(const espMqttClientTypes::MessageProperties& properties, const char* topic, const uint8_t* payload, const size_t len, const size_t index, const size_t total)
 {
     if (_verboseLogging) {
-        MessageOutput.print("Received MQTT message on topic: ");
-        MessageOutput.println(topic);
+        MessageOutput.printf("Received MQTT message on topic: %s\r\n", topic);
     }
 
     _mqttSubscribeParser.handle_message(properties, topic, payload, len, index, total);
@@ -217,8 +216,7 @@ void MqttSettingsClass::createMqttClientObject()
         delete _mqttClient;
         _mqttClient = nullptr;
     }
-    const CONFIG_T& config = Configuration.get();
-    if (config.Mqtt.Tls.Enabled) {
+    if (Configuration.get().Mqtt.Tls.Enabled) {
         _mqttClient = static_cast<MqttClient*>(new espMqttClientSecure);
     } else {
         _mqttClient = static_cast<MqttClient*>(new espMqttClient);
