@@ -2,6 +2,8 @@
 /*
  * Copyright (C) 2023-2024 Thomas Basler and others
  */
+#ifdef USE_RADIO_CMT
+
 #include "HMS_Abstract.h"
 #include "Hoymiles.h"
 #include "HoymilesRadio_CMT.h"
@@ -26,3 +28,5 @@ bool HMS_Abstract::sendChangeChannelRequest()
 
     return true;
 };
+
+#endif
