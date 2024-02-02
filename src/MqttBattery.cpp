@@ -7,9 +7,9 @@
 #include "MqttSettings.h"
 #include "MessageOutput.h"
 
-bool MqttBattery::init(bool verboseLogging)
+bool MqttBattery::init()
 {
-    _verboseLogging = verboseLogging;
+    _verboseLogging = Battery._verbose_logging;
 
     auto const& config = Configuration.get();
     _socTopic = config.Battery.MqttTopic;
