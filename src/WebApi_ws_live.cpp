@@ -3,14 +3,19 @@
  * Copyright (C) 2022-2024 Thomas Basler and others
  */
 #include "WebApi_ws_live.h"
+#include "Battery.h"
 #include "Configuration.h"
 #include "Datastore.h"
 #include "MessageOutput.h"
 #include "Utils.h"
 #include "WebApi.h"
-#include "Battery.h"
+#ifdef CHARGER_HUAWEI
 #include "Huawei_can.h"
+#else
+#include "MeanWell_can.h"
+#endif
 #include "PowerMeter.h"
+#include "REFUsolRS485Receiver.h"
 #include "VictronMppt.h"
 #include "defaults.h"
 #include <AsyncJson.h>
@@ -36,6 +41,8 @@ void WebApiWsLiveClass::init(AsyncWebServer& server, Scheduler& scheduler)
 
     _server->addHandler(&_ws);
     _ws.onEvent(std::bind(&WebApiWsLiveClass::onWebsocketEvent, this, _1, _2, _3, _4, _5, _6));
+
+    _lastWsPublish.set(10 * 1000);
 
     scheduler.addTask(_wsCleanupTask);
     _wsCleanupTask.enable();
@@ -70,30 +77,31 @@ void WebApiWsLiveClass::sendDataTaskCb()
     }
 
     // Update on every inverter change or at least after 10 seconds
-    if (millis() - _lastWsPublish > (10 * 1000) || (maxTimeStamp != _newestInverterTimestamp)) {
+    if (!_lastWsPublish.occured() && (maxTimeStamp == _newestInverterTimestamp)) {
+        return;
+    }
 
-        try {
-            std::lock_guard<std::mutex> lock(_mutex);
-            DynamicJsonDocument root(4200 * INV_MAX_COUNT);
-            if (Utils::checkJsonAlloc(root, __FUNCTION__, __LINE__)) {
-                JsonVariant var = root;
-                generateJsonResponse(var);
+    try {
+        std::lock_guard<std::mutex> lock(_mutex);
+        DynamicJsonDocument root(4300 * INV_MAX_COUNT);
+        if (Utils::checkJsonAlloc(root, __FUNCTION__, __LINE__)) {
+            JsonVariant var = root;
+            generateJsonResponse(var);
 
-                String buffer;
-                serializeJson(root, buffer);
+            String buffer;
+            serializeJson(root, buffer);
 
-                _ws.textAll(buffer);
-                _newestInverterTimestamp = maxTimeStamp;
-            }
-
-        } catch (const std::bad_alloc& bad_alloc) {
-            MessageOutput.printf("Calling /api/livedata/status has temporarily run out of resources. Reason: \"%s\".\r\n", bad_alloc.what());
-        } catch (const std::exception& exc) {
-            MessageOutput.printf("Unknown exception in /api/livedata/status. Reason: \"%s\".\r\n", exc.what());
+            _ws.textAll(buffer);
+            _newestInverterTimestamp = maxTimeStamp;
         }
 
-        _lastWsPublish = millis();
+    } catch (const std::bad_alloc& bad_alloc) {
+        MessageOutput.printf("Call to /api/livedata/status temporarely out of resources. Reason: \"%s\".\r\n", bad_alloc.what());
+    } catch (const std::exception& exc) {
+        MessageOutput.printf("Unknown exception in /api/livedata/status. Reason: \"%s\".\r\n", exc.what());
     }
+
+    _lastWsPublish.reset();
 }
 
 void WebApiWsLiveClass::generateJsonResponse(JsonVariant& root)
@@ -170,10 +178,18 @@ void WebApiWsLiveClass::generateJsonResponse(JsonVariant& root)
     addTotalField(totalObj, "YieldDay", Datastore.getTotalAcYieldDayEnabled(), "Wh", Datastore.getTotalAcYieldDayDigits());
     addTotalField(totalObj, "YieldTotal", Datastore.getTotalAcYieldTotalEnabled(), "kWh", Datastore.getTotalAcYieldTotalDigits());
 
+    // Daten visualisieren #168
+    addHourPower(totalObj, Datastore.getHourlyPowerData(), "Wh", Datastore.getTotalAcYieldTotalDigits());
+
     JsonObject hintObj = root.createNestedObject("hints");
     struct tm timeinfo;
     hintObj["time_sync"] = !getLocalTime(&timeinfo, 5);
-    hintObj["radio_problem"] = (Hoymiles.getRadioNrf()->isInitialized() && (!Hoymiles.getRadioNrf()->isConnected() || !Hoymiles.getRadioNrf()->isPVariant())) || (Hoymiles.getRadioCmt()->isInitialized() && (!Hoymiles.getRadioCmt()->isConnected()));
+    hintObj["radio_problem"] = (Hoymiles.getRadioNrf()->isInitialized()
+                                   && (!Hoymiles.getRadioNrf()->isConnected() || !Hoymiles.getRadioNrf()->isPVariant()))
+#ifdef USE_RADIO_CMT
+        || (Hoymiles.getRadioCmt()->isInitialized() && (!Hoymiles.getRadioCmt()->isConnected()))
+#endif
+        ;
     if (!strcmp(Configuration.get().Security.Password, ACCESS_POINT_PASSWORD)) {
         hintObj["default_password"] = true;
     } else {
@@ -182,28 +198,48 @@ void WebApiWsLiveClass::generateJsonResponse(JsonVariant& root)
 
     JsonObject vedirectObj = root.createNestedObject("vedirect");
     vedirectObj["enabled"] = Configuration.get().Vedirect.Enabled;
-    JsonObject totalVeObj = vedirectObj.createNestedObject("total");
 
+    JsonObject totalVeObj = vedirectObj.createNestedObject("total");
     addTotalField(totalVeObj, "Power", VictronMppt.getPanelPowerWatts(), "W", 1);
     addTotalField(totalVeObj, "YieldDay", VictronMppt.getYieldDay() * 1000, "Wh", 0);
     addTotalField(totalVeObj, "YieldTotal", VictronMppt.getYieldTotal(), "kWh", 2);
 
+    JsonObject refusolObj = root.createNestedObject("refusol");
+#ifdef USE_REFUsol_INVERTER
+    refusolObj["enabled"] = Configuration.get().REFUsol.Enabled;
+    JsonObject totalREFUsolObj = refusolObj.createNestedObject("total");
+    addTotalField(totalREFUsolObj, "Power", REFUsol.Frame.acPower, "W", 1);
+    addTotalField(totalREFUsolObj, "YieldDay", REFUsol.Frame.YieldDay * 1000, "kWh", 3);
+    addTotalField(totalREFUsolObj, "YieldTotal", REFUsol.Frame.YieldTotal, "kWh", 3);
+#else
+    refusolObj["enabled"] = false;
+    JsonObject totalREFUsolObj = refusolObj.createNestedObject("total");
+    addTotalField(totalREFUsolObj, "Power", 0, "W", 1);
+    addTotalField(totalREFUsolObj, "YieldDay", 0.0, "kWh", 3);
+    addTotalField(totalREFUsolObj, "YieldTotal", 0.0, "kWh", 3);
+#endif
+
+#ifdef CHARGER_HUAWEI
     JsonObject huaweiObj = root.createNestedObject("huawei");
     huaweiObj["enabled"] = Configuration.get().Huawei.Enabled;
-    const RectifierParameters_t * rp = HuaweiCan.get();
-    addTotalField(huaweiObj, "Power", rp->output_power, "W", 2);
-    
+    const RectifierParameters_t* rp = HuaweiCan.get();
+    addTotalField(huaweiObj, "Power", rp->outputPower, "W", 2);
+#else
+    JsonObject meanwellObj = root.createNestedObject("meanwell");
+    meanwellObj["enabled"] = Configuration.get().MeanWell.Enabled;
+    addTotalField(meanwellObj, "Power", MeanWellCan._rp.inputPower, "W", 2);
+#endif
     JsonObject batteryObj = root.createNestedObject("battery");
     batteryObj["enabled"] = Configuration.get().Battery.Enabled;
     addTotalField(batteryObj, "soc", Battery.getStats()->getSoC(), "%", 0);
 
     JsonObject powerMeterObj = root.createNestedObject("power_meter");
     powerMeterObj["enabled"] = Configuration.get().PowerMeter.Enabled;
-    addTotalField(powerMeterObj, "Power", PowerMeter.getPowerTotal(false), "W", 1);
-
+    addTotalField(powerMeterObj, "GridPower", PowerMeter.getPowerTotal(false), "W", 1);
+    addTotalField(powerMeterObj, "HousePower", PowerMeter.getHousePower(), "W", 1);
 }
 
-void WebApiWsLiveClass::addField(JsonObject& root, std::shared_ptr<InverterAbstract> inv, const ChannelType_t type, const ChannelNum_t channel, const FieldId_t fieldId, String topic)
+void WebApiWsLiveClass::addField(JsonObject& root, std::shared_ptr<InverterAbstract> inv, ChannelType_t type, ChannelNum_t channel, FieldId_t fieldId, String topic)
 {
     if (inv->Statistics()->hasChannelFieldValue(type, channel, fieldId)) {
         String chanName;
@@ -220,11 +256,27 @@ void WebApiWsLiveClass::addField(JsonObject& root, std::shared_ptr<InverterAbstr
     }
 }
 
-void WebApiWsLiveClass::addTotalField(JsonObject& root, const String& name, const float value, const String& unit, const uint8_t digits)
+void WebApiWsLiveClass::addTotalField(JsonObject& root, String name, float value, String unit, uint8_t digits)
 {
     root[name]["v"] = value;
     root[name]["u"] = unit;
     root[name]["d"] = digits;
+}
+
+// Daten visualisieren #168
+void WebApiWsLiveClass::addHourPower(JsonObject& root, std::array<float, 24> values, String unit, uint8_t digits)
+{
+    JsonObject hours = root.createNestedObject("Hours");
+    JsonArray valuesArray = hours.createNestedArray("values");
+
+    for (float value : values) {
+        if (value < 0.0)
+            value = 0.0;
+        valuesArray.add((uint16_t)value);
+    }
+
+    hours["u"] = unit;
+    hours["d"] = digits;
 }
 
 void WebApiWsLiveClass::onWebsocketEvent(AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType type, void* arg, uint8_t* data, size_t len)
@@ -248,12 +300,16 @@ void WebApiWsLiveClass::onLivedataStatus(AsyncWebServerRequest* request)
         auto& root = response->getRoot();
 
         generateJsonResponse(root);
-
+        /*
+                String output;
+                serializeJsonPretty(root, output);
+                MessageOutput.println(output);
+        */
         response->setLength();
         request->send(response);
 
     } catch (const std::bad_alloc& bad_alloc) {
-        MessageOutput.printf("Calling /api/livedata/status has temporarily run out of resources. Reason: \"%s\".\r\n", bad_alloc.what());
+        MessageOutput.printf("Call to /api/livedata/status temporarely out of resources. Reason: \"%s\".\r\n", bad_alloc.what());
         WebApi.sendTooManyRequests(request);
     } catch (const std::exception& exc) {
         MessageOutput.printf("Unknown exception in /api/livedata/status. Reason: \"%s\".\r\n", exc.what());
