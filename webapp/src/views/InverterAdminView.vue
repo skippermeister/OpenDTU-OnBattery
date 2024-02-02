@@ -101,14 +101,14 @@
                         maxlength="31" />
 
                     <CardElement :text="$t('inverteradmin.InverterStatus')" addSpace>
-                        <InputElement :label="$t('inverteradmin.PollEnable')" v-model="selectedInverterData.poll_enable"
-                            type="checkbox" wide />
+                        <InputElement :label="$t('inverteradmin.PollEnableDay')"
+                            v-model="selectedInverterData.poll_enable_day" type="checkbox" wide4_2 />
                         <InputElement :label="$t('inverteradmin.PollEnableNight')"
-                            v-model="selectedInverterData.poll_enable_night" type="checkbox" wide />
-                        <InputElement :label="$t('inverteradmin.CommandEnable')"
-                            v-model="selectedInverterData.command_enable" type="checkbox" wide />
+                            v-model="selectedInverterData.poll_enable_night" type="checkbox" wide4_2 />
+                        <InputElement :label="$t('inverteradmin.CommandEnableDay')"
+                            v-model="selectedInverterData.command_enable_day" type="checkbox" wide4_2 />
                         <InputElement :label="$t('inverteradmin.CommandEnableNight')"
-                            v-model="selectedInverterData.command_enable_night" type="checkbox" wide />
+                            v-model="selectedInverterData.command_enable_night" type="checkbox" wide4_2 />
                         <div class="alert alert-secondary mt-3" role="alert" v-html="$t('inverteradmin.StatusHint')">
                         </div>
                     </CardElement>
@@ -171,17 +171,17 @@
                 tabindex="0">
                 <InputElement :label="$t('inverteradmin.ReachableThreshold')"
                     v-model="selectedInverterData.reachable_threshold" type="number" min="1" max="100"
-                    :tooltip="$t('inverteradmin.ReachableThresholdHint')" wide />
+                    :tooltip="$t('inverteradmin.ReachableThresholdHint')" wide5_2 />
 
                 <InputElement :label="$t('inverteradmin.ZeroRuntime')" v-model="selectedInverterData.zero_runtime"
-                    type="checkbox" :tooltip="$t('inverteradmin.ZeroRuntimeHint')" wide />
+                    type="checkbox" :tooltip="$t('inverteradmin.ZeroRuntimeHint')" wide5_1 />
 
                 <InputElement :label="$t('inverteradmin.ZeroDay')" v-model="selectedInverterData.zero_day" type="checkbox"
-                    :tooltip="$t('inverteradmin.ZeroDayHint')" wide />
+                    :tooltip="$t('inverteradmin.ZeroDayHint')" wide5_1 />
 
                 <InputElement :label="$t('inverteradmin.YieldDayCorrection')"
                     v-model="selectedInverterData.yieldday_correction" type="checkbox"
-                    :tooltip="$t('inverteradmin.YieldDayCorrectionHint')" wide />
+                    :tooltip="$t('inverteradmin.YieldDayCorrectionHint')" wide5_1 />
             </div>
         </div>
         <template #footer>
