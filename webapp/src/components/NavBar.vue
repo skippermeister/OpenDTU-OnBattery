@@ -12,7 +12,7 @@
                     OpenDTU-onBattery
                 </span>
                 <span class="text-info">
-                    <BIconBatteryCharging width="20" height="20" class="d-inline-block align-text-center" />
+                    <BIconBatteryCharging width="20" height="20" class="d-inline-block align-text-top" />
                 </span>
             </router-link>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavAltMarkup"
@@ -50,7 +50,10 @@
                             <li>
                                 <router-link @click="onClick" class="dropdown-item" to="/settings/dtu">{{ $t('menu.DTUSettings') }}</router-link>
                             </li>
-                             <li>
+                            <li>
+                                <router-link @click="onClick" class="dropdown-item" to="/settings/refusol">{{ $t('menu.REFUsolSettings') }}</router-link>
+                            </li>
+                            <li>
                                 <router-link @click="onClick" class="dropdown-item" to="/settings/vedirect">{{ $t('menu.VedirectSettings') }}</router-link>
                             </li>
                             <li>
@@ -58,6 +61,9 @@
                             </li>
                             <li>
                                 <router-link @click="onClick" class="dropdown-item" to="/settings/powerlimiter">Dynamic Power Limiter</router-link>
+                            </li>
+                            <li>
+                                <router-link @click="onClick" class="dropdown-item" to="/settings/zeroexport">{{ $t('menu.ZeroExportSettings') }}</router-link>
                             </li>
                             <li>
                                 <router-link @click="onClick" class="dropdown-item" to="/settings/battery">{{ $t('menu.BatterySettings') }}</router-link>
@@ -99,6 +105,9 @@
                             </li>
                             <li>
                                 <router-link @click="onClick" class="dropdown-item" to="/info/mqtt">{{ $t('menu.MQTT') }}</router-link>
+                            </li>
+                            <li>
+                                <router-link @click="onClick" class="dropdown-item" to="/info/refusol">{{ $t('menu.REFUsol') }}</router-link>
                             </li>
                             <li>
                                 <router-link @click="onClick" class="dropdown-item" to="/info/vedirect">{{ $t('menu.Vedirect') }}</router-link>
