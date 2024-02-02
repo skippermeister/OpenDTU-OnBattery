@@ -4,12 +4,14 @@
  */
 #include "Hoymiles.h"
 #include "Utils.h"
+#ifdef USE_RADIO_CMT
 #include "inverters/HMS_1CH.h"
 #include "inverters/HMS_1CHv2.h"
 #include "inverters/HMS_2CH.h"
 #include "inverters/HMS_4CH.h"
 #include "inverters/HMT_4CH.h"
 #include "inverters/HMT_6CH.h"
+#endif
 #include "inverters/HM_1CH.h"
 #include "inverters/HM_2CH.h"
 #include "inverters/HM_4CH.h"
@@ -21,7 +23,9 @@ void HoymilesClass::init()
 {
     _pollInterval = 0;
     _radioNrf.reset(new HoymilesRadio_NRF());
+#ifdef USE_RADIO_CMT
     _radioCmt.reset(new HoymilesRadio_CMT());
+#endif
 }
 
 void HoymilesClass::initNRF(SPIClass* initialisedSpiBus, const uint8_t pinCE, const uint8_t pinIRQ)
@@ -29,16 +33,20 @@ void HoymilesClass::initNRF(SPIClass* initialisedSpiBus, const uint8_t pinCE, co
     _radioNrf->init(initialisedSpiBus, pinCE, pinIRQ);
 }
 
+#ifdef USE_RADIO_CMT
 void HoymilesClass::initCMT(const int8_t pin_sdio, const int8_t pin_clk, const int8_t pin_cs, const int8_t pin_fcs, const int8_t pin_gpio2, const int8_t pin_gpio3)
 {
     _radioCmt->init(pin_sdio, pin_clk, pin_cs, pin_fcs, pin_gpio2, pin_gpio3);
 }
+#endif
 
 void HoymilesClass::loop()
 {
     std::lock_guard<std::mutex> lock(_mutex);
     _radioNrf->loop();
+#ifdef USE_RADIO_CMT
     _radioCmt->loop();
+#endif
 
     if (getNumInverters() == 0) {
         return;
@@ -54,13 +62,20 @@ void HoymilesClass::loop()
             }
         }
 
-        if (iv != nullptr && iv->getRadio()->isInitialized() && iv->getRadio()->isQueueEmpty()) {
-
+// FIXME : add polling and commands
+        if (iv != nullptr 
+            && iv->getRadio()->isInitialized() 
+            && iv->getRadio()->isQueueEmpty())
+        {
             if (iv->getZeroValuesIfUnreachable() && !iv->isReachable()) {
-                iv->Statistics()->zeroRuntimeData();
+                if (iv->Statistics()->areAllFieldsZero() == false) {
+                    _messageOutput->println("Set runtime data to zero");
+                    iv->Statistics()->zeroRuntimeData();
+                }
             }
 
-            if (iv->getEnablePolling() || iv->getEnableCommands()) {
+            if ( (iv->getEnablePolling() || iv->getEnableCommands()) && iv->isConnected() ) {
+                iv->Statistics()->flagFieldsNotZero();
                 _messageOutput->print("Fetch inverter: ");
                 _messageOutput->println(iv->serial(), HEX);
 
@@ -150,6 +165,7 @@ void HoymilesClass::loop()
 std::shared_ptr<InverterAbstract> HoymilesClass::addInverter(const char* name, const uint64_t serial)
 {
     std::shared_ptr<InverterAbstract> i = nullptr;
+#ifdef USE_RADIO_CMT
     if (HMT_4CH::isValidSerial(serial)) {
         i = std::make_shared<HMT_4CH>(_radioCmt.get(), serial);
     } else if (HMT_6CH::isValidSerial(serial)) {
@@ -162,7 +178,9 @@ std::shared_ptr<InverterAbstract> HoymilesClass::addInverter(const char* name, c
         i = std::make_shared<HMS_1CH>(_radioCmt.get(), serial);
     } else if (HMS_1CHv2::isValidSerial(serial)) {
         i = std::make_shared<HMS_1CHv2>(_radioCmt.get(), serial);
-    } else if (HM_4CH::isValidSerial(serial)) {
+    } else
+#endif
+    if (HM_4CH::isValidSerial(serial)) {
         i = std::make_shared<HM_4CH>(_radioNrf.get(), serial);
     } else if (HM_2CH::isValidSerial(serial)) {
         i = std::make_shared<HM_2CH>(_radioNrf.get(), serial);
@@ -243,14 +261,20 @@ HoymilesRadio_NRF* HoymilesClass::getRadioNrf()
     return _radioNrf.get();
 }
 
+#ifdef USE_RADIO_CMT
 HoymilesRadio_CMT* HoymilesClass::getRadioCmt()
 {
     return _radioCmt.get();
 }
+#endif
 
 bool HoymilesClass::isAllRadioIdle() const
 {
-    return _radioNrf.get()->isIdle() && _radioCmt.get()->isIdle();
+    return _radioNrf.get()->isIdle()
+#ifdef USE_RADIO_CMT
+        && _radioCmt.get()->isIdle()
+#endif
+    ;
 }
 
 uint32_t HoymilesClass::PollInterval() const
