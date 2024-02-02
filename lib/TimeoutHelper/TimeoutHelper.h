@@ -7,9 +7,11 @@ class TimeoutHelper {
 public:
     TimeoutHelper();
     void set(const uint32_t ms);
+    uint32_t get() { return timeout; }
     void extend(const uint32_t ms);
     void reset();
     bool occured() const;
+    uint32_t elapsed() const;
 
 private:
     uint32_t startMillis;
