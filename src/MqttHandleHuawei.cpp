@@ -14,11 +14,14 @@
 
 MqttHandleHuaweiClass MqttHandleHuawei;
 
+MqttHandleHuaweiClass::MqttHandleHuaweiClass()
+    : _loopTask(TASK_IMMEDIATE, TASK_FOREVER, std::bind(&MqttHandleHuaweiClass::loop, this))
+{
+}
+
 void MqttHandleHuaweiClass::init(Scheduler& scheduler)
 {
     scheduler.addTask(_loopTask);
-    _loopTask.setCallback(std::bind(&MqttHandleHuaweiClass::loop, this));
-    _loopTask.setIterations(TASK_FOREVER);
     _loopTask.enable();
 
     String const& prefix = MqttSettings.getPrefix();
