@@ -63,7 +63,7 @@ class Controller : public BatteryProvider {
             _readState = state;
         }
 
-        bool _verboseLogging = false;
+        bool _verboseLogging = true;
         int8_t _rxEnablePin = -1;
         int8_t _txEnablePin = -1;
         Status _lastStatus = Status::Initializing;
