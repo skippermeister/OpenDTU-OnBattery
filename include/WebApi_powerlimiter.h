@@ -4,7 +4,6 @@
 #include <ESPAsyncWebServer.h>
 #include <TaskSchedulerDeclarations.h>
 
-
 class WebApiPowerLimiterClass {
 public:
     void init(AsyncWebServer& server, Scheduler& scheduler);
