@@ -2,12 +2,22 @@
     <div class="row mb-3">
         <label
             :for="inputId"
-            :class="[ wide ? 'col-sm-4' : 'col-sm-2', isCheckbox ? 'form-check-label' : 'col-form-label' ]"
+            :class="[ wide5_1 || wide5_2 || wide5_3 || wide5_4 || wide5_7 ? 'col-sm-5'
+                    : wide4_1 || wide4_2 || wide4_3 || wide4_4 || wide4_8 ? 'col-sm-4' 
+                    : wide3_1 || wide3_2 || wide3_3 || wide3_4 || wide3_9 ? 'col-sm-3' 
+                    : 'col-sm-2', isCheckbox ? 'form-check-label' : 'col-form-label' ]"
         >
             {{ label }}
             <BIconInfoCircle v-if="tooltip !== undefined" v-tooltip :title="tooltip" />
         </label>
-        <div :class="[ wide ? 'col-sm-8' : 'col-sm-10' ]">
+        <div :class="[ wide2_1 || wide3_1 || wide4_1 || wide5_1 ? 'col-sm-1'
+                    : wide2_2 || wide3_2 || wide4_2 || wide5_2 ? 'col-sm-2' 
+                    : wide2_3 || wide3_3 || wide4_3 || wide5_3  ? 'col-sm-3' 
+                    : wide2_4 || wide3_4 || wide4_4 || wide5_4? 'col-sm-4' 
+                    : wide2_10 || wide ? 'col-sm-10' 
+                    : wide3_9 ? 'col-sm-9' 
+                    : wide4_8 ? 'col-sm-8' 
+                    : 'col-sm-7']">
             <div v-if="!isTextarea"
                  :class="{'form-check form-switch': isCheckbox,
                           'input-group': postfix || prefix }"
@@ -18,7 +28,7 @@
                  >
                     {{ prefix }}
                 </span>
-                <input
+                <input 
                     v-model="model"
                     :class="[ isCheckbox ? 'form-check-input' : 'form-control' ]"
                     :id="inputId"
@@ -64,6 +74,7 @@ export default defineComponent({
     },
     props: {
         'modelValue': [String, Number, Boolean, Date],
+        'modelNumberValue': Number,
         'label': String,
         'placeholder': String,
         'type': String,
@@ -76,6 +87,26 @@ export default defineComponent({
         'postfix': String,
         'prefix': String,
         'wide': Boolean,
+        'wide2_1': Boolean,
+        'wide2_2': Boolean,
+        'wide2_3': Boolean,
+        'wide2_4': Boolean,
+        'wide2_10': Boolean,
+        'wide3_1': Boolean,
+        'wide3_2': Boolean,
+        'wide3_3': Boolean,
+        'wide3_4': Boolean,
+        'wide3_9': Boolean,
+        'wide4_1': Boolean,
+        'wide4_2': Boolean,
+        'wide4_3': Boolean,
+        'wide4_4': Boolean,
+        'wide4_8': Boolean,
+        'wide5_1': Boolean,
+        'wide5_2': Boolean,
+        'wide5_3': Boolean,
+        'wide5_4': Boolean,
+        'wide5_7': Boolean,
         'tooltip': String,
     },
     data() {
@@ -85,6 +116,16 @@ export default defineComponent({
         model: {
             get(): any {
                 if (this.type === 'checkbox') return !!this.modelValue;
+                else if(this.type === 'number') {
+                    var p;
+                    p = this.modelValue?.toString();
+                    if (p == undefined) p = "0.0";
+                    if (this.step == '1') return parseFloat(p).toFixed(0);
+                    if (this.step == '0.1') return parseFloat(p).toFixed(1);
+                    else if (this.step == '0.01') return parseFloat(p).toFixed(2);
+                    else if (this.step == '0.001') return parseFloat(p).toFixed(3);
+                    return this.modelValue;
+                }
                 return this.modelValue;
             },
             set(value: any) {
