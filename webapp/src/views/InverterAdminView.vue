@@ -41,14 +41,16 @@
                             <td><BIconGripHorizontal class="drag-handle" /></td>
                             <td>
                                 <span class="badge" :title="$t('inverteradmin.Receive')" :class="{
-                                    'text-bg-warning': !inverter.poll_enable_night,
-                                    'text-bg-dark': inverter.poll_enable_night,}"
-                                    ><BIconArrowDown v-if="inverter.poll_enable"  /></span>
+                                    'text-bg-warning': inverter.poll_enable_day && !inverter.poll_enable_night,
+                                    'text-bg-dark': !inverter.poll_enable_day && inverter.poll_enable_night,
+                                    'text-bg-primary': inverter.poll_enable_day && inverter.poll_enable_night}"
+                                    ><BIconArrowDown v-if="inverter.poll_enable_day || inverter.poll_enable_night"  /></span>
 
                                 <span class="badge" :title="$t('inverteradmin.Send')" :class="{
-                                    'text-bg-warning': !inverter.command_enable_night,
-                                    'text-bg-dark': inverter.command_enable_night,}"
-                                    ><BIconArrowUp v-if="inverter.command_enable" /></span>
+                                    'text-bg-warning': inverter.command_enable_day && !inverter.command_enable_night,
+                                    'text-bg-dark': !inverter.command_enable_day && inverter.command_enable_night,
+                                    'text-bg-primary': inverter.command_enable_day && inverter.command_enable_night}"
+                                    ><BIconArrowUp v-if="inverter.command_enable_day || inverter.command_enable_night" /></span>
                             </td>
                             <td>{{ inverter.serial }}</td>
                             <td>{{ inverter.name }}</td>
