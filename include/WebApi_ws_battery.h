@@ -20,7 +20,7 @@ private:
     AsyncWebSocket _ws;
 
     uint32_t _lastUpdateCheck = 0;
-    static constexpr uint16_t _responseSize = 1024 + 512;
+    static constexpr uint16_t _responseSize = 4*1024;
 
     std::mutex _mutex;
 
