@@ -31,11 +31,15 @@ void WebApiDtuClass::applyDataTaskCb()
     // Execute stuff in main thread to avoid busy SPI bus
     CONFIG_T& config = Configuration.get();
     Hoymiles.getRadioNrf()->setPALevel((rf24_pa_dbm_e)config.Dtu.Nrf.PaLevel);
+#ifdef USE_RADIO_CMT
     Hoymiles.getRadioCmt()->setPALevel(config.Dtu.Cmt.PaLevel);
+#endif
     Hoymiles.getRadioNrf()->setDtuSerial(config.Dtu.Serial);
+#ifdef USE_RADIO_CMT
     Hoymiles.getRadioCmt()->setDtuSerial(config.Dtu.Serial);
     Hoymiles.getRadioCmt()->setCountryMode(static_cast<CountryModeId_t>(config.Dtu.Cmt.CountryMode));
     Hoymiles.getRadioCmt()->setInverterTargetFrequency(config.Dtu.Cmt.Frequency);
+#endif
     Hoymiles.setPollInterval(config.Dtu.PollInterval);
 }
 
@@ -47,22 +51,22 @@ void WebApiDtuClass::onDtuAdminGet(AsyncWebServerRequest* request)
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& root = response->getRoot();
-    const CONFIG_T& config = Configuration.get();
+    const Dtu_CONFIG_T& cDtu = Configuration.get().Dtu;
 
     // DTU Serial is read as HEX
     char buffer[sizeof(uint64_t) * 8 + 1];
     snprintf(buffer, sizeof(buffer), "%0x%08x",
-        ((uint32_t)((config.Dtu.Serial >> 32) & 0xFFFFFFFF)),
-        ((uint32_t)(config.Dtu.Serial & 0xFFFFFFFF)));
+        ((uint32_t)((cDtu.Serial >> 32) & 0xFFFFFFFF)),
+        ((uint32_t)(cDtu.Serial & 0xFFFFFFFF)));
     root["serial"] = buffer;
-    root["pollinterval"] = config.Dtu.PollInterval;
-    root["verbose_logging"] = config.Dtu.VerboseLogging;
+    root["pollinterval"] = cDtu.PollInterval;
     root["nrf_enabled"] = Hoymiles.getRadioNrf()->isInitialized();
-    root["nrf_palevel"] = config.Dtu.Nrf.PaLevel;
+    root["nrf_palevel"] = cDtu.Nrf.PaLevel;
+#ifdef USE_RADIO_CMT
     root["cmt_enabled"] = Hoymiles.getRadioCmt()->isInitialized();
-    root["cmt_palevel"] = config.Dtu.Cmt.PaLevel;
-    root["cmt_frequency"] = config.Dtu.Cmt.Frequency;
-    root["cmt_country"] = config.Dtu.Cmt.CountryMode;
+    root["cmt_palevel"] = cDtu.Cmt.PaLevel;
+    root["cmt_frequency"] = cDtu.Cmt.Frequency;
+    root["cmt_country"] = cDtu.Cmt.CountryMode;
     root["cmt_chan_width"] = Hoymiles.getRadioCmt()->getChannelWidth();
 
     auto data = root.createNestedArray("country_def");
@@ -75,6 +79,9 @@ void WebApiDtuClass::onDtuAdminGet(AsyncWebServerRequest* request)
         obj["freq_legal_min"] = definition.definition.Freq_Legal_Min;
         obj["freq_legal_max"] = definition.definition.Freq_Legal_Max;
     }
+#endif
+
+    root["verbose_logging"] = Hoymiles.getVerboseLogging();
 
     response->setLength();
     request->send(response);
@@ -88,7 +95,7 @@ void WebApiDtuClass::onDtuAdminPost(AsyncWebServerRequest* request)
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& retMsg = response->getRoot();
-    retMsg["type"] = "warning";
+    retMsg["type"] = Warning;
 
     if (!request->hasParam("data", true)) {
         retMsg["message"] = "No values found!";
@@ -101,7 +108,7 @@ void WebApiDtuClass::onDtuAdminPost(AsyncWebServerRequest* request)
     const String json = request->getParam("data", true)->value();
 
     if (json.length() > 1024) {
-        retMsg["message"] = "Data too large!";
+        retMsg["message"] = DataTooLarge;
         retMsg["code"] = WebApiError::GenericDataTooLarge;
         response->setLength();
         request->send(response);
@@ -112,7 +119,7 @@ void WebApiDtuClass::onDtuAdminPost(AsyncWebServerRequest* request)
     const DeserializationError error = deserializeJson(root, json);
 
     if (error) {
-        retMsg["message"] = "Failed to parse data!";
+        retMsg["message"] = FailedToParseData;
         retMsg["code"] = WebApiError::GenericParseError;
         response->setLength();
         request->send(response);
@@ -126,7 +133,7 @@ void WebApiDtuClass::onDtuAdminPost(AsyncWebServerRequest* request)
             && root.containsKey("cmt_palevel") 
             && root.containsKey("cmt_frequency")
             && root.containsKey("cmt_country"))) {
-        retMsg["message"] = "Values are missing!";
+        retMsg["message"] = ValuesAreMissing;
         retMsg["code"] = WebApiError::GenericValueMissing;
         response->setLength();
         request->send(response);
@@ -150,15 +157,16 @@ void WebApiDtuClass::onDtuAdminPost(AsyncWebServerRequest* request)
     }
 
     if (root["nrf_palevel"].as<uint8_t>() > 3) {
-        retMsg["message"] = "Invalid power level setting!";
+        retMsg["message"] = InvalidPowerLevelSetting;
         retMsg["code"] = WebApiError::DtuInvalidPowerLevel;
         response->setLength();
         request->send(response);
         return;
     }
 
+#ifdef USE_RADIO_CMT
     if (root["cmt_palevel"].as<int8_t>() < -10 || root["cmt_palevel"].as<int8_t>() > 20) {
-        retMsg["message"] = "Invalid power level setting!";
+        retMsg["message"] = InvalidPowerLevelSetting;
         retMsg["code"] = WebApiError::DtuInvalidPowerLevel;
         response->setLength();
         request->send(response);
@@ -186,17 +194,20 @@ void WebApiDtuClass::onDtuAdminPost(AsyncWebServerRequest* request)
         request->send(response);
         return;
     }
+#endif
 
-    CONFIG_T& config = Configuration.get();
+    Dtu_CONFIG_T& cDtu = Configuration.get().Dtu;
 
     // Interpret the string as a hex value and convert it to uint64_t
-    config.Dtu.Serial = strtoll(root["serial"].as<String>().c_str(), NULL, 16);
-    config.Dtu.PollInterval = root["pollinterval"].as<uint32_t>();
-    config.Dtu.VerboseLogging = root["verbose_logging"].as<bool>();
-    config.Dtu.Nrf.PaLevel = root["nrf_palevel"].as<uint8_t>();
-    config.Dtu.Cmt.PaLevel = root["cmt_palevel"].as<int8_t>();
-    config.Dtu.Cmt.Frequency = root["cmt_frequency"].as<uint32_t>();
-    config.Dtu.Cmt.CountryMode = root["cmt_country"].as<CountryModeId_t>();
+    cDtu.Serial = strtoll(root["serial"].as<String>().c_str(), NULL, 16);
+    cDtu.PollInterval = root["pollinterval"].as<uint32_t>();
+    cDtu.Nrf.PaLevel = root["nrf_palevel"].as<uint8_t>();
+#ifdef USE_RADIO_CMT
+    cDtu.Cmt.PaLevel = root["cmt_palevel"].as<int8_t>();
+    cDtu.Cmt.Frequency = root["cmt_frequency"].as<uint32_t>();
+    cDtu.Cmt.CountryMode = root["cmt_country"].as<CountryModeId_t>();
+#endif
+    Hoymiles.setVerboseLogging(root["verbose_logging"].as<bool>());
 
     WebApi.writeConfig(retMsg);
 
