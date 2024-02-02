@@ -8,7 +8,7 @@
 #include "ZeroExport.h"
 #include <ctime>
 
-const char TAG[] = "[MqttHandleZeroExport]";
+static constexpr char TAG[] = "[MqttHandleZeroExport]";
 
 MqttHandleZeroExportClass MqttHandleZeroExport;
 
