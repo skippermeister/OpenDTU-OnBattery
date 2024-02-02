@@ -43,6 +43,7 @@ public:
     uint32_t PollInterval() const;
     void setPollInterval(const uint32_t interval);
     void setVerboseLogging(bool verboseLogging);
+    bool getVerboseLogging(void) {return _verboseLogging; };
 
     bool isAllRadioIdle() const;
 
