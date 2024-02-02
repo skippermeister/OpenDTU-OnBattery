@@ -5,19 +5,21 @@
     </div>
   </div>
 
-  <div v-else-if="'values' in batteryData"> <!-- suppress the card for MQTT battery provider -->
+
+  <template v-else>
     <div class="row gy-3">
       <div class="tab-content col-sm-12 col-md-12" id="v-pills-tabContent">
         <div class="card">
           <div class="card-header d-flex justify-content-between align-items-center" :class="{
-            'text-bg-danger': batteryData.data_age >= 20,
+            'text-bg-danger': batteryData.data_age > 20,
             'text-bg-primary': batteryData.data_age < 20,
           }">
             <div class="p-1 flex-grow-1">
               <div class="d-flex flex-wrap">
                 <div style="padding-right: 2em;">
-                  {{ $t('battery.battery') }}: {{ batteryData.manufacturer }}
+                  {{ $t('battery.battery') }}: {{ batteryData.manufacturer }} {{ batteryData.device_name }}
                 </div>
+                <div style="padding-right: 2em;">Software Version: {{ batteryData.software_version }}</div>
                 <div style="padding-right: 2em;">
                   {{ $t('battery.DataAge') }} {{ $t('battery.Seconds', { 'val': batteryData.data_age }) }}
                 </div>
@@ -27,22 +29,15 @@
 
           <div class="card-body">
             <div class="row flex-row flex-wrap align-items-start g-3">
-              <div v-for="(values, section) in batteryData.values" v-bind:key="section" class="col order-0">
+              <div class="col order-0">
                 <div class="card" :class="{ 'border-info': true }">
-                  <div class="card-header text-bg-info">{{ $t('battery.' + section) }}</div>
-                  <div class="card-body">
-                    <table class="table table-striped table-hover">
-                      <thead>
-                        <tr>
-                          <th scope="col">{{ $t('battery.Property') }}</th>
-                          <th style="text-align: right" scope="col">{{ $t('battery.Value') }}</th>
-                          <th scope="col">{{ $t('battery.Unit') }}</th>
-                        </tr>
-                      </thead>
+                  <div class="card-header bg-info">{{ $t('battery.Status') }}</div>
+                  <div class="table-responsive">
+                    <table class="table table-striped table-hover" style="margin: 0">
                       <tbody>
-                        <tr v-for="(prop, key) in values" v-bind:key="key">
+                        <tr v-for="(prop, key) in batteryData.values" v-bind:key="key">
                           <th scope="row">{{ $t('battery.' + key) }}</th>
-                          <td style="text-align: right">
+                          <td style="text-align: right; padding-right: 0;">
                             <template v-if="typeof prop === 'string'">
                               {{ $t('battery.' + prop) }}
                             </template>
@@ -57,6 +52,7 @@
                           <td v-else>{{prop.u}}</td>
                         </tr>
                       </tbody>
+
                     </table>
                   </div>
                 </div>
@@ -71,14 +67,8 @@
                       <div v-else-if="maxIssueValue === 2" class="badge text-bg-danger">{{ $t('battery.alarm') }}</div>
                     </div>
                   </div>
-                  <div class="card-body" v-if="'issues' in batteryData">
-                    <table class="table table-striped table-hover">
-                      <thead>
-                        <tr>
-                          <th scope="col">{{ $t('battery.issueName') }}</th>
-                          <th scope="col">{{ $t('battery.issueType') }}</th>
-                        </tr>
-                      </thead>
+                  <div class="table-responsive" v-if="'issues' in batteryData">
+                    <table class="table table-striped table-hover" style="margin: 0">
                       <tbody>
                         <tr v-for="(prop, key) in batteryData.issues" v-bind:key="key">
                           <th scope="row">{{ $t('battery.' + key) }}</th>
@@ -86,7 +76,7 @@
                             <span class="badge" :class="{
                                 'text-bg-warning text-dark': prop === 1,
                                 'text-bg-danger': prop === 2
-                            }">
+                                }">
                                 <template v-if="prop === 1">{{ $t('battery.warning') }}</template>
                                 <template v-else>{{ $t('battery.alarm') }}</template>
                             </span>
@@ -97,13 +87,117 @@
                   </div>
                 </div>
               </div>
+
+              <div class="col order-2">
+                <div class="card" :class="{ 'border-info': false }">
+                  <div class="card-header bg-info">{{ $t('battery.cell_voltages') }}</div>
+                  <div class="table-responsive">
+                    <table class="table table-striped table-hover" style="margin: 0">
+                      <tbody>
+                        <tr>
+                          <th scope="row">{{  $t('battery.cellMinVoltage') }}</th>
+                          <td style="text-align: right; padding-right: 0;">
+                            {{ $n(batteryData.cell.cellMinVoltage.v, 'decimal', {
+                              minimumFractionDigits: batteryData.cell.cellMinVoltage.d,
+                              maximumFractionDigits: batteryData.cell.cellMinVoltage.d})
+                            }}
+                          </td>
+                          <td>{{ batteryData.cell.cellMinVoltage.u }}</td>
+
+                          <th scope="row">{{  $t('battery.cellMaxVoltage') }}</th>
+                          <td style="text-align: right; padding-right: 0;">
+                            {{ $n(batteryData.cell.cellMaxVoltage.v, 'decimal', {
+                              minimumFractionDigits: batteryData.cell.cellMaxVoltage.d,
+                              maximumFractionDigits: batteryData.cell.cellMaxVoltage.d})
+                            }}
+                          </td>
+                          <td>{{ batteryData.cell.cellMaxVoltage.u }}</td>
+
+                          <th scope="row">{{  $t('battery.cellDiffVoltage') }}</th>
+                          <td style="text-align: right; padding-right: 0;">
+                            {{ $n(batteryData.cell.cellDiffVoltage.v, 'decimal', {
+                              minimumFractionDigits: batteryData.cell.cellDiffVoltage.d,
+                              maximumFractionDigits: batteryData.cell.cellDiffVoltage.d})
+                            }}
+                          </td>
+                          <td>{{ batteryData.cell.cellDiffVoltage.u }}</td>
+                        </tr>
+
+                        <template v-for="i in Math.floor((batteryData.cell.voltage.length+2) / 3)">
+                          <tr>
+                          <template v-for="(voltage, index) in batteryData.cell.voltage.slice((i-1)*3,(i-1)*3+3)">
+                            <th scope="row">{{ $t('battery.cell') }} {{(i-1)*3+index+1}}</th>
+                            <td style="text-align: right; padding-right: 0;">
+                              {{ $n(voltage.v, 'decimal', {
+                                 minimumFractionDigits: voltage.d,
+                                 maximumFractionDigits: voltage.d})
+                              }}
+                            </td>
+                            <td>{{ voltage.u }}</td>
+                          </template>
+                          </tr>
+                        </template>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div class="card-header bg-info">{{ $t('battery.cell_temperatures') }}</div>
+                  <div class="table-responsive">
+                    <table class="table table-striped table-hover" style="margin: 0">
+                      <tbody>
+                        <template v-for="i in Math.floor((batteryData.tempSensor.length+2) / 3)">
+                          <tr>
+                          <template v-for="(tempSensor, index) in batteryData.tempSensor.slice((i-1)*3,(i-1)*3+3)">
+                            <th scope="row">{{ $t('battery.tempSensor') }} {{(i-1)*3+index+1}}</th>
+                            <td style="text-align: right; padding-right: 0;">
+                              {{ $n(tempSensor.v, 'decimal', {
+                                 minimumFractionDigits: tempSensor.d,
+                                 maximumFractionDigits: tempSensor.d})
+                              }}
+                            </td>
+                            <td>{{ tempSensor.u }}</td>
+                          </template>
+                          </tr>
+                        </template>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div class="card-header bg-info">{{ $t('battery.Parameters') }}</div>
+                  <div class="table-responsive">
+                    <table class="table table-striped table-hover" style="margin: 0">
+                      <tbody>
+                        <tr v-for="(prop, key) in batteryData.parameters" v-bind:key="key">
+                          <th scope="row">{{ $t('battery.' + key) }}</th>
+                          <td style="text-align: right; padding-right: 0;">
+                            <template v-if="typeof prop === 'string'">
+                              {{ $t('battery.' + prop) }}
+                            </template>
+                            <template v-else>
+                            {{ $n(prop.v, 'decimal', {
+                                 minimumFractionDigits: prop.d,
+                                 maximumFractionDigits: prop.d})
+                            }}
+                            </template>
+                          </td>
+                          <td v-if="typeof prop === 'string'"></td>
+                          <td v-else>{{prop.u}}</td>
+                        </tr>
+                      </tbody>
+
+                    </table>
+                  </div>
+
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
       </div>
     </div>
 
-  </div>
+  </template>
 </template>
 
 <script lang="ts">
@@ -142,9 +236,10 @@ export default defineComponent({
       console.log("Get initalData for Battery");
       this.dataLoading = true;
 
-      fetch("/api/batterylivedata/status", { headers: authHeader() })
+      fetch("/api/battery/livedata", { headers: authHeader() })
         .then((response) => handleResponse(response, this.$emitter, this.$router))
         .then((data) => {
+          console.log(data);
           this.batteryData = data;
           this.dataLoading = false;
         });
