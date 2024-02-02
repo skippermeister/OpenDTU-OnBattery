@@ -47,8 +47,8 @@ bool PylontechRS485Receiver::init()
     }
 
     MessageOutput.print("Read basic infos and parameters. ");
-//    boolean temp = Battery._verbose_logging;
-//Battery._verbose_logging = true;
+//    boolean temp = Battery._verboseLogging;
+//Battery._verboseLogging = true;
     get_protocol_version();
     get_manufacturer_info();
     get_module_serial_number();
@@ -73,7 +73,7 @@ bool PylontechRS485Receiver::init()
     send_cmd(2, CommandInformation::GetAlarmInfo);
     vTaskDelay(100);
     get_alarm_info();
-//    Battery._verbose_logging = temp;
+//    Battery._verboseLogging = temp;
 
     _isInstalled = true;
 
@@ -161,7 +161,7 @@ void PylontechRS485Receiver::loop()
 
 void PylontechRS485Receiver::get_protocol_version(uint8_t devid)
 {
-    if (Battery._verbose_logging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
+    if (Battery._verboseLogging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
 
     send_cmd(devid, CommandInformation::GetProtocolVersion, false);
     yield();
@@ -175,7 +175,7 @@ void PylontechRS485Receiver::get_protocol_version(uint8_t devid)
 
 void PylontechRS485Receiver::get_barcode(uint8_t devid)
 {
-    if (Battery._verbose_logging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
+    if (Battery._verboseLogging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
 
     send_cmd(devid, CommandInformation::GetBarCode);
     yield();
@@ -189,7 +189,7 @@ void PylontechRS485Receiver::get_barcode(uint8_t devid)
 
 void PylontechRS485Receiver::get_firmware_info(uint8_t devid)
 {
-    if (Battery._verbose_logging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
+    if (Battery._verboseLogging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
 
     send_cmd(devid, CommandInformation::GetFirmwareInfo);
     yield();
@@ -208,7 +208,7 @@ void PylontechRS485Receiver::get_firmware_info(uint8_t devid)
     version = ToUint24(info);
     _stats->mainLineVersion = String((version >> 16) & 0x0F) + '.' + String((version >> 8) & 0x0F) + '.' + String(version & 0x0F);
 
-    if (Battery._verbose_logging) {
+    if (Battery._verboseLogging) {
         MessageOutput.printf("%s Manufacturer Version: '%s'\r\n", TAG, _stats->manufacturerVersion.c_str());
         MessageOutput.printf("%s Main Line Version: '%s'\r\n", TAG, _stats->mainLineVersion.c_str());
     }
@@ -216,7 +216,7 @@ void PylontechRS485Receiver::get_firmware_info(uint8_t devid)
 
 void PylontechRS485Receiver::get_version_info(uint8_t devid)
 {
-    if (Battery._verbose_logging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
+    if (Battery._verboseLogging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
 
     send_cmd(devid, CommandInformation::GetVersionInfo);
     yield();
@@ -230,7 +230,7 @@ void PylontechRS485Receiver::get_version_info(uint8_t devid)
 
 void PylontechRS485Receiver::get_pack_count(uint8_t devid)
 {
-    if (Battery._verbose_logging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
+    if (Battery._verboseLogging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
 
     send_cmd(devid, CommandInformation::GetPackCount);
     yield();
@@ -243,13 +243,13 @@ void PylontechRS485Receiver::get_pack_count(uint8_t devid)
 
     _number_of_packs = f->info[0];
 
-    if (Battery._verbose_logging)
+    if (Battery._verboseLogging)
         MessageOutput.printf("%s::%s Number of Battery Packs %u\r\n", TAG, __FUNCTION__, _number_of_packs);
 }
 
 void PylontechRS485Receiver::get_manufacturer_info(uint8_t devid)
 {
-    if (Battery._verbose_logging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
+    if (Battery._verboseLogging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
 
     send_cmd(devid, CommandInformation::GetManufacturerInfo, false);
     yield();
@@ -267,7 +267,7 @@ void PylontechRS485Receiver::get_manufacturer_info(uint8_t devid)
     _stats->softwareVersion = String((sw_version >> 8) & 0x0F) + '.' + String(sw_version & 0x0F);
     String manufacturer(reinterpret_cast<char*>(info + 12), 20);
 
-    if (Battery._verbose_logging) {
+    if (Battery._verboseLogging) {
         MessageOutput.printf("%s Manufacturer: '%s' size: %d\r\n", TAG, manufacturer.c_str(), manufacturer.length());
         MessageOutput.printf("%s Software Version: %s\r\n", TAG, _stats->softwareVersion.c_str());
         MessageOutput.printf("%s Device Name: '%s' size: %d\r\n", TAG, deviceName.c_str(), deviceName.length());
@@ -289,7 +289,7 @@ void PylontechRS485Receiver::get_manufacturer_info(uint8_t devid)
             break;
     }
 
-    if (Battery._verbose_logging) {
+    if (Battery._verboseLogging) {
         MessageOutput.printf("%s Manufacturer: '%s' size: %d\r\n", TAG, manufacturer.c_str(), manufacturer.length());
         MessageOutput.printf("%s Device Name: '%s' size: %d\r\n", TAG, deviceName.c_str(), deviceName.length());
     }
@@ -297,14 +297,14 @@ void PylontechRS485Receiver::get_manufacturer_info(uint8_t devid)
     _stats->setManufacturer(std::move(manufacturer));
     _stats->setDeviceName(std::move(deviceName));
 
-    if (Battery._verbose_logging)
+    if (Battery._verboseLogging)
         MessageOutput.printf("%s Device Name: '%s' Manufacturer Name: '%s'\r\n", TAG,
             _stats->getDeviceName().c_str(), _stats->getManufacturer().c_str());
 }
 
 void PylontechRS485Receiver::get_analog_value()
 {
-    if (Battery._verbose_logging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
+    if (Battery._verboseLogging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
 
     format_t* f = read_frame();
     yield();
@@ -319,7 +319,7 @@ void PylontechRS485Receiver::get_analog_value()
     _stats->numberOfModule = *info++;
     _stats->numberOfCells = *info++;
 
-    if (Battery._verbose_logging)
+    if (Battery._verboseLogging)
         MessageOutput.printf("%s Number of Module: %d, Number of Cells: %d\r\n", TAG, _stats->numberOfModule, _stats->numberOfCells);
 
     _stats->cellMinVoltage = 999999.0;
@@ -340,7 +340,7 @@ void PylontechRS485Receiver::get_analog_value()
     _stats->cellDiffVoltage = (_stats->cellMaxVoltage - _stats->cellMinVoltage) * 1000.0; // in mV
 
     _stats->numberOfTemperatures = *info++;
-    if (Battery._verbose_logging)
+    if (Battery._verboseLogging)
         MessageOutput.printf("%s Number of Temperatures: %d\r\n", TAG, _stats->numberOfTemperatures);
 
     _stats->averageBMSTemperature = to_Celsius(info);
@@ -384,7 +384,7 @@ void PylontechRS485Receiver::get_analog_value()
     }
     _stats->totalPower = _stats->power;
     _stats->setSoC(static_cast<uint8_t>((100.0 * _stats->remainingCapacity / _stats->totalCapacity) + 0.5));
-    if (Battery._verbose_logging) {
+    if (Battery._verboseLogging) {
         MessageOutput.printf("%s AverageBMSTemperature: %.1f\r\n", TAG, _stats->averageBMSTemperature);
         MessageOutput.printf("%s AverageCellTemperature: %.1f\r\n", TAG, _stats->averageCellTemperature);
         MessageOutput.printf("%s MinCellTemperature: %.1f\r\n", TAG, _stats->minCellTemperature);
@@ -398,7 +398,7 @@ void PylontechRS485Receiver::get_analog_value()
 
 void PylontechRS485Receiver::get_analog_value_multiple(void)
 {
-    if (Battery._verbose_logging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
+    if (Battery._verboseLogging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
 
     send_cmd(2, CommandInformation::GetAnalogValue, true);
     yield();
@@ -417,7 +417,7 @@ void PylontechRS485Receiver::get_analog_value_multiple(void)
 
 void PylontechRS485Receiver::get_system_parameters()
 {
-    if (Battery._verbose_logging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
+    if (Battery._verboseLogging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
 
     format_t* f = read_frame();
     yield();
@@ -452,7 +452,7 @@ void PylontechRS485Receiver::get_system_parameters()
     _stats->SystemParameters.dischargeCurrentLimit = to_Amp(info);
     info += 2;
 
-    if (Battery._verbose_logging) {
+    if (Battery._verboseLogging) {
         MessageOutput.printf("%s CurrentLimit charge: %.2fA, discharge: %.2fA\r\n", TAG,
             _stats->SystemParameters.chargeCurrentLimit,
             _stats->SystemParameters.dischargeCurrentLimit);
@@ -475,7 +475,7 @@ void PylontechRS485Receiver::get_system_parameters()
 
 void PylontechRS485Receiver::get_alarm_info()
 {
-    if (Battery._verbose_logging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
+    if (Battery._verboseLogging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
 
     format_t* f = read_frame();
     yield();
@@ -565,7 +565,7 @@ void PylontechRS485Receiver::get_alarm_info()
             _stats->Alarm.overVoltage = 1;
     }
 
-    if (Battery._verbose_logging) {
+    if (Battery._verboseLogging) {
         MessageOutput.printf("%s Status ChargeCurrent: %02X ModuleVoltage: %02X DischargeCurrent: %02X\r\n", TAG,
             _stats->AlarmInfo.chargeCurrent, _stats->AlarmInfo.moduleVoltage, _stats->AlarmInfo.dischargeCurrent);
         MessageOutput.printf("%s Status 1: MOV:%s, CUV:%s, COC:%s, DOC:%s, DOT:%s, COT:%s, MUV:%s\r\n", TAG,
@@ -595,7 +595,7 @@ void PylontechRS485Receiver::get_alarm_info()
 
 void PylontechRS485Receiver::get_charge_discharge_management_info()
 {
-    if (Battery._verbose_logging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
+    if (Battery._verboseLogging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
 
     format_t* f = read_frame();
     yield();
@@ -617,7 +617,7 @@ void PylontechRS485Receiver::get_charge_discharge_management_info()
     info += 2;
     _stats->ChargeDischargeManagementInfo.Status = *info;
 
-    if (Battery._verbose_logging) {
+    if (Battery._verboseLogging) {
         MessageOutput.printf("%s CVL:%.3fV, DVL:%.3fV, CCL:%.1fA, DCL:%.1fA, CE:%d DE:%d CI:%d CI1:%d FCR:%d\r\n", TAG,
             _stats->ChargeDischargeManagementInfo.chargeVoltageLimit,
             _stats->ChargeDischargeManagementInfo.dischargeVoltageLimit,
@@ -633,7 +633,7 @@ void PylontechRS485Receiver::get_charge_discharge_management_info()
 
 void PylontechRS485Receiver::get_module_serial_number(uint8_t devid)
 {
-    if (Battery._verbose_logging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
+    if (Battery._verboseLogging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
 
     send_cmd(devid, CommandInformation::GetSerialNumber);
     yield();
@@ -651,7 +651,7 @@ void PylontechRS485Receiver::get_module_serial_number(uint8_t devid)
         _stats->ModuleSerialNumber.moduleSerialNumber[i] = *info++;
     _stats->ModuleSerialNumber.moduleSerialNumber[16] = 0;
 
-    if (Battery._verbose_logging)
+    if (Battery._verboseLogging)
         MessageOutput.printf("%s S/N %s\r\n", TAG, _stats->ModuleSerialNumber.moduleSerialNumber);
 }
 
@@ -719,7 +719,7 @@ void PylontechRS485Receiver::send_cmd(uint8_t address, uint8_t cmd, boolean Pack
     _encode_cmd(raw_frame, address, cmd, bdevid);
     size_t length = strlen(raw_frame);
 
-    if (Battery._verbose_logging) MessageOutput.printf("%s:%s frame=%s\r\n", TAG, __FUNCTION__, raw_frame);
+    if (Battery._verboseLogging) MessageOutput.printf("%s:%s frame=%s\r\n", TAG, __FUNCTION__, raw_frame);
 
     if (RS485.write(raw_frame, length) != length) {
         MessageOutput.printf("%s Send data critical failure.\r\n", TAG);
@@ -840,19 +840,19 @@ format_t* PylontechRS485Receiver::_decode_frame(char* frame)
     f->cid2 = (uint8_t)hex2binary(&frame[6], 2);
     f->infolength = (uint16_t)hex2binary(&frame[8], 4);
 
-    if (Battery._verbose_logging)
+    if (Battery._verboseLogging)
         MessageOutput.printf("%s ver: %02X, adr: %02X, cid1: %02X, cid2: %02X, infolength: %d info:\r\n", TAG, f->ver, f->adr, f->cid1, f->cid2, (f->infolength) & 0xFFF);
 
     // f->info = (uint8_t*)realloc(f.info, f.infolength & 0xfff);
     for (int idx = 12, pos = 0; idx < length; idx += 2, pos++) {
         f->info[pos] = (uint8_t)hex2binary(&frame[idx], 2);
-        if (Battery._verbose_logging) {
+        if (Battery._verboseLogging) {
             MessageOutput.printf(" %02X", f->info[pos]);
             if (((pos + 1) % 16) == 0)
                 MessageOutput.println();
         }
     }
-    if (Battery._verbose_logging)
+    if (Battery._verboseLogging)
         MessageOutput.println();
 
     return f;
