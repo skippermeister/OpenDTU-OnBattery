@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright (C) 2022-2024 Thomas Basler and others
+ * Copyright (C) 2022 Thomas Basler and others
  */
 #include "WebApi_sysstatus.h"
 #include "Configuration.h"
@@ -14,10 +14,6 @@
 
 #ifndef AUTO_GIT_HASH
 #define AUTO_GIT_HASH ""
-#endif
-
-#ifndef AUTO_GIT_BRANCH
-#define AUTO_GIT_BRANCH ""
 #endif
 
 void WebApiSysstatusClass::init(AsyncWebServer& server, Scheduler& scheduler)
@@ -69,7 +65,6 @@ void WebApiSysstatusClass::onSystemStatus(AsyncWebServerRequest* request)
     snprintf(version, sizeof(version), "%d.%d.%d", CONFIG_VERSION >> 24 & 0xff, CONFIG_VERSION >> 16 & 0xff, CONFIG_VERSION >> 8 & 0xff);
     root["config_version"] = version;
     root["git_hash"] = AUTO_GIT_HASH;
-    root["git_branch"] = AUTO_GIT_BRANCH;
     root["pioenv"] = PIOENV;
 
     root["uptime"] = esp_timer_get_time() / 1000000;
@@ -78,9 +73,13 @@ void WebApiSysstatusClass::onSystemStatus(AsyncWebServerRequest* request)
     root["nrf_connected"] = Hoymiles.getRadioNrf()->isConnected();
     root["nrf_pvariant"] = Hoymiles.getRadioNrf()->isPVariant();
 
+#ifdef USE_RADIO_CMT
     root["cmt_configured"] = PinMapping.isValidCmt2300Config();
     root["cmt_connected"] = Hoymiles.getRadioCmt()->isConnected();
-
+#else
+    root["cmt_configured"] = false;
+    root["cmt_connected"] = false;
+#endif
     response->setLength();
     request->send(response);
 }
