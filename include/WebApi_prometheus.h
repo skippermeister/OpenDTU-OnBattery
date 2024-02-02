@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
+#ifdef USE_PROMETHEUS
+
 #pragma once
 
 #include <ESPAsyncWebServer.h>
@@ -48,3 +50,5 @@ private:
         { FLD_IRR, MetricType_t::GAUGE },
     };
 };
+
+#endif
