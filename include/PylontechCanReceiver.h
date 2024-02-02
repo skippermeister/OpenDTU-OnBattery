@@ -10,7 +10,7 @@
 
 class PylontechCanReceiver : public BatteryProvider {
 public:
-    bool init(bool verboseLogging) final;
+    bool init() final;
     void deinit() final;
     void loop() final;
     std::shared_ptr<BatteryStats> getStats() const final { return _stats; }
