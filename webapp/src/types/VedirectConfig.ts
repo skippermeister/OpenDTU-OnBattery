@@ -1,5 +1,5 @@
 export interface VedirectConfig {
-    vedirect_enabled: boolean;
+    enabled: boolean;
+    updatesonly: boolean;
     verbose_logging: boolean;
-    vedirect_updatesonly: boolean;
 }
