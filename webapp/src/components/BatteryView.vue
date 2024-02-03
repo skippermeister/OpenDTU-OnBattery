@@ -125,7 +125,7 @@
 
                         <template v-for="i in Math.floor((batteryData.cell.voltage.length+2) / 3)">
                           <tr>
-                          <template v-for="(voltage, index) in batteryData.cell.voltage.slice((i-1)*3,(i-1)*3+3)">
+                          <template v-for="(voltage, index) in batteryData.cell.voltage.slice((i-1)*3,(i-1)*3+3)" v-bind:key="index">
                             <th scope="row">{{ $t('battery.cell') }} {{(i-1)*3+index+1}}</th>
                             <td style="text-align: right; padding-right: 0;">
                               {{ $n(voltage.v, 'decimal', {
@@ -147,7 +147,7 @@
                       <tbody>
                         <template v-for="i in Math.floor((batteryData.tempSensor.length+2) / 3)">
                           <tr>
-                          <template v-for="(tempSensor, index) in batteryData.tempSensor.slice((i-1)*3,(i-1)*3+3)">
+                          <template v-for="(tempSensor, index) in batteryData.tempSensor.slice((i-1)*3,(i-1)*3+3)" v-bind:key="index">
                             <th scope="row">{{ $t('battery.tempSensor') }} {{(i-1)*3+index+1}}</th>
                             <td style="text-align: right; padding-right: 0;">
                               {{ $n(tempSensor.v, 'decimal', {

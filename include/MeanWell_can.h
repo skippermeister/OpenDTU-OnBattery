@@ -226,8 +226,8 @@ private:
     uint16_t readUnsignedInt16(uint8_t* data);
     int16_t readSignedInt16(uint8_t* data) { return readUnsignedInt16(data); }
     float scaleValue(int16_t value, float factor) { return value * factor; }
-    bool sendCmd(uint8_t id, uint16_t cmd, uint8_t* data = (uint8_t*)NULL, int len = 0);
-    bool _sendCmd(uint8_t id, uint16_t cmd, uint8_t* data = (uint8_t*)NULL, int len = 0);
+    bool sendCmd(uint8_t id, uint16_t cmd, uint8_t* data = reinterpret_cast<uint8_t*>(NULL), int len = 0);
+    bool _sendCmd(uint8_t id, uint16_t cmd, uint8_t* data = reinterpret_cast<uint8_t*>(NULL), int len = 0);
     bool readCmd(uint8_t id, uint16_t cmd);
     float calcEfficency(float x);
     void setupParameter(void);
