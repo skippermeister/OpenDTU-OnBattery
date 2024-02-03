@@ -34,12 +34,12 @@
             </CardElement>
 
             <div v-show="batteryConfigList.enabled">
-                <CardElement :text="$t('batteryadmin.BatteryParameter')" 
+                <CardElement :text="$t('batteryadmin.BatteryParameter')"
                              textVariant="text-bg-primary"
                              add-space>
 
-                    <InputElement v-show="batteryConfigList.provider == 0 || 
-                                          batteryConfigList.provider == 3 || 
+                    <InputElement v-show="batteryConfigList.provider == 0 ||
+                                          batteryConfigList.provider == 3 ||
                                         batteryConfigList.provider == 5"
                                 :label="$t('batteryadmin.PollInterval')"
                                 v-model="batteryConfigList.pollinterval"
@@ -102,6 +102,20 @@
                         </div>
                     </div>
                 </CardElement>
+
+                <CardElement v-show="batteryConfigList.enabled && batteryConfigList.provider == 6"
+                         :text="$t('batteryadmin.MqttConfiguration')" textVariant="text-bg-primary" addSpace>
+                    <div class="row mb-3">
+                        <label class="col-sm-2 col-form-label">
+                            {{ $t('batteryadmin.MqttTopic') }}
+                        </label>
+                        <div class="col-sm-10">
+                            <div class="input-group">
+                                <input type="text" class="form-control" v-model="batteryConfigList.mqtt_topic" />
+                            </div>
+                        </div>
+                    </div>
+                </CardElement>
             </div>
 
             <FormFooter @reload="getBatteryConfig"/>
@@ -141,6 +155,7 @@ export default defineComponent({
                 { key: 3, value: 'JkBmsSerial' },
                 { key: 4, value: 'Victron' },
                 { key: 5, value: 'DalyBmsRS485' },
+                { key: 6, value: 'Mqtt' }
             ],
             jkBmsInterfaceTypeList: [
                 { key: 0, value: 'Uart' },
