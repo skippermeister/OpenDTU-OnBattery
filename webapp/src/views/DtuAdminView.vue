@@ -17,11 +17,11 @@
                                 :postfix="$t('dtuadmin.Seconds')"/>
 
                 <div class="row mb-3" v-if="dtuConfigList.nrf_enabled">
-                    <label for="inputNrfPaLevel" class="col-sm-2 col-form-label">
+                    <label for="inputNrfPaLevel" class="col-sm-3 col-form-label">
                         {{ $t('dtuadmin.NrfPaLevel') }}
                         <BIconInfoCircle v-tooltip :title="$t('dtuadmin.NrfPaLevelHint')" />
                     </label>
-                    <div class="col-sm-10">
+                    <div class="col-sm-4">
                         <select id="inputNrfPaLevel" class="form-select" v-model="dtuConfigList.nrf_palevel">
                             <option v-for="palevel in nrfpalevelList" :key="palevel.key" :value="palevel.key">
                                 {{ $t(`dtuadmin.` + palevel.value, { db: palevel.db }) }}
@@ -31,11 +31,11 @@
                 </div>
 
                 <div class="row mb-3" v-if="dtuConfigList.cmt_enabled">
-                    <label for="inputCmtPaLevel" class="col-sm-2 col-form-label">
+                    <label for="inputCmtPaLevel" class="col-sm-3 col-form-label">
                         {{ $t('dtuadmin.CmtPaLevel') }}
                         <BIconInfoCircle v-tooltip :title="$t('dtuadmin.CmtPaLevelHint')" />
                     </label>
-                    <div class="col-sm-10">
+                    <div class="col-sm-3">
                         <div class="input-group mb-3">
                             <input type="range" class="form-control form-range"
                                 v-model="dtuConfigList.cmt_palevel"
@@ -62,11 +62,11 @@
                 </div>
 
                 <div class="row mb-3" v-if="dtuConfigList.cmt_enabled">
-                    <label for="cmtFrequency" class="col-sm-2 col-form-label">
+                    <label for="cmtFrequency" class="col-sm-3 col-form-label">
                         {{ $t('dtuadmin.CmtFrequency') }}
                         <BIconInfoCircle v-tooltip :title="$t('dtuadmin.CmtFrequencyHint')" />
                     </label>
-                    <div class="col-sm-10">
+                    <div class="col-sm-3">
                         <div class="input-group mb-3">
                             <input type="range" class="form-control form-range"
                                 v-model="dtuConfigList.cmt_frequency"
@@ -81,8 +81,8 @@
 
                 <InputElement :label="$t('dtuadmin.VerboseLogging')"
                                 v-model="dtuConfigList.verbose_logging"
-                                type="checkbox"  wide3_2/>
-                
+                                type="checkbox" wide3_2/>
+
             </CardElement>
             <FormFooter @reload="getDtuConfig"/>
         </form>

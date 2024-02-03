@@ -329,6 +329,7 @@ uint32_t StatisticsParser::getRxFailureCount() const
 void StatisticsParser::zeroRuntimeData()
 {
     zeroFields(runtimeFields);
+    _allFieldsZeroFlag = true;
 }
 
 void StatisticsParser::zeroDailyData()

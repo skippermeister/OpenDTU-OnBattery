@@ -30,7 +30,7 @@ void WebApiBatteryClass::onStatus(AsyncWebServerRequest* request)
     if (!WebApi.checkCredentialsReadonly(request)) {
         return;
     }
-    
+
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& root = response->getRoot();
     const Battery_CONFIG_T& cBattery = Configuration.get().Battery;
@@ -41,7 +41,7 @@ void WebApiBatteryClass::onStatus(AsyncWebServerRequest* request)
     root["can_controller_frequency"] = Configuration.get().MCP2515.Controller_Frequency;
 #ifdef USE_JKBMS_CONTROLLER
     root["jkbms_interface"] = cBattery.JkBms.Interface;
-    root["jkbms_polling_interval"] = cBattery.JkBms.PollingInterval;
+    root["jkbms_polling_interval"] = root["pollinterval"] = cBattery.PollInterval; // cBattery.JkBms.PollingInterval;
 #else
     root["jkbms_interface"] = 0;
     root["jkbms_polling_interval"] = 0;
@@ -96,7 +96,7 @@ void WebApiBatteryClass::onAdminPost(AsyncWebServerRequest* request)
     }
 
     DynamicJsonDocument root(2048);
-    DeserializationError error = deserializeJson(root, json);
+    const DeserializationError error = deserializeJson(root, json);
 
     if (error) {
         retMsg["message"] = FailedToParseData;
@@ -106,7 +106,7 @@ void WebApiBatteryClass::onAdminPost(AsyncWebServerRequest* request)
         return;
     }
 
-    if (!(root.containsKey("enabled") 
+    if (!(root.containsKey("enabled")
             && root.containsKey("pollinterval")
             && root.containsKey("updatesonly")
             && root.containsKey("provider")
@@ -151,7 +151,7 @@ void WebApiBatteryClass::onAdminPost(AsyncWebServerRequest* request)
     strlcpy(cBattery.MqttTopic, root["mqtt_topic"].as<String>().c_str(), sizeof(cBattery.MqttTopic));
 #endif
     Battery._verboseLogging = root["verbose_logging"].as<bool>();
-    
+
     WebApi.writeConfig(retMsg);
 
     response->setLength();

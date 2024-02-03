@@ -98,7 +98,7 @@ void WebApiDtuClass::onDtuAdminPost(AsyncWebServerRequest* request)
     retMsg["type"] = Warning;
 
     if (!request->hasParam("data", true)) {
-        retMsg["message"] = "No values found!";
+        retMsg["message"] = NoValuesFound;
         retMsg["code"] = WebApiError::GenericNoValueFound;
         response->setLength();
         request->send(response);
@@ -126,11 +126,11 @@ void WebApiDtuClass::onDtuAdminPost(AsyncWebServerRequest* request)
         return;
     }
 
-    if (!(root.containsKey("serial") 
+    if (!(root.containsKey("serial")
             && root.containsKey("pollinterval")
-            && root.containsKey("verbose_logging") 
-            && root.containsKey("nrf_palevel") 
-            && root.containsKey("cmt_palevel") 
+            && root.containsKey("verbose_logging")
+            && root.containsKey("nrf_palevel")
+            && root.containsKey("cmt_palevel")
             && root.containsKey("cmt_frequency")
             && root.containsKey("cmt_country"))) {
         retMsg["message"] = ValuesAreMissing;

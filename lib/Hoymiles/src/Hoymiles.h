@@ -57,7 +57,7 @@ private:
     std::mutex _mutex;
 
     uint32_t _pollInterval = 0;
-    bool _verboseLogging = true;
+    bool _verboseLogging = false;
     uint32_t _lastPoll = 0;
 
     Print* _messageOutput = &Serial;

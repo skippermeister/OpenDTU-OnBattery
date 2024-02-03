@@ -60,7 +60,8 @@ void SDM::begin(void) {
 #endif
 #else
 #if defined ( ESP8266 ) || defined ( ESP32 )
-  sdmSer.begin(_baud, (SoftwareSerialConfig)_config, _rx_pin, _tx_pin);
+  sdmSer.begin(_baud, (EspSoftwareSerial::Config)_config, _rx_pin, _tx_pin);
+  sdmSer.setTransmitEnablePin(_dere_pin);               // in SoftwareSerial it is handled within driver
 #else
   sdmSer.begin(_baud);
 #endif

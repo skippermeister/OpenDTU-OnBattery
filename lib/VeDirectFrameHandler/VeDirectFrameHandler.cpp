@@ -39,6 +39,8 @@
 // The name of the record that contains the checksum.
 static constexpr char checksumTagName[] = "CHECKSUM";
 
+static constexpr char TAG[] = "[Ve.Direct]";
+
 // state machine
 enum States {
 	IDLE = 1,
@@ -83,10 +85,10 @@ void VeDirectFrameHandler::init(int8_t rx, int8_t tx, Print* msgOut, bool verbos
 }
 
 void VeDirectFrameHandler::dumpDebugBuffer() {
-	_msgOut->printf("[VE.Direct] serial input (%d Bytes):", _debugIn);
+	_msgOut->printf("%s serial input (%d Bytes):", TAG, _debugIn);
 	for (int i = 0; i < _debugIn; ++i) {
 		if (i % 16 == 0) {
-			_msgOut->printf("\r\n[VE.Direct]");
+			_msgOut->printf("\r\n%s", TAG);
 		}
 		_msgOut->printf(" %02x", _debugBuffer[i]);
 	}
@@ -105,7 +107,7 @@ void VeDirectFrameHandler::loop()
 	// if such a large gap is observed, reset the state machine so it tries
 	// to decode a new frame once more data arrives.
 	if (IDLE != _state && _lastByteMillis + 500 < millis()) {
-		_msgOut->printf("[VE.Direct] Resetting state machine (was %d) after timeout\r\n", _state);
+		_msgOut->printf("%s Resetting state machine (was %d) after timeout\r\n", TAG, _state);
 		if (_verboseLogging) { dumpDebugBuffer(); }
 		_checksum = 0;
 		_state = IDLE;
@@ -123,7 +125,7 @@ void VeDirectFrameHandler::rxData(uint8_t inbyte)
 		_debugBuffer[_debugIn] = inbyte;
 		_debugIn = (_debugIn + 1) % _debugBuffer.size();
 		if (0 == _debugIn) {
-			_msgOut->println("[VE.Direct] ERROR: debug buffer overrun!");
+			_msgOut->printf("%s ERROR: debug buffer overrun!\r\n", TAG);
 		}
 	}
 
@@ -201,7 +203,7 @@ void VeDirectFrameHandler::rxData(uint8_t inbyte)
 	{
 		bool valid = _checksum == 0;
 		if (!valid) {
-			_msgOut->printf("[VE.Direct] checksum 0x%02x != 0, invalid frame\r\n", _checksum);
+			_msgOut->printf("%s checksum 0x%02x != 0, invalid frame\r\n", TAG, _checksum);
 		}
 		if (_verboseLogging) { dumpDebugBuffer(); }
 		_checksum = 0;
@@ -271,7 +273,7 @@ int VeDirectFrameHandler::hexRxEvent(uint8_t inbyte) {
 	default:
 		_hexSize++;
 		if (_hexSize>=VE_MAX_HEX_LEN) { // oops -buffer overflow - something went wrong, we abort
-			_msgOut->println("[VE.Direct] hexRx buffer overflow - aborting read");
+			_msgOut->printf("%s hexRx buffer overflow - aborting read\r\n", TAG);
 			_hexSize=0;
 			ret=IDLE;
 		}
@@ -292,7 +294,7 @@ bool VeDirectFrameHandler::isDataValid(veStruct const& frame) const {
 
 uint32_t VeDirectFrameHandler::getLastUpdate() const
 {
-	return _lastUpdate;
+    return _lastUpdate;
 }
 
 /*
@@ -301,7 +303,7 @@ uint32_t VeDirectFrameHandler::getLastUpdate() const
  */
 frozen::string const& VeDirectFrameHandler::veStruct::getPidAsString() const
 {
-	static constexpr frozen::map<uint16_t, frozen::string, 77> values = {
+	static constexpr frozen::map<uint16_t, frozen::string, 88> values = {
 		{ 0x0300, "BlueSolar MPPT 70|15" },
 		{ 0xA040, "BlueSolar MPPT 75|50" },
 		{ 0xA041, "BlueSolar MPPT 150|35" },
@@ -352,7 +354,18 @@ frozen::string const& VeDirectFrameHandler::veStruct::getPidAsString() const
 		{ 0xA06F, "BlueSolar MPPT 150|45 rev2" },
 		{ 0xA070, "BlueSolar MPPT 150|60 rev2" },
 		{ 0xA071, "BlueSolar MPPT 150|70 rev2" },
-		{ 0xA102, "SmartSolar MPPT VE.Can 150|70" },
+        { 0xA074, "SmartSolar MPPT 75|10 rev2" },
+        { 0xA075, "SmartSolar MPPT 75|15 rev2" },
+        { 0xA076, "BlueSolar MPPT 100|30 rev3" },
+        { 0xA077, "BlueSolar MPPT 100|50 rev3" },
+        { 0xA078, "BlueSolar MPPT 150|35 rev2" },
+        { 0xA079, "BlueSolar MPPT 75|10 rev2" },
+        { 0xA07A, "BlueSolar MPPT 75|15 rev2" },
+        { 0xA07B, "BlueSolar MPPT 100|15 rev2" },
+        { 0xA07C, "BlueSolar MPPT 75/10 rev3" },
+        { 0xA07D, "BlueSolar MPPT 75/15 rev3" },
+        { 0xA07E, "SmartSolar Charger MPPT 100/30" },
+        { 0xA102, "SmartSolar MPPT VE.Can 150|70" },
 		{ 0xA103, "SmartSolar MPPT VE.Can 150|45" },
 		{ 0xA104, "SmartSolar MPPT VE.Can 150|60" },
 		{ 0xA105, "SmartSolar MPPT VE.Can 150|85" },

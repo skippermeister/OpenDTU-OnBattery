@@ -11,7 +11,6 @@ class MqttSettingsClass {
 public:
     MqttSettingsClass();
     void init();
-    void loop();
     void performReconnect();
     bool getConnected();
     void publish(const String& subtopic, const String& payload);

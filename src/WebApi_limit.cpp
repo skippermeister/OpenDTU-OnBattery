@@ -101,7 +101,7 @@ void WebApiLimitClass::onLimitPost(AsyncWebServerRequest* request)
     if (!(root.containsKey("serial")
             && root.containsKey("limit_value")
             && root.containsKey("limit_type"))) {
-        retMsg["message"] = "Values are missing!";
+        retMsg["message"] = ValuesAreMissing;
         retMsg["code"] = WebApiError::GenericValueMissing;
         response->setLength();
         request->send(response);

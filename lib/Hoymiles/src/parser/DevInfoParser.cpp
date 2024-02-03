@@ -26,8 +26,9 @@ const devInfo_t devInfo[] = {
     { { 0x10, 0x12, 0x10, ALL }, 1200, "HM-1200-4T" },
     { { 0x10, 0x02, 0x30, ALL }, 1500, "MI-1500-4T Gen3" },
     { { 0x10, 0x12, 0x30, ALL }, 1500, "HM-1500-4T" },
-    { { 0x10, 0x10, 0x10, 0x15 }, static_cast<uint16_t>(300 * 0.7), "HM-300-1T" }, // HM-300 factory limitted to 70%
-
+    { { 0x10, 0x10, 0x10, 0x15 }, static_cast<uint16_t>(300 * 0.7), "HM-300-1T" } // HM-300 factory limitted to 70%
+#ifdef USE_RADIO_CMT
+    ,
     { { 0x10, 0x20, 0x21, ALL }, 350, "HMS-350-1T" }, // 00
     { { 0x10, 0x20, 0x41, ALL }, 400, "HMS-400-1T" }, // 00
     { { 0x10, 0x10, 0x51, ALL }, 450, "HMS-450-1T" }, // 01
@@ -50,6 +51,7 @@ const devInfo_t devInfo[] = {
 
     { { 0x10, 0x33, 0x11, ALL }, 1800, "HMT-1800-6T" }, // 01
     { { 0x10, 0x33, 0x31, ALL }, 2250, "HMT-2250-6T" } // 01
+#endif
 };
 
 DevInfoParser::DevInfoParser()

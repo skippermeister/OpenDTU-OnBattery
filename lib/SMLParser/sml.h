@@ -102,5 +102,7 @@ void smlOBISWh(double &wh);
 void smlOBISW(double &w);
 void smlOBISVolt(double &v);
 void smlOBISAmpere(double &a);
+void smlOBISHertz(double &hz);
+void smlOBISDegree(double &deg);
 
 #endif

@@ -94,6 +94,7 @@ void WebApiMqttClass::onMqttAdminGet(AsyncWebServerRequest* request)
     root["lwt_topic"] = cMqtt.Lwt.Topic;
     root["lwt_online"] = cMqtt.Lwt.Value_Online;
     root["lwt_offline"] = cMqtt.Lwt.Value_Offline;
+    root["lwt_qos"] = cMqtt.Lwt.Qos;
     root["publish_interval"] = cMqtt.PublishInterval;
     root["clean_session"] = cMqtt.CleanSession;
 #ifdef USE_HASS
@@ -168,6 +169,7 @@ void WebApiMqttClass::onMqttAdminPost(AsyncWebServerRequest* request)
             && root.containsKey("lwt_topic")
             && root.containsKey("lwt_online")
             && root.containsKey("lwt_offline")
+            && root.containsKey("lwt_qos")
             && root.containsKey("publish_interval")
             && root.containsKey("clean_session")
 #ifdef USE_HASS
@@ -290,6 +292,15 @@ void WebApiMqttClass::onMqttAdminPost(AsyncWebServerRequest* request)
             return;
         }
 
+        if (root["lwt_qos"].as<uint8_t>() > 2) {
+            retMsg["message"] = "LWT QoS must not be greater than " STR(2) "!";
+            retMsg["code"] = WebApiError::MqttLwtQos;
+            retMsg["param"]["max"] = 2;
+            response->setLength();
+            request->send(response);
+            return;
+        }
+
         if (root["publish_interval"].as<uint32_t>() < 5 || root["publish_interval"].as<uint32_t>() > 65535) {
             retMsg["message"] = "Publish interval must be a number between 5 and 65535!";
             retMsg["code"] = WebApiError::MqttPublishInterval;
@@ -338,6 +349,7 @@ void WebApiMqttClass::onMqttAdminPost(AsyncWebServerRequest* request)
     strlcpy(cMqtt.Lwt.Topic, root["lwt_topic"].as<String>().c_str(), sizeof(cMqtt.Lwt.Topic));
     strlcpy(cMqtt.Lwt.Value_Online, root["lwt_online"].as<String>().c_str(), sizeof(cMqtt.Lwt.Value_Online));
     strlcpy(cMqtt.Lwt.Value_Offline, root["lwt_offline"].as<String>().c_str(), sizeof(cMqtt.Lwt.Value_Offline));
+    cMqtt.Lwt.Qos = root["lwt_qos"].as<uint8_t>();
     cMqtt.PublishInterval = root["publish_interval"].as<uint32_t>();
     cMqtt.CleanSession = root["clean_session"].as<bool>();
 #ifdef USE_HASS
