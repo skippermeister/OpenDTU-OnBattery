@@ -1,3 +1,4 @@
+#pragma once
 
 extern const char* NoValuesFound;
 extern const char* DataTooLarge;

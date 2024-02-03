@@ -498,7 +498,7 @@ void PylontechRS485Receiver::get_alarm_info()
     for (int i = 0; i < _stats->AlarmInfo.numberOfCells; i++) {
         _stats->AlarmInfo.cellVoltages[i] = *info++;
 #ifdef PYLONTECH_RS485_DEBUG_ENABLED
-        sprintf(&buffer[i * 3], "%02X ", _stats->AlarmInfo.CellVoltages[i]);
+        snprintf(&buffer[i * 3], 4, "%02X ", _stats->AlarmInfo.CellVoltages[i]);
 #endif
         if (_stats->AlarmInfo.cellVoltages[i] & 0x01)
             _stats->Warning.lowVoltage = 1;
@@ -519,11 +519,11 @@ void PylontechRS485Receiver::get_alarm_info()
     if (_stats->AlarmInfo.BMSTemperature & 0x02)
         _stats->Warning.highTemperature = 1;
 
-    _stats->AlarmInfo.Temperatures = (uint8_t*)realloc(_stats->AlarmInfo.Temperatures, (_stats->AlarmInfo.numberOfTemperatures - 1) * sizeof(uint8_t));
+    _stats->AlarmInfo.Temperatures = reinterpret_cast<uint8_t*>(realloc(_stats->AlarmInfo.Temperatures, (_stats->AlarmInfo.numberOfTemperatures - 1) * sizeof(uint8_t)));
     for (int i = 0; i < _stats->numberOfTemperatures - 1; i++) {
         _stats->AlarmInfo.Temperatures[i] = *info++;
 #ifdef PYLONTECH_RS485_DEBUG_ENABLED
-        sprintf(&buffer[i * 3], "%02X ", _stats->AlarmInfo.Temperatures[i]);
+        snprintf(&buffer[i * 3], 4, "%02X ", _stats->AlarmInfo.Temperatures[i]);
 #endif
         if (_stats->AlarmInfo.Temperatures[i] & 0x01)
             _stats->Warning.lowTemperature = 1;

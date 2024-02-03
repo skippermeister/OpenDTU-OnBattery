@@ -32,7 +32,7 @@
 #define LED_STRIP_TASK_SIZE (4096)
 #define LED_STRIP_TASK_PRIORITY (configMAX_PRIORITIES - 1)
 
-#define LED_STRIP_REFRESH_PERIOD_MS (30U) // TODO: add as parameter to led_strip_init
+#define LED_STRIP_REFRESH_PERIOD_MS (30U) // TODO(skippermeister): add as parameter to led_strip_task
 
 #define LED_STRIP_NUM_RMT_ITEMS_PER_LED (24U) // Assumes 24 bit color for each led
 
@@ -41,21 +41,9 @@
 
 Color::Color(uint8_t red, uint8_t green, uint8_t blue, uint8_t white)
 {
-    val = ((uint32_t)white << 24) | ((uint32_t)red << 16) | ((uint32_t)green << 8) | blue;
+    _val = ((uint32_t)white << 24) | ((uint32_t)red << 16) | ((uint32_t)green << 8) | blue;
 }
 Color::Color(uint32_t c) { }
-uint32_t Color::value() { return val; }
-uint8_t Color::red() { return (val & 0xff0000) >> 16; }
-uint8_t Color::green() { return (val & 0xff00) >> 8; }
-uint8_t Color::blue() { return val & 0xff; }
-uint8_t Color::white() { return (val & 0xff000000) >> 24; }
-
-/* OpenDTU Always defined :
-clock_t millis()
-{
- clock_t t = clock() / (CLOCKS_PER_SEC / 1000);
- return t;
-}*/
 
 LedStripClass LEDStrip;
 
@@ -92,10 +80,10 @@ void LedStripClass::init(Scheduler& scheduler)
     if (ledRGBActive) {
         // uint32_t b1[_numPixels];
         // buf1 = b1;
-        buf1 = (uint32_t*)malloc(sizeof(uint32_t) * _numPixels);
+        buf1 = reinterpret_cast<uint32_t*>(malloc(sizeof(uint32_t) * _numPixels));
         // uint32_t b2[_numPixels];
         // buf2 = b2;
-        buf2 = (uint32_t*)malloc(sizeof(uint32_t) * _numPixels);
+        buf2 = reinterpret_cast<uint32_t*>(malloc(sizeof(uint32_t) * _numPixels));
         showingBuf1 = false;
         access_semaphore = xSemaphoreCreateBinary();
         wOffset = (neoPixelType >> 6) & 0b11; // See notes in header file
@@ -192,7 +180,7 @@ bool LedStripClass::show()
 
 void LedStripClass::led_strip_task(void* arg)
 {
-    LedStripClass* strip = (LedStripClass*)arg;
+    LedStripClass* strip = reinterpret_cast<LedStripClass*>(arg);
 
     led_fill_rmt_items_fn led_make_waveform = NULL;
 
@@ -200,7 +188,7 @@ void LedStripClass::led_strip_task(void* arg)
     bool prev_showing_buf_1 = !strip->showingBuf1;
 
     size_t num_items_malloc = (LED_STRIP_NUM_RMT_ITEMS_PER_LED * strip->_numPixels);
-    rmt_item32_t* rmt_items = (rmt_item32_t*)malloc(sizeof(rmt_item32_t) * num_items_malloc);
+    rmt_item32_t* rmt_items = reinterpret_cast<rmt_item32_t*>(malloc(sizeof(rmt_item32_t) * num_items_malloc));
     if (!rmt_items) {
         vTaskDelete(NULL);
     }
@@ -483,7 +471,7 @@ uint32_t LedStripClass::ColorHSV(uint16_t hue, uint8_t sat, uint8_t val)
 // to all components of a packed RGB or WRGB value.
 uint32_t LedStripClass::gamma32(uint32_t x)
 {
-    uint8_t* y = (uint8_t*)&x;
+    uint8_t* y = reinterpret_cast<uint8_t*>(&x);
     // All four bytes of a 32-bit value are filtered even if RGB (not WRGB),
     // to avoid a bunch of shifting and masking that would be necessary for
     // properly handling different endianisms (and each byte is a fairly
@@ -651,7 +639,7 @@ void LedStripClass::rainbow(int wait)
     // Color wheel has a range of 65536 but it's OK if we roll over, so
     // just count from 0 to 5*65536. Adding 256 to firstPixelHue each time
     // means we'll make 5*65536/256 = 1280 passes through this outer loop:
-    for (long firstPixelHue = 0; firstPixelHue < 5 * 65536; firstPixelHue += 256) {
+    for (int32_t firstPixelHue = 0; firstPixelHue < 5 * 65536; firstPixelHue += 256) {
         for (int i = 0; i < numPixels(); i++) { // For each pixel in ..
             // Offset pixel hue by an amount to make one full revolution of the
             // color wheel (range of 65536) along the length of the strip

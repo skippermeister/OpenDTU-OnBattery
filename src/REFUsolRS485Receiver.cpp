@@ -265,7 +265,7 @@ uint32_t REFUsolRS485ReceiverClass::PWE2Uint32(void)
 
 void REFUsolRS485ReceiverClass::computeTelegram(uint8_t adr, bool mirror, uint16_t TaskID, uint16_t PNU, int16_t IND)
 {
-    compute(adr, mirror, TaskID, PNU, IND, reinterpret_cast<void*>(NULL), PZD_ANZ, (void*)NULL);
+    compute(adr, mirror, TaskID, PNU, IND, reinterpret_cast<void*>(NULL), PZD_ANZ,  reinterpret_cast<void*>(NULL));
 }
 void REFUsolRS485ReceiverClass::computeTelegram(uint8_t adr, bool mirror, uint16_t TaskID, uint16_t PNU, int16_t IND, void* PWE)
 {

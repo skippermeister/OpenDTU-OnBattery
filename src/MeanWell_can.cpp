@@ -461,7 +461,7 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
         break;
 
     case 0x0086: // MFR_DATE_B0B5 6 bytes Manufacturer date
-        strncpy((char*)_rp.ManufacturerDate, (char*)frame + 2, 6);
+        strncpy(reinterpret_cast<char*>(_rp.ManufacturerDate), reinterpret_cast<char*>(frame + 2), 6);
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging)
             MessageOutput.printf("%s Manufacturer Date: '%s'\r\n", TAG, _rp.ManufacturerDate);
@@ -785,7 +785,7 @@ void MeanWellCanClass::loop()
                 if (first) {
                     isProducing = inv->isProducing();
                     isReachable = inv->isReachable();
-                    strcpy(invName, inv->name());
+                    strncpy(invName, inv->name(), sizeof(invName));
                     first = false;
                 } else {
                     isProducing = (isProducing && inv->isProducing()) ? true : false;

@@ -158,12 +158,12 @@ private:
         rc.l = *c;
         return rc.i;
     }
-    float to_Celsius(uint8_t* c) { return ((float)ToInt16(c) - 2731) / 10.0; }
-    float to_Volt(uint8_t* c) { return ((float)ToUint16(c)) / 1000.0; }
-    float to_CellVolt(uint8_t* c) { return ((float)ToInt16(c)) / 1000.0; }
+    float to_Celsius(uint8_t* c) { return static_cast<float>(ToInt16(c) - 2731) / 10.0; }
+    float to_Volt(uint8_t* c) { return static_cast<float>(ToUint16(c)) / 1000.0; }
+    float to_CellVolt(uint8_t* c) { return static_cast<float>(ToInt16(c)) / 1000.0; }
     float to_Amp(uint8_t* c) { return ((float)ToInt16(c)) / 10.0; }
-    float DivideUint16By1000(uint8_t* c) { return ((float)ToUint16(c)) / 1000.0; }
-    float DivideUint24By1000(uint8_t* c) { return ((float)ToUint24(c)) / 1000.0; }
+    float DivideUint16By1000(uint8_t* c) { return static_cast<float>(ToUint16(c)) / 1000.0; }
+    float DivideUint24By1000(uint8_t* c) { return static_cast<float>(ToUint24(c)) / 1000.0; }
 
     uint8_t _number_of_packs = 0;
 

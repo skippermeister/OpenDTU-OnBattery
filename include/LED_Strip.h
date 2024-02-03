@@ -15,8 +15,7 @@
     ------------------------------------------------------------------------ */
 #ifdef USE_LED_STRIP
 
-#ifndef STRIP_H
-#define STRIP_H
+#pragma once
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
@@ -168,15 +167,16 @@ typedef uint8_t NeoPixelType; ///< 3rd arg to Adafruit_NeoPixel constructor
 class Color {
 public:
     Color(uint8_t red, uint8_t green, uint8_t blue, uint8_t white = 0);
-    Color(uint32_t c);
-    uint32_t value();
-    uint8_t red();
-    uint8_t green();
-    uint8_t blue();
-    uint8_t white();
+    explicit Color(uint32_t c);
+
+    uint32_t value() { return _val; };
+    uint8_t red() { return (_val & 0xff0000) >> 16; };
+    uint8_t green() { return (_val & 0xff00) >> 8; };
+    uint8_t blue() { return _val & 0xff; };
+    uint8_t white() { return (_val & 0xff000000) >> 24; };
 
 private:
-    uint32_t val = 0;
+    uint32_t _val = 0;
 };
 
 #define LEDSTRIP_UPDATE_INTERVAL 2000
@@ -270,7 +270,5 @@ private:
 };
 
 extern LedStripClass LEDStrip;
-
-#endif
 
 #endif
