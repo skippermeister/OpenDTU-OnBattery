@@ -324,7 +324,7 @@ void PylontechRS485Receiver::get_analog_value()
 
     _stats->cellMinVoltage = 999999.0;
     _stats->cellMaxVoltage = -999999.0;
-    _stats->CellVoltages = (float*)realloc(_stats->CellVoltages, _stats->numberOfCells * sizeof(float));
+    _stats->CellVoltages = reinterpret_cast<float*>(realloc(_stats->CellVoltages, _stats->numberOfCells * sizeof(float)));
     for (int i = 0; i < _stats->numberOfCells; i++) {
         float value = to_CellVolt(info);
         info += 2;
@@ -348,7 +348,7 @@ void PylontechRS485Receiver::get_analog_value()
     _stats->averageCellTemperature = 0.0;
     _stats->minCellTemperature = 10000.0;
     _stats->maxCellTemperature = -10000.0;
-    _stats->GroupedCellsTemperatures = (float*)realloc(_stats->GroupedCellsTemperatures, (_stats->numberOfTemperatures - 1) * sizeof(float));
+    _stats->GroupedCellsTemperatures = reinterpret_cast<float*>(realloc(_stats->GroupedCellsTemperatures, (_stats->numberOfTemperatures - 1) * sizeof(float)));
     for (int i = 0; i < _stats->numberOfTemperatures - 1; i++) {
         float t = to_Celsius(info);
         info += 2;
@@ -494,7 +494,7 @@ void PylontechRS485Receiver::get_alarm_info()
 #endif
     _stats->Warning.lowVoltage = 0;
     _stats->Warning.highVoltage = 0;
-    _stats->AlarmInfo.cellVoltages = (uint8_t*)realloc(_stats->AlarmInfo.cellVoltages, _stats->AlarmInfo.numberOfCells * sizeof(uint8_t));
+    _stats->AlarmInfo.cellVoltages = reinterpret_cast<uint8_t*>(realloc(_stats->AlarmInfo.cellVoltages, _stats->AlarmInfo.numberOfCells * sizeof(uint8_t)));
     for (int i = 0; i < _stats->AlarmInfo.numberOfCells; i++) {
         _stats->AlarmInfo.cellVoltages[i] = *info++;
 #ifdef PYLONTECH_RS485_DEBUG_ENABLED
@@ -707,7 +707,7 @@ void PylontechRS485Receiver::_encode_cmd(char *frame, uint8_t address, uint8_t c
     char subframe[26];
     const uint8_t cid1 = 0x46;
 
-    snprintf(subframe, 26, "%02X%02X%02X%02X%04X%s", 0x20, address, cid1, cid2, get_info_length(info), info);
+    snprintf(subframe, sizeof(subframe), "%02X%02X%02X%02X%04X%s", 0x20, address, cid1, cid2, get_info_length(info), info);
     snprintf(frame, 32, "%c%s%04X%c", 0x7E, subframe, get_frame_checksum(subframe), 0x0D);
 }
 
@@ -715,7 +715,7 @@ void PylontechRS485Receiver::send_cmd(uint8_t address, uint8_t cmd, boolean Pack
 {
     char raw_frame[32];
     char bdevid[3] = "";
-    if (Pack==true) sprintf(bdevid, "%02X", address);
+    if (Pack==true) snprintf(bdevid, sizeof(bdevid), "%02X", address);
     _encode_cmd(raw_frame, address, cmd, bdevid);
     size_t length = strlen(raw_frame);
 
@@ -832,7 +832,7 @@ char* PylontechRS485Receiver::_decode_hw_frame(size_t length)
 
 format_t* PylontechRS485Receiver::_decode_frame(char* frame)
 {
-    format_t* f = (format_t*)frame;
+    format_t* f = reinterpret_cast<format_t*>(frame);
     size_t length = strlen(frame);
     f->ver = (uint8_t)hex2binary(&frame[0], 2);
     f->adr = (uint8_t)hex2binary(&frame[2], 2);

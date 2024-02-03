@@ -247,7 +247,7 @@ void REFUsolRS485ReceiverClass::debugRawTelegram(TELEGRAM_t* t, uint8_t len)
     char buffer[1024];
     if (DebugRawTelegram) {
         for (uint8_t i = 0; i < len; i++) {
-            sprintf(&buffer[i * 3], "%02X ", t->buffer[i]);
+            snprintf(&buffer[i * 3], 4, "%02X ", t->buffer[i]);
         }
         MessageOutput.println(buffer);
     }
@@ -255,7 +255,7 @@ void REFUsolRS485ReceiverClass::debugRawTelegram(TELEGRAM_t* t, uint8_t len)
 
 float REFUsolRS485ReceiverClass::PWE2Float(float scale)
 {
-    return (float)((rTelegram.PWE1.H << 24) + (rTelegram.PWE1.L << 16) + (rTelegram.PWE2.H << 8) + (rTelegram.PWE2.L)) * scale;
+    return static_cast<float>((rTelegram.PWE1.H << 24) + (rTelegram.PWE1.L << 16) + (rTelegram.PWE2.H << 8) + (rTelegram.PWE2.L)) * scale;
 }
 
 uint32_t REFUsolRS485ReceiverClass::PWE2Uint32(void)
@@ -265,11 +265,11 @@ uint32_t REFUsolRS485ReceiverClass::PWE2Uint32(void)
 
 void REFUsolRS485ReceiverClass::computeTelegram(uint8_t adr, bool mirror, uint16_t TaskID, uint16_t PNU, int16_t IND)
 {
-    compute(adr, mirror, TaskID, PNU, IND, (void*)NULL, PZD_ANZ, (void*)NULL);
+    compute(adr, mirror, TaskID, PNU, IND, reinterpret_cast<void*>(NULL), PZD_ANZ, (void*)NULL);
 }
 void REFUsolRS485ReceiverClass::computeTelegram(uint8_t adr, bool mirror, uint16_t TaskID, uint16_t PNU, int16_t IND, void* PWE)
 {
-    compute(adr, mirror, TaskID, PNU, IND, PWE, PZD_ANZ, (void*)NULL);
+    compute(adr, mirror, TaskID, PNU, IND, PWE, PZD_ANZ, reinterpret_cast<void*>(NULL));
 }
 void REFUsolRS485ReceiverClass::computeTelegram(uint8_t adr, bool mirror, uint16_t TaskID, uint16_t PNU, int16_t IND, void* PWE, void* PZD)
 {
@@ -316,23 +316,23 @@ void REFUsolRS485ReceiverClass::compute(uint8_t adr, bool mirror, uint16_t TaskI
             sTelegram.buffer[++lge] = 0;
             sTelegram.buffer[++lge] = 0;
         } else {
-            sTelegram.buffer[++lge] = *((uint16_t*)PWE) >> 8;
-            sTelegram.buffer[++lge] = *((uint16_t*)PWE) & 0xFF;
+            sTelegram.buffer[++lge] = (*(reinterpret_cast<uint16_t*>(PWE))) >> 8;
+            sTelegram.buffer[++lge] = (*(reinterpret_cast<uint16_t*>(PWE))) & 0xFF;
         }
         break;
 
     case 0b0011:
     case 0b1000: // ChangePWEarray
     case 0b1101:
-        sTelegram.buffer[++lge] = *((uint32_t*)PWE) >> 24;
-        sTelegram.buffer[++lge] = *((uint32_t*)PWE) >> 16;
-        sTelegram.buffer[++lge] = *((uint32_t*)PWE) >> 8;
-        sTelegram.buffer[++lge] = *((uint32_t*)PWE) & 0xFF;
+        sTelegram.buffer[++lge] = (*(reinterpret_cast<uint32_t*>(PWE))) >> 24;
+        sTelegram.buffer[++lge] = (*(reinterpret_cast<uint32_t*>(PWE))) >> 16;
+        sTelegram.buffer[++lge] = (*(reinterpret_cast<uint32_t*>(PWE))) >> 8;
+        sTelegram.buffer[++lge] = (*(reinterpret_cast<uint32_t*>(PWE))) & 0xFF;
         break;
 
     case 0b100001111: {
         bool flag = false;
-        uint8_t* s = (uint8_t*)PWE;
+        uint8_t* s =  reinterpret_cast<uint8_t*>(PWE);
         for (int i = 0; i < 16; i++) {
             if (*s == 0)
                 flag = true;
@@ -354,8 +354,8 @@ void REFUsolRS485ReceiverClass::compute(uint8_t adr, bool mirror, uint16_t TaskI
 
     for (int i = 0; i < pzd_anz; i++) {
         if (PZD) {
-            sTelegram.buffer[++lge] = (*(uint32_t*)PZD) >> 8;
-            sTelegram.buffer[++lge] = (*(uint32_t*)PZD) & 0xFF;
+            sTelegram.buffer[++lge] = (*(reinterpret_cast<uint32_t*>(PZD))) >> 8;
+            sTelegram.buffer[++lge] = (*(reinterpret_cast<uint32_t*>(PZD))) & 0xFF;
         } else {
             sTelegram.buffer[++lge] = 0;
             sTelegram.buffer[++lge] = 0;
@@ -861,7 +861,7 @@ bool REFUsolRS485ReceiverClass::isDataValid()
     return true;
 }
 
-unsigned long REFUsolRS485ReceiverClass::getLastUpdate()
+uint32_t REFUsolRS485ReceiverClass::getLastUpdate()
 {
     return _lastPoll;
 }

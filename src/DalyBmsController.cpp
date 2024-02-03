@@ -169,8 +169,6 @@ void Controller::sendRequest()
         break;
     }
 }
-return;
-}
 
 bool Controller::getVoltageThreshold(bool send) // 0x59
 {
@@ -179,10 +177,10 @@ bool Controller::getVoltageThreshold(bool send) // 0x59
             return true;
     } else {
         if (readData(COMMAND::CELL_THRESHOLDS, 1)) {
-            _stats->maxCellThreshold1 = (float)((_frameBuff[0][4] << 8) | _frameBuff[0][5]);
-            _stats->maxCellThreshold2 = (float)((_frameBuff[0][6] << 8) | _frameBuff[0][7]);
-            _stats->minCellThreshold1 = (float)((_frameBuff[0][8] << 8) | _frameBuff[0][9]);
-            _stats->minCellThreshold2 = (float)((_frameBuff[0][10] << 8) | _frameBuff[0][11]);
+            _stats->maxCellThreshold1 = static_cast<float>((_frameBuff[0][4] << 8) | _frameBuff[0][5]);
+            _stats->maxCellThreshold2 = static_cast<float>((_frameBuff[0][6] << 8) | _frameBuff[0][7]);
+            _stats->minCellThreshold1 = static_cast<float>((_frameBuff[0][8] << 8) | _frameBuff[0][9]);
+            _stats->minCellThreshold2 = static_cast<float>((_frameBuff[0][10] << 8) | _frameBuff[0][11]);
 
             return true;
         }
@@ -201,9 +199,9 @@ bool Controller::getMinMaxCellVoltage(bool send) // 0x91
             return true;
     } else {
         if (requestData(COMMAND::MIN_MAX_CELL_VOLTAGE, 1)) {
-            _stats->maxCellmV = (float)((_frameBuff[0][4] << 8) | _frameBuff[0][5]);
+            _stats->maxCellmV = static_cast<float>((_frameBuff[0][4] << 8) | _frameBuff[0][5]);
             _stats->maxCellVNum = _frameBuff[0][6];
-            _stats->minCellmV = (float)((_frameBuff[0][7] << 8) | _frameBuff[0][8]);
+            _stats->minCellmV = static_cast<float>((_frameBuff[0][7] << 8) | _frameBuff[0][8]);
             _stats->minCellVNum = _frameBuff[0][9];
             _stats->cellDiff = (_stats->maxCellmV - _stats->minCellmV);
 
@@ -322,7 +320,7 @@ bool Controller::requestData(COMMAND cmdID) // new function to request global da
     if (soft_rts >= 0) {
         digitalWrite(soft_rts, HIGH);
         // wait for the begin of a frame (3.5 symbols)
-        delay((int)(3.5 * 11 * 1000 / 9600 + 0.5));
+        delay(static_cast<int>(3.5 * 11 * 1000 / 9600 + 0.5));
     }
 
     // send the packet
@@ -333,7 +331,7 @@ bool Controller::requestData(COMMAND cmdID) // new function to request global da
         HwSerial.flush();
 
         // wait for the end of a frame (3.5 symbols)
-        delay((int)(3.5 * 11 * 1000 / 9600 + 0.5));
+        delay(static_cast<int>(3.5 * 11 * 1000 / 9600 + 0.5));
         digitalWrite(soft_rts, LOW);
     }
 
@@ -359,7 +357,7 @@ bool Controller::readData(COMMAND cmdID, unsigned int frameAmount) // new functi
             rxChecksum += _frameBuff[i][k];
         }
         char debugBuff[128];
-        sprintf(debugBuff, "<UART>[Command: 0x%2X][CRC Rec: %2X][CRC Calc: %2X]", cmdID, rxChecksum, _frameBuff[i][XFER_BUFFER_LENGTH - 1]);
+        snprintf(debugBuff, sizeof(debugBuff), "<UART>[Command: 0x%2X][CRC Rec: %2X][CRC Calc: %2X]", cmdID, rxChecksum, _frameBuff[i][XFER_BUFFER_LENGTH - 1]);
         // BMS_DEBUG_PRINTLN(debugBuff);
         // BMS_DEBUG_WEBLN(debugBuff);
 

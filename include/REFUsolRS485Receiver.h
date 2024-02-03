@@ -109,7 +109,7 @@ typedef union {
         union {
             struct {
                 union {
-                    unsigned long long PKW;
+                    uint64_t PKW;
                     struct {
                         WORD_t PKE;
                         WORD_t IND;
@@ -145,7 +145,7 @@ public:
     REFUsolRS485ReceiverClass();
     void init(Scheduler& scheduler); // initialize HardewareSerial
     void deinit(void);
-    unsigned long getLastUpdate(); // timestamp of last successful frame read
+    uint32_t getLastUpdate(); // timestamp of last successful frame read
     bool isDataValid(void); // return true if data valid and not outdated
 
     REFUsolStruct Frame {}; // public struct for received name and value pairs
@@ -203,7 +203,7 @@ private:
 
     void setLastUpdate(); // set timestampt after successful frame read
 
-    unsigned long _lastPoll;
+    uint32_t _lastPoll;
 
     TELEGRAM_t sTelegram;
     TELEGRAM_t rTelegram;

@@ -8,7 +8,7 @@
 #include "Display_Graphic.h"
 #include "InverterSettings.h"
 #include "Led_Single.h"
-#include "Led_Strip.h"
+#include "LED_Strip.h"
 #include "MessageOutput.h"
 #include "REFUsolRS485Receiver.h"
 #include "VictronMppt.h"

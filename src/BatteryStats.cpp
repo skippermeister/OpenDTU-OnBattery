@@ -206,16 +206,16 @@ bool PylontechRS485BatteryStats::isChargeTemperatureValid() const
 {
     const Battery_CONFIG_T& cBattery = Configuration.get().Battery;
 
-    return (minCellTemperature >= max(SystemParameters.chargeLowTemperatureLimit, (float)cBattery.MinChargeTemperature))
-        && (maxCellTemperature <= min(SystemParameters.chargeHighTemperatureLimit, (float)cBattery.MaxChargeTemperature));
+    return (minCellTemperature >= max(SystemParameters.chargeLowTemperatureLimit, static_cast<float>(cBattery.MinChargeTemperature)))
+        && (maxCellTemperature <= min(SystemParameters.chargeHighTemperatureLimit, static_cast<float>(cBattery.MaxChargeTemperature)));
 };
 
 bool PylontechRS485BatteryStats::isDischargeTemperatureValid() const
 {
     const Battery_CONFIG_T& cBattery = Configuration.get().Battery;
 
-    return (minCellTemperature >= max(SystemParameters.dischargeLowTemperatureLimit, (float)cBattery.MinDischargeTemperature))
-        && (maxCellTemperature <= min(SystemParameters.dischargeHighTemperatureLimit, (float)cBattery.MaxDischargeTemperature));
+    return (minCellTemperature >= max(SystemParameters.dischargeLowTemperatureLimit, static_cast<float>(cBattery.MinDischargeTemperature)))
+        && (maxCellTemperature <= min(SystemParameters.dischargeHighTemperatureLimit, static_cast<float>(cBattery.MaxDischargeTemperature)));
 };
 
 #ifdef USE_JKBMS_CONTROLLER
@@ -465,7 +465,7 @@ void PylontechRS485BatteryStats::mqttPublish() // const
     MQTTpublish(cellDiffVoltage, 0);
     if (numberOfCells > 15)
         numberOfCells = 15;
-    _last.CellVoltages = (float*)realloc(_last.CellVoltages, numberOfCells * sizeof(float));
+    _last.CellVoltages = reinterpret_cast<float*>(realloc(_last.CellVoltages, numberOfCells * sizeof(float)));
     for (int i = 0; i < numberOfCells; i++) {
         if (!cBattery.UpdatesOnly || CellVoltages[i] != _last.CellVoltages[i]) {
             MqttSettings.publish(subtopic + "cell" + String(i + 1), String(CellVoltages[i], 3));
@@ -479,7 +479,7 @@ void PylontechRS485BatteryStats::mqttPublish() // const
     subtopic = "battery/temperatures/group";
     if (numberOfTemperatures > 5)
         numberOfTemperatures = 5;
-    _last.GroupedCellsTemperatures = (float*)realloc(_last.GroupedCellsTemperatures, (numberOfTemperatures - 1) * sizeof(float));
+    _last.GroupedCellsTemperatures = reinterpret_cast<float*>(realloc(_last.GroupedCellsTemperatures, (numberOfTemperatures - 1) * sizeof(float)));
     for (int i = 0; i < numberOfTemperatures - 1; i++) {
         if (!cBattery.UpdatesOnly || GroupedCellsTemperatures[i] != _last.GroupedCellsTemperatures[i]) {
             MqttSettings.publish(subtopic + String(i + 1), String(GroupedCellsTemperatures[i], 1));

@@ -15,7 +15,7 @@
     ------------------------------------------------------------------------ */
 #ifdef USE_LED_STRIP
 
-#include "Led_Strip.h"
+#include "LED_Strip.h"
 #include "Configuration.h"
 #include "Datastore.h"
 #include "MessageOutput.h"

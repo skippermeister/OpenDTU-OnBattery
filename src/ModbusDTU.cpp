@@ -104,8 +104,8 @@ void ModbusDtuClass::initModbus()
                 if (t == TYPE_DC) {
                     mb.addHreg(offset, ++channel);
                     char buf[16];
-                    memset(buf, 0, 16);
-                    sprintf(buf, "String %d", channel);
+                    memset(buf, 0, sizeof(buf);
+                    snprintf(buf, sizeof(buf), "String %d", channel);
                     addHString(offset + 1, buf, 16);
                     mb.addHreg(offset + 9, 0, 11);
                     offset += 20;
@@ -260,7 +260,7 @@ void ModbusDtuClass::mbloop()
 
 void ModbusDtuClass::setHRegs(uint16_t reg, float value)
 {
-    uint16_t* hexbytes = (uint16_t*)&value;
+    uint16_t* hexbytes = reinterpret_cast<uint16_t*>(&value);
     mb.Hreg(reg++, hexbytes[1]);
     mb.Hreg(reg, hexbytes[0]);
 }
@@ -270,7 +270,7 @@ void ModbusDtuClass::addHString(uint16_t reg, const char* s, uint8_t len)
     for (uint8_t i = 0; i < len; i += 2) {
         uint16_t value = 0;
         if (i < strlen(s))
-            value = *(uint16_t*)&s[i];
+            value = *(reinterpret_cast<uint16_t*>(&s[i]));
         mb.addHreg(reg++, value);
     }
 }

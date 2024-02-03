@@ -370,11 +370,11 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
         break;
 
     case 0x0080: // MFR_ID_B0B5 6 bytes Manufacturer's name
-        memcpy((char*)_rp.ManufacturerName, (char*)frame + 2, 6);
+        memcpy(reinterpret_cast<char*>(_rp.ManufacturerName), reinterpret_cast<char*>(frame + 2), 6);
         break;
 
     case 0x0081: // MFR_ID_B6B11 6 bytes Manufacturer's name
-        strncpy((char*)&(_rp.ManufacturerName[6]), (char*)frame + 2, 6);
+        strncpy(reinterpret_cast<char*>(&(_rp.ManufacturerName[6])), reinterpret_cast<char*>(frame + 2), 6);
         for (int i = 11; i > 0; i--) {
             if (isblank(_rp.ManufacturerName[i]))
                 _rp.ManufacturerName[i] = 0;
@@ -389,12 +389,12 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
         break;
 
     case 0x0082: // MFR_MODEL_B0B51 6 bytes Manufacturer's model name
-        memcpy((char*)_rp.ManufacturerModelName, (char*)frame + 2, 6);
+        memcpy(reinterpret_cast<char*>(_rp.ManufacturerModelName), reinterpret_cast<char*>(frame + 2), 6);
         break;
 
     case 0x0083: // MFR_MODEL_B6B11 6 bytes Manufacturer's model name
     {
-        strncpy((char*)&(_rp.ManufacturerModelName[6]), (char*)frame + 2, 6);
+        strncpy(reinterpret_cast<char*>(&(_rp.ManufacturerModelName[6])), reinterpret_cast<char*>(frame + 2), 6);
         for (int i = 11; i > 0; i--) {
             if (isblank(_rp.ManufacturerModelName[i]))
                 _rp.ManufacturerModelName[i] = 0;
@@ -427,13 +427,13 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
 
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging)
-            MessageOutput.printf("%s Manufacturer Model Name: '%s' %d\r\n", TAG, _rp.ManufacturerModelName, (int)_model);
+            MessageOutput.printf("%s Manufacturer Model Name: '%s' %d\r\n", TAG, _rp.ManufacturerModelName, static_cast<int>(_model));
 #endif
         _lastUpdate = millis();
     } break;
 
     case 0x0084: // MFR_REVISION_B0B5 6 bytes Firmware revision
-        memcpy((char*)_rp.FirmwareRevision, (char*)frame + 2, 6);
+        memcpy(reinterpret_cast<char*>(_rp.FirmwareRevision), reinterpret_cast<char*>(frame + 2), 6);
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging) {
             char hex[13];
@@ -452,7 +452,7 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
         break;
 
     case 0x0085: // MFR_LOCATION_B0B2 3 bytes Manufacturer's factory location
-        strncpy((char*)_rp.ManufacturerFactoryLocation, (char*)frame + 2, 3);
+        strncpy(reinterpret_cast<char*>(_rp.ManufacturerFactoryLocation), reinterpret_cast<char*>(frame + 2), 3);
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging)
             MessageOutput.printf("%s Manufacturer Factory Location: '%s'\r\n", TAG, _rp.ManufacturerFactoryLocation);
@@ -470,11 +470,11 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
         break;
 
     case 0x0087: // MFR_SERIAL_B0B5 6 bytes Product serial number
-        memcpy((char*)_rp.ProductSerialNo, (char*)frame + 2, 6);
+        memcpy(reinterpret_cast<char*>(_rp.ProductSerialNo), reinterpret_cast<char*>(frame + 2), 6);
         break;
 
     case 0x0088: // MFR_SERIAL_B6B11 6 bytes Product serial number
-        strncpy((char*)&(_rp.ProductSerialNo[6]), (char*)frame + 2, 6);
+        strncpy(reinterpret_cast<char*>(&(_rp.ProductSerialNo[6])), reinterpret_cast<char*>(frame + 2), 6);
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging)
             MessageOutput.printf("%s Product Serial No '%s'\r\n", TAG, _rp.ProductSerialNo);
@@ -694,7 +694,7 @@ void MeanWellCanClass::setupParameter()
     yield();
 
     _rp.SystemConfig = 0b0000000000000000; // Initial operation with power on 00: Power Supply is OFF
-    sendCmd(ChargerID, 0x00C2, (uint8_t*)&_rp.SystemConfig, 2); // read SYSTEM_CONFIG
+    sendCmd(ChargerID, 0x00C2, reinterpret_cast<uint8_t*>(&_rp.SystemConfig), 2); // read SYSTEM_CONFIG
     vTaskDelay(100); // delay 200 tick
     yield();
     getCanCharger();
@@ -706,7 +706,7 @@ void MeanWellCanClass::setupParameter()
     _rp.CURVE_CONFIG.TCS = 1; // Temperature compensation -3mv/°C/cell (default)
     _rp.CURVE_CONFIG.STGS = 0; // 3 Stage charge mode
     _rp.CURVE_CONFIG.CUVE = 0; // Power supply mode
-    sendCmd(ChargerID, 0x00B4, (uint8_t*)&(_rp.CURVE_CONFIG), 2);
+    sendCmd(ChargerID, 0x00B4, reinterpret_cast<uint8_t*>(&(_rp.CURVE_CONFIG)), 2);
     vTaskDelay(100); // delay 200 tick
     yield();
     getCanCharger();
@@ -1064,7 +1064,7 @@ void MeanWellCanClass::setPower(bool power)
         }
     */
     _rp.CURVE_CONFIG.CUVE = (power == true) ? 1 : 0; // enable/disable automatic charger
-    sendCmd(ChargerID, 0x00B4, (uint8_t*)&(_rp.CURVE_CONFIG), 2);
+    sendCmd(ChargerID, 0x00B4, reinterpret_cast<uint8_t*>(&(_rp.CURVE_CONFIG)), 2);
     vTaskDelay(100); // delay 100 tick
     getCanCharger();
     readCmd(ChargerID, 0x00B4); // read CURVE_CONFIG
@@ -1148,7 +1148,7 @@ bool MeanWellCanClass::_sendCmd(uint8_t id, uint16_t cmd, uint8_t* data, int len
 #ifdef MEANWELL_DEBUG_ENABLED__
     MessageOutput.printf("%s %d %04X %d", TAG, id, cmd, len);
 #endif
-    if (len > 0 && data != (uint8_t*)NULL) {
+    if (len > 0 && data != reinterpret_cast<uint8_t*>(NULL)) {
 #ifdef MEANWELL_DEBUG_ENABLED__
         MessageOutput.print(" [");
 #endif
@@ -1194,7 +1194,7 @@ bool MeanWellCanClass::_sendCmd(uint8_t id, uint16_t cmd, uint8_t* data, int len
     tx_message[0] = (uint8_t)cmd;
     tx_message[1] = (uint8_t)(cmd >> 8);
     //    MessageOutput.printf("%s %d %04X %d ", TAG, id, cmd, len);
-    if (len > 0 && data != (uint8_t*)NULL) {
+    if (len > 0 && data != reinterpret_cast<uint8_t*>(NULL)) {
         //		MessageOutput.print(" [");
         for (int i = 0; i < len; i++) {
             tx_message[2 + i] = data[i];
