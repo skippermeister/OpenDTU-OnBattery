@@ -1,6 +1,7 @@
 export interface PowerLimiterConfig {
     enabled: boolean;
-    verbose_logging: boolean;
+    pollinterval: number;
+    updatesonly: boolean;
     solar_passthrough_enabled: boolean;
     solar_passthrough_losses: number;
     battery_drain_strategy: number;
@@ -20,4 +21,5 @@ export interface PowerLimiterConfig {
     full_solar_passthrough_soc: number;
     full_solar_passthrough_start_voltage: number;
     full_solar_passthrough_stop_voltage: number;
+    verbose_logging: boolean;
 }

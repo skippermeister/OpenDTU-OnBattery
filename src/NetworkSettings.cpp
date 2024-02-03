@@ -38,7 +38,7 @@ void NetworkSettingsClass::init(Scheduler& scheduler)
 
     _lastTimerCall.set(1000);
 
-    MessageOutput.println("done")
+    MessageOutput.println("done");
 }
 
 void NetworkSettingsClass::NetworkEvent(const WiFiEvent_t event)
@@ -207,7 +207,7 @@ void NetworkSettingsClass::loop()
             setStaticIp();
             setHostname();
         }
-    } else 
+    } else
 #endif
     if (_networkMode != network_mode::WiFi) {
         // Do stuff when switching to Ethernet mode
@@ -280,7 +280,7 @@ void NetworkSettingsClass::applyConfig()
         return;
     }
     MessageOutput.print("Configuring WiFi STA using ");
-    if (strcmp(WiFi.SSID().c_str(), c.WiFi.Ssid) || strcmp(WiFi.psk().c_str(), cWiFi.Password)) {
+    if (strcmp(WiFi.SSID().c_str(), cWiFi.Ssid) || strcmp(WiFi.psk().c_str(), cWiFi.Password)) {
         MessageOutput.print("new credentials... ");
         WiFi.begin(
             cWiFi.Ssid,

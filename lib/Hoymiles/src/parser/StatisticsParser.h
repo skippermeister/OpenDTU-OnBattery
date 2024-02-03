@@ -140,6 +140,8 @@ public:
     uint32_t getRxFailureCount() const;
 
     void zeroRuntimeData();
+    bool areAllFieldsZero() { return _allFieldsZeroFlag; }
+    void flagFieldsNotZero() { _allFieldsZeroFlag = false; }
     void zeroDailyData();
     void resetYieldDayCorrection();
 
@@ -169,4 +171,6 @@ private:
 
     bool _enableYieldDayCorrection = false;
     float _lastYieldDay[CH_CNT] = {};
+
+    bool _allFieldsZeroFlag = true;
 };

@@ -5,6 +5,7 @@
 #include "NtpSettings.h"
 #include "Configuration.h"
 #include <Arduino.h>
+#include "MessageOutput.h"
 #include <time.h>
 
 NtpSettingsClass::NtpSettingsClass()

@@ -31,16 +31,28 @@
 */
 #if defined ( USE_HARDWARESERIAL )
   #if defined ( ESP32 )
-    #define SDM_RX_PIN                        13
-    #define SDM_TX_PIN                        32
+    #ifndef SDM_RX_PIN
+      #define SDM_RX_PIN                        13
+    #endif
+    #ifndef SDM_TX_PIN
+      #define SDM_TX_PIN                        32
+    #endif
   #endif
 #else
   #if defined ( ESP8266 ) || defined ( ESP32 )
-    #define SDM_RX_PIN                        13
-    #define SDM_TX_PIN                        15
+    #ifndef SDM_RX_PIN
+      #define SDM_RX_PIN                        13
+    #endif
+    #ifndef SDM_TX_PIN
+      #define SDM_TX_PIN                        15
+    #endif
   #else
-    #define SDM_RX_PIN                        10
-    #define SDM_TX_PIN                        11
+    #ifndef SDM_RX_PIN
+      #define SDM_RX_PIN                        10
+    #endif
+    #ifndef SDM_TX_PIN
+      #define SDM_TX_PIN                        11
+    #endif
   #endif
 #endif
 

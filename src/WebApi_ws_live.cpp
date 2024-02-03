@@ -239,7 +239,7 @@ void WebApiWsLiveClass::generateJsonResponse(JsonVariant& root)
     addTotalField(powerMeterObj, "HousePower", PowerMeter.getHousePower(), "W", 1);
 }
 
-void WebApiWsLiveClass::addField(JsonObject& root, std::shared_ptr<InverterAbstract> inv, ChannelType_t type, ChannelNum_t channel, FieldId_t fieldId, String topic)
+void WebApiWsLiveClass::addField(JsonObject& root, std::shared_ptr<InverterAbstract> inv, const ChannelType_t type, const ChannelNum_t channel, const FieldId_t fieldId, String topic)
 {
     if (inv->Statistics()->hasChannelFieldValue(type, channel, fieldId)) {
         String chanName;
@@ -256,7 +256,7 @@ void WebApiWsLiveClass::addField(JsonObject& root, std::shared_ptr<InverterAbstr
     }
 }
 
-void WebApiWsLiveClass::addTotalField(JsonObject& root, String name, float value, String unit, uint8_t digits)
+void WebApiWsLiveClass::addTotalField(JsonObject& root, const String& name, const float value, const String& unit, const uint8_t digits)
 {
     root[name]["v"] = value;
     root[name]["u"] = unit;
@@ -264,7 +264,7 @@ void WebApiWsLiveClass::addTotalField(JsonObject& root, String name, float value
 }
 
 // Daten visualisieren #168
-void WebApiWsLiveClass::addHourPower(JsonObject& root, std::array<float, 24> values, String unit, uint8_t digits)
+void WebApiWsLiveClass::addHourPower(JsonObject& root, std::array<float, 24> values, const String& unit, const uint8_t digits)
 {
     JsonObject hours = root.createNestedObject("Hours");
     JsonArray valuesArray = hours.createNestedArray("values");

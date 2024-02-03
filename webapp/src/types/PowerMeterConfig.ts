@@ -9,13 +9,14 @@ export interface PowerMeterHttpPhaseConfig {
     header_value: string;
     json_path: string;
     timeout: number;
+    unit: number;
 }
 
 export interface PowerMeterConfig {
     enabled: boolean;
-    verbose_logging: boolean;
+    pollinterval: number;
+    updatesonly: boolean;
     source: number;
-    interval: number;
     mqtt_topic_powermeter_1: string;
     mqtt_topic_powermeter_2: string;
     mqtt_topic_powermeter_3: string;
@@ -23,4 +24,5 @@ export interface PowerMeterConfig {
     sdmaddress: number;
     http_individual_requests: boolean;
     http_phases: Array<PowerMeterHttpPhaseConfig>;
+    verbose_logging: boolean;
 }

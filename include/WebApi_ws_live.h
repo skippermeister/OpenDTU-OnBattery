@@ -18,7 +18,7 @@ private:
     void addTotalField(JsonObject& root, const String& name, const float value, const String& unit, const uint8_t digits);
 
     // Daten visualisieren #168
-    void addHourPower(JsonObject& root, std::array<float, 24> values, String unit, uint8_t digits);
+    void addHourPower(JsonObject& root, std::array<float, 24> values, const String& unit, const uint8_t digits);
 
     void onLivedataStatus(AsyncWebServerRequest* request);
     void onWebsocketEvent(AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType type, void* arg, uint8_t* data, size_t len);

@@ -40,6 +40,9 @@ public:
     virtual const byteAssign_t* getByteAssignment() const = 0;
     virtual uint8_t getByteAssignmentSize() const = 0;
 
+    void setConnected(bool value) { _connected = value; };
+    bool isConnected() { return _connected; };
+
     bool isProducing();
     bool isReachable();
 
@@ -109,4 +112,6 @@ private:
     std::unique_ptr<PowerCommandParser> _powerCommandParser;
     std::unique_ptr<StatisticsParser> _statisticsParser;
     std::unique_ptr<SystemConfigParaParser> _systemConfigParaParser;
+
+    bool _connected = true; // default to indicate MPPT strings are connected to solar panels or battery
 };

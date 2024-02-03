@@ -70,10 +70,12 @@ void SDM::begin(void) {
   if (_swapuart)
     sdmSer.swap();
 #endif
+#if defined ( USE_HARDWARESERIAL )
   if (_dere_pin != NOT_A_PIN) {
     pinMode(_dere_pin, OUTPUT);                                                 //set output pin mode for DE/RE pin when used (for control MAX485)
   }
   dereSet(LOW);                                                                 //set init state to receive from SDM -> DE Disable, /RE Enable (for control MAX485)
+#endif
 }
 
 float SDM::readVal(uint16_t reg, uint8_t node) {
@@ -97,15 +99,19 @@ float SDM::readVal(uint16_t reg, uint8_t node) {
 
   flush();                                                                      //read serial if any old data is available
 
+#if defined ( USE_HARDWARESERIAL )                                              // in SoftwareSerial it is handled within driver
   dereSet(HIGH);                                                                //transmit to SDM  -> DE Enable, /RE Disable (for control MAX485)
 
   delay(2);                                                                     //fix for issue (nan reading) by sjfaustino: https://github.com/reaper7/SDM_Energy_Meter/issues/7#issuecomment-272111524
+#endif
 
   sdmSer.write(sdmarr, FRAMESIZE - 1);                                          //send 8 bytes
 
   sdmSer.flush();                                                               //clear out tx buffer
 
+#if defined ( USE_HARDWARESERIAL )                                              // in SoftwareSerial it is handled within driver
   dereSet(LOW);                                                                 //receive from SDM -> DE Disable, /RE Enable (for control MAX485)
+#endif
 
   resptime = millis();
 
@@ -147,13 +153,13 @@ float SDM::readVal(uint16_t reg, uint8_t node) {
   }
 
   flush(mstimeout);                                                             //read serial if any old data is available and wait for RESPONSE_TIMEOUT (in ms)
-  
+
   if (sdmSer.available())                                                       //if serial rx buffer (after RESPONSE_TIMEOUT) still contains data then something spam rs485, check node(s) or increase RESPONSE_TIMEOUT
     readErr = SDM_ERR_TIMEOUT;                                                  //err debug (4) but returned value may be correct
 
   if (readErr != SDM_ERR_NO_ERROR) {                                            //if error then copy temp error value to global val and increment global error counter
     readingerrcode = readErr;
-    readingerrcount++; 
+    readingerrcount++;
   } else {
     ++readingsuccesscount;
   }
@@ -204,7 +210,7 @@ void SDM::setMsTurnaround(uint16_t _msturnaround) {
   else if (_msturnaround > SDM_MAX_DELAY)
     msturnaround = SDM_MAX_DELAY;
   else
-    msturnaround = _msturnaround; 
+    msturnaround = _msturnaround;
 }
 
 void SDM::setMsTimeout(uint16_t _mstimeout) {
@@ -213,7 +219,7 @@ void SDM::setMsTimeout(uint16_t _mstimeout) {
   else if (_mstimeout > SDM_MAX_DELAY)
     mstimeout = SDM_MAX_DELAY;
   else
-    mstimeout = _mstimeout; 
+    mstimeout = _mstimeout;
 }
 
 uint16_t SDM::getMsTurnaround() {
