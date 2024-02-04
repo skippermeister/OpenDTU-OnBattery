@@ -74,7 +74,7 @@ bool InverterAbstract::isProducing()
 
 bool InverterAbstract::isReachable()
 {
-    return _enablePolling && Statistics()->getRxFailureCount() <= _reachableThreshold;
+    return _enablePolling && Statistics()->getRxFailureCount() <= _reachableThreshold && isConnected();
 }
 
 void InverterAbstract::setEnablePolling(const bool enabled)
