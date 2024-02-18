@@ -1,58 +1,62 @@
-#ifdef USE_DALYBMS_CONTROLLER
+//#ifdef USE_DALYBMS_CONTROLLER
 
+#include "DalyBmsController.h"
+#include "Battery.h"
 #include "Configuration.h"
-#include "HardwareSerial.h"
 #include "MessageOutput.h"
+#include "MqttSettings.h"
 #include "PinMapping.h"
 #include <Arduino.h>
-// #include "DalyBmsDataPoints.h"
-#include "DalyBmsController.h"
+#include <ctime>
 #include <frozen/map.h>
 
 static constexpr char TAG[] = "[Daly BMS]";
 
-HardwareSerial HwSerial(2);
-
-namespace DalyBms {
-
-bool Controller::init()
+bool DalyBmsController::init()
 {
-    _verboseLogging = Battery._verbose_logging;
-
     _lastStatusPrinted.set(10 * 1000);
 
-    const PinMapping_t& pin = PinMapping.get();
-    MessageOutput.printf("%s rx = %d, tx = %d, rts = %d\r\n", TAG, pin.battery_rx, pin.battery_tx, pin.battery_rts);
+    if (!Configuration.get().Battery.Enabled)
+        return false;
 
-    if (pin.battery_rx < 0 || pin.battery_tx < 0 || pin.battery_tx < 0) {
-        MessageOutput.printf("%s Invalid RX/TX/RTS pin config\r\n", TAG);
+    const PinMapping_t& pin = PinMapping.get();
+    MessageOutput.printf("Initialize Daly BMS Controller rx = %d, tx = %d, rts = %d. ", pin.battery_rx, pin.battery_tx, pin.battery_rts);
+
+    if (pin.battery_rx < 0 || pin.battery_tx < 0 || pin.battery_rts < 0) {
+        MessageOutput.println("Invalid RX/TX/RTS pin config");
         return false;
     }
 
-    HwSerial.begin(9600, SERIAL_8N1, pin.battery_rx, pin.battery_tx);
-    HwSerial.flush();
+    if (!_stats->_initialized) {
+        HwSerial.begin(9600, SERIAL_8N1, pin.battery_rx, pin.battery_tx);
+        HwSerial.setPins(pin.battery_rx, pin.battery_tx, UART_PIN_NO_CHANGE, pin.battery_rts);
+        ESP_ERROR_CHECK(uart_set_mode(2, UART_MODE_RS485_HALF_DUPLEX));
+        // Set read timeout of UART TOUT feature
+        ESP_ERROR_CHECK(uart_set_rx_timeout(2, ECHO_READ_TOUT));
 
-    memset(_txBuffer, 0x00, XFER_BUFFER_LENGTH);
-    clearGet();
+        HwSerial.flush();
 
-    _rtsPin = pin.battery_rts;
+        while (HwSerial.available()) { // clear RS485 read buffer
+            HwSerial.read();
+            vTaskDelay(1);
+        }
 
-    pinMode(_rtsPin, OUTPUT);
-    digitalWrite(_rtsPin, LOW);
+        memset(_txBuffer, 0x00, XFER_BUFFER_LENGTH);
+        clearGet();
+        MessageOutput.println("initialized successfully.");
+
+        _stats->_initialized = true;
+    }
 
     return true;
 }
 
-void Controller::deinit()
+void DalyBmsController::deinit()
 {
     HwSerial.end();
-
-    if (_rtsPin > 0) {
-        pinMode(_rtsPin, INPUT);
-    }
 }
 
-frozen::string const& Controller::getStatusText(Controller::Status status)
+frozen::string const& DalyBmsController::getStatusText(DalyBmsController::Status status)
 {
     static constexpr frozen::string missing = "programmer error: missing status text";
 
@@ -73,7 +77,7 @@ frozen::string const& Controller::getStatusText(Controller::Status status)
     return iter->second;
 }
 
-void Controller::announceStatus(Controller::Status status)
+void DalyBmsController::announceStatus(DalyBmsController::Status status)
 {
     if ((_lastStatus == status) && !_lastStatusPrinted.occured()) {
         return;
@@ -85,14 +89,29 @@ void Controller::announceStatus(Controller::Status status)
     _lastStatusPrinted.reset();
 }
 
-void Controller::sendRequest(uint8_t pollInterval)
-{
-}
-
-void Controller::loop()
+void DalyBmsController::loop()
 {
     Battery_CONFIG_T& cBattery = Configuration.get().Battery;
     uint8_t pollInterval = cBattery.PollInterval;
+
+    const uint32_t now = millis();
+    if (_receiving && (now - _lastTransmission >= 200)) {
+        // last transmission too long ago. Reset RX index.
+        MessageOutput.printf("%s Last transmission too long ago. Reset RX index.\r\n", TAG);
+        _rxBuffer.clear();
+        _receiving = false;
+    }
+    if ((now - _lastTransmission >= 250) && !_triggerNext) {
+        // last transmittion longer than 0.25s ago -> trigger next request
+        _lastTransmission = now;
+        _triggerNext = true;
+    }
+    if (now - _lastParameterReceived > 30000) { _lastParameterReceived = millis(); _readParameter = true; _nextRequest=0; } // every 30 seconds read parameters
+
+    if (HwSerial.available()) {
+        _lastTransmission = now;
+    }
+
 
     while (HwSerial.available()) {
         rxData(HwSerial.read());
@@ -104,297 +123,484 @@ void Controller::loop()
         reset();
         return announceStatus(Status::Timeout);
     }
+
 }
 
-void Controller::sendRequest()
+void DalyBmsController::sendRequest(uint8_t pollInterval)
 {
-    switch (_requestCounter) {
-    case 0:
-        // _requestCounter = sendCommand() ? (_requestCounter + 1) : 0;
-        _requestCounter++;
-        break;
-    case 1:
-        if (getPackMeasurements(true)) {
-            _stats->connectionState = true;
-            _errorCounter = 0;
-            _requestCounter++;
-        } else {
-            _requestCounter = 0;
-            if (_errorCounter < ERRORCOUNTER) {
-                _errorCounter++;
-            } else {
-                _stats->connectionState = false;
-                _errorCounter = 0;
-                requestCallback();
-                // clearGet();
+
+    if ((millis() - _lastRequest) < pollInterval * 100) { // 2*100 bis 10*100 ms
+        return announceStatus(Status::WaitingForPollInterval);
+    }
+
+    if (_readParameter) {
+        if (_triggerNext) {
+            _triggerNext = false;
+            switch (_nextRequest) {
+                case 0:
+                    requestData(Command::REQUEST_RATED_CAPACITY_CELL_VOLTAGE);
+                    _nextRequest++;
+                    break;
+                case 1:
+                    requestData(Command::REQUEST_ACQUISITION_BOARD_INFO);
+                    _nextRequest++;
+                    break;
+                case 2:
+                    requestData(Command::REQUEST_CUMULATIVE_CAPACITY);
+                    _nextRequest++;
+                    break;
+                case 3:
+                    requestData(Command::REQUEST_BATTERY_TYPE_INFO);
+                    _nextRequest++;
+                    break;
+                case 4:
+                    requestData(Command::REQUEST_FIRMWARE_INDEX);
+                    _nextRequest++;
+                    break;
+                case 5:
+                    requestData(Command::REQUEST_IP);
+                    _nextRequest++;
+                    break;
+                case 6:
+                    requestData(Command::REQUEST_BATTERY_CODE);
+                    _nextRequest++;
+                    break;
+                case 7:
+                    requestData(Command::REQUEST_MIN_MAX_CELL_VOLTAGE);
+                    _nextRequest++;
+                    break;
+                case 8:
+                    requestData(Command::REQUEST_MIN_MAX_PACK_VOLTAGE);
+                    _nextRequest++;
+                    break;
+                case 9:
+                    requestData(Command::REQUEST_MAX_PACK_DISCHARGE_CHARGE_CURRENT);
+                    _nextRequest++;
+                    break;
+                case 10:
+                    requestData(Command::REQUEST_MIN_MAX_SOC_LIMIT);
+                    _nextRequest++;
+                    break;
+                case 11:
+                    requestData(Command::REQUEST_VOLTAGE_TEMPERATURE_DIFFERENCE);
+                    _nextRequest++;
+                    break;
+                case 12:
+                    requestData(Command::REQUEST_BALANCE_START_DIFF_VOLTAGE);
+                    _nextRequest++;
+                    break;
+                case 13:
+                    requestData(Command::REQUEST_SHORT_CURRENT_RESISTANCE);
+                    _nextRequest++;
+                    break;
+                case 14:
+                    requestData(Command::REQUEST_RTC);
+                    _nextRequest++;
+                    break;
+                case 15:
+                    requestData(Command::REQUEST_BMS_SW_VERSION);
+                    _nextRequest++;
+                    break;
+                case 16:
+                default:
+                    requestData(Command::REQUEST_BMS_HW_VERSION);
+                    _nextRequest = 0;
+                    _readParameter = false;
             }
         }
-        break;
-    case 2:
-        _requestCounter = getMinMaxCellVoltage(true) ? (_requestCounter + 1) : 0;
-        break;
-    case 3:
-        _requestCounter = getPackTemp(true) ? (_requestCounter + 1) : 0;
-        break;
-    case 4:
-        _requestCounter = getDischargeChargeMosStatus(true) ? (_requestCounter + 1) : 0;
-        break;
-    case 5:
-        _requestCounter = getStatusInfo(true) ? (_requestCounter + 1) : 0;
-        break;
-    case 6:
-        _requestCounter = getCellVoltages(true) ? (_requestCounter + 1) : 0;
-        break;
-    case 7:
-        _requestCounter = getCellTemperature(true) ? (_requestCounter + 1) : 0;
-        break;
-    case 8:
-        _requestCounter = getCellBalanceState(true) ? (_requestCounter + 1) : 0;
-        break;
-    case 9:
-        _requestCounter = getFailureCodes(true) ? (_requestCounter + 1) : 0;
-        if (getStaticData)
-            _requestCounter = 0;
-        requestCallback();
-        break;
-    case 10:
-        if (!_getStaticData)
-            _requestCounter = getVoltageThreshold(true) ? (_requestCounter + 1) : 0;
-        _requestCounter = 0;
-        requestCallback();
-        _getStaticData = true;
-        break;
-
-    default:
-        break;
-    }
-}
-
-bool Controller::getVoltageThreshold(bool send) // 0x59
-{
-    if (send) {
-        if (requestData(COMMAND::CELL_THRESHOLDS))
-            return true;
-    } else {
-        if (readData(COMMAND::CELL_THRESHOLDS, 1)) {
-            _stats->maxCellThreshold1 = static_cast<float>((_frameBuff[0][4] << 8) | _frameBuff[0][5]);
-            _stats->maxCellThreshold2 = static_cast<float>((_frameBuff[0][6] << 8) | _frameBuff[0][7]);
-            _stats->minCellThreshold1 = static_cast<float>((_frameBuff[0][8] << 8) | _frameBuff[0][9]);
-            _stats->minCellThreshold2 = static_cast<float>((_frameBuff[0][10] << 8) | _frameBuff[0][11]);
-
-            return true;
-        }
+        return;
     }
 
-    BMS_DEBUG_PRINT("<DALY-BMS DEBUG> Receive failed, min/max cell thresholds won't be modified!\n");
-    BMS_DEBUG_WEB("<DALY-BMS DEBUG> Receive failed, min/max cell thresholds won't be modified!\n");
-
-    return false;
-}
-
-bool Controller::getMinMaxCellVoltage(bool send) // 0x91
-{
-    if (send) {
-        if (requestData(COMMAND::MIN_MAX_CELL_VOLTAGE))
-            return true;
-    } else {
-        if (requestData(COMMAND::MIN_MAX_CELL_VOLTAGE, 1)) {
-            _stats->maxCellmV = static_cast<float>((_frameBuff[0][4] << 8) | _frameBuff[0][5]);
-            _stats->maxCellVNum = _frameBuff[0][6];
-            _stats->minCellmV = static_cast<float>((_frameBuff[0][7] << 8) | _frameBuff[0][8]);
-            _stats->minCellVNum = _frameBuff[0][9];
-            _stats->cellDiff = (_stats->maxCellmV - _stats->minCellmV);
-
-            return true;
-        }
-    }
-
-    BMS_DEBUG_PRINT("<DALY-BMS DEBUG> Receive failed, min/max cell values won't be modified!\n");
-    BMS_DEBUG_WEB("<DALY-BMS DEBUG> Receive failed, min/max cell values won't be modified!\n");
-
-    return false;
-}
-
-bool Controller::getPackTemp(bool send) // 0x92
-{
-    if (send) {
-        if (requestData(COMMAND::MIN_MAX_TEMPERATURE))
-            return true;
-    } else {
-        if (readData(COMMAND::MIN_MAX_TEMPERATURE, 1)) {
-            _stats->tempAverage = ((_frameBuff[0][4] - 40) + (_frameBuff[0][6] - 40)) / 2;
-
-            return true;
-        }
-    }
-
-    BMS_DEBUG_PRINT("<DALY-BMS DEBUG> Receive failed, Temp values won't be modified!\n");
-    BMS_DEBUG_WEB("<DALY-BMS DEBUG> Receive failed, Temp values won't be modified!\n");
-
-    return false;
-}
-
-bool Controller::getDischargeChargeMosStatus(boold send) // 0x93
-{
-    if (send) {
-        if (requestData(COMMAND::DISCHARGE_CHARGE_MOS_STATUS))
-            return true;
-    } else {
-        if (readData(COMMAND::DISCHARGE_CHARGE_MOS_STATUS, 1)) {
-
-            switch (_frameBuff[0][4]) {
+    if (_triggerNext) {
+        _triggerNext = false;
+        switch (_nextRequest) {
             case 0:
-                _stats->chargeDischargeStatus = "Stationary";
+                requestData(Command::REQUEST_BATTERY_LEVEL);
+                _nextRequest++;
                 break;
             case 1:
-                _stats->chargeDischargeStatus = "Charge";
+                requestData(Command::REQUEST_MIN_MAX_VOLTAGE);
+                _nextRequest++;
                 break;
             case 2:
-                _stats->chargeDischargeStatus = "Discharge";
+                requestData(Command::REQUEST_MIN_MAX_TEMPERATURE);
+                _nextRequest++;
                 break;
-            }
-
-            _stats->chargeFetState = _frameBuff[0][5];
-            _stats->disChargeFetState = _frameBuff[0][6];
-            _stats->bmsHeartBeat = _frameBuff[0][7];
-            _stats->resCapacitymAh = ((uint32_t)_frameBuff[0][8] << 0x18) | ((uint32_t)_frameBuff[0][9] << 0x10) | ((uint32_t)_frameBuff[0][10] << 0x08) | (uint32_t)_frameBuff[0][11];
-
-            return true;
+            case 3:
+                requestData(Command::REQUEST_MOS);
+                _nextRequest++;
+                break;
+            case 4:
+                requestData(Command::REQUEST_STATUS);
+                _nextRequest++;
+                break;
+            case 5:
+                requestData(Command::REQUEST_CELL_VOLTAGE);
+                _nextRequest++;
+                break;
+            case 6:
+                requestData(Command::REQUEST_TEMPERATURE);
+                _nextRequest++;
+                break;
+            case 7:
+                requestData(Command::REQUEST_CELL_BALANCE_STATES);
+                _nextRequest++;
+                break;
+            case 8:
+                requestData(Command::REQUEST_FAILURE_CODES);
+                _nextRequest=0;
+                break;
+            case 9:
+            default:
+                _nextRequest=0;
+                break;
         }
     }
-
-    BMS_DEBUG_PRINT("<DALY-BMS DEBUG> Receive failed, Charge / discharge mos Status won't be modified!\n");
-    BMS_DEBUG_WEB("<DALY-BMS DEBUG> Receive failed, Charge / discharge mos Status won't be modified!\n");
-
-    return false;
 }
 
-bool Controller::getStatusInfo(bool send) // 0x94
+bool DalyBmsController::requestData(uint8_t data_id) // new function to request global data
 {
-    if (send) {
-        if (requestData(COMMAND::STATUS_INFO))
-            return true;
-    } else {
-        if (readData(COMMAND::STATUS_INFO, 1)) {
-            _stats->numberOfCells = _frameBuff[0][4];
-            _stats->numOfTempSensors = _frameBuff[0][5];
-            _stats->chargeState = _frameBuff[0][6];
-            _stats->loadState = _frameBuff[0][7];
+    uint8_t request_message[DALY_FRAME_SIZE];
 
-            // Parse the 8 bits into 8 booleans that represent the states of the Digital IO
-            for (size_t i = 0; i < 8; i++) {
-                _stats->dIO[i] = bitRead(_frameBuff[0][8], i);
-            }
+    request_message[0] = START_BYTE;         // Start Flag
+    request_message[1] = _addr;  // Communication Module Address
+    request_message[2] = data_id;      // Data ID
+    request_message[3] = 0x08;         // Data Length (Fixed)
+    request_message[4] = 0x00;         // Empty Data
+    request_message[5] = 0x00;         //     |
+    request_message[6] = 0x00;         //     |
+    request_message[7] = 0x00;         //     |
+    request_message[8] = 0x00;         //     |
+    request_message[9] = 0x00;         //     |
+    request_message[10] = 0x00;        //     |
+    request_message[11] = 0x00;        // Empty Data
 
-            _stats->bmsCycles = ((uint16_t)_frameBuff[0][9] << 0x08) | (uint16_t)_frameBuff[0][10];
+    request_message[12] = (uint8_t) (request_message[0] + request_message[1] + request_message[2] +
+                                   request_message[3]);  // Checksum (Lower byte of the other bytes sum)
 
-            return true;
-        }
-    }
+    MessageOutput.printf("%s %d Request datapacket Nr %x\r\n", TAG, _nextRequest, data_id);
 
-    BMS_DEBUG_PRINT("<DALY-BMS DEBUG> Receive failed, Status info won't be modified!\n");
-    BMS_DEBUG_WEB("<DALY-BMS DEBUG> Receive failed, Status info won't be modified!\n");
+    HwSerial.write(request_message, sizeof(request_message));
 
-    return false;
-}
-
-bool Controller::requestData(COMMAND cmdID) // new function to request global data
-{
-    // Clear out the buffers
-    memset(_txBuffer, 0x00, XFER_BUFFER_LENGTH);
-    //--------------send part--------------------
-    uint8_t txChecksum = 0x00; // transmit checksum buffer
-    // prepare the frame with static data and command ID
-    _txBuffer[0] = START_BYTE;
-    _txBuffer[1] = HOST_ADRESS;
-    _txBuffer[2] = cmdID;
-    _txBuffer[3] = DATA_LENGTH; // fixed length
-
-    // Calculate the checksum
-    for (uint8_t i = 0; i <= 11; i++) {
-        txChecksum += _txBuffer[i];
-    }
-    // put it on the frame
-    _txBuffer[12] = txChecksum;
-
-    if (soft_rts >= 0) {
-        digitalWrite(soft_rts, HIGH);
-        // wait for the begin of a frame (3.5 symbols)
-        delay(static_cast<int>(3.5 * 11 * 1000 / 9600 + 0.5));
-    }
-
-    // send the packet
-    HwSerial.write(_txBuffer, XFER_BUFFER_LENGTH);
-
-    if (softrts >= 0) {
-        // first wait for transmission end
-        HwSerial.flush();
-
-        // wait for the end of a frame (3.5 symbols)
-        delay(static_cast<int>(3.5 * 11 * 1000 / 9600 + 0.5));
-        digitalWrite(soft_rts, LOW);
-    }
+    _lastRequest = millis();
 
     return true;
 }
 
-bool Controller::readData(COMMAND cmdID, unsigned int frameAmount) // new function to request global data
+void DalyBmsController::rxData(uint8_t inbyte)
 {
-    //-----------Recive Part---------------------
-    // Clear out the buffers
-    memset(_frameBuff, 0x00, sizeof(_frameBuff));
-    memset(_rxFrameBuffer, 0x00, sizeof(_rxFrameBuffer));
-    unsigned int byteCounter = 0; // bytecounter for incomming data
-    /*uint8_t rxByteNum = */
-    HWSerial.readBytes(_rxFrameBuffer, XFER_BUFFER_LENGTH * frameAmount);
-    for (size_t i = 0; i < frameAmount; i++) {
-        for (size_t j = 0; j < XFER_BUFFER_LENGTH; j++) {
-            _frameBuff[i][j] = _rxFrameBuffer[byteCounter++];
-        }
+    static uint8_t _dataCount = 0;
 
-        uint8_t rxChecksum = 0x00;
-        for (int k = 0; k < XFER_BUFFER_LENGTH - 1; k++) {
-            rxChecksum += _frameBuff[i][k];
-        }
-        char debugBuff[128];
-        snprintf(debugBuff, sizeof(debugBuff), "<UART>[Command: 0x%2X][CRC Rec: %2X][CRC Calc: %2X]", cmdID, rxChecksum, _frameBuff[i][XFER_BUFFER_LENGTH - 1]);
-        // BMS_DEBUG_PRINTLN(debugBuff);
-        // BMS_DEBUG_WEBLN(debugBuff);
+    if (!_receiving) {
+        if (inbyte != 0xa5)
+            return;
+        _receiving = true;
+        _dataCount = 0;
+    }
+    _rxBuffer.push_back(inbyte);
+    if (_rxBuffer.size() == 4)
+        _dataCount = inbyte;
+    if ((_rxBuffer.size() > 4) && (_rxBuffer.size() == _dataCount + 5)) {
+        decodeData(_rxBuffer);
+        _rxBuffer.clear();
+        _receiving = false;
+    }
+}
 
-        if (rxChecksum != _frameBuff[i][XFER_BUFFER_LENGTH - 1]) {
-            BMS_DEBUG_PRINTLN("<UART> CRC FAIL");
-            BMS_DEBUG_WEBLN("<UART> CRC FAIL");
-            return false;
-        }
-        if (rxChecksum == 0) {
-            BMS_DEBUG_PRINTLN("<UART> NO DATA");
-            BMS_DEBUG_WEBLN("<UART> NO DATA");
-            return false;
-        }
-        if (_frameBuff[i][1] >= 0x20) {
-            BMS_DEBUG_PRINTLN("<UART> BMS SLEEPING");
-            BMS_DEBUG_WEBLN("<UART> BMS SLEEPING");
-            return false;
+void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer) {
+    auto it = rxBuffer.begin();
+
+    while ((it = std::find(it, rxBuffer.end(), 0xA5)) != rxBuffer.end()) {
+        if (rxBuffer.end() - it >= DALY_FRAME_SIZE && it[1] == 0x01) {
+            uint8_t checksum;
+            int sum = 0;
+            for (int i = 0; i < 12; i++) {
+                sum += it[i];
+            }
+            checksum = sum;
+
+            if (checksum == 0) {
+                MessageOutput.printf("%s NO DATA\r\n", TAG);
+                return;
+            }
+
+            if (checksum == it[12]) {
+                MessageOutput.printf("%s Receive datapacket Nr %02X\r\n", TAG, it[2]);
+                switch (it[2]) {
+                    case Command::REQUEST_RATED_CAPACITY_CELL_VOLTAGE:
+                        _stats->_ratedCapacity = (float)ToUint32(&it[4]) / 1000; // in Ah
+                        _stats->_ratedCellVoltage = to_Volt(&it[10]); // in V
+                        MessageOutput.printf("%s rated capacity: %fV,  rated cell voltage: %fV\r\n", TAG, _stats->_ratedCapacity, _stats->_ratedCellVoltage);
+                        break;
+
+                    case Command::REQUEST_ACQUISITION_BOARD_INFO:
+                        _stats->_numberOfAcquisitionBoards = it[4];
+                        for(uint i=0; i<3; i++) {
+                            _stats->_numberOfCellsBoard[i] = it[5+i];
+                            _stats->_numberOfNtcsBoard[i] = it[8+i];
+                        }
+                        break;
+
+                    case Command::REQUEST_CUMULATIVE_CAPACITY:
+                        _stats->_cumulativeChargeCapacity = ToUint32(&it[4]); // in Ah
+                        _stats->_cumulativeDischargeCapacity = ToUint32(&it[8]); // in Ah
+                        MessageOutput.printf("%s cumulative charge capacity: %uAh,  cumulative discharge capacity: %uAh\r\n", TAG, _stats->_cumulativeChargeCapacity, _stats->_cumulativeDischargeCapacity);
+                        break;
+
+                    case Command::REQUEST_BATTERY_TYPE_INFO:
+                        _stats->_batteryType = it[4];
+                        snprintf (_stats->_batteryProductionDate, 31, "%u", ToUint32(&it[5]));
+                        _stats->_bmsSleepTime = ToUint16(&it[9]);  // in seconds
+                        _stats->_currentWave =(float)it[11] / 10.0;  // in A
+                        break;
+
+                    case Command::REQUEST_BATTERY_CODE:
+                        if (it[4] > 0 && it[4] <= 4) {
+                            for (uint8_t i=0; i<7; i++) {
+                                uint8_t c = it[5+i];
+                                _stats->_batteryCode[((it[4]-1)*7)+i] = c < 32?0:c;
+                            }
+                            _stats->_batteryCode[it[4]*7] = 0;
+                            MessageOutput.printf("%s %d battery code: %s\r\n", TAG, it[4], _stats->_batteryCode);
+                        }
+                        break;
+
+                    case Command::REQUEST_SHORT_CURRENT_RESISTANCE:
+                        _stats->_shortCurrent = ToUint16(&it[4]); // in A
+                        _stats->_currentSamplingResistance = (float)ToUint16(&it[6])/1000.0; // in mOhm
+                        break;
+
+                    case Command::REQUEST_MIN_MAX_CELL_VOLTAGE:
+                        _stats->AlarmValues.maxCellVoltage = to_Volt(&it[4]); // in V
+                        _stats->WarningValues.maxCellVoltage = to_Volt(&it[6]); // in V
+                        _stats->AlarmValues.minCellVoltage = to_Volt(&it[8]); // in V
+                        _stats->WarningValues.minCellVoltage = to_Volt(&it[10]); // in V
+                        MessageOutput.printf("%s Alarm max cell voltage: %fV, min cell voltage: %fV\r\n", TAG,
+                            _stats->AlarmValues.maxCellVoltage, _stats->AlarmValues.minCellVoltage);
+                        MessageOutput.printf("%s Warning max cell voltage: %fV, min cell voltage: %fV\r\n", TAG,
+                            _stats->WarningValues.maxCellVoltage, _stats->WarningValues.minCellVoltage);
+                        break;
+
+                    case Command::REQUEST_MIN_MAX_PACK_VOLTAGE:
+                        _stats->AlarmValues.maxPackVoltage = (float)ToUint16(&it[4]) / 10; // in V
+                        _stats->WarningValues.maxPackVoltage = (float)ToUint16(&it[6]) / 10; // in V
+                        _stats->AlarmValues.minPackVoltage = (float)ToUint16(&it[8]) / 10.0; // in V
+                        _stats->WarningValues.minPackVoltage = (float)ToUint16(&it[10]) / 10.0; // in V
+                        MessageOutput.printf("%s Alarm max pack voltage: %fV, min pack voltage: %fV\r\n", TAG,
+                            _stats->AlarmValues.maxPackVoltage, _stats->AlarmValues.minPackVoltage);
+                        MessageOutput.printf("%s Warning max pack voltage: %fV, min pack voltage: %fV\r\n", TAG,
+                            _stats->WarningValues.maxPackVoltage, _stats->WarningValues.minPackVoltage);
+                        break;
+
+                    case Command::REQUEST_MAX_PACK_DISCHARGE_CHARGE_CURRENT:
+                        _stats->AlarmValues.maxPackChargeCurrent = (DALY_CURRENT_OFFSET - (float)ToUint16(&it[4])) / 10.0; // in A
+                        _stats->WarningValues.maxPackChargeCurrent = (DALY_CURRENT_OFFSET - (float)ToUint16(&it[6])) / 10.0; // in A
+                        _stats->AlarmValues.maxPackDischargeCurrent = (float)(DALY_CURRENT_OFFSET - ToUint16(&it[8])) / 10.0; // in A
+                        _stats->WarningValues.maxPackDischargeCurrent = (float)(DALY_CURRENT_OFFSET - ToUint16(&it[10])) / 10.0; // in A
+                        MessageOutput.printf("%s Alarm max pack charge current: %fA, max pack discharge current: %fA\r\n", TAG,
+                            _stats->AlarmValues.maxPackChargeCurrent, _stats->AlarmValues.maxPackDischargeCurrent);
+                        MessageOutput.printf("%s Warning max pack charge current: %fA, max pack discharge current: %fA\r\n", TAG,
+                            _stats->WarningValues.maxPackChargeCurrent, _stats->WarningValues.maxPackDischargeCurrent);
+                        break;
+
+                    case Command::REQUEST_MIN_MAX_SOC_LIMIT:
+                        _stats->WarningValues.maxSoc = (float)ToUint16(&it[4]) / 10.0; // in %
+                        _stats->AlarmValues.maxSoc = (float)ToUint16(&it[6]) / 10.0; // in %
+                        _stats->WarningValues.minSoc = (float)ToUint16(&it[8]) / 10.0; // in %
+                        _stats->AlarmValues.minSoc = (float)ToUint16(&it[10]) / 10.0; // in %
+                        MessageOutput.printf("%s Alarm max SoC: %f%%, min SoC: %f%%\r\n", TAG, _stats->AlarmValues.maxSoc, _stats->AlarmValues.minSoc);
+                        MessageOutput.printf("%s Warning max SoC: %f%%, min SoC: %f%%\r\n", TAG, _stats->WarningValues.maxSoc, _stats->WarningValues.minSoc);
+                        break;
+
+                    case Command::REQUEST_VOLTAGE_TEMPERATURE_DIFFERENCE:
+                        _stats->WarningValues.cellVoltageDifference = (float)ToUint16(&it[4]); // in mV
+                        _stats->AlarmValues.cellVoltageDifference = (float)ToUint16(&it[6]); // in mV
+                        _stats->WarningValues.temperatureDifference = it[8]; // in in°C
+                        _stats->AlarmValues.temperatureDifference = it[9]; // in °C
+                        break;
+
+                    case Command::REQUEST_BALANCE_START_DIFF_VOLTAGE:
+                        _stats->_balanceStartVoltage = to_Volt(&it[4]); // in V
+                        _stats->_balanceDifferenceVoltage = to_Volt(&it[6]); // in V
+                        break;
+
+                    case Command::REQUEST_BMS_SW_VERSION:
+                        if (it[4] > 0 && it[4] <= 3) {
+                            for (uint8_t i=0; i<7; i++) _stats->_bmsSWversion[((it[4]-1)*7)+i] = (it[5+i]);
+                            _stats->_bmsSWversion[it[4]*7] = 0;
+                        }
+                        MessageOutput.printf("%s %d bms SW version: %s\r\n", TAG, it[4], _stats->_bmsSWversion);
+                        break;
+
+                    case Command::REQUEST_BMS_HW_VERSION:
+                        if (it[4] > 0 && it[4] <= 3) {
+                            for (uint8_t i=0; i<7; i++) _stats->_bmsHWversion[((it[4]-1)*7)+i] = (it[5+i]);
+                            _stats->_bmsHWversion[it[4]*7] = 0;
+                        }
+                        MessageOutput.printf("%s %d bms HW version: %s\r\n", TAG, it[4], _stats->_bmsHWversion);
+                        _stats->_manufacturer = _stats->_bmsHWversion;
+                        break;
+
+                    case Command::REQUEST_BATTERY_LEVEL:
+                        _stats->_voltage = (float) ToUint16(&it[4]) / 10.0;
+                        _stats->_current = (float) (ToUint16(&it[8]) - DALY_CURRENT_OFFSET) / 10.0;
+                        _stats->_batteryLevel = (float) ToUint16(&it[10]) / 10.0;
+                        _stats->setSoC(static_cast<uint8_t>((100.0 * _stats->_remainingCapacity / _stats->_ratedCapacity) + 0.5));
+                        MessageOutput.printf("%s voltage: %fV, current: %fA\r\n", TAG, _stats->_voltage, _stats->_current);
+                        MessageOutput.printf("%s battery level: %f%%\r\n", TAG, _stats->_batteryLevel);
+                        break;
+
+                    case Command::REQUEST_MIN_MAX_VOLTAGE:
+                        _stats->_maxCellVoltage = to_Volt(&it[4]);
+                        _stats->_maxCellVoltageNumber = it[6];
+                        _stats->_minCellVoltage = to_Volt(&it[7]);
+                        _stats->_minCellVoltageNumber = it[9];
+                        break;
+
+                    case Command::REQUEST_MIN_MAX_TEMPERATURE:
+                        _stats->_maxTemperature = (it[4] - DALY_TEMPERATURE_OFFSET);
+                        _stats->_maxTemperatureProbeNumber = it[5];
+                        _stats->_minTemperature = (it[6] - DALY_TEMPERATURE_OFFSET);
+                        _stats->_minTemperatureProbeNumber = it[7];
+                        break;
+                    case Command::REQUEST_MOS:
+                          switch (it[4]) {
+                            case 0:
+                                strcpy(_stats->_status, "Stationary");
+                                break;
+                            case 1:
+                                strcpy(_stats->_status, "Charging");
+                                break;
+                            case 2:
+                                strcpy(_stats->_status, "Discharging");
+                                break;
+                            default:
+                                break;
+                        }
+                        _stats->_chargingMosEnabled  = it[5];
+                        _stats->_dischargingMosEnabled = it[6];
+                        _stats->_bmsCycles = it[7];
+                        _stats->_remainingCapacity = (float) ToUint32(&it[8]) / 1000;
+                        MessageOutput.printf("%s status: %s, bms cycles: %d\r\n", TAG, _stats->_status, _stats->_bmsCycles);
+                        MessageOutput.printf("%s remaining capacity: %fAh\r\n", TAG, _stats->_remainingCapacity);
+                        break;
+
+                    case Command::REQUEST_STATUS:
+                        _stats->_cellsNumber = it[4];
+                        _stats->_tempsNumber = it[5];
+                        _stats->_chargeState = it[6];
+                        _stats->_loadState = it[7];
+                        _stats->_dio[8] = 0;
+                        for (uint8_t i=0; i<8; i++) _stats->_dio[i] = (it[8] & (128>>i))?'1':'0';
+                        _stats->_batteryCycles = ToUint16(&it[9]);
+                        MessageOutput.printf("%s charge state %d, load state %d, dio %s, battery cycles %u\r\n", TAG, _stats->_chargeState, _stats->_loadState, _stats->_dio, _stats->_batteryCycles);
+                        break;
+
+                    case Command::REQUEST_TEMPERATURE:
+                        if (it[4] > 0 && it[4] < 4) {
+                            for (uint8_t i=0; i<7; i++)
+                                _stats->_temperature[(it[4]-1)*3+i] = (it[5+i] - DALY_TEMPERATURE_OFFSET);
+                        }
+                        MessageOutput.printf("%s it[4] %d\r\n", TAG, it[4]);
+                        break;
+
+                    case Command::REQUEST_CELL_VOLTAGE:
+                        if (it[4] > 0 && it[4] < 9) {
+                            for (uint8_t i=0; i<3; i++) {
+                                _stats->_cellVoltage[(it[4]-1)*3+i] = to_Volt(&it[5+i*2]);
+                            }
+                        }
+                        MessageOutput.printf("%s it[4] %d\r\n", TAG, it[4]);
+                        break;
+
+                    case Command::REQUEST_CELL_BALANCE_STATES:
+                        for(uint8_t j=0; j<3; j++) {
+                            for (uint8_t i=0; i<8; i++) _stats->_cellBalance[j*(8+1)+i] = (it[4+j] & (128>>i))?'1':'0';
+                            _stats->_cellBalance[j*(8+1)+8] = ' ';
+                        }
+                        _stats->_cellBalance[(8+1)*2+8] = 0;
+                        MessageOutput.printf("%s cell balance %s\r\n", TAG, _stats->_cellBalance);
+                        break;
+
+                    case Command::REQUEST_FAILURE_CODES:
+                        {
+                            char bytes[72];
+                            for(uint8_t j=0; j<7; j++) {
+                                _stats->FailureStatus.bytes[j] = it[4+j];
+                                for (uint8_t i=0; i<8; i++) bytes[j*(8+1)+i] = (it[4+j] & (128>>i))?'1':'0';
+                                bytes[j*(8+1)+8] = ' ';
+                            }
+                            bytes[(8+1)*6+8] = 0;
+                            _stats->_faultCode = it[11];
+                            MessageOutput.printf("%s failure status %s, fault code: %02X\r\n", TAG, bytes, _stats->_faultCode);
+                        }
+                        _stats->Warning.lowVoltage = _stats->FailureStatus.levelOneCellVoltageTooLow ||
+                                                    _stats->FailureStatus.levelOnePackVoltageTooLow;
+                        _stats->Warning.highVoltage = _stats->FailureStatus.levelOneCellVoltageTooHigh ||
+                                                    _stats->FailureStatus.levelOnePackVoltageTooHigh;
+                        _stats->Warning.lowTemperature = _stats->FailureStatus.levelOneChargeTempTooLow ||
+                                                        _stats->FailureStatus.levelOneDischargeTempTooLow;
+                        _stats->Warning.highTemperature =  _stats->FailureStatus.levelOneChargeTempTooHigh ||
+                                                        _stats->FailureStatus.levelOneDischargeTempTooHigh;
+                        _stats->Warning.highCurrentCharge = _stats->FailureStatus.levelOneChargeCurrentTooHigh;
+                        _stats->Warning.highCurrentDischarge = _stats->FailureStatus.levelOneDischargeCurrentTooHigh;
+                        _stats->Warning.cellImbalance = _stats->FailureStatus.levelOneCellVoltageDifferenceTooHigh;
+
+                        _stats->Alarm.underVoltage = _stats->FailureStatus.levelTwoCellVoltageTooLow ||
+                                                    _stats->FailureStatus.levelTwoPackVoltageTooLow;
+                        _stats->Alarm.overVoltage = _stats->FailureStatus.levelTwoCellVoltageTooHigh ||
+                                                    _stats->FailureStatus.levelTwoPackVoltageTooHigh;
+                        _stats->Alarm.underTemperature = _stats->FailureStatus.levelTwoChargeTempTooLow ||
+                                                        _stats->FailureStatus.levelTwoDischargeTempTooLow;
+                        _stats->Alarm.overTemperature =  _stats->FailureStatus.levelTwoChargeTempTooHigh ||
+                                                        _stats->FailureStatus.levelTwoDischargeTempTooHigh ||
+                                                        _stats->FailureStatus.chargeFETTemperatureTooHigh ||
+                                                        _stats->FailureStatus.dischargeFETTemperatureTooHigh;
+                        _stats->Alarm.overCurrentCharge = _stats->FailureStatus.levelTwoChargeCurrentTooHigh;
+                        _stats->Alarm.overCurrentDischarge = _stats->FailureStatus.levelTwoDischargeCurrentTooHigh;
+                        _stats->Alarm.bmsInternal = _stats->FailureStatus.failureOfChargeFETTemperatureSensor ||
+                                                    _stats->FailureStatus.failureOfDischargeFETTemperatureSensor ||
+                                                    _stats->FailureStatus.failureOfMainVoltageSensorModule ||
+                                                    _stats->FailureStatus.failureOfChargeFETBreaker ||
+                                                    _stats->FailureStatus.failureOfDischargeFETBreaker ||
+                                                    _stats->FailureStatus.failureOfEEPROMStorageModule ||
+                                                    _stats->FailureStatus.failureOfPrechargeModule ||
+                                                    _stats->FailureStatus.failureOfRealtimeClockModule ||
+                                                    _stats->FailureStatus.failureOfShortCircuitProtection ||
+                                                    _stats->FailureStatus.failureOfTemperatureSensorModule ||
+                                                    _stats->FailureStatus.failureOfVoltageSensorModule;
+                        _stats->Alarm.cellImbalance = _stats->FailureStatus.levelTwoCellVoltageDifferenceTooHigh;
+                        break;
+                    case Command::WRITE_DISCHRG_FET:
+                        break;
+                    case Command::WRITE_CHRG_FET:
+                        break;
+                    case Command::WRITE_BMS_RESET:
+                        break;
+                    default:
+                        break;
+                }
+                _stats->setLastUpdate(millis());
+            } else {
+                MessageOutput.printf("%s Checksum-Error on Packet %x\r\n", TAG, it[4]);
+            }
+            std::advance(it, DALY_FRAME_SIZE);
+        } else {
+            std::advance(it, 1);
+            if (it[1] >= 0x20) {
+                MessageOutput.printf("%s BMS SLEEPING\r\n", TAG);
+            }
         }
     }
-    return true;
 }
 
-void Controller::rxData(uint8_t inbyte)
+void DalyBmsController::reset()
 {
+    _rxBuffer.clear();
+    return;
 }
 
-void Controller::reset()
-{
-    _buffer.clear();
-    return setReadState(ReadState::Idle);
-}
-
-void Controller::frameComplete()
-{
-}
-
-void Controller::clearGet(void)
+void DalyBmsController::clearGet(void)
 {
 
     // data from 0x90
@@ -413,7 +619,7 @@ void Controller::clearGet(void)
     // get.tempAverage = 0; // Avergae Temperature
 
     // data from 0x93
-    get.chargeDischargeStatus = "offline"; // charge/discharge status (0 stationary ,1 charge ,2 discharge)
+    strcpy(_stats->_status, "offline"); // charge/discharge status (0 stationary ,1 charge ,2 discharge)
 
     // get.chargeFetState = false;    // charging MOS tube status
     // get.disChargeFetState = false; // discharge MOS tube state
@@ -439,6 +645,4 @@ void Controller::clearGet(void)
     // get.cellBalanceActive = false;                                     // bool is cell balance active
 }
 
-} /* namespace DalyBms */
-
-#endif
+//#endif

@@ -3,7 +3,6 @@
 #include "DalyBmsController.h"
 #include "JkBmsController.h"
 #include "MessageOutput.h"
-#include "MqttSettings.h"
 #include "PylontechCanReceiver.h"
 #include "PylontechRS485Receiver.h"
 #include "VictronSmartShunt.h"
@@ -50,10 +49,12 @@ void BatteryClass::updateSettings()
     if (!cBattery.Enabled) { return; }
 
     switch (cBattery.Provider) {
+#ifdef USE_PYLONTECH_RS485_RECEIVER
     case 0: // Initialize Pylontech Battery / RS485 bus
         _upProvider = std::make_unique<PylontechRS485Receiver>();
         if (!_upProvider->init()) { _upProvider = nullptr; }
         break;
+#endif
 #ifdef USE_PYLONTECH_CAN_RECEIVER
     case 1: // Initialize Pylontech Battery / CAN0 bus
     case 2: // Initialize Pylontech Battery / MCP2515 bus
@@ -75,7 +76,7 @@ void BatteryClass::updateSettings()
 #endif
 #ifdef USE_DALYBMS_CONTROLLER
     case 5:
-        _upProvider = std::make_unique<DalyBMS::Controller>();
+        _upProvider = std::make_unique<DalyBmsController>();
         if (!_upProvider->init()) { _upProvider = nullptr; }
         break;
 #endif
@@ -95,17 +96,9 @@ void BatteryClass::loop()
 {
     std::lock_guard<std::mutex> lock(_mutex);
 
-    if (!_upProvider) {
-        return;
-    }
+    if (!_upProvider) { return; }
 
     _upProvider->loop();
 
-    if (!MqttSettings.getConnected() || !_lastMqttPublish.occured()) {
-        return;
-    }
-
-    _upProvider->getStats()->mqttPublish();
-
-    _lastMqttPublish.set(Configuration.get().Mqtt.PublishInterval * 1000);
+    _upProvider->getStats()->mqttLoop();
 }

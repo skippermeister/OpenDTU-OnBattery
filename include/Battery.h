@@ -2,7 +2,6 @@
 #pragma once
 
 #include <AsyncJson.h>
-#include <TimeoutHelper.h>
 #include <stdint.h>
 #include <memory>
 #include <mutex>
@@ -34,8 +33,7 @@ private:
 
     Task _loopTask;
 
-    TimeoutHelper _lastMqttPublish;
-    mutable std::mutex _mutex;
+     mutable std::mutex _mutex;
     std::unique_ptr<BatteryProvider> _upProvider = nullptr;
 };
 

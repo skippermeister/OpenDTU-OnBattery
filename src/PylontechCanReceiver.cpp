@@ -174,7 +174,7 @@ void PylontechCanReceiver::loop()
             _stats->_alarmOverCurrentCharge = this->getBit(alarmBits, 0);
 
             if (_verboseLogging) {
-                MessageOutput.printf("%s Alarms: %d %d %d %d %d %d %d\r\n", TAG, 
+                MessageOutput.printf("%s Alarms: %d %d %d %d %d %d %d\r\n", TAG,
                         _stats->_alarmOverCurrentDischarge,
                         _stats->_alarmUnderTemperature,
                         _stats->_alarmOverTemperature,
@@ -196,7 +196,7 @@ void PylontechCanReceiver::loop()
             _stats->_warningHighCurrentCharge = this->getBit(warningBits, 0);
 
             if (_verboseLogging) {
-                MessageOutput.printf("%s Warnings: %d %d %d %d %d %d %d\r\n", TAG, 
+                MessageOutput.printf("%s Warnings: %d %d %d %d %d %d %d\r\n", TAG,
                         _stats->_warningHighCurrentDischarge,
                         _stats->_warningLowTemperature,
                         _stats->_warningHighTemperature,

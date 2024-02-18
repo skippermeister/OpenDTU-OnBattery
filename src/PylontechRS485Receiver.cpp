@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
+#ifdef USE_PYLONTECH_RS485_RECEIVER
+
 // #define PYLONTECH_RS485_DEBUG_ENABLED
 
 #include "PylontechRS485Receiver.h"
@@ -204,13 +206,13 @@ void PylontechRS485Receiver::get_firmware_info(uint8_t devid)
 
     uint32_t version = ToUint16(info);
     info+=2;
-    _stats->manufacturerVersion = String((version >> 8) & 0x0F) + '.' + String(version & 0x0F);
+    _stats->_manufacturerVersion = String((version >> 8) & 0x0F) + '.' + String(version & 0x0F);
     version = ToUint24(info);
-    _stats->mainLineVersion = String((version >> 16) & 0x0F) + '.' + String((version >> 8) & 0x0F) + '.' + String(version & 0x0F);
+    _stats->_mainLineVersion = String((version >> 16) & 0x0F) + '.' + String((version >> 8) & 0x0F) + '.' + String(version & 0x0F);
 
     if (Battery._verboseLogging) {
-        MessageOutput.printf("%s Manufacturer Version: '%s'\r\n", TAG, _stats->manufacturerVersion.c_str());
-        MessageOutput.printf("%s Main Line Version: '%s'\r\n", TAG, _stats->mainLineVersion.c_str());
+        MessageOutput.printf("%s Manufacturer Version: '%s'\r\n", TAG, _stats->_manufacturerVersion.c_str());
+        MessageOutput.printf("%s Main Line Version: '%s'\r\n", TAG, _stats->_mainLineVersion.c_str());
     }
 }
 
@@ -872,3 +874,5 @@ format_t* PylontechRS485Receiver::read_frame(void)
     format_t* parsed = _decode_frame(frame);
     return parsed;
 }
+
+#endif

@@ -22,7 +22,7 @@
 #include "MqttHandleHass.h"
 #include "MqttHandleInverter.h"
 #include "MqttHandleInverterTotal.h"
-#include "MqttHandlePylontechHass.h"
+#include "MqttHandleBatteryHass.h"
 #include "MqttHandleREFUsol.h"
 #include "MqttHandleVedirect.h"
 #include "MqttHandleVedirectHass.h"
@@ -119,7 +119,7 @@ void setup()
 #ifdef USE_HASS
     MqttHandleHass.init(scheduler);
     MqttHandleVedirectHass.init(scheduler);
-    MqttHandlePylontechHass.init(scheduler);
+    MqttHandleBatteryHass.init(scheduler);
 #endif
 
 #ifdef CHARGER_HUAWEI

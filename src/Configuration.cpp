@@ -226,10 +226,6 @@ bool ConfigurationClass::write()
     battery["jkbms_interface"] = config.Battery.JkBms.Interface;
     battery["jkbms_polling_interval"] = config.Battery.JkBms.PollingInterval;
 #endif
-#ifdef USE_DALYBMS_CONTROLLER
-    battery["dalybms_polling_interval"] = config.Battery.DalyBms.PollingInterval;
-#else
-#endif
     battery["min_charge_temp"] = config.Battery.MinChargeTemperature;
     battery["max_charge_temp"] = config.Battery.MaxChargeTemperature;
     battery["min_discharge_temp"] = config.Battery.MinDischargeTemperature;

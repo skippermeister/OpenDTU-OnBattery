@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #pragma once
 
+#ifdef USE_PYLONTECH_RS485_RECEIVER
+
 #include "Battery.h"
 #include "Configuration.h"
 #include <Arduino.h>
@@ -178,3 +180,5 @@ private:
 
     std::shared_ptr<PylontechRS485BatteryStats> _stats = std::make_shared<PylontechRS485BatteryStats>();
 };
+
+#endif
