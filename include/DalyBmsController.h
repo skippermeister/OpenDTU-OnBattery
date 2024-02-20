@@ -103,7 +103,7 @@ class DalyBmsController : public BatteryProvider {
         TimeoutHelper _lastStatusPrinted;
         bool _receiving = false;
         bool _triggerNext = false;
-        uint32_t _lastTransmission = 0;
+        uint32_t _lastResponse = 0;
         uint32_t _lastParameterReceived = 0;
         uint32_t _lastRequest = 0;
         bool _readParameter = true;
@@ -157,6 +157,8 @@ class DalyBmsController : public BatteryProvider {
             return rc.i;
         }
         float to_Volt(uint8_t* c) { return static_cast<float>(ToUint16(c)) / 1000.0; }
+
+        bool _wasActive;
 
         std::shared_ptr<DalyBmsBatteryStats> _stats = std::make_shared<DalyBmsBatteryStats>();
 };

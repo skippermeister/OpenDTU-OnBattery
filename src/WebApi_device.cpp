@@ -170,7 +170,7 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
 #endif
 
     auto batteryPinObj = curPin.createNestedObject("battery");
-#ifdef PYLONTECH_RS485
+#if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER)
     batteryPinObj["rs485_rx"] = pin.battery_rx;
     batteryPinObj["rs485_tx"] = pin.battery_tx;
     batteryPinObj["rs485_rts"] = pin.battery_rts;
@@ -303,15 +303,13 @@ void WebApiDeviceClass::onDeviceAdminPost(AsyncWebServerRequest* request)
 #endif
 
 #ifdef USE_DISPLAY_GRAPHIC
+    Display.setDiagramMode(static_cast<DiagramMode_t>(config.Display.Diagram.Mode));
     Display.setOrientation(config.Display.Rotation);
     Display.enablePowerSafe = config.Display.PowerSafe;
     Display.enableScreensaver = config.Display.ScreenSaver;
     Display.setContrast(config.Display.Contrast);
     Display.setLanguage(config.Display.Language);
-#ifdef USE_DISPLAY_GRAPHIC_DIAGRAM
-    Display.setDiagramMode(static_cast<DiagramMode_t>(config.Display.Diagram.Mode));
-    Display.Diagram().updatePeriod(); // FIXME
-#endif
+    Display.Diagram().updatePeriod();
 #endif
 
     WebApi.writeConfig(retMsg);

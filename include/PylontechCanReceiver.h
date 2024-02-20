@@ -10,12 +10,12 @@
 #include <espMqttClient.h>
 #include <memory>
 
-#ifndef PYLONTECH_PIN_RX
-#define PYLONTECH_PIN_RX 27
+#ifndef CAN0_PIN_RX
+#define CAN0_PIN_RX 27
 #endif
 
-#ifndef PYLONTECH_PIN_TX
-#define PYLONTECH_PIN_TX 26
+#ifndef CAN0_PIN_TX
+#define CAN0_PIN_TX 26
 #endif
 
 class PylontechCanReceiver : public BatteryProvider {

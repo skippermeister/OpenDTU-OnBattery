@@ -65,7 +65,7 @@ typedef union {
 #pragma pack(pop)
 
 class PylontechRS485Receiver : public BatteryProvider {
-    enum CommandInformation : uint8_t
+    enum Command : uint8_t
     {
         None = 0,
         GetAnalogValue = 0x42,

@@ -76,24 +76,24 @@ void DisplayGraphicClass::init(Scheduler& scheduler)
         _display->begin();
         setContrast(DISPLAY_CONTRAST);
         setStatus(true);
-#ifdef USE_DISPLAY_GRAPHIC_DIAGRAM
         _diagram.init(scheduler, _display);
-#endif
+
         scheduler.addTask(_loopTask);
         _loopTask.setInterval(_period);
         _loopTask.enable();
 
     } else {
         MessageOutput.println("none configured. ");
+        return;
     }
 
     const Display_CONFIG_T& cDisplay = Configuration.get().Display;
+    setDiagramMode(static_cast<DiagramMode_t>(cDisplay.Diagram.Mode));
     setOrientation(cDisplay.Rotation);
     enablePowerSafe = cDisplay.PowerSafe;
     enableScreensaver = cDisplay.ScreenSaver;
     setContrast(cDisplay.Contrast);
     setLanguage(cDisplay.Language);
-    setDiagramMode(static_cast<DiagramMode_t>(cDisplay.Diagram.Mode));
     setStartupDisplay();
 
     MessageOutput.println("done");
@@ -101,11 +101,19 @@ void DisplayGraphicClass::init(Scheduler& scheduler)
 
 void DisplayGraphicClass::calcLineHeights()
 {
-    uint8_t yOff = 0;
+    bool diagram = (_isLarge && _diagram_mode == DiagramMode_t::Small);
+    // the diagram needs space. we need to keep
+    // away from the y-axis label in particular.
+    uint8_t yOff = (diagram?7:0);
     for (uint8_t i = 0; i < 4; i++) {
         setFont(i);
-        yOff += (_display->getMaxCharHeight());
+        yOff += _display->getAscent();
         _lineOffsets[i] = yOff;
+        yOff += ((!_isLarge || diagram)?2:3);
+        // the descent is a negative value and moves the *next* line's
+        // baseline. the first line never uses a letter with descent and
+        // we need that space when showing the small diagram.
+        yOff -= ((i == 0 && diagram)?0:_display->getDescent());
     }
 }
 
@@ -140,7 +148,6 @@ void DisplayGraphicClass::printText(const char* text, const uint8_t line)
     if (!_isLarge) {
         dispX = (line == 0) ? 5 : 0;
     } else {
-#ifdef USE_DISPLAY_GRAPHIC_DIAGRAM
         switch (line) {
         case 0:
             if (_diagram_mode == DiagramMode_t::Small) {
@@ -159,9 +166,6 @@ void DisplayGraphicClass::printText(const char* text, const uint8_t line)
             dispX = 5;
             break;
         }
-#else
-        dispX = (line == 0) ? 20 : 5;
-#endif
     }
 
     dispX += enableScreensaver ? (_mExtra % 7) : 0;
@@ -216,12 +220,10 @@ void DisplayGraphicClass::setStartupDisplay()
     _display->sendBuffer();
 }
 
-#ifdef USE_DISPLAY_GRAPHIC_DIAGRAM
 DisplayGraphicDiagramClass& DisplayGraphicClass::Diagram()
 {
     return _diagram;
 }
-#endif
 
 void DisplayGraphicClass::loop()
 {
@@ -234,7 +236,6 @@ void DisplayGraphicClass::loop()
     //=====> Actual Production ==========
     if (Datastore.getIsAtLeastOneReachable()) {
         displayPowerSave = false;
-#ifdef USE_DISPLAY_GRAPHIC_DIAGRAM
         if (_isLarge) {
             uint8_t screenSaverOffsetX = enableScreensaver ? (_mExtra % 7) : 0;
             switch (_diagram_mode) {
@@ -252,7 +253,7 @@ void DisplayGraphicClass::loop()
                 break;
             }
         }
-#endif
+
         if (showText) {
             // if power meter is enabled, show the power meter value every 5 seconds for 5 seconds
             if(Configuration.get().PowerMeter.Enabled && (millis() / 1000) % 10 >= 5)

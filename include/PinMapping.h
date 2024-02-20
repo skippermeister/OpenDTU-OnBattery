@@ -67,7 +67,7 @@ struct PinMapping_t {
 
     int8_t battery_rx;
     int8_t battery_tx;
-#ifdef PYLONTECH_RS485
+#if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER)
     //    int8_t battery_cts;
     int8_t battery_rts;
 #endif
@@ -80,8 +80,6 @@ struct PinMapping_t {
 
 #ifdef CHARGER_HUAWEI
     int8_t huawei_power;
-#else
-//    int8_t meanwell_power;
 #endif
     int8_t can0_rx;
     int8_t can0_tx;

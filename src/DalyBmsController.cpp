@@ -95,23 +95,24 @@ void DalyBmsController::loop()
     uint8_t pollInterval = cBattery.PollInterval;
 
     const uint32_t now = millis();
-    if (_receiving && (now - _lastTransmission >= 200)) {
-        // last transmission too long ago. Reset RX index.
-        MessageOutput.printf("%s Last transmission too long ago. Reset RX index.\r\n", TAG);
+    if (_receiving && (now - _lastResponse >= 180)) {
+        // last response too long ago. Reset RX index.
+        MessageOutput.printf("%s Last response too long ago. Reset RX index.\r\n", TAG);
         _rxBuffer.clear();
         _receiving = false;
     }
-    if ((now - _lastTransmission >= 250) && !_triggerNext) {
-        // last transmittion longer than 0.25s ago -> trigger next request
-        _lastTransmission = now;
+    if ((now - _lastResponse >= 200) && !_triggerNext) {
+        // last response longer than 0.2s ago -> trigger next request
+        _lastResponse = now;
         _triggerNext = true;
     }
-    if (now - _lastParameterReceived > 30000) { _lastParameterReceived = millis(); _readParameter = true; _nextRequest=0; } // every 30 seconds read parameters
+    if (now - _lastParameterReceived > 30000) { _lastParameterReceived = now; _readParameter = true; _nextRequest=0; } // every 30 seconds read parameters
+
+    _wasActive = false;
 
     if (HwSerial.available()) {
-        _lastTransmission = now;
+        _lastResponse = now;
     }
-
 
     while (HwSerial.available()) {
         rxData(HwSerial.read());
@@ -119,18 +120,25 @@ void DalyBmsController::loop()
 
     sendRequest(pollInterval);
 
+    if (_wasActive) MessageOutput.printf ("%s round trip time %lu ms\r\n", TAG, millis()-now);
+
     if (millis() - _lastRequest > 2 * pollInterval * 1000 + 250) {
         reset();
         return announceStatus(Status::Timeout);
     }
-
 }
 
 void DalyBmsController::sendRequest(uint8_t pollInterval)
 {
 
-    if ((millis() - _lastRequest) < pollInterval * 100) { // 2*100 bis 10*100 ms
-        return announceStatus(Status::WaitingForPollInterval);
+    if (_nextRequest == 0) {
+        if ((millis() - _lastRequest) < pollInterval * 1000) {
+            return announceStatus(Status::WaitingForPollInterval);
+        }
+    } else {
+        if ((millis() - _lastRequest) < 100) { // 100 ms
+            return;
+        }
     }
 
     if (_readParameter) {
@@ -138,72 +146,57 @@ void DalyBmsController::sendRequest(uint8_t pollInterval)
             _triggerNext = false;
             switch (_nextRequest) {
                 case 0:
+                    MessageOutput.printf("%s request parameters\r\n", TAG);
                     requestData(Command::REQUEST_RATED_CAPACITY_CELL_VOLTAGE);
-                    _nextRequest++;
                     break;
                 case 1:
                     requestData(Command::REQUEST_ACQUISITION_BOARD_INFO);
-                    _nextRequest++;
                     break;
                 case 2:
                     requestData(Command::REQUEST_CUMULATIVE_CAPACITY);
-                    _nextRequest++;
                     break;
                 case 3:
                     requestData(Command::REQUEST_BATTERY_TYPE_INFO);
-                    _nextRequest++;
                     break;
                 case 4:
                     requestData(Command::REQUEST_FIRMWARE_INDEX);
-                    _nextRequest++;
                     break;
                 case 5:
                     requestData(Command::REQUEST_IP);
-                    _nextRequest++;
                     break;
                 case 6:
                     requestData(Command::REQUEST_BATTERY_CODE);
-                    _nextRequest++;
                     break;
                 case 7:
                     requestData(Command::REQUEST_MIN_MAX_CELL_VOLTAGE);
-                    _nextRequest++;
                     break;
                 case 8:
                     requestData(Command::REQUEST_MIN_MAX_PACK_VOLTAGE);
-                    _nextRequest++;
                     break;
                 case 9:
                     requestData(Command::REQUEST_MAX_PACK_DISCHARGE_CHARGE_CURRENT);
-                    _nextRequest++;
                     break;
                 case 10:
                     requestData(Command::REQUEST_MIN_MAX_SOC_LIMIT);
-                    _nextRequest++;
                     break;
                 case 11:
                     requestData(Command::REQUEST_VOLTAGE_TEMPERATURE_DIFFERENCE);
-                    _nextRequest++;
                     break;
                 case 12:
                     requestData(Command::REQUEST_BALANCE_START_DIFF_VOLTAGE);
-                    _nextRequest++;
                     break;
                 case 13:
                     requestData(Command::REQUEST_SHORT_CURRENT_RESISTANCE);
-                    _nextRequest++;
                     break;
                 case 14:
                     requestData(Command::REQUEST_RTC);
-                    _nextRequest++;
                     break;
                 case 15:
                     requestData(Command::REQUEST_BMS_SW_VERSION);
-                    _nextRequest++;
                     break;
                 case 16:
-                default:
                     requestData(Command::REQUEST_BMS_HW_VERSION);
+                    MessageOutput.printf("%s request parameters done\r\n", TAG);
                     _nextRequest = 0;
                     _readParameter = false;
             }
@@ -215,45 +208,34 @@ void DalyBmsController::sendRequest(uint8_t pollInterval)
         _triggerNext = false;
         switch (_nextRequest) {
             case 0:
+                MessageOutput.printf("%s request data\r\n", TAG);
                 requestData(Command::REQUEST_BATTERY_LEVEL);
-                _nextRequest++;
                 break;
             case 1:
                 requestData(Command::REQUEST_MIN_MAX_VOLTAGE);
-                _nextRequest++;
                 break;
             case 2:
                 requestData(Command::REQUEST_MIN_MAX_TEMPERATURE);
-                _nextRequest++;
                 break;
             case 3:
                 requestData(Command::REQUEST_MOS);
-                _nextRequest++;
                 break;
             case 4:
                 requestData(Command::REQUEST_STATUS);
-                _nextRequest++;
                 break;
             case 5:
                 requestData(Command::REQUEST_CELL_VOLTAGE);
-                _nextRequest++;
                 break;
             case 6:
                 requestData(Command::REQUEST_TEMPERATURE);
-                _nextRequest++;
                 break;
             case 7:
                 requestData(Command::REQUEST_CELL_BALANCE_STATES);
-                _nextRequest++;
                 break;
             case 8:
                 requestData(Command::REQUEST_FAILURE_CODES);
+                MessageOutput.printf("%s request data done\r\n", TAG);
                 _nextRequest=0;
-                break;
-            case 9:
-            default:
-                _nextRequest=0;
-                break;
         }
     }
 }
@@ -278,11 +260,15 @@ bool DalyBmsController::requestData(uint8_t data_id) // new function to request 
     request_message[12] = (uint8_t) (request_message[0] + request_message[1] + request_message[2] +
                                    request_message[3]);  // Checksum (Lower byte of the other bytes sum)
 
-    MessageOutput.printf("%s %d Request datapacket Nr %x\r\n", TAG, _nextRequest, data_id);
+    if (Battery._verboseLogging) MessageOutput.printf("%s %d Request datapacket Nr %x\r\n", TAG, _nextRequest, data_id);
 
     HwSerial.write(request_message, sizeof(request_message));
 
+    _nextRequest++;
+
     _lastRequest = millis();
+
+    _wasActive = true;
 
     return true;
 }
@@ -325,12 +311,13 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer) {
             }
 
             if (checksum == it[12]) {
-                MessageOutput.printf("%s Receive datapacket Nr %02X\r\n", TAG, it[2]);
+                _wasActive = true;
+                if (Battery._verboseLogging) MessageOutput.printf("%s Receive datapacket Nr %02X\r\n", TAG, it[2]);
                 switch (it[2]) {
                     case Command::REQUEST_RATED_CAPACITY_CELL_VOLTAGE:
-                        _stats->_ratedCapacity = (float)ToUint32(&it[4]) / 1000; // in Ah
+                        _stats->ratedCapacity = (float)ToUint32(&it[4]) / 1000; // in Ah
                         _stats->_ratedCellVoltage = to_Volt(&it[10]); // in V
-                        MessageOutput.printf("%s rated capacity: %fV,  rated cell voltage: %fV\r\n", TAG, _stats->_ratedCapacity, _stats->_ratedCellVoltage);
+                        if (Battery._verboseLogging) MessageOutput.printf("%s rated capacity: %fV,  rated cell voltage: %fV\r\n", TAG, _stats->ratedCapacity, _stats->_ratedCellVoltage);
                         break;
 
                     case Command::REQUEST_ACQUISITION_BOARD_INFO:
@@ -344,7 +331,7 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer) {
                     case Command::REQUEST_CUMULATIVE_CAPACITY:
                         _stats->_cumulativeChargeCapacity = ToUint32(&it[4]); // in Ah
                         _stats->_cumulativeDischargeCapacity = ToUint32(&it[8]); // in Ah
-                        MessageOutput.printf("%s cumulative charge capacity: %uAh,  cumulative discharge capacity: %uAh\r\n", TAG, _stats->_cumulativeChargeCapacity, _stats->_cumulativeDischargeCapacity);
+                        if (Battery._verboseLogging) MessageOutput.printf("%s cumulative charge capacity: %uAh,  cumulative discharge capacity: %uAh\r\n", TAG, _stats->_cumulativeChargeCapacity, _stats->_cumulativeDischargeCapacity);
                         break;
 
                     case Command::REQUEST_BATTERY_TYPE_INFO:
@@ -361,7 +348,7 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer) {
                                 _stats->_batteryCode[((it[4]-1)*7)+i] = c < 32?0:c;
                             }
                             _stats->_batteryCode[it[4]*7] = 0;
-                            MessageOutput.printf("%s %d battery code: %s\r\n", TAG, it[4], _stats->_batteryCode);
+                            if (Battery._verboseLogging) MessageOutput.printf("%s %d battery code: %s\r\n", TAG, it[4], _stats->_batteryCode);
                         }
                         break;
 
@@ -375,10 +362,12 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer) {
                         _stats->WarningValues.maxCellVoltage = to_Volt(&it[6]); // in V
                         _stats->AlarmValues.minCellVoltage = to_Volt(&it[8]); // in V
                         _stats->WarningValues.minCellVoltage = to_Volt(&it[10]); // in V
-                        MessageOutput.printf("%s Alarm max cell voltage: %fV, min cell voltage: %fV\r\n", TAG,
-                            _stats->AlarmValues.maxCellVoltage, _stats->AlarmValues.minCellVoltage);
-                        MessageOutput.printf("%s Warning max cell voltage: %fV, min cell voltage: %fV\r\n", TAG,
-                            _stats->WarningValues.maxCellVoltage, _stats->WarningValues.minCellVoltage);
+                        if (Battery._verboseLogging) {
+                            MessageOutput.printf("%s Alarm max cell voltage: %fV, min cell voltage: %fV\r\n", TAG,
+                                _stats->AlarmValues.maxCellVoltage, _stats->AlarmValues.minCellVoltage);
+                            MessageOutput.printf("%s Warning max cell voltage: %fV, min cell voltage: %fV\r\n", TAG,
+                               _stats->WarningValues.maxCellVoltage, _stats->WarningValues.minCellVoltage);
+                        }
                         break;
 
                     case Command::REQUEST_MIN_MAX_PACK_VOLTAGE:
@@ -386,10 +375,12 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer) {
                         _stats->WarningValues.maxPackVoltage = (float)ToUint16(&it[6]) / 10; // in V
                         _stats->AlarmValues.minPackVoltage = (float)ToUint16(&it[8]) / 10.0; // in V
                         _stats->WarningValues.minPackVoltage = (float)ToUint16(&it[10]) / 10.0; // in V
-                        MessageOutput.printf("%s Alarm max pack voltage: %fV, min pack voltage: %fV\r\n", TAG,
-                            _stats->AlarmValues.maxPackVoltage, _stats->AlarmValues.minPackVoltage);
-                        MessageOutput.printf("%s Warning max pack voltage: %fV, min pack voltage: %fV\r\n", TAG,
-                            _stats->WarningValues.maxPackVoltage, _stats->WarningValues.minPackVoltage);
+                        if (Battery._verboseLogging) {
+                            MessageOutput.printf("%s Alarm max pack voltage: %fV, min pack voltage: %fV\r\n", TAG,
+                                _stats->AlarmValues.maxPackVoltage, _stats->AlarmValues.minPackVoltage);
+                            MessageOutput.printf("%s Warning max pack voltage: %fV, min pack voltage: %fV\r\n", TAG,
+                                _stats->WarningValues.maxPackVoltage, _stats->WarningValues.minPackVoltage);
+                        }
                         break;
 
                     case Command::REQUEST_MAX_PACK_DISCHARGE_CHARGE_CURRENT:
@@ -397,10 +388,12 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer) {
                         _stats->WarningValues.maxPackChargeCurrent = (DALY_CURRENT_OFFSET - (float)ToUint16(&it[6])) / 10.0; // in A
                         _stats->AlarmValues.maxPackDischargeCurrent = (float)(DALY_CURRENT_OFFSET - ToUint16(&it[8])) / 10.0; // in A
                         _stats->WarningValues.maxPackDischargeCurrent = (float)(DALY_CURRENT_OFFSET - ToUint16(&it[10])) / 10.0; // in A
-                        MessageOutput.printf("%s Alarm max pack charge current: %fA, max pack discharge current: %fA\r\n", TAG,
-                            _stats->AlarmValues.maxPackChargeCurrent, _stats->AlarmValues.maxPackDischargeCurrent);
-                        MessageOutput.printf("%s Warning max pack charge current: %fA, max pack discharge current: %fA\r\n", TAG,
-                            _stats->WarningValues.maxPackChargeCurrent, _stats->WarningValues.maxPackDischargeCurrent);
+                        if (Battery._verboseLogging)  {
+                            MessageOutput.printf("%s Alarm max pack charge current: %fA, max pack discharge current: %fA\r\n", TAG,
+                                _stats->AlarmValues.maxPackChargeCurrent, _stats->AlarmValues.maxPackDischargeCurrent);
+                            MessageOutput.printf("%s Warning max pack charge current: %fA, max pack discharge current: %fA\r\n", TAG,
+                                _stats->WarningValues.maxPackChargeCurrent, _stats->WarningValues.maxPackDischargeCurrent);
+                        }
                         break;
 
                     case Command::REQUEST_MIN_MAX_SOC_LIMIT:
@@ -408,8 +401,10 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer) {
                         _stats->AlarmValues.maxSoc = (float)ToUint16(&it[6]) / 10.0; // in %
                         _stats->WarningValues.minSoc = (float)ToUint16(&it[8]) / 10.0; // in %
                         _stats->AlarmValues.minSoc = (float)ToUint16(&it[10]) / 10.0; // in %
-                        MessageOutput.printf("%s Alarm max SoC: %f%%, min SoC: %f%%\r\n", TAG, _stats->AlarmValues.maxSoc, _stats->AlarmValues.minSoc);
-                        MessageOutput.printf("%s Warning max SoC: %f%%, min SoC: %f%%\r\n", TAG, _stats->WarningValues.maxSoc, _stats->WarningValues.minSoc);
+                        if (Battery._verboseLogging) {
+                            MessageOutput.printf("%s Alarm max SoC: %f%%, min SoC: %f%%\r\n", TAG, _stats->AlarmValues.maxSoc, _stats->AlarmValues.minSoc);
+                            MessageOutput.printf("%s Warning max SoC: %f%%, min SoC: %f%%\r\n", TAG, _stats->WarningValues.maxSoc, _stats->WarningValues.minSoc);
+                        }
                         break;
 
                     case Command::REQUEST_VOLTAGE_TEMPERATURE_DIFFERENCE:
@@ -429,7 +424,7 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer) {
                             for (uint8_t i=0; i<7; i++) _stats->_bmsSWversion[((it[4]-1)*7)+i] = (it[5+i]);
                             _stats->_bmsSWversion[it[4]*7] = 0;
                         }
-                        MessageOutput.printf("%s %d bms SW version: %s\r\n", TAG, it[4], _stats->_bmsSWversion);
+                        if (Battery._verboseLogging) MessageOutput.printf("%s %d bms SW version: %s\r\n", TAG, it[4], _stats->_bmsSWversion);
                         break;
 
                     case Command::REQUEST_BMS_HW_VERSION:
@@ -437,24 +432,29 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer) {
                             for (uint8_t i=0; i<7; i++) _stats->_bmsHWversion[((it[4]-1)*7)+i] = (it[5+i]);
                             _stats->_bmsHWversion[it[4]*7] = 0;
                         }
-                        MessageOutput.printf("%s %d bms HW version: %s\r\n", TAG, it[4], _stats->_bmsHWversion);
+                        if (Battery._verboseLogging) MessageOutput.printf("%s %d bms HW version: %s\r\n", TAG, it[4], _stats->_bmsHWversion);
                         _stats->_manufacturer = _stats->_bmsHWversion;
                         break;
 
                     case Command::REQUEST_BATTERY_LEVEL:
-                        _stats->_voltage = (float) ToUint16(&it[4]) / 10.0;
-                        _stats->_current = (float) (ToUint16(&it[8]) - DALY_CURRENT_OFFSET) / 10.0;
-                        _stats->_batteryLevel = (float) ToUint16(&it[10]) / 10.0;
-                        _stats->setSoC(static_cast<uint8_t>((100.0 * _stats->_remainingCapacity / _stats->_ratedCapacity) + 0.5));
-                        MessageOutput.printf("%s voltage: %fV, current: %fA\r\n", TAG, _stats->_voltage, _stats->_current);
-                        MessageOutput.printf("%s battery level: %f%%\r\n", TAG, _stats->_batteryLevel);
+                        _stats->voltage = (float) ToUint16(&it[4]) / 10.0;
+                        _stats->current = (float) (ToUint16(&it[8]) - DALY_CURRENT_OFFSET) / 10.0;
+                        _stats->power = _stats->current * _stats->voltage / 1000.0;
+                        _stats->batteryLevel = (float) ToUint16(&it[10]) / 10.0;
+                        _stats->setSoC(static_cast<uint8_t>((100.0 * _stats->remainingCapacity / _stats->ratedCapacity) + 0.5));
+                        _stats->chargeImmediately = _stats->batteryLevel < _stats->AlarmValues.minSoc;
+                        if (Battery._verboseLogging)  {
+                            MessageOutput.printf("%s voltage: %fV, current: %fA\r\n", TAG, _stats->voltage, _stats->current);
+                            MessageOutput.printf("%s battery level: %f%%\r\n", TAG, _stats->batteryLevel);
+                        }
                         break;
 
                     case Command::REQUEST_MIN_MAX_VOLTAGE:
-                        _stats->_maxCellVoltage = to_Volt(&it[4]);
+                        _stats->maxCellVoltage = to_Volt(&it[4]);
                         _stats->_maxCellVoltageNumber = it[6];
-                        _stats->_minCellVoltage = to_Volt(&it[7]);
+                        _stats->minCellVoltage = to_Volt(&it[7]);
                         _stats->_minCellVoltageNumber = it[9];
+                        _stats->cellDiffVoltage = (_stats->maxCellVoltage - _stats->minCellVoltage) * 1000.0;
                         break;
 
                     case Command::REQUEST_MIN_MAX_TEMPERATURE:
@@ -462,6 +462,7 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer) {
                         _stats->_maxTemperatureProbeNumber = it[5];
                         _stats->_minTemperature = (it[6] - DALY_TEMPERATURE_OFFSET);
                         _stats->_minTemperatureProbeNumber = it[7];
+                        _stats->averageBMSTemperature = (_stats->_maxTemperature + _stats->_minTemperature) / 2;
                         break;
                     case Command::REQUEST_MOS:
                           switch (it[4]) {
@@ -477,12 +478,14 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer) {
                             default:
                                 break;
                         }
-                        _stats->_chargingMosEnabled  = it[5];
-                        _stats->_dischargingMosEnabled = it[6];
+                        _stats->chargingMosEnabled  = it[5];
+                        _stats->dischargingMosEnabled = it[6];
                         _stats->_bmsCycles = it[7];
-                        _stats->_remainingCapacity = (float) ToUint32(&it[8]) / 1000;
-                        MessageOutput.printf("%s status: %s, bms cycles: %d\r\n", TAG, _stats->_status, _stats->_bmsCycles);
-                        MessageOutput.printf("%s remaining capacity: %fAh\r\n", TAG, _stats->_remainingCapacity);
+                        _stats->remainingCapacity = (float) ToUint32(&it[8]) / 1000;
+                        if (Battery._verboseLogging)  {
+                            MessageOutput.printf("%s status: %s, bms cycles: %d\r\n", TAG, _stats->_status, _stats->_bmsCycles);
+                            MessageOutput.printf("%s remaining capacity: %fAh\r\n", TAG, _stats->remainingCapacity);
+                        }
                         break;
 
                     case Command::REQUEST_STATUS:
@@ -492,8 +495,8 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer) {
                         _stats->_loadState = it[7];
                         _stats->_dio[8] = 0;
                         for (uint8_t i=0; i<8; i++) _stats->_dio[i] = (it[8] & (128>>i))?'1':'0';
-                        _stats->_batteryCycles = ToUint16(&it[9]);
-                        MessageOutput.printf("%s charge state %d, load state %d, dio %s, battery cycles %u\r\n", TAG, _stats->_chargeState, _stats->_loadState, _stats->_dio, _stats->_batteryCycles);
+                        _stats->batteryCycles = ToUint16(&it[9]);
+                        if (Battery._verboseLogging) MessageOutput.printf("%s charge state %d, load state %d, dio %s, battery cycles %u\r\n", TAG, _stats->_chargeState, _stats->_loadState, _stats->_dio, _stats->batteryCycles);
                         break;
 
                     case Command::REQUEST_TEMPERATURE:
@@ -501,7 +504,7 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer) {
                             for (uint8_t i=0; i<7; i++)
                                 _stats->_temperature[(it[4]-1)*3+i] = (it[5+i] - DALY_TEMPERATURE_OFFSET);
                         }
-                        MessageOutput.printf("%s it[4] %d\r\n", TAG, it[4]);
+                        if (Battery._verboseLogging) MessageOutput.printf("%s it[4] %d\r\n", TAG, it[4]);
                         break;
 
                     case Command::REQUEST_CELL_VOLTAGE:
@@ -510,7 +513,7 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer) {
                                 _stats->_cellVoltage[(it[4]-1)*3+i] = to_Volt(&it[5+i*2]);
                             }
                         }
-                        MessageOutput.printf("%s it[4] %d\r\n", TAG, it[4]);
+                        if (Battery._verboseLogging) MessageOutput.printf("%s it[4] %d\r\n", TAG, it[4]);
                         break;
 
                     case Command::REQUEST_CELL_BALANCE_STATES:
@@ -519,7 +522,7 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer) {
                             _stats->_cellBalance[j*(8+1)+8] = ' ';
                         }
                         _stats->_cellBalance[(8+1)*2+8] = 0;
-                        MessageOutput.printf("%s cell balance %s\r\n", TAG, _stats->_cellBalance);
+                        if (Battery._verboseLogging) MessageOutput.printf("%s cell balance %s\r\n", TAG, _stats->_cellBalance);
                         break;
 
                     case Command::REQUEST_FAILURE_CODES:
@@ -532,7 +535,7 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer) {
                             }
                             bytes[(8+1)*6+8] = 0;
                             _stats->_faultCode = it[11];
-                            MessageOutput.printf("%s failure status %s, fault code: %02X\r\n", TAG, bytes, _stats->_faultCode);
+                            if (Battery._verboseLogging) MessageOutput.printf("%s failure status %s, fault code: %02X\r\n", TAG, bytes, _stats->_faultCode);
                         }
                         _stats->Warning.lowVoltage = _stats->FailureStatus.levelOneCellVoltageTooLow ||
                                                     _stats->FailureStatus.levelOnePackVoltageTooLow;
@@ -578,7 +581,7 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer) {
                     case Command::WRITE_BMS_RESET:
                         break;
                     default:
-                        break;
+                        _wasActive = false;
                 }
                 _stats->setLastUpdate(millis());
             } else {

@@ -56,7 +56,7 @@ bool PylontechRS485Receiver::init()
     get_module_serial_number();
     get_firmware_info();
 
-    send_cmd(2, CommandInformation::GetSystemParameter, false);
+    send_cmd(2, Command::GetSystemParameter, false);
     vTaskDelay(100);
     get_system_parameters();
 
@@ -64,15 +64,15 @@ bool PylontechRS485Receiver::init()
 //    get_barcode();
 //    get_version_info();
 
-    send_cmd(2, CommandInformation::GetChargeDischargeManagementInfo);
+    send_cmd(2, Command::GetChargeDischargeManagementInfo);
     vTaskDelay(100);
     get_charge_discharge_management_info();
 
-    send_cmd(2, CommandInformation::GetAnalogValue);
+    send_cmd(2, Command::GetAnalogValue);
     vTaskDelay(100);
     get_analog_value();
 
-    send_cmd(2, CommandInformation::GetAlarmInfo);
+    send_cmd(2, Command::GetAlarmInfo);
     vTaskDelay(100);
     get_alarm_info();
 //    Battery._verboseLogging = temp;
@@ -111,16 +111,16 @@ void PylontechRS485Receiver::loop()
     if (RS485.available()) {
         uint32_t t_start = millis();
         switch (_lastCmnd) {
-        case CommandInformation::GetChargeDischargeManagementInfo:
+        case Command::GetChargeDischargeManagementInfo:
             get_charge_discharge_management_info();
             break;
-        case CommandInformation::GetAlarmInfo:
+        case Command::GetAlarmInfo:
             get_alarm_info();
             break;
-        case CommandInformation::GetAnalogValue:
+        case Command::GetAnalogValue:
             get_analog_value();
             break;
-        case CommandInformation::GetSystemParameter:
+        case Command::GetSystemParameter:
             get_system_parameters();
             break;
         case 0xff:
@@ -140,17 +140,17 @@ void PylontechRS485Receiver::loop()
     _lastBatteryCheck.set(Configuration.get().Battery.PollInterval * 1000);
 
     typedef struct {
-        CommandInformation cmd;
+        Command cmd;
         boolean Pack;
     } Commands_t;
 
-    const Commands_t Commands[] = {
-        { CommandInformation::GetAnalogValue, true},
-        { CommandInformation::GetChargeDischargeManagementInfo, true},
-        { CommandInformation::GetAnalogValue, true},
-        { CommandInformation::GetAlarmInfo, true},
-        { CommandInformation::GetAnalogValue, true},
-        { CommandInformation::GetSystemParameter, false},
+    static const Commands_t Commands[] = {
+        { Command::GetAnalogValue, true},
+        { Command::GetChargeDischargeManagementInfo, true},
+        { Command::GetAnalogValue, true},
+        { Command::GetAlarmInfo, true},
+        { Command::GetAnalogValue, true},
+        { Command::GetSystemParameter, false},
     };
 
     static uint8_t state = 0;
@@ -165,7 +165,7 @@ void PylontechRS485Receiver::get_protocol_version(uint8_t devid)
 {
     if (Battery._verboseLogging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
 
-    send_cmd(devid, CommandInformation::GetProtocolVersion, false);
+    send_cmd(devid, Command::GetProtocolVersion, false);
     yield();
     if (read_frame() == NULL) {
         MessageOutput.printf("%s Battery not responding, check cabling or battery power switch\r\f", TAG);
@@ -179,7 +179,7 @@ void PylontechRS485Receiver::get_barcode(uint8_t devid)
 {
     if (Battery._verboseLogging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
 
-    send_cmd(devid, CommandInformation::GetBarCode);
+    send_cmd(devid, Command::GetBarCode);
     yield();
 
     format_t* f = read_frame();
@@ -193,7 +193,7 @@ void PylontechRS485Receiver::get_firmware_info(uint8_t devid)
 {
     if (Battery._verboseLogging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
 
-    send_cmd(devid, CommandInformation::GetFirmwareInfo);
+    send_cmd(devid, Command::GetFirmwareInfo);
     yield();
 
     format_t* f = read_frame();
@@ -220,7 +220,7 @@ void PylontechRS485Receiver::get_version_info(uint8_t devid)
 {
     if (Battery._verboseLogging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
 
-    send_cmd(devid, CommandInformation::GetVersionInfo);
+    send_cmd(devid, Command::GetVersionInfo);
     yield();
 
     format_t* f = read_frame();
@@ -234,7 +234,7 @@ void PylontechRS485Receiver::get_pack_count(uint8_t devid)
 {
     if (Battery._verboseLogging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
 
-    send_cmd(devid, CommandInformation::GetPackCount);
+    send_cmd(devid, Command::GetPackCount);
     yield();
 
     format_t* f = read_frame();
@@ -253,7 +253,7 @@ void PylontechRS485Receiver::get_manufacturer_info(uint8_t devid)
 {
     if (Battery._verboseLogging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
 
-    send_cmd(devid, CommandInformation::GetManufacturerInfo, false);
+    send_cmd(devid, Command::GetManufacturerInfo, false);
     yield();
 
     format_t* f = read_frame();
@@ -402,7 +402,7 @@ void PylontechRS485Receiver::get_analog_value_multiple(void)
 {
     if (Battery._verboseLogging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
 
-    send_cmd(2, CommandInformation::GetAnalogValue, true);
+    send_cmd(2, Command::GetAnalogValue, true);
     yield();
 
     format_t* f = read_frame();
@@ -637,7 +637,7 @@ void PylontechRS485Receiver::get_module_serial_number(uint8_t devid)
 {
     if (Battery._verboseLogging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
 
-    send_cmd(devid, CommandInformation::GetSerialNumber);
+    send_cmd(devid, Command::GetSerialNumber);
     yield();
 
     format_t* f = read_frame();
@@ -659,13 +659,13 @@ void PylontechRS485Receiver::get_module_serial_number(uint8_t devid)
 
 void PylontechRS485Receiver::setting_charge_discharge_management_info(uint8_t devid, const char* info)
 {
-    send_cmd(devid, CommandInformation::SetChargeDischargeManagementInfo);
+    send_cmd(devid, Command::SetChargeDischargeManagementInfo);
     yield();
 }
 
 void PylontechRS485Receiver::turn_off_module(uint8_t devid)
 {
-    send_cmd(devid, CommandInformation::TurnOffModule);
+    send_cmd(devid, Command::TurnOffModule);
     yield();
 
     /*format_t *f =*/read_frame();

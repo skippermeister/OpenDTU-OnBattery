@@ -156,13 +156,13 @@ PinMappingClass::PinMappingClass()
     _pinMapping.REFUsol_rts = RS485_PIN_RTS;
 #endif
 
-#ifdef PYLONTECH_RS485
+#if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER)
     _pinMapping.battery_rx = RS485_PIN_RX;
     _pinMapping.battery_tx = RS485_PIN_TX;
     _pinMapping.battery_rts = RS485_PIN_RTS;
 #else
-    _pinMapping.battery_rx = PYLONTECH_PIN_RX;
-    _pinMapping.battery_tx = PYLONTECH_PIN_TX;
+    _pinMapping.battery_rx = CAN0_PIN_RX;
+    _pinMapping.battery_tx = CAN0_PIN_TX;
 #endif
 
     _pinMapping.mcp2515_miso = MCP2515_PIN_MISO;
@@ -269,13 +269,13 @@ void PinMappingClass::init(const String& deviceMapping)
                 _pinMapping.REFUsol_rts = doc[i]["refusol"]["rs485"]["rts"] | RS485_PIN_RTS;
 #endif
 
-#ifdef PYLONTECH_RS485
+#if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER)
                 _pinMapping.battery_rx = doc[i]["battery"]["rs485"]["rx"] | RS485_PIN_RX;
                 _pinMapping.battery_tx = doc[i]["battery"]["rs485"]["tx"] | RS485_PIN_TX;
                 _pinMapping.battery_rts = doc[i]["battery"]["rs485"]["rts"] | RS485_PIN_RTS;
 #else
-                _pinMapping.battery_rx = doc[i]["battery"]["can0"]["rx"] | PYLONTECH_PIN_RX;
-                _pinMapping.battery_tx = doc[i]["battery"]["can0"]["tx"] | PYLONTECH_PIN_TX;
+                _pinMapping.battery_rx = doc[i]["battery"]["can0"]["rx"] | CAN0_PIN_RX;
+                _pinMapping.battery_tx = doc[i]["battery"]["can0"]["tx"] | CAN0_PIN_TX;
 #endif
 
 #ifdef CHARGER_HUAWEI
@@ -290,7 +290,7 @@ void PinMappingClass::init(const String& deviceMapping)
 #ifdef CHARGER_USE_CAN0
                 _pinMapping.can0_rx = doc[i]["meanwell"]["can0"]["rx"] | CAN0_PIN_RX;
                 _pinMapping.can0_tx = doc[i]["meanwell"]["can0"]["tx"] | CAN0_PIN_RX;
-                //                _pinMapping.can0_stb = doc[i]["meanwell"]["can0"]["stb"] | CAN0_PIN_STB;
+                // _pinMapping.can0_stb = doc[i]["meanwell"]["can0"]["stb"] | CAN0_PIN_STB;
 
                 _pinMapping.mcp2515_miso = doc[i]["mcp2515"]["miso"] | MCP2515_PIN_MISO;
                 _pinMapping.mcp2515_mosi = doc[i]["mcp2515"]["mosi"] | MCP2515_PIN_MOSI;
@@ -355,21 +355,21 @@ bool PinMappingClass::isValidREFUsolConfig() const
 {
     return _pinMapping.REFUsol_rx > 0
         && _pinMapping.REFUsol_tx > 0
-        //        && _pinMapping.REFUsol_cts > 0
+        // && _pinMapping.REFUsol_cts > 0
         && (_pinMapping.REFUsol_rts > 0 || _pinMapping.REFUsol_rts == -1);
 }
 #endif
 
 bool PinMappingClass::isValidBatteryConfig() const
 {
-#ifndef PYLONTECH_RS485
-    return _pinMapping.battery_rx > 0
-        && _pinMapping.battery_tx > 0;
-#else
+#if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER)
     return _pinMapping.battery_rx > 0
         && _pinMapping.battery_tx > 0
-        //        && _pinMapping.battery_cts > 0
+        // && _pinMapping.battery_cts > 0
         && (_pinMapping.battery_rts > 0 || _pinMapping.battery_rts == -1);
+#else
+    return _pinMapping.battery_rx > 0
+        && _pinMapping.battery_tx > 0;
 #endif
 }
 #ifdef CHARGER_HUAWEI

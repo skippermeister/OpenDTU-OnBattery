@@ -302,27 +302,27 @@ void DalyBmsBatteryStats::getLiveViewData(JsonVariant& root) const
     root["software_version"] = String(_bmsSWversion);
     BatteryStats::getLiveViewData(root);
 
-    addLiveViewValue(root, "BatteryLevel", _batteryLevel, "%", 1);
+    addLiveViewValue(root, "BatteryLevel", batteryLevel, "%", 1);
 
-    addLiveViewValue(root, "totalCapacity", _ratedCapacity, "Ah", 3);
-    addLiveViewValue(root, "remainingCapacity", _remainingCapacity, "Ah", 3);
+    addLiveViewValue(root, "totalCapacity", ratedCapacity, "Ah", 3);
+    addLiveViewValue(root, "remainingCapacity", remainingCapacity, "Ah", 3);
 
-    addLiveViewValue(root, "cycles", _batteryCycles, "", 0);
-    addLiveViewValue(root, "voltage", _voltage, "V", 1);
-    addLiveViewValue(root, "current", _current, "A", 1);
-    addLiveViewValue(root, "power", _current * _voltage / 1000.0, "kW", 3);
+    addLiveViewValue(root, "cycles", batteryCycles, "", 0);
+    addLiveViewValue(root, "voltage", voltage, "V", 1);
+    addLiveViewValue(root, "current", current, "A", 1);
+    addLiveViewValue(root, "power", power, "kW", 3);
 
     addLiveViewParameter(root, "cellHighVoltageLimit", AlarmValues.maxCellVoltage, "V", 3);
     addLiveViewParameter(root, "cellLowVoltageLimit", WarningValues.minCellVoltage, "V", 3);
     addLiveViewParameter(root, "cellUnderVoltageLimit", AlarmValues.minCellVoltage, "V", 3);
 
-    addLiveViewText(root, "chargeEnabled", (_chargingMosEnabled ? "yes" : "no"));
-    addLiveViewText(root, "dischargeEnabled", (_dischargingMosEnabled ? "yes" : "no"));
+    addLiveViewText(root, "chargeEnabled", (chargingMosEnabled ? "yes" : "no"));
+    addLiveViewText(root, "dischargeEnabled", (dischargingMosEnabled ? "yes" : "no"));
     addLiveViewText(root, "chargeImmediately", (getChargeImmediately() ? "yes" : "no"));
 
-    addLiveViewCellBalance(root, "cellMinVoltage", _minCellVoltage, "V", 3);
-    addLiveViewCellBalance(root, "cellMaxVoltage", _maxCellVoltage, "V", 3);
-    addLiveViewCellBalance(root, "cellDiffVoltage", (_maxCellVoltage - _minCellVoltage)*1000.0, "mV", 0);
+    addLiveViewCellBalance(root, "cellMinVoltage", minCellVoltage, "V", 3);
+    addLiveViewCellBalance(root, "cellMaxVoltage", maxCellVoltage, "V", 3);
+    addLiveViewCellBalance(root, "cellDiffVoltage", cellDiffVoltage, "mV", 0);
 
     // Empfohlene Lade-/Enladespannung
     addLiveViewValue(root, "chargeVoltageLimit", WarningValues.maxPackVoltage, "V", 3);
@@ -335,7 +335,7 @@ void DalyBmsBatteryStats::getLiveViewData(JsonVariant& root) const
     addLiveViewValue(root, "maxChargeCurrentLimit", AlarmValues.maxPackChargeCurrent, "A", 1);
     addLiveViewValue(root, "maxDischargeCurrentLimit", AlarmValues.maxPackDischargeCurrent, "A", 1);
 
-    for (int i = 0; i < min(_cellsNumber, static_cast<uint8_t>(15)); i++) {
+    for (int i = 0; i < min(_cellsNumber, static_cast<uint8_t>(18)); i++) {
         addLiveViewCellVoltage(root, i, _cellVoltage[i], 3);
     }
     for (int i = 0; i < min(_tempsNumber, static_cast<uint8_t>(5)); i++) {
@@ -530,7 +530,7 @@ void PylontechRS485BatteryStats::mqttPublish() /*const*/
     String subtopic = "battery/settings/";
     MQTTpublish(chargeVoltage, 2);
     MQTTpublishStruct(ChargeDischargeManagementInfo, chargeCurrentLimit, 2)
-        MQTTpublishStruct(ChargeDischargeManagementInfo, dischargeCurrentLimit, 2);
+    MQTTpublishStruct(ChargeDischargeManagementInfo, dischargeCurrentLimit, 2);
 
     subtopic = "battery/";
     MQTTpublishString(softwareVersion);
@@ -614,8 +614,74 @@ void DalyBmsBatteryStats::mqttPublish() /* const */
 
     BatteryStats::mqttPublish();
 
-    String subtopic = "battery/settings/";
+    String subtopic = "battery/";
+    MQTTpublishInt(batteryCycles);
+    MQTTpublish(voltage, 2);
+    MQTTpublish(current, 2);
+    MQTTpublish(power, 3);
+    MQTTpublish(remainingCapacity, 3);
+    MQTTpublish(ratedCapacity, 3);
+/*
+    subtopic = "battery/parameters/";
+    MQTTpublishStruct(SystemParameters, chargeCurrentLimit, 2)
+    MQTTpublishStruct(SystemParameters, dischargeCurrentLimit, 2);
+    MQTTpublishStruct(SystemParameters, cellHighVoltageLimit, 2);
+    MQTTpublishStruct(SystemParameters, cellLowVoltageLimit, 2);
+    MQTTpublishStruct(SystemParameters, cellUnderVoltageLimit, 2);
+    MQTTpublishStruct(SystemParameters, chargeHighTemperatureLimit, 1);
+    MQTTpublishStruct(SystemParameters, chargeLowTemperatureLimit, 1);
+    MQTTpublishStruct(SystemParameters, dischargeHighTemperatureLimit, 1);
+    MQTTpublishStruct(SystemParameters, dischargeLowTemperatureLimit, 1);
+*/
+    subtopic = "battery/alarms/";
+    MQTTpublishIntStruct(Alarm, overCurrentDischarge);
+    MQTTpublishIntStruct(Alarm, overCurrentCharge);
+    MQTTpublishIntStruct(Alarm, underTemperature);
+    MQTTpublishIntStruct(Alarm, overTemperature);
+    MQTTpublishIntStruct(Alarm, underVoltage);
+    MQTTpublishIntStruct(Alarm, overVoltage);
+    MQTTpublishIntStruct(Alarm, bmsInternal);
 
+    subtopic = "battery/warnings/";
+    MQTTpublishIntStruct(Warning, highCurrentDischarge);
+    MQTTpublishIntStruct(Warning, highCurrentCharge);
+    MQTTpublishIntStruct(Warning, lowTemperature);
+    MQTTpublishIntStruct(Warning, highTemperature);
+    MQTTpublishIntStruct(Warning, lowVoltage);
+    MQTTpublishIntStruct(Warning, highVoltage);
+    MQTTpublishIntStruct(Warning, bmsInternal);
+
+    subtopic = "battery/charging/";
+    MQTTpublishInt(chargingMosEnabled);
+    MQTTpublishInt(dischargingMosEnabled);
+    MQTTpublishInt(chargeImmediately);
+
+    subtopic = "battery/voltages/";
+    MQTTpublish(minCellVoltage, 3);
+    MQTTpublish(maxCellVoltage, 3);
+    MQTTpublish(cellDiffVoltage, 0);
+    if (_cellsNumber > 15) _cellsNumber = 15;
+    _last._cellVoltage = reinterpret_cast<float*>(realloc(_last._cellVoltage, _cellsNumber * sizeof(float)));
+    for (int i = 0; i < _cellsNumber; i++) {
+        if (!cBattery.UpdatesOnly || _cellVoltage[i] != _last._cellVoltage[i]) {
+            MqttSettings.publish(subtopic + "cell" + String(i + 1), String(_cellVoltage[i], 3));
+            _last._cellVoltage[i] = _cellVoltage[i];
+        }
+    }
+
+    subtopic = "battery/temperatures/";
+    MQTTpublish(averageBMSTemperature, 1);
+
+    subtopic = "battery/temperatures/group";
+    if (_tempsNumber > 5)
+        _tempsNumber = 5;
+    _last._temperature = reinterpret_cast<int*>(realloc(_last._temperature, _tempsNumber * sizeof(int)));
+    for (int i = 0; i < _tempsNumber; i++) {
+        if (!cBattery.UpdatesOnly || _temperature[i] != _last._temperature[i]) {
+            MqttSettings.publish(subtopic + String(i + 1), String(_temperature[i], 1));
+            _last._temperature[i] = _temperature[i];
+        }
+    }
 }
 /*
 void DalyBmsBatteryStats::updateFrom(DalyBms::DataPointContainer const& dp)

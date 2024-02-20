@@ -499,10 +499,10 @@ class DalyBmsBatteryStats : public BatteryStats {
 
         const Alarm_t& getAlarm() const final { return Alarm; };
         const Warning_t& getWarning() const final { return Warning; };
-        bool getChargeEnabled() const final { return _chargingMosEnabled; };
-        bool getDischargeEnabled() const final { return _dischargingMosEnabled; };
-        bool getChargeImmediately() const final { return (_batteryLevel < AlarmValues.minSoc); };
-        float getVoltage() const final { return _voltage; };
+        bool getChargeEnabled() const final { return chargingMosEnabled; };
+        bool getDischargeEnabled() const final { return dischargingMosEnabled; };
+        bool getChargeImmediately() const final { return chargeImmediately; };
+        float getVoltage() const final { return voltage; };
         float getTemperature() const final { return (_maxTemperature + _minTemperature) / 2.0; };
 
         float getRecommendedChargeVoltageLimit() const final { return WarningValues.maxPackVoltage * 0.99; };  // 1% below warning level
@@ -617,7 +617,27 @@ class DalyBmsBatteryStats : public BatteryStats {
         } FailureStatus_t;
         #pragma pack(pop)
 
-        float _ratedCapacity;
+        struct {
+            float voltage;
+            float current;
+            float power;
+            float ratedCapacity;
+            float remainingCapacity;
+            uint16_t  batteryCycles;
+            Warning_t Warning;
+            Alarm_t Alarm;
+            bool chargingMosEnabled;
+            bool dischargingMosEnabled;
+            bool chargeImmediately;
+            float maxCellVoltage;
+            float minCellVoltage;
+            float cellDiffVoltage;
+            float *_cellVoltage;
+            int *_temperature;
+            int averageBMSTemperature;
+        } _last;
+
+        float ratedCapacity;
         float _ratedCellVoltage;
         uint8_t _numberOfAcquisitionBoards;
         uint8_t _numberOfCellsBoard[3];
@@ -635,29 +655,33 @@ class DalyBmsBatteryStats : public BatteryStats {
         float _balanceDifferenceVoltage;
         char _bmsSWversion[32];
         char _bmsHWversion[32];
-        float _voltage;
-        float _current;
-        float _batteryLevel;
-        float _maxCellVoltage;
+        float voltage;
+        float current;
+        float power;
+        float batteryLevel;
+        float maxCellVoltage;
         uint8_t _maxCellVoltageNumber;
-        float _minCellVoltage;
+        float minCellVoltage;
         uint8_t _minCellVoltageNumber;
+        float cellDiffVoltage;
         float _maxTemperature;
         uint8_t _maxTemperatureProbeNumber;
         float _minTemperature;
         uint8_t _minTemperatureProbeNumber;
         char _status[16];
-        bool _chargingMosEnabled;
-        bool _dischargingMosEnabled;
+        bool chargingMosEnabled;
+        bool dischargingMosEnabled;
+        bool chargeImmediately;
         uint8_t _bmsCycles;
-        float _remainingCapacity;
+        float remainingCapacity;
         uint8_t _cellsNumber;
         uint8_t _tempsNumber;
         uint8_t _chargeState;
         uint8_t _loadState;
         char _dio[9];
-        uint16_t  _batteryCycles;
+        uint16_t  batteryCycles;
         int _temperature[24];
+        int averageBMSTemperature;
         float _cellVoltage[24];
         char _cellBalance[32];
 //        char _failureStatus[71];

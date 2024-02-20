@@ -4,7 +4,6 @@
  */
 
 #ifdef USE_DISPLAY_GRAPHIC
-#ifdef USE_DISPLAY_GRAPHIC_DIAGRAM
 
 #include "Display_Graphic_Diagram.h"
 #include "Configuration.h"
@@ -135,5 +134,5 @@ void DisplayGraphicDiagramClass::redraw(uint8_t screenSaverOffsetX, uint8_t xPos
             graphPosX + i / scaleFactorX, horizontal_line_y - std::max<int16_t>(0, _graphValues[i] / scaleFactorY - 0.5));
     }
 }
-#endif
+
 #endif
