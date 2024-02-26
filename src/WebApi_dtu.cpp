@@ -18,10 +18,8 @@ void WebApiDtuClass::init(AsyncWebServer& server, Scheduler& scheduler)
 {
     using std::placeholders::_1;
 
-    _server = &server;
-
-    _server->on("/api/dtu/config", HTTP_GET, std::bind(&WebApiDtuClass::onDtuAdminGet, this, _1));
-    _server->on("/api/dtu/config", HTTP_POST, std::bind(&WebApiDtuClass::onDtuAdminPost, this, _1));
+    server.on("/api/dtu/config", HTTP_GET, std::bind(&WebApiDtuClass::onDtuAdminGet, this, _1));
+    server.on("/api/dtu/config", HTTP_POST, std::bind(&WebApiDtuClass::onDtuAdminPost, this, _1));
 
     scheduler.addTask(_applyDataTask);
 }
@@ -79,6 +77,8 @@ void WebApiDtuClass::onDtuAdminGet(AsyncWebServerRequest* request)
         obj["freq_legal_min"] = definition.definition.Freq_Legal_Min;
         obj["freq_legal_max"] = definition.definition.Freq_Legal_Max;
     }
+#else
+    root["cmt_enabled"] = false;
 #endif
 
     root["verbose_logging"] = Hoymiles.getVerboseLogging();
@@ -129,10 +129,12 @@ void WebApiDtuClass::onDtuAdminPost(AsyncWebServerRequest* request)
     if (!(root.containsKey("serial")
             && root.containsKey("pollinterval")
             && root.containsKey("verbose_logging")
-            && root.containsKey("nrf_palevel")
+#ifdef USE_RADIO_CMT
             && root.containsKey("cmt_palevel")
             && root.containsKey("cmt_frequency")
-            && root.containsKey("cmt_country"))) {
+            && root.containsKey("cmt_country")
+#endif
+            && root.containsKey("nrf_palevel"))) {
         retMsg["message"] = ValuesAreMissing;
         retMsg["code"] = WebApiError::GenericValueMissing;
         response->setLength();

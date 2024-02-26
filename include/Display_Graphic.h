@@ -49,9 +49,7 @@ public:
     void setDiagramMode(DiagramMode_t mode);
     void setStartupDisplay();
 
-#ifdef USE_DISPLAY_GRAPHIC_DIAGRAM
     DisplayGraphicDiagramClass& Diagram();
-#endif
 
     bool enablePowerSafe = true;
     bool enableScreensaver = true;
@@ -67,9 +65,7 @@ private:
     Task _loopTask;
 
     U8G2* _display;
-#ifdef USE_DISPLAY_GRAPHIC_DIAGRAM
     DisplayGraphicDiagramClass _diagram;
-#endif
 
     bool _displayTurnedOn;
 

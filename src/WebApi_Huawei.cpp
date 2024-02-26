@@ -18,12 +18,10 @@ void WebApiHuaweiClass::init(AsyncWebServer& server, Scheduler& scheduler)
 {
     using std::placeholders::_1;
 
-    _server = &server;
-
-    _server->on("/api/huawei/status", HTTP_GET, std::bind(&WebApiHuaweiClass::onStatus, this, _1));
-    _server->on("/api/huawei/config", HTTP_GET, std::bind(&WebApiHuaweiClass::onAdminGet, this, _1));
-    _server->on("/api/huawei/config", HTTP_POST, std::bind(&WebApiHuaweiClass::onAdminPost, this, _1));
-    _server->on("/api/huawei/limit/config", HTTP_POST, std::bind(&WebApiHuaweiClass::onPost, this, _1));
+    server.on("/api/huawei/status", HTTP_GET, std::bind(&WebApiHuaweiClass::onStatus, this, _1));
+    server.on("/api/huawei/config", HTTP_GET, std::bind(&WebApiHuaweiClass::onAdminGet, this, _1));
+    server.on("/api/huawei/config", HTTP_POST, std::bind(&WebApiHuaweiClass::onAdminPost, this, _1));
+    server.on("/api/huawei/limit/config", HTTP_POST, std::bind(&WebApiHuaweiClass::onPost, this, _1));
 }
 
 void WebApiHuaweiClass::getJsonData(JsonVariant& root) {
@@ -179,7 +177,7 @@ void WebApiHuaweiClass::onAdminGet(AsyncWebServerRequest* request)
     if (!WebApi.checkCredentialsReadonly(request)) {
         return;
     }
-    
+
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& root = response->getRoot();
     const Huawei_CONFIG_T& cHuawei = Configuration.get().Huawei;
@@ -190,7 +188,7 @@ void WebApiHuaweiClass::onAdminGet(AsyncWebServerRequest* request)
     root["voltage_limit"] = static_cast<int>(cHuawei.Auto_Power_Voltage_Limit * 100) / 100.0;
     root["enable_voltage_limit"] = static_cast<int>(cHuawei.Auto_Power_Enable_Voltage_Limit * 100) / 100.0;
     root["lower_power_limit"] = cHuawei.Auto_Power_Lower_Power_Limit;
-    root["upper_power_limit"] = cHuawei.Auto_Power_Upper_Power_Limit;   
+    root["upper_power_limit"] = cHuawei.Auto_Power_Upper_Power_Limit;
 
     response->setLength();
     request->send(response);
@@ -201,7 +199,7 @@ void WebApiHuaweiClass::onAdminPost(AsyncWebServerRequest* request)
     if (!WebApi.checkCredentials(request)) {
         return;
     }
-    
+
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& retMsg = response->getRoot();
     retMsg["type"] = Warning;
@@ -255,8 +253,8 @@ void WebApiHuaweiClass::onAdminPost(AsyncWebServerRequest* request)
     config.Huawei.Auto_Power_Voltage_Limit = root["voltage_limit"].as<float>();
     config.Huawei.Auto_Power_Enable_Voltage_Limit = root["enable_voltage_limit"].as<float>();
     config.Huawei.Auto_Power_Lower_Power_Limit = root["lower_power_limit"].as<float>();
-    config.Huawei.Auto_Power_Upper_Power_Limit = root["upper_power_limit"].as<float>();    
-   
+    config.Huawei.Auto_Power_Upper_Power_Limit = root["upper_power_limit"].as<float>();
+
     WebApi.writeConfig(retMsg);
 
     response->setLength();

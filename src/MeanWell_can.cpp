@@ -250,15 +250,19 @@ float MeanWellCanClass::calcEfficency(float x)
 
     float scaling = 1.0;
     switch (_model) {
+    case NPB_Model_t::NPB_450_24:
     case NPB_Model_t::NPB_450_48:
         scaling = 450.0 / 1200.0;
         break;
+    case NPB_Model_t::NPB_750_24:
     case NPB_Model_t::NPB_750_48:
         scaling = 750.0 / 1200.0;
         break;
+    case NPB_Model_t::NPB_1200_24:
     case NPB_Model_t::NPB_1200_48:
         scaling = 1200.0 / 1200.0;
         break;
+    case NPB_Model_t::NPB_1700_24:
     case NPB_Model_t::NPB_1700_48:
         scaling = 1700.0 / 1200.0;
         break;
@@ -407,22 +411,56 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
             _model = NPB_Model_t::NPB_450_48;
             cMeanWell.MinCurrent = 1.36; // 1.36A
             cMeanWell.MaxCurrent = 6.8; // 6.8A
+            cMeanWell.MinVoltage = 42.0;
+            cMeanWell.MaxVoltage = 80.0;
         } else if (strcmp(_rp.ManufacturerModelName, "NPB-750-48") == 0) {
             _model = NPB_Model_t::NPB_750_48;
             cMeanWell.MinCurrent = 2.26; // 2.26A
             cMeanWell.MaxCurrent = 11.3; // 11.3A
+            cMeanWell.MinVoltage = 42.0;
+            cMeanWell.MaxVoltage = 80.0;
         } else if (strcmp(_rp.ManufacturerModelName, "NPB-1200-48") == 0) {
             _model = NPB_Model_t::NPB_1200_48;
             cMeanWell.MinCurrent = 3.6; // 3.6A
             cMeanWell.MaxCurrent = 18.0; // 18.0A
+            cMeanWell.MinVoltage = 42.0;
+            cMeanWell.MaxVoltage = 80.0;
         } else if (strcmp(_rp.ManufacturerModelName, "NPB-1700-48") == 0) {
             _model = NPB_Model_t::NPB_1700_48;
             cMeanWell.MinCurrent = 5.0; // 5.0A
             cMeanWell.MaxCurrent = 25.0; // 25.0A
+            cMeanWell.MinVoltage = 42.0;
+            cMeanWell.MaxVoltage = 80.0;
+        } else if (strcmp(_rp.ManufacturerModelName, "NPB-450-24") == 0) {
+            _model = NPB_Model_t::NPB_450_24;
+            cMeanWell.MinCurrent = 2.7; // 2.7A
+            cMeanWell.MaxCurrent = 13.5; // 13.5A
+            cMeanWell.MinVoltage = 21.0;
+            cMeanWell.MaxVoltage = 42.0;
+        } else if (strcmp(_rp.ManufacturerModelName, "NPB-750-24") == 0) {
+            _model = NPB_Model_t::NPB_750_24;
+            cMeanWell.MinCurrent = 4.5; // 4.5A
+            cMeanWell.MaxCurrent = 22.5; // 22.5A
+            cMeanWell.MinVoltage = 21.0;
+            cMeanWell.MaxVoltage = 42.0;
+        } else if (strcmp(_rp.ManufacturerModelName, "NPB-1200-24") == 0) {
+            _model = NPB_Model_t::NPB_1200_24;
+            cMeanWell.MinCurrent = 7.2; // 7.2A
+            cMeanWell.MaxCurrent = 36.0; // 36.0A
+            cMeanWell.MinVoltage = 21.0;
+            cMeanWell.MaxVoltage = 42.0;
+        } else if (strcmp(_rp.ManufacturerModelName, "NPB-1700-24") == 0) {
+            _model = NPB_Model_t::NPB_1700_24;
+            cMeanWell.MinCurrent = 10.0; // 10.0A
+            cMeanWell.MaxCurrent = 50.0; // 50.0A
+            cMeanWell.MinVoltage = 21.0;
+            cMeanWell.MaxVoltage = 42.0;
         } else {
             _model = NPB_Model_t::NPB_450_48;
             cMeanWell.MinCurrent = 1.36; // 1.36A
             cMeanWell.MaxCurrent = 6.8; // 6.8A
+            cMeanWell.MinVoltage = 42.0;
+            cMeanWell.MaxVoltage = 80.0;
         }
 
 #ifdef MEANWELL_DEBUG_ENABLED

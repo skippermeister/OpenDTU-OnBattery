@@ -13,6 +13,4 @@ public:
 
 private:
     void onStatus(AsyncWebServerRequest* request);
-
-    AsyncWebServer* _server;
 };

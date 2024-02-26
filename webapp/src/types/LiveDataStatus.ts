@@ -54,7 +54,6 @@ export interface Total {
     Power: ValueObject;
     YieldDay: ValueObject;
     YieldTotal: ValueObject;
-    Hours: ArrayValueObject;
 }
 
 export interface Hints {
@@ -97,8 +96,9 @@ export interface PowerMeter {
 export interface LiveData {
     inverters: Inverter[];
     total: Total;
+    hours: ArrayValueObject;
     hints: Hints;
-    // huawei: Huawei; 
+    // huawei: Huawei;
     refusol: REFUsol;
     vedirect: Vedirect;
     meanwell: MeanWell;

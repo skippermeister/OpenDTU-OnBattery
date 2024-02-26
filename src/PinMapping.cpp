@@ -4,6 +4,7 @@
  */
 #include "PinMapping.h"
 #include "MessageOutput.h"
+#include "Display_Graphic.h"
 #include <ArduinoJson.h>
 #include <LittleFS.h>
 #include <string.h>
@@ -11,7 +12,7 @@
 #define JSON_BUFFER_SIZE 6144
 
 #ifndef DISPLAY_TYPE
-#define DISPLAY_TYPE 0U
+#define DISPLAY_TYPE 0  // DisplayType_t::SSD1309  entspricht 5
 #endif
 
 #ifndef DISPLAY_DATA
@@ -50,28 +51,28 @@
 #define LED_RGB -1
 #endif
 
-#ifndef HOYMILES_PIN_SCLK
-#define HOYMILES_PIN_SCLK -1
+#ifndef NRF24_PIN_SCLK
+#define NRF24_PIN_SCLK -1
 #endif
 
-#ifndef HOYMILES_PIN_CS
-#define HOYMILES_PIN_CS -1
+#ifndef NRF24_PIN_CS
+#define NRF24_PIN_CS -1
 #endif
 
-#ifndef HOYMILES_PIN_CE
-#define HOYMILES_PIN_CE -1
+#ifndef NRF24_PIN_CE
+#define NRF24_PIN_CE -1
 #endif
 
-#ifndef HOYMILES_PIN_IRQ
-#define HOYMILES_PIN_IRQ -1
+#ifndef NRF24_PIN_IRQ
+#define NRF24_PIN_IRQ -1
 #endif
 
-#ifndef HOYMILES_PIN_MISO
-#define HOYMILES_PIN_MISO -1
+#ifndef NRF24_PIN_MISO
+#define NRF24_PIN_MISO -1
 #endif
 
-#ifndef HOYMILES_PIN_MOSI
-#define HOYMILES_PIN_MOSI -1
+#ifndef NRF24_PIN_MOSI
+#define NRF24_PIN_MOSI -1
 #endif
 
 #ifndef CMT_CLK
@@ -98,19 +99,80 @@
 #define CMT_SDIO -1
 #endif
 
+#ifndef SERIAL1_PIN_RX
+#define SERIAL1_PIN_RX 22
+#endif
+
+#ifndef SERIAL1_PIN_TX
+#define SERIAL1_PIN_TX 21
+#endif
+
+#ifndef SERIAL2_PIN_RX
+#define SERIAL2_PIN_RX 16
+#endif
+
+#ifndef SERIAL2_PIN_TX
+#define SERIAL2_PIN_TX 17
+#endif
+
+#ifndef SERIAL2_PIN_RTS
+#define SERIAL2_PIN_RTS 4
+#endif
+
+#ifndef PIN_DALY_WAKEUP
+#define PIN_DALY_WAKEUP 0
+#endif
+
+#ifdef CHARGER_USE_CAN0
+    #ifndef CAN0_PIN_RX
+    #define CAN0_PIN_RX 27
+    #endif
+
+    #ifndef CAN0_PIN_TX
+    #define CAN0_PIN_TX 26
+    #endif
+    /*
+    #ifndef CAN0_PIN_STB
+    #define CAN0_PIN_STB    -1
+    #endif
+    */
+#else
+
+    #ifndef MCP2515_PIN_MISO
+    #define MCP2515_PIN_MISO 12
+    #endif
+
+    #ifndef MCP2515_PIN_MOSI
+    #define MCP2515_PIN_MOSI 13
+    #endif
+
+    #ifndef MCP2515_PIN_SCLK
+    #define MCP2515_PIN_SCLK 26
+    #endif
+
+    #ifndef MCP2515_PIN_IRQ
+    #define MCP2515_PIN_IRQ 25
+    #endif
+
+    #ifndef MCP2515_PIN_CS
+    #define MCP2515_PIN_CS 15
+    #endif
+
+#endif
+
 PinMappingClass PinMapping;
 
 PinMappingClass::PinMappingClass()
 {
     memset(&_pinMapping, 0x0, sizeof(_pinMapping));
-    _pinMapping.nrf24_clk = HOYMILES_PIN_SCLK;
-    _pinMapping.nrf24_cs = HOYMILES_PIN_CS;
-    _pinMapping.nrf24_en = HOYMILES_PIN_CE;
-    _pinMapping.nrf24_irq = HOYMILES_PIN_IRQ;
-    _pinMapping.nrf24_miso = HOYMILES_PIN_MISO;
-    _pinMapping.nrf24_mosi = HOYMILES_PIN_MOSI;
+    _pinMapping.nrf24_clk = NRF24_PIN_SCLK;
+    _pinMapping.nrf24_cs = NRF24_PIN_CS;
+    _pinMapping.nrf24_en = NRF24_PIN_CE;
+    _pinMapping.nrf24_irq = NRF24_PIN_IRQ;
+    _pinMapping.nrf24_miso = NRF24_PIN_MISO;
+    _pinMapping.nrf24_mosi = NRF24_PIN_MOSI;
 
-#ifdef USE_RADIO_CMT
+#if defined(USE_RADIO_CMT)
     _pinMapping.cmt_clk = CMT_CLK;
     _pinMapping.cmt_cs = CMT_CS;
     _pinMapping.cmt_fcs = CMT_FCS;
@@ -119,7 +181,7 @@ PinMappingClass::PinMappingClass()
     _pinMapping.cmt_sdio = CMT_SDIO;
 #endif
 
-#ifdef OPENDTU_ETHERNET
+#if defined(OPENDTU_ETHERNET)
     _pinMapping.eth_enabled = true;
     _pinMapping.eth_phy_addr = ETH_PHY_ADDR;
     _pinMapping.eth_power = ETH_PHY_POWER;
@@ -129,7 +191,7 @@ PinMappingClass::PinMappingClass()
     _pinMapping.eth_clk_mode = ETH_CLK_MODE;
 #endif
 
-#ifdef USE_DISPLAY_GRAPHIC
+#if defined(USE_DISPLAY_GRAPHIC)
     _pinMapping.display_type = DISPLAY_TYPE;
     _pinMapping.display_data = DISPLAY_DATA;
     _pinMapping.display_clk = DISPLAY_CLK;
@@ -139,27 +201,30 @@ PinMappingClass::PinMappingClass()
     _pinMapping.display_dc = DISPLAY_DC;
 #endif
 
-#ifdef USE_LED_SINGLE
+#if defined(USE_LED_SINGLE)
     _pinMapping.led[0] = LED0;
     _pinMapping.led[1] = LED1;
 #endif
-#ifdef USER_LED_STRIP
+#if defined(USE_LED_STRIP)
     _pinMapping.led_rgb = LED_RGB;
 #endif
 
-    _pinMapping.victron_tx = VICTRON_PIN_TX;
-    _pinMapping.victron_rx = VICTRON_PIN_RX;
+    _pinMapping.victron_tx = SERIAL1_PIN_TX;
+    _pinMapping.victron_rx = SERIAL1_PIN_RX;
 
-#ifdef USE_REFUsol_INVERTER
-    _pinMapping.REFUsol_rx = RS485_PIN_RX;
-    _pinMapping.REFUsol_tx = RS485_PIN_TX;
-    _pinMapping.REFUsol_rts = RS485_PIN_RTS;
+#if defined(USE_REFUsol_INVERTER)
+    _pinMapping.REFUsol_rx = SERIAL2_PIN_RX;
+    _pinMapping.REFUsol_tx = SERIAL2_PIN_TX;
+    _pinMapping.REFUsol_rts = SERIAL2_PIN_RTS;
 #endif
 
-#if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER)
-    _pinMapping.battery_rx = RS485_PIN_RX;
-    _pinMapping.battery_tx = RS485_PIN_TX;
-    _pinMapping.battery_rts = RS485_PIN_RTS;
+#if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER) || defined(USE_JKBMS_CONTROLLER)
+    _pinMapping.battery_rx = SERIAL2_PIN_RX;
+    _pinMapping.battery_tx = SERIAL2_PIN_TX;
+    _pinMapping.battery_rts = SERIAL2_PIN_RTS;
+#if defined(USE_DALYBMS_CONTROLLER)
+    _pinMapping.battery_daly_wakeup = PIN_DALY_WAKEUP;
+#endif
 #else
     _pinMapping.battery_rx = CAN0_PIN_RX;
     _pinMapping.battery_tx = CAN0_PIN_TX;
@@ -171,10 +236,9 @@ PinMappingClass::PinMappingClass()
     _pinMapping.mcp2515_cs = MCP2515_PIN_CS;
     _pinMapping.mcp2515_irq = MCP2515_PIN_IRQ;
 
-#ifdef CHARGER_HUAWEI
+#if defined(CHARGER_HUAWEI)
     _pinMapping.huawei_power = HUAWEI_PIN_POWER;
 #else
-    //    _pinMapping.meanwell_power = MEANWELL_PIN_POWER;
     _pinMapping.can0_rx = CAN0_PIN_RX;
     _pinMapping.can0_tx = CAN0_PIN_TX;
 //    _pinMapping.can0_stb = CAN0_PIN_STB;
@@ -217,14 +281,14 @@ void PinMappingClass::init(const String& deviceMapping)
                 MessageOutput.printf("found valid mapping %s ", devName.c_str());
 
                 strlcpy(_pinMapping.name, devName.c_str(), sizeof(_pinMapping.name));
-                _pinMapping.nrf24_clk = doc[i]["nrf24"]["clk"] | HOYMILES_PIN_SCLK;
-                _pinMapping.nrf24_cs = doc[i]["nrf24"]["cs"] | HOYMILES_PIN_CS;
-                _pinMapping.nrf24_en = doc[i]["nrf24"]["en"] | HOYMILES_PIN_CE;
-                _pinMapping.nrf24_irq = doc[i]["nrf24"]["irq"] | HOYMILES_PIN_IRQ;
-                _pinMapping.nrf24_miso = doc[i]["nrf24"]["miso"] | HOYMILES_PIN_MISO;
-                _pinMapping.nrf24_mosi = doc[i]["nrf24"]["mosi"] | HOYMILES_PIN_MOSI;
+                _pinMapping.nrf24_clk = doc[i]["nrf24"]["clk"] | NRF24_PIN_SCLK;
+                _pinMapping.nrf24_cs = doc[i]["nrf24"]["cs"] | NRF24_PIN_CS;
+                _pinMapping.nrf24_en = doc[i]["nrf24"]["en"] | NRF24_PIN_CE;
+                _pinMapping.nrf24_irq = doc[i]["nrf24"]["irq"] | NRF24_PIN_IRQ;
+                _pinMapping.nrf24_miso = doc[i]["nrf24"]["miso"] | NRF24_PIN_MISO;
+                _pinMapping.nrf24_mosi = doc[i]["nrf24"]["mosi"] | NRF24_PIN_MOSI;
 
-#ifdef USE_RADIO_CMT
+#if defined(USE_RADIO_CMT)
                 _pinMapping.cmt_clk = doc[i]["cmt"]["clk"] | CMT_CLK;
                 _pinMapping.cmt_cs = doc[i]["cmt"]["cs"] | CMT_CS;
                 _pinMapping.cmt_fcs = doc[i]["cmt"]["fcs"] | CMT_FCS;
@@ -233,7 +297,7 @@ void PinMappingClass::init(const String& deviceMapping)
                 _pinMapping.cmt_sdio = doc[i]["cmt"]["sdio"] | CMT_SDIO;
 #endif
 
-#ifdef OPENDTU_ETHERNET
+#if  defined(OPENDTU_ETHERNET)
                 _pinMapping.eth_enabled = doc[i]["eth"]["enabled"] | true;
                 _pinMapping.eth_phy_addr = doc[i]["eth"]["phy_addr"] | ETH_PHY_ADDR;
                 _pinMapping.eth_power = doc[i]["eth"]["power"] | ETH_PHY_POWER;
@@ -243,7 +307,7 @@ void PinMappingClass::init(const String& deviceMapping)
                 _pinMapping.eth_clk_mode = doc[i]["eth"]["clk_mode"] | ETH_CLK_MODE;
 #endif
 
-#ifdef USE_DISPLAY_GRAPHIC
+#if defined(USE_DISPLAY_GRAPHIC)
                 _pinMapping.display_type = doc[i]["display"]["type"] | DISPLAY_TYPE;
                 _pinMapping.display_data = doc[i]["display"]["data"] | DISPLAY_DATA;
                 _pinMapping.display_clk = doc[i]["display"]["clk"] | DISPLAY_CLK;
@@ -253,44 +317,71 @@ void PinMappingClass::init(const String& deviceMapping)
                 _pinMapping.display_dc = doc[i]["display"]["dc"] | DISPLAY_DC;
 #endif
 
-#ifdef USE_LED_SINGLE
+#if defined(USE_LED_SINGLE)
                 _pinMapping.led[0] = doc[i]["led"]["led0"] | LED0;
                 _pinMapping.led[1] = doc[i]["led"]["led1"] | LED1;
 #endif
-#ifdef USE_LED_STRIP
+#if defined(USE_LED_STRIP)
                 _pinMapping.led_rgb = doc[i]["led"]["rgb"] | LED_RGB;
 #endif
-                _pinMapping.victron_rx = doc[i]["victron"]["rs232"]["rx"] | VICTRON_PIN_RX;
-                _pinMapping.victron_tx = doc[i]["victron"]["rs232"]["tx"] | VICTRON_PIN_TX;
+                _pinMapping.victron_rx = doc[i]["victron"]["rs323_rx"] | SERIAL1_PIN_RX;
+                _pinMapping.victron_tx = doc[i]["victron"]["rs323_tx"] | SERIAL1_PIN_TX;
 
-#ifdef USE_REFUsol_INVERTER
-                _pinMapping.REFUsol_rx = doc[i]["refusol"]["rs485"]["rx"] | RS485_PIN_RX;
-                _pinMapping.REFUsol_tx = doc[i]["refusol"]["rs485"]["tx"] | RS485_PIN_TX;
-                _pinMapping.REFUsol_rts = doc[i]["refusol"]["rs485"]["rts"] | RS485_PIN_RTS;
+#if defined(USE_REFUsol_INVERTER)
+                _pinMapping.REFUsol_rx = doc[i]["refusol"]["rs485_rx"] | SERIAL2_PIN_RX;
+                _pinMapping.REFUsol_tx = doc[i]["refusol"]["rs485_tx"] | SERIAL2_PIN_TX;
+                if (doc[i]["refusol"].containsKey("rs485_rts")) {
+                    _pinMapping.REFUsol_rts = doc[i]["refusol"]["rs485_rts"] | SERIAL2_PIN_RTS;
+                } else {
+                    _pinMapping.REFUsol_rts = -1;
+                }
 #endif
 
-#if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER)
-                _pinMapping.battery_rx = doc[i]["battery"]["rs485"]["rx"] | RS485_PIN_RX;
-                _pinMapping.battery_tx = doc[i]["battery"]["rs485"]["tx"] | RS485_PIN_TX;
-                _pinMapping.battery_rts = doc[i]["battery"]["rs485"]["rts"] | RS485_PIN_RTS;
-#else
-                _pinMapping.battery_rx = doc[i]["battery"]["can0"]["rx"] | CAN0_PIN_RX;
-                _pinMapping.battery_tx = doc[i]["battery"]["can0"]["tx"] | CAN0_PIN_TX;
+#if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER) || defined(USE_JKMS_CONTROLLER)
+                if (doc[i]["battery"].containsKey("rs485_rx")) {
+                    _pinMapping.battery_rx = doc[i]["battery"]["rs485_rx"] | SERIAL2_PIN_RX;
+                    _pinMapping.battery_tx = doc[i]["battery"]["rs485_tx"] | SERIAL2_PIN_TX;
+                    if (doc[i]["battery"].containsKey("rs485_rts")) {
+                        _pinMapping.battery_rts = doc[i]["battery"]["rs485_rts"] | SERIAL2_PIN_RTS;
+                    } else {
+                        _pinMapping.battery_rts = -1;
+                    }
+                } else
+#endif
+#if defined(USE_DALYBMS_CONTROLLER) || defined(USE_JKBMS_CONTROLLER)
+                 if (doc[i]["battery"].containsKey("rs232_rx")) {
+                    _pinMapping.battery_rx = doc[i]["battery"]["rs232_rx"] | SERIAL2_PIN_RX;
+                    _pinMapping.battery_tx = doc[i]["battery"]["rs232_tx"] | SERIAL2_PIN_TX;
+                    _pinMapping.battery_rts = -2; // indicate we have a RS232 interface
+                } else
+#endif
+#if defined(USE_PYLONTECH_CAN_RECEIVER)
+                 if (doc[i]["battery"].containsKey("can0_rx")) {
+                    _pinMapping.battery_rx = doc[i]["battery"]["can0_rx"] | CAN0_PIN_RX;
+                    _pinMapping.battery_tx = doc[i]["battery"]["can0_tx"] | CAN0_PIN_TX;
+                } else
+#endif
+                {
+                    _pinMapping.battery_rx = SERIAL2_PIN_RX;
+                    _pinMapping.battery_tx = SERIAL2_PIN_TX;
+                    _pinMapping.battery_rts = SERIAL2_PIN_RTS;
+                }
+#if defined(USE_DALYBMS_CONTROLLER)
+                _pinMapping.battery_daly_wakeup = doc[i]["battery"]["daly_wakeup"] | PIN_DALY_WAKEUP;
 #endif
 
-#ifdef CHARGER_HUAWEI
+#if defined(CHARGER_HUAWEI)
                 _pinMapping.huawei_power = doc[i]["huawei"]["power"] | HUAWEI_PIN_POWER;
-                _pinMapping.mcp2515_miso = doc[i]["huawei"]["mcp2515"]["miso"] | MCP2515_PIN_MISO;
-                _pinMapping.mcp2515_mosi = doc[i]["huawei"]["mcp2515"]["mosi"] | MCP2515_PIN_MOSI;
-                _pinMapping.mcp2515_clk = doc[i]["huawei"]["mcp2515"]["clk"] | MCP2515_PIN_SCLK;
-                _pinMapping.mcp2515_irq = doc[i]["huawei"]["mcp2515"]["irq"] | MCP2515_PIN_IRQ;
-                _pinMapping.mcp2515_cs = doc[i]["huawei"]["mcp2515"]["cs"] | MCP2515_PIN_CS;
+                _pinMapping.mcp2515_miso = doc[i]["huawei"]["mcp2515_miso"] | MCP2515_PIN_MISO;
+                _pinMapping.mcp2515_mosi = doc[i]["huawei"]["mcp2515_mosi"] | MCP2515_PIN_MOSI;
+                _pinMapping.mcp2515_clk = doc[i]["huawei"]["mcp2515_clk"] | MCP2515_PIN_SCLK;
+                _pinMapping.mcp2515_irq = doc[i]["huawei"]["mcp2515_irq"] | MCP2515_PIN_IRQ;
+                _pinMapping.mcp2515_cs = doc[i]["huawei"]["mcp2515_cs"] | MCP2515_PIN_CS;
 #else
-                //                _pinMapping.meanwell_power = doc[i]["meanwell"]["power"] | MEANWELL_PIN_POWER;
-#ifdef CHARGER_USE_CAN0
-                _pinMapping.can0_rx = doc[i]["meanwell"]["can0"]["rx"] | CAN0_PIN_RX;
-                _pinMapping.can0_tx = doc[i]["meanwell"]["can0"]["tx"] | CAN0_PIN_RX;
-                // _pinMapping.can0_stb = doc[i]["meanwell"]["can0"]["stb"] | CAN0_PIN_STB;
+#if defined(CHARGER_USE_CAN0)
+                _pinMapping.can0_rx = doc[i]["charger"]["can0_rx"] | CAN0_PIN_RX;
+                _pinMapping.can0_tx = doc[i]["charger"]["can0_tx"] | CAN0_PIN_TX;
+                // _pinMapping.can0_stb = doc[i]["charger"]["can0_stb"] | CAN0_PIN_STB;
 
                 _pinMapping.mcp2515_miso = doc[i]["mcp2515"]["miso"] | MCP2515_PIN_MISO;
                 _pinMapping.mcp2515_mosi = doc[i]["mcp2515"]["mosi"] | MCP2515_PIN_MOSI;
@@ -298,27 +389,35 @@ void PinMappingClass::init(const String& deviceMapping)
                 _pinMapping.mcp2515_irq = doc[i]["mcp2515"]["irq"] | MCP2515_PIN_IRQ;
                 _pinMapping.mcp2515_cs = doc[i]["mcp2515"]["cs"] | MCP2515_PIN_CS;
 #else
-                _pinMapping.mcp2515_miso = doc[i]["meanwell"]["mcp2515"]["miso"] | MCP2515_PIN_MISO;
-                _pinMapping.mcp2515_mosi = doc[i]["meanwell"]["mcp2515"]["mosi"] | MCP2515_PIN_MOSI;
-                _pinMapping.mcp2515_clk = doc[i]["meanwell"]["mcp2515"]["clk"] | MCP2515_PIN_SCLK;
-                _pinMapping.mcp2515_irq = doc[i]["meanwell"]["mcp2515"]["irq"] | MCP2515_PIN_IRQ;
-                _pinMapping.mcp2515_cs = doc[i]["meanwell"]["mcp2515"]["cs"] | MCP2515_PIN_CS;
+                _pinMapping.mcp2515_miso = doc[i]["charger"]["mcp2515_miso"] | MCP2515_PIN_MISO;
+                _pinMapping.mcp2515_mosi = doc[i]["charger"]["mcp2515_mosi"] | MCP2515_PIN_MOSI;
+                _pinMapping.mcp2515_clk = doc[i]["charger"]["mcp2515_clk"] | MCP2515_PIN_SCLK;
+                _pinMapping.mcp2515_irq = doc[i]["charger"]["mcp2515_irq"] | MCP2515_PIN_IRQ;
+                _pinMapping.mcp2515_cs = doc[i]["charger"]["mcp2515_cs"] | MCP2515_PIN_CS;
 #endif
 #endif
-                _pinMapping.pre_charge = doc[i]["battery_connected_inverter"]["pre_charge"] | PRE_CHARGE_PIN;
-                _pinMapping.full_power = doc[i]["battery_connected_inverter"]["full_power"] | FULL_POWER_PIN;
+                _pinMapping.pre_charge = doc[i]["batteryConnectedInverter"]["pre_charge"] | PRE_CHARGE_PIN;
+                _pinMapping.full_power = doc[i]["batteryConnectedInverter"]["full_power"] | FULL_POWER_PIN;
 
-                _pinMapping.sdm_tx = doc[i]["sdm"]["rs485"]["tx"] | SDM_TX_PIN;
-                _pinMapping.sdm_rx = doc[i]["sdm"]["rs485"]["rx"] | SDM_RX_PIN;
-                _pinMapping.sdm_rts = doc[i]["sdm"]["rs485"]["rts"] | DERE_PIN;
+                _pinMapping.sdm_tx = doc[i]["sdm"]["rs485_tx"] | SDM_TX_PIN;
+                _pinMapping.sdm_rx = doc[i]["sdm"]["rs485_rx"] | SDM_RX_PIN;
+                if (doc[i]["sdm"].containsKey("rs485_rts")) {
+                    _pinMapping.sdm_rts = doc[i]["sdm"]["rs485_rts"] | DERE_PIN;
+                } else {
+                    _pinMapping.sdm_rts = -1;
+                }
 
-                _pinMapping.sml_rx = doc[i]["sml"]["rs232"]["rx"] | SML_RX_PIN;
+                _pinMapping.sml_rx = doc[i]["sml"]["rs232_rx"] | SML_RX_PIN;
+
+    createPinMappingJson();
 
                 MessageOutput.println("... done");
                 return;
             }
         }
     }
+
+    createPinMappingJson();
 
     MessageOutput.println("using default config");
 }
@@ -333,46 +432,47 @@ bool PinMappingClass::isValidNrf24Config() const
         && _pinMapping.nrf24_mosi >= 0;
 }
 
-#ifdef USE_RADIO_CMT
+#if defined(USE_RADIO_CMT)
 bool PinMappingClass::isValidCmt2300Config() const
 {
-    return _pinMapping.cmt_clk >= 0
-        && _pinMapping.cmt_cs >= 0
-        && _pinMapping.cmt_fcs >= 0
-        && _pinMapping.cmt_sdio >= 0;
+    return _pinMapping.cmt_clk > 0
+        && _pinMapping.cmt_cs > 0
+        && _pinMapping.cmt_fcs > 0
+        && _pinMapping.cmt_sdio > 0;
 }
 #endif
 
-#ifdef OPENDTU_ETHERNET
+#if defined(OPENDTU_ETHERNET)
 bool PinMappingClass::isValidEthConfig() const
 {
     return _pinMapping.eth_enabled;
 }
 #endif
 
-#ifdef USE_REFUsol_INVERTER
+#if defined(USE_REFUsol_INVERTER)
 bool PinMappingClass::isValidREFUsolConfig() const
 {
     return _pinMapping.REFUsol_rx > 0
-        && _pinMapping.REFUsol_tx > 0
-        // && _pinMapping.REFUsol_cts > 0
-        && (_pinMapping.REFUsol_rts > 0 || _pinMapping.REFUsol_rts == -1);
+        && _pinMapping.REFUsol_tx >= 0
+        && _pinMapping.REFUsol_rts >= -1;
 }
 #endif
 
 bool PinMappingClass::isValidBatteryConfig() const
 {
-#if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER)
+#if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER) || defined(USE_JKBMS_CONTROLLER)
     return _pinMapping.battery_rx > 0
-        && _pinMapping.battery_tx > 0
-        // && _pinMapping.battery_cts > 0
-        && (_pinMapping.battery_rts > 0 || _pinMapping.battery_rts == -1);
+        && _pinMapping.battery_tx >= 0
+#if defined(USE_DALYBMS_CONTROLLER)
+        && _pinMapping.battery_daly_wakeup >= 0
+#endif
+        ;
 #else
     return _pinMapping.battery_rx > 0
-        && _pinMapping.battery_tx > 0;
+        && _pinMapping.battery_tx >= 0;
 #endif
 }
-#ifdef CHARGER_HUAWEI
+#if defined(CHARGER_HUAWEI)
 bool PinMappingClass::isValidHuaweiConfig() const
 {
     return _pinMapping.mcp2515_miso > 0
@@ -385,18 +485,16 @@ bool PinMappingClass::isValidHuaweiConfig() const
 #else
 bool PinMappingClass::isValidMeanWellConfig() const
 {
-#ifdef CHARGER_USE_CAN0
+#if defined(CHARGER_USE_CAN0)
     return _pinMapping.can0_rx > 0
         && _pinMapping.can0_tx > 0;
-//        && (_pinMapping.can0_stb > 0 || _pinMapping.can0_stb == -1)
-//        && (_pinMapping.meanwell_power > 0 || _pinMapping.meanwell_power == -1);
+//        && (_pinMapping.can0_stb > 0 || _pinMapping.can0_stb == -1);
 #else
     return _pinMapping.mcp2515_miso > 0
         && _pinMapping.mcp2515_mosi > 0
         && _pinMapping.mcp2515_clk > 0
         && _pinMapping.mcp2515_irq > 0
         && _pinMapping.mcp2515_cs > 0;
-//        && (_pinMapping.meanwell_power > 0 || _pinMapping.meanwell_power == -1);
 #endif
 }
 #endif
@@ -405,4 +503,162 @@ bool PinMappingClass::isValidPreChargeConfig() const
 {
     return _pinMapping.pre_charge >= 0
         && _pinMapping.full_power >= 0;
+}
+
+void PinMappingClass::createPinMappingJson() const
+{
+    DynamicJsonDocument obj(JSON_BUFFER_SIZE);
+
+    JsonArray array = obj.createNestedArray("");
+    JsonObject doc = array.createNestedObject();
+
+    doc["name"] = "my_very_special_board";
+
+    JsonObject nrf24 = doc.createNestedObject("nrf24");
+    nrf24["clk"]  = _pinMapping.nrf24_clk;
+    nrf24["cs"]   = _pinMapping.nrf24_cs;
+    nrf24["en"]   = _pinMapping.nrf24_en;
+    nrf24["irq"]  = _pinMapping.nrf24_irq;
+    nrf24["miso"] = _pinMapping.nrf24_miso;
+    nrf24["mosi"] = _pinMapping.nrf24_mosi;
+
+    JsonObject cmt = doc.createNestedObject("cmt");
+#if defined(USE_RADIO_CMT)
+    cmt["clk"]   = _pinMapping.cmt_clk;
+    cmt["cs"]    = _pinMapping.cmt_cs;
+    cmt["fcs"]   = _pinMapping.cmt_fcs;
+    cmt["gpio2"] = _pinMapping.cmt_gpio2;
+    cmt["gpio3"] = _pinMapping.cmt_gpio3;
+    cmt["sdio"]  = _pinMapping.cmt_sdio;
+#else
+    cmt["clk"]   = -1;
+    cmt["cs"]    = -1;
+    cmt["fcs"]   = -1;
+    cmt["gpio2"] = -1;
+    cmt["gpio3"] = -1;
+    cmt["sdio"]  = -1;
+#endif
+
+    JsonObject eth = doc.createNestedObject("eth");
+#if defined(OPENDTU_ETHERNET)
+    eth["enabled"]  = _pinMapping.eth_enabled;
+    eth["phy_addr"] = _pinMapping.eth_phy_addr;
+    eth["power"]    = _pinMapping.eth_power;
+    eth["mdc"]      = _pinMapping.eth_mdc;
+    eth["mdio"]     = _pinMapping.eth_mdio;
+    eth["type"]     = _pinMapping.eth_type;
+    eth["clk_mode"] = _pinMapping.eth_clk_mode;
+#else
+   eth["enabled"]  = false;
+#endif
+
+    JsonObject display = doc.createNestedObject("display");
+#if defined(USE_DISPLAY_GRAPHIC)
+    display["type"]  = _pinMapping.display_type;
+    display["data"]  = _pinMapping.display_data;
+    display["clk"]   = _pinMapping.display_clk;
+    display["cs"]    = _pinMapping.display_cs;
+    display["reset"] = _pinMapping.display_reset;
+    display["busy"]  = _pinMapping.display_busy;
+    display["dc"]    = _pinMapping.display_dc;
+#else
+    display["type"]  = 0;
+    display["data"]  = -1;
+    display["clk"]   = -1;
+    display["cs"]    = -1;
+    display["reset"] = -1;
+    display["busy"]  = -1;
+    display["dc"]    = -1;
+#endif
+
+    JsonObject led = doc.createNestedObject("led");
+#if defined(USE_LED_SINGLE)
+    led["led0"] = _pinMapping.led[0];
+    led["led1"] = _pinMapping.led[1];
+#else
+//    led["led0"] = -1;
+//    led["led1"] = -1;
+#endif
+#if defined(USE_LED_STRIP)
+    led["rgb"] = _pinMapping.led_rgb;
+#else
+//    led["rgb"] = -1;
+#endif
+    JsonObject victron = doc.createNestedObject("victron");
+    victron["rs232_rx"] = _pinMapping.victron_rx;
+    victron["rs232_tx"] = _pinMapping.victron_tx;
+
+    JsonObject refusol = doc.createNestedObject("refusol");
+#if defined(USE_REFUsol_INVERTER)
+    refusol["rs485_rx"] = _pinMapping.REFUsol_rx;
+    refusol["rs485_tx"] = _pinMapping.REFUsol_tx;
+    if (_pinMapping.refusul_rts >= 0) refusol["rs485_rts"] = _pinMapping.REFUsol_rts;
+#else
+    refusol["rs485_rx"] = -1;
+    refusol["rs485_tx"] = -1;
+#endif
+
+    JsonObject battery = doc.createNestedObject("battery");
+#if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER) || defined(USE_JKBMS_CONTROLLER)
+    if (_pinMapping.battery_rts >= -1) {
+        battery["rs485_rx"]  = _pinMapping.battery_rx;
+        battery["rs485_tx"]  = _pinMapping.battery_tx;
+        if (_pinMapping.battery_rts >= 0) battery["rs485_rts"] = _pinMapping.battery_rts;
+    } else {
+        battery["rs232_rx"]  = _pinMapping.battery_rx;
+        battery["rs232_tx"]  = _pinMapping.battery_tx;
+    }
+#if defined(USE_DALYBMS_CONTROLLER)
+    battery["daly_wakeup"] = _pinMapping.battery_daly_wakeup;
+#endif
+#else
+    battery["can0_rx"] = _pinMapping.battery_rx;
+    battery["can0_tx"] = _pinMapping.battery_tx;
+#endif
+
+    //JsonObject huawei = doc.createNestedObject("huawei");
+    JsonObject charger = doc.createNestedObject("charger");
+    JsonObject mcp2515 = doc.createNestedObject("mcp2515");
+#if defined(CHARGER_HUAWEI)
+    huawei["power"] = _pinMapping.huawei_power;
+    huawei["mcp2515_miso"] = _pinMapping.mcp2515_miso;
+    huawei["mcp2515_mosi"] = _pinMapping.mcp2515_mosi;
+    huawei["mcp2515_clk"]  = _pinMapping.mcp2515_clk;
+    huawei["mcp2515_irq"]  = _pinMapping.mcp2515_irq;
+    huawei["mcp2515_cs"]   = _pinMapping.mcp2515_cs;
+#else
+#if defined(CHARGER_USE_CAN0)
+    charger["can0_rx"] = _pinMapping.can0_rx;
+    charger["can0_tx"] = _pinMapping.can0_tx;
+    // charger["can0_stb"] = _pinMapping.can0_stb;
+
+    mcp2515["miso"] = _pinMapping.mcp2515_miso;
+    mcp2515["mosi"] = _pinMapping.mcp2515_mosi;
+    mcp2515["clk"]  = _pinMapping.mcp2515_clk;
+    mcp2515["irq"]  = _pinMapping.mcp2515_irq;
+    mcp2515["cs"]   = _pinMapping.mcp2515_cs;
+#else
+    charger["mcp2515_miso"] = _pinMapping.mcp2515_miso;
+    charger["mcp2515_mosi"] = _pinMapping.mcp2515_mosi;
+    charger["mcp2515_clk"] = _pinMapping.mcp2515_clk;
+    charger["mcp2515_irq"] = _pinMapping.mcp2515_irq;
+    charger["mcp2515_cs"] = _pinMapping.mcp2515_cs;
+#endif
+#endif
+    JsonObject battery_connected_inverter = doc.createNestedObject("batteryConnectedInverter");
+    battery_connected_inverter["pre_charge"] = _pinMapping.pre_charge;
+    battery_connected_inverter["full_power"] = _pinMapping.full_power;
+
+    JsonObject sdm = doc.createNestedObject("sdm");
+    sdm["rs485_tx"] = _pinMapping.sdm_tx;
+    sdm["rs485_rx"] = _pinMapping.sdm_rx;
+    if (_pinMapping.sdm_rts >= 0) sdm["rs485_rts"] = _pinMapping.sdm_rts;
+
+    JsonObject sml = doc.createNestedObject("sml");
+    sml["rs232_rx"] = _pinMapping.sml_rx;
+
+    String buffer;
+    serializeJsonPretty(array, buffer);
+
+    Serial.println(buffer);
 }

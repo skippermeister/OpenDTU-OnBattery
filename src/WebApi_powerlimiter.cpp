@@ -21,11 +21,9 @@ void WebApiPowerLimiterClass::init(AsyncWebServer& server, Scheduler& scheduler)
 {
     using std::placeholders::_1;
 
-    _server = &server;
-
-    _server->on("/api/powerlimiter/status", HTTP_GET, std::bind(&WebApiPowerLimiterClass::onStatus, this, _1));
-    _server->on("/api/powerlimiter/config", HTTP_GET, std::bind(&WebApiPowerLimiterClass::onAdminGet, this, _1));
-    _server->on("/api/powerlimiter/config", HTTP_POST, std::bind(&WebApiPowerLimiterClass::onAdminPost, this, _1));
+    server.on("/api/powerlimiter/status", HTTP_GET, std::bind(&WebApiPowerLimiterClass::onStatus, this, _1));
+    server.on("/api/powerlimiter/config", HTTP_GET, std::bind(&WebApiPowerLimiterClass::onAdminGet, this, _1));
+    server.on("/api/powerlimiter/config", HTTP_POST, std::bind(&WebApiPowerLimiterClass::onAdminPost, this, _1));
 }
 
 void WebApiPowerLimiterClass::onStatus(AsyncWebServerRequest* request)
@@ -52,6 +50,7 @@ void WebApiPowerLimiterClass::onStatus(AsyncWebServerRequest* request)
     root["target_power_consumption_hysteresis"] = cPL.TargetPowerConsumptionHysteresis;
     root["lower_power_limit"] = cPL.LowerPowerLimit;
     root["upper_power_limit"] = cPL.UpperPowerLimit;
+    root["ignore_soc"] = cPL.IgnoreSoc;
     root["battery_soc_start_threshold"] = cPL.BatterySocStartThreshold;
     root["battery_soc_stop_threshold"] = cPL.BatterySocStopThreshold;
     root["voltage_start_threshold"] = static_cast<int>(cPL.VoltageStartThreshold * 100 + 0.5) / 100.0;
@@ -144,6 +143,7 @@ void WebApiPowerLimiterClass::onAdminPost(AsyncWebServerRequest* request)
     cPL.TargetPowerConsumptionHysteresis = root["target_power_consumption_hysteresis"].as<int32_t>();
     cPL.LowerPowerLimit = root["lower_power_limit"].as<int32_t>();
     cPL.UpperPowerLimit = root["upper_power_limit"].as<int32_t>();
+    cPL.IgnoreSoc = root["ignore_soc"].as<bool>();
     cPL.BatterySocStartThreshold = root["battery_soc_start_threshold"].as<uint32_t>();
     cPL.BatterySocStopThreshold = root["battery_soc_stop_threshold"].as<uint32_t>();
     cPL.VoltageStartThreshold = static_cast<int>(root["voltage_start_threshold"].as<float>() * 100) / 100.0;

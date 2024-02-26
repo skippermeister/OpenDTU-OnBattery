@@ -58,7 +58,21 @@
                 <div class="tab-pane fade show" id="nav-display" role="tabpanel" aria-labelledby="nav-display-tab"
                     tabindex="0">
                     <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center"  :class="{
+                            'text-bg-secondary': deviceConfigList.curPin.display.type == 0,
+                            'text-bg-primary': deviceConfigList.curPin.display.type > 0,
+                        }">
+                            <div class="p-1 flex-grow-1">
+                                <div class="d-flex flex-wrap">
+                                    <div style="padding-right: 2em;">
+                                        {{ $t('deviceadmin.TypeDescription') }} {{ deviceConfigList.display.typedescription }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="card-body">
+
                             <InputElement :label="$t('deviceadmin.PowerSafe')"
                                 v-model="deviceConfigList.display.power_safe" type="checkbox"
                                 :tooltip="$t('deviceadmin.PowerSafeHint')" />

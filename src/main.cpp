@@ -8,15 +8,12 @@
 #include "Display_Graphic.h"
 #include "InverterSettings.h"
 #include "Led_Single.h"
-#include "LED_Strip.h"
+#include "Led_Strip.h"
 #include "MessageOutput.h"
 #include "REFUsolRS485Receiver.h"
 #include "VictronMppt.h"
-#ifdef CHARGER_HUAWEI
 #include "Huawei_can.h"
-#else
 #include "MeanWell_can.h"
-#endif
 #include "ModbusDTU.h"
 #include "MqttHandleDtu.h"
 #include "MqttHandleHass.h"
@@ -48,9 +45,13 @@
 #include <Arduino.h>
 #include <LittleFS.h>
 #include <TaskScheduler.h>
+#include <esp_heap_caps.h>
 
 void setup()
 {
+    // Move all dynamic allocations >512byte to psram (if available)
+    heap_caps_malloc_extmem_enable(512);
+
     // Initialize serial output
     Serial.begin(SERIAL_BAUDRATE);
 #if ARDUINO_USB_CDC_ON_BOOT
@@ -142,7 +143,7 @@ void setup()
 #endif
 #ifdef USE_LED_STRIP
     // Initialize LED WS2812
-    LEDStrip.init(scheduler);
+    LedStrip.init(scheduler);
 #endif
 
     // Check for default DTU serial

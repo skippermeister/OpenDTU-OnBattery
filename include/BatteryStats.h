@@ -66,7 +66,9 @@ class BatteryStats {
         virtual bool getChargeEnabled() const { return true; };
         virtual bool getDischargeEnabled() const { return true; };
         virtual bool getChargeImmediately() const { return false; };
-        virtual float getVoltage() const { return 0.0; };
+        float getVoltage() const { return _voltage; };
+        uint32_t getVoltageAgeSeconds() const { return (millis() - _lastUpdateVoltage) / 1000; }
+
         virtual float getTemperature() const { return 0.0; };
 
         virtual float getRecommendedChargeVoltageLimit() const { return 0.0; };
@@ -80,21 +82,37 @@ class BatteryStats {
         virtual bool isChargeTemperatureValid() const { return false; };
         virtual bool isDischargeTemperatureValid() const { return false; };
 
-        bool isValid() const { return _lastUpdateSoC > 0 && _lastUpdate > 0; }
+        bool isSoCValid() const { return _lastUpdateSoC > 0; }
+        bool isVoltageValid() const { return _lastUpdateVoltage > 0; }
 
         virtual bool initialized() const { return false; };
 
     protected:
         virtual void mqttPublish() /*const*/;
 
+        void setSoC(float soc, uint8_t precision, uint32_t timestamp) {
+            _SoC = soc;
+            _socPrecision = precision;
+            _lastUpdateSoC = timestamp;
+        }
+
+        void setVoltage(float voltage, uint32_t timestamp) {
+            _voltage = voltage;
+            _lastUpdateVoltage = timestamp;
+        }
+
         String _manufacturer = "unknown";
         String _deviceName = "";
-        uint8_t _SoC = 0;
-        uint32_t _lastUpdateSoC = 0;
         uint32_t _lastUpdate = 0;
 
     private:
         uint32_t _lastMqttPublish = 0;
+
+        uint8_t _SoC = 0;
+        uint8_t _socPrecision = 0; // decimal places
+        uint32_t _lastUpdateSoC = 0;
+        float _voltage = 0.0; // total battery pack voltage
+        uint32_t _lastUpdateVoltage = 0;
 };
 
 /*
@@ -250,7 +268,7 @@ typedef struct {
         struct {
             unsigned dummy : 3;
             unsigned fullChargeRequest : 1; // if SOC never higher than 97% in 30 days, will set this flag to 1. And when the SOC is ≥ 97%, the flag will be 0.
-            unsigned chargeImmediately : 1; // 9-13%
+            unsigned chargeImmediately2 : 1; // 9-13%
             unsigned chargeImmediately1 : 1; // 5-9%
             unsigned dischargeEnable : 1; // 1: yes；0: request stop discharge
             unsigned chargeEnable : 1; // 1: yes；0: request stop charge
@@ -276,7 +294,7 @@ public:
     bool getChargeEnabled() const final { return chargeEnabled; };
     bool getDischargeEnabled() const final { return dischargeEnabled; };
     bool getChargeImmediately() const final { return chargeImmediately; };
-    float getVoltage() const final { return voltage; };
+//    float getVoltage() const final { return voltage; };
     bool isChargeTemperatureValid() const final { return true; }; // FIXME: to be done
     bool isDischargeTemperatureValid() const final { return true; }; // FIXME: to be done
 
@@ -289,7 +307,6 @@ public:
 private:
     void setManufacturer(String&& m) { _manufacturer = std::move(m) + "tech"; }
     void setDeviceName(String&& m) { _deviceName = std::move(m); }
-    void setSoC(uint8_t value) { _SoC = value; _lastUpdateSoC = millis(); }
     void setLastUpdate(uint32_t ts) { _lastUpdate = ts; }
 
     float chargeVoltage;
@@ -298,7 +315,7 @@ private:
     float dischargeVoltage;
 
     uint16_t stateOfHealth;
-    float voltage; // total voltage of the battery pack
+//    float voltage; // total voltage of the battery pack
     // total current into (positive) or from (negative)
     // the battery, i.e., the charging current
     float current;
@@ -321,7 +338,7 @@ private:
         float dischargeVoltage;
 
         uint16_t stateOfHealth;
-        float voltage; // total voltage of the battery pack
+//        float voltage; // total voltage of the battery pack
         // total current into (positive) or from (negative)
         // the battery, i.e., the charging current
         float current;
@@ -358,8 +375,8 @@ public:
     const Warning_t& getWarning() const final { return Warning; };
     bool getChargeEnabled() const final { return ChargeDischargeManagementInfo.chargeEnable; };
     bool getDischargeEnabled() const final { return ChargeDischargeManagementInfo.dischargeEnable; };
-    bool getChargeImmediately() const final { return (ChargeDischargeManagementInfo.chargeImmediately || ChargeDischargeManagementInfo.chargeImmediately1 || ChargeDischargeManagementInfo.fullChargeRequest); };
-    float getVoltage() const final { return voltage; };
+    bool getChargeImmediately() const final { return (ChargeDischargeManagementInfo.chargeImmediately1 || ChargeDischargeManagementInfo.chargeImmediately2 || ChargeDischargeManagementInfo.fullChargeRequest); };
+//    float getVoltage() const final { return voltage; };
     float getTemperature() const final { return averageCellTemperature; };
 
     float getRecommendedChargeVoltageLimit() const final { return ChargeDischargeManagementInfo.chargeVoltageLimit; };
@@ -391,7 +408,6 @@ public:
 private:
     void setManufacturer(String&& m) { _manufacturer = std::move(m) + "tech"; }
     void setDeviceName(String&& m) { _deviceName = std::move(m); }
-    void setSoC(uint8_t value) { _SoC = value; _lastUpdateSoC = millis(); }
     void setLastUpdate(uint32_t ts) { _lastUpdate = ts; }
 
     String softwareVersion;
@@ -399,7 +415,6 @@ private:
     String _mainLineVersion;
 
     float chargeVoltage;
-    float voltage; // total voltage of the battery pack
     // total current into (positive) or from (negative) the battery, i.e., the charging current
     float current;
 
@@ -430,7 +445,7 @@ private:
         String softwareVersion;
 
         float chargeVoltage;
-        float voltage; // total voltage of the battery pack
+        // float voltage; // total voltage of the battery pack
         // total current into (positive) or from (negative) the battery, i.e., the charging current
         float current;
 
@@ -501,8 +516,8 @@ class DalyBmsBatteryStats : public BatteryStats {
         const Warning_t& getWarning() const final { return Warning; };
         bool getChargeEnabled() const final { return chargingMosEnabled; };
         bool getDischargeEnabled() const final { return dischargingMosEnabled; };
-        bool getChargeImmediately() const final { return chargeImmediately; };
-        float getVoltage() const final { return voltage; };
+        bool getChargeImmediately() const final { return chargeImmediately1 || chargeImmediately2; };
+//        float getVoltage() const final { return voltage; };
         float getTemperature() const final { return (_maxTemperature + _minTemperature) / 2.0; };
 
         float getRecommendedChargeVoltageLimit() const final { return WarningValues.maxPackVoltage * 0.99; };  // 1% below warning level
@@ -530,7 +545,6 @@ class DalyBmsBatteryStats : public BatteryStats {
         bool initialized() const final { return _initialized; };
 
     private:
-        void setSoC(uint8_t value) { _SoC = value; _lastUpdateSoC = millis(); }
         void setLastUpdate(uint32_t ts) { _lastUpdate = ts; }
 
         mutable uint32_t _lastMqttPublish = 0;
@@ -618,7 +632,7 @@ class DalyBmsBatteryStats : public BatteryStats {
         #pragma pack(pop)
 
         struct {
-            float voltage;
+            // float voltage;
             float current;
             float power;
             float ratedCapacity;
@@ -628,7 +642,9 @@ class DalyBmsBatteryStats : public BatteryStats {
             Alarm_t Alarm;
             bool chargingMosEnabled;
             bool dischargingMosEnabled;
-            bool chargeImmediately;
+            bool chargeImmediately1;
+            bool chargeImmediately2;
+            bool cellBalanceActive;
             float maxCellVoltage;
             float minCellVoltage;
             float cellDiffVoltage;
@@ -650,12 +666,13 @@ class DalyBmsBatteryStats : public BatteryStats {
         float _currentWave;
         char _batteryCode[32];
         int16_t _shortCurrent;
-        float _currentSamplingResistance;
+        float currentSamplingResistance;
         float _balanceStartVoltage;
         float _balanceDifferenceVoltage;
         char _bmsSWversion[32];
         char _bmsHWversion[32];
-        float voltage;
+        // float voltage;
+        float gatherVoltage;
         float current;
         float power;
         float batteryLevel;
@@ -671,23 +688,23 @@ class DalyBmsBatteryStats : public BatteryStats {
         char _status[16];
         bool chargingMosEnabled;
         bool dischargingMosEnabled;
-        bool chargeImmediately;
+        bool chargeImmediately1;
+        bool chargeImmediately2;
+        bool cellBalanceActive;
         uint8_t _bmsCycles;
         float remainingCapacity;
         uint8_t _cellsNumber;
         uint8_t _tempsNumber;
         uint8_t _chargeState;
         uint8_t _loadState;
-        char _dio[9];
+        uint8_t _dIO;
         uint16_t  batteryCycles;
-        int _temperature[24];
+        int *_temperature;
         int averageBMSTemperature;
-        float _cellVoltage[24];
-        char _cellBalance[32];
-//        char _failureStatus[71];
+        float *_cellVoltage;
+        char _cellBalance[6];
         FailureStatus_t FailureStatus;
         uint8_t _faultCode;
-
 
         bool _initialized = false;
 };
@@ -726,15 +743,15 @@ class VictronSmartShuntStats : public BatteryStats {
 
 #ifdef USE_MQTT_BATTERY
 class MqttBatteryStats : public BatteryStats {
+    friend class MqttBattery;
+
     public:
         // since the source of information was MQTT in the first place,
         // we do NOT publish the same data under a different topic.
         void mqttPublish() /*const*/ final { }
 
-        // the SoC is the only interesting value in this case, which is already
-        // displayed at the top of the live view. do not generate a card.
+        // if the voltage is subscribed to at all, it alone does not warrant a
+        // card in the live view, since the SoC is already displayed at the top
         void getLiveViewData(JsonVariant& root) const final { }
-
-        void setSoC(uint8_t SoC) { _SoC = SoC; _lastUpdateSoC = _lastUpdate = millis(); }
 };
 #endif

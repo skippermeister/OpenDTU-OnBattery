@@ -16,10 +16,8 @@ void WebApiDeviceClass::init(AsyncWebServer& server, Scheduler& scheduler)
 {
     using std::placeholders::_1;
 
-    _server = &server;
-
-    _server->on("/api/device/config", HTTP_GET, std::bind(&WebApiDeviceClass::onDeviceAdminGet, this, _1));
-    _server->on("/api/device/config", HTTP_POST, std::bind(&WebApiDeviceClass::onDeviceAdminPost, this, _1));
+    server.on("/api/device/config", HTTP_GET, std::bind(&WebApiDeviceClass::onDeviceAdminGet, this, _1));
+    server.on("/api/device/config", HTTP_POST, std::bind(&WebApiDeviceClass::onDeviceAdminPost, this, _1));
 }
 
 void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
@@ -49,11 +47,11 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
         nrfPinObj["miso"] = pin.nrf24_miso;
         nrfPinObj["mosi"] = pin.nrf24_mosi;
     } else {
-        nrfPinObj["enabled"] = false;
+        nrfPinObj["Pins"] = "invalid";
     }
 
+#if defined(USE_RADIO_CMT)
     auto cmtPinObj = curPin.createNestedObject("cmt");
-#ifdef USE_RADIO_CMT
     if (PinMapping.isValidCmt2300Config()) {
         cmtPinObj["clk"] = pin.cmt_clk;
         cmtPinObj["cs"] = pin.cmt_cs;
@@ -61,15 +59,13 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
         cmtPinObj["sdio"] = pin.cmt_sdio;
         cmtPinObj["gpio2"] = pin.cmt_gpio2;
         cmtPinObj["gpio3"] = pin.cmt_gpio3;
-    } else
-#endif
-    {
-        cmtPinObj["enabled"] = false;
+    } else {
+        cmtPinObj["Pins"] = "invalid";
     }
+#endif
 
+#if defined(OPENDTU_ETHERNET)
     auto ethPinObj = curPin.createNestedObject("eth");
-    ethPinObj["enabled"] = false;
-#ifdef OPENDTU_ETHERNET
     ethPinObj["enabled"] = pin.eth_enabled;
     ethPinObj["phy_addr"] = pin.eth_phy_addr;
     ethPinObj["power"] = pin.eth_power;
@@ -79,19 +75,12 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
     ethPinObj["clk_mode"] = pin.eth_clk_mode;
 #endif
 
+#if defined(USE_DISPLAY_GRAPHIC)
     auto displayPinObj = curPin.createNestedObject("display");
-#ifdef USE_DISPLAY_GRAPHIC
     if (pin.display_data < 0 && pin.display_clk < 0 && pin.display_cs < 0 && pin.display_reset < 0 && pin.display_busy < 0 && pin.display_dc < 0) {
-        displayPinObj["enabled"] = false;
+        ;
     } else {
-        displayPinObj["type"] = pin.display_type == DisplayType_t::None ? "None" : pin.display_type == DisplayType_t::PCD8544_HW_SPI ? "PCD8544 (HW SPI)"
-            : pin.display_type == DisplayType_t::PCD8544_SW_SPI                                                                      ? "PCD8544 (SW SPI)"
-            : pin.display_type == DisplayType_t::SSD1306                                                                             ? "SSD1306 (I2C)"
-            : pin.display_type == DisplayType_t::SH1106                                                                              ? "SH1106 (I2C)"
-            : pin.display_type == DisplayType_t::SSD1309                                                                             ? "SSD1309 (I2C)"
-            : pin.display_type == DisplayType_t::ST7567_GM12864I_59N                                                                 ? "ST7567 (I2C)"
-            : pin.display_type == DisplayType_t::ePaper154                                                                           ? "ePaper154 (SW SPI)"
-                                                                                                                                     : "unknown";
+        displayPinObj["type"] = pin.display_type;
         if (pin.display_type == DisplayType_t::PCD8544_HW_SPI || pin.display_type == DisplayType_t::PCD8544_SW_SPI || pin.display_type == DisplayType_t::ePaper154) {
             displayPinObj["cs"] = pin.display_cs;
         }
@@ -107,40 +96,30 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
             displayPinObj["dc"] = pin.display_dc;
         }
     }
-#else
-    displayPinObj["enabled"] = false;
 #endif
 
+#if defined(USE_LED_SINGLE) || defined(USE_LED_STRIP)
     auto ledPinObj = curPin.createNestedObject("led");
-    bool ledActive = false;
-#ifdef USE_LED_SINGLE
-    for (uint8_t i = 0; i < PINMAPPING_LED_COUNT; i++) {
-        if (pin.led[i] >= 0) {
-            ledPinObj["led" + String(i)] = pin.led[i];
-            ledActive = true;
-        }
+#if defined(USE_LED_SINGLE)
+    for (uint8_t i = 0; i < LED_COUNT; i++) {
+        ledPinObj["led" + String(i)] = pin.led[i];
     }
 #endif
-
-#ifdef USER_LED_STRIP
-    if (pin.led_rgb >= 0) {
-        ledPinObj["rgb"] = pin.led_rgb;
-        ledActive = true;
-    }
+#if defined(USE_LED_STRIP)
+    ledPinObj["rgb"] = pin.led_rgb;
 #endif
-    if (ledActive == false)
-        ledPinObj["enabled"] = false;
+#endif
 
+#if defined(USE_LED_SINGLE) || defined(USE_LED_STRIP)
     auto leds = root.createNestedArray("led");
-#ifdef USE_LED_SINGLE
-    for (uint8_t i = 0; i < PINMAPPING_LED_COUNT; i++) {
+    for (uint8_t i = 0; i < LED_COUNT; i++) {
         JsonObject led = leds.createNestedObject();
-        led["brightness"] = config.Led_Single[i].Brightness;
+        led["brightness"] = config.Led[i].Brightness;
     }
 #endif
 
     auto display = root.createNestedObject("display");
-#ifdef USE_DISPLAY_GRAPHIC
+#if defined(USE_DISPLAY_GRAPHIC)
     display["rotation"] = config.Display.Rotation;
     display["power_safe"] = config.Display.PowerSafe;
     display["screensaver"] = config.Display.ScreenSaver;
@@ -148,6 +127,15 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
     display["language"] = config.Display.Language;
     display["diagramduration"] = config.Display.Diagram.Duration;
     display["diagrammode"] = config.Display.Diagram.Mode;
+    display["typedescription"] = pin.display_type == DisplayType_t::None                ? "None"
+                               : pin.display_type == DisplayType_t::PCD8544_HW_SPI      ? "PCD8544 (HW SPI)"
+                               : pin.display_type == DisplayType_t::PCD8544_SW_SPI      ? "PCD8544 (SW SPI)"
+                               : pin.display_type == DisplayType_t::SSD1306             ? "SSD1306 (I2C)"
+                               : pin.display_type == DisplayType_t::SH1106              ? "SH1106 (I2C)"
+                               : pin.display_type == DisplayType_t::SSD1309             ? "SSD1309 (I2C)"
+                               : pin.display_type == DisplayType_t::ST7567_GM12864I_59N ? "ST7567 (I2C)"
+                               : pin.display_type == DisplayType_t::ePaper154           ? "ePaper154 (SW SPI)"
+                                                                                        : "unknown";
 #else
     display["rotation"] = 2;
     display["power_safe"] = false;
@@ -156,36 +144,47 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
     display["language"] = 0;
     display["diagramduration"] = 36000;
     display["diagrammode"] = 1;
+    display["typedescription"] = "None";
 #endif
 
     auto victronPinObj = curPin.createNestedObject("victron");
     victronPinObj["rs232_rx"] = pin.victron_rx;
     victronPinObj["rs232_tx"] = pin.victron_tx;
 
-#ifdef USE_REFUsol_INVERTER
+#if defined(USE_REFUsol_INVERTER)
     auto refusolPinObj = curPin.createNestedObject("refusol");
     refusolPinObj["rs485_rx"] = pin.REFUsol_rx;
     refusolPinObj["rs485_tx"] = pin.REFUsol_tx;
-    refusolPinObj["rs485_rts"] = pin.REFUsol_rts;
+    if (pin.REFUsol_rts >= 0) {
+        refusolPinObj["rs485_rts"] = pin.REFUsol_rts;
+    }
 #endif
 
     auto batteryPinObj = curPin.createNestedObject("battery");
 #if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER)
-    batteryPinObj["rs485_rx"] = pin.battery_rx;
-    batteryPinObj["rs485_tx"] = pin.battery_tx;
-    batteryPinObj["rs485_rts"] = pin.battery_rts;
+    if (pin.battery_rts >= -1) {
+        batteryPinObj["rs485_rx"] = pin.battery_rx;
+        batteryPinObj["rs485_tx"] = pin.battery_tx;
+        if (pin.battery_rts >= 0) {
+            batteryPinObj["rs485_rts"] = pin.battery_rts;
+        }
+    } else {
+        batteryPinObj["rs232_rx"] = pin.battery_rx;
+        batteryPinObj["rs232_tx"] = pin.battery_tx;
+    }
+#if defined(USE_DALYBMS_CONTROLLER)
+    batteryPinObj["daly_wakeup"] = pin.battery_daly_wakeup;
+#endif
 #else
     batteryPinObj["can0_rx"] = pin.battery_rx;
     batteryPinObj["can0_tx"] = pin.battery_tx;
 #endif
 
     auto chargerPinObj = curPin.createNestedObject("charger");
-#ifdef CHARGER_HUAWEI
+#if defined(CHARGER_HUAWEI)
     chargerPinObj["power"] = pin.huawei_power;
-#else
-//     chargerPinObj["power"] = pin.meanwell_power;
 #endif
-#ifdef CHARGER_USE_CAN0
+#if defined(CHARGER_USE_CAN0)
     chargerPinObj["can0_rx"] = pin.can0_rx;
     chargerPinObj["can0_tx"] = pin.can0_tx;
     //    chargerPinObj["can0_stb"] = pin.can0_stb;
@@ -207,16 +206,18 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
     auto sdmPinObj = curPin.createNestedObject("sdm");
     sdmPinObj["rs485_rx"] = pin.sdm_rx;
     sdmPinObj["rs485_tx"] = pin.sdm_tx;
-    sdmPinObj["rs485_rts"] = pin.sdm_rts;
+    if (pin.sdm_rts >= 0) {
+        sdmPinObj["rs485_rts"] = pin.sdm_rts;
+    }
 
     auto smlPinObj = curPin.createNestedObject("sml");
     smlPinObj["rs232_rx"] = pin.sml_rx;
 
-    /*
+
         String output;
         serializeJsonPretty(root, output);
-        MessageOutput.println(output);
-    */
+        Serial.println(output);
+
     response->setLength();
     request->send(response);
 }
@@ -295,10 +296,10 @@ void WebApiDeviceClass::onDeviceAdminPost(AsyncWebServerRequest* request)
     config.Display.Diagram.Mode = root["display"]["diagrammode"].as<DiagramMode_t>();
 #endif
 
-#ifdef USE_LED_SINGLE
-    for (uint8_t i = 0; i < PINMAPPING_LED_COUNT; i++) {
-        config.Led_Single[i].Brightness = root["led"][i]["brightness"].as<uint8_t>();
-        config.Led_Single[i].Brightness = min<uint8_t>(100, config.Led_Single[i].Brightness);
+#if defined(USE_LED_SINGLE) || defined(USE_LED_STRIP)
+    for (uint8_t i = 0; i < LED_COUNT; i++) {
+        config.Led[i].Brightness = root["led"][i]["brightness"].as<uint8_t>();
+        config.Led[i].Brightness = min<uint8_t>(100, config.Led[i].Brightness);
     }
 #endif
 

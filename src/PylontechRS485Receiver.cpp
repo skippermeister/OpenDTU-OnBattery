@@ -23,16 +23,31 @@ bool PylontechRS485Receiver::init()
         return false;
 
     const PinMapping_t& pin = PinMapping.get();
-    MessageOutput.printf("Initialize Pylontech battery interface RS485 port rx = %d, tx = %d rts = %d. ", pin.battery_rx, pin.battery_tx, pin.battery_rts);
+    MessageOutput.printf("Initialize Pylontech battery interface... ");
 
-    if (pin.battery_rx < 0 || pin.battery_tx < 0 || pin.battery_rts < 0) {
+    if (pin.battery_rx < 0 ||
+        pin.battery_tx < 0 ||
+        (pin.battery_rx == pin.battery_tx) ||
+        (pin.battery_rts >= 0 && (pin.battery_rts == pin.battery_rx || pin.battery_rts == pin.battery_tx)))
+    {
         MessageOutput.println("Invalid pin config");
         return false;
     }
 
     if (!_stats->_initialized) {
         RS485.begin(115200, SERIAL_8N1, pin.battery_rx, pin.battery_tx);
-        RS485.setPins(pin.battery_rx, pin.battery_tx, UART_PIN_NO_CHANGE, pin.battery_rts);
+        MessageOutput.printf("RS485 (Type %d) port rx = %d, tx = %d", pin.battery_rts>=0?1:2, pin.battery_rx, pin.battery_tx);
+        if (pin.battery_rts >= 0) {
+            /*
+             * Pylontech is connected via a RS485 module. Two different types of modules are supported.
+             * Type 1: if a GPIO pin greater or equal 0 is given, we have a MAX3485 or SP3485 modul with external driven DE/RE pins
+             *         Both pins are connected together and will be driven by the HWSerial driver.
+             * Type 2: if the GPIO is negativ (-1), we assume that we have a RS485 TTL Modul with a self controlled DE/RE circuit.
+             *         In this case we only need a TX and RX pin.
+             */
+            MessageOutput.printf(", rts = %d. ", pin.battery_rts);
+            RS485.setPins(pin.battery_rx, pin.battery_tx, UART_PIN_NO_CHANGE, pin.battery_rts);
+        }
         ESP_ERROR_CHECK(uart_set_mode(2, UART_MODE_RS485_HALF_DUPLEX));
 
         // Set read timeout of UART TOUT feature
@@ -367,10 +382,10 @@ void PylontechRS485Receiver::get_analog_value()
     _stats->averageCellTemperature /= (_stats->numberOfTemperatures - 1);
     _stats->current = to_Amp(info);
     info += 2;
-    _stats->voltage = to_Volt(info);
+    _stats->setVoltage(to_Volt(info), millis());
     info += 2;
-    _stats->chargeVoltage = _stats->voltage;
-    _stats->power = _stats->current * _stats->voltage / 1000.0; // kW
+    _stats->chargeVoltage = _stats->getVoltage();
+    _stats->power = _stats->current * _stats->getVoltage() / 1000.0; // kW
     _stats->remainingCapacity = DivideUint16By1000(info);
     info += 2; // DivideBy1000(Int16ub),
     uint8_t _UserDefinedItems = *info++;
@@ -385,13 +400,13 @@ void PylontechRS485Receiver::get_analog_value()
         info += 3;
     }
     _stats->totalPower = _stats->power;
-    _stats->setSoC(static_cast<uint8_t>((100.0 * _stats->remainingCapacity / _stats->totalCapacity) + 0.5));
+    _stats->setSoC(static_cast<uint8_t>((100.0 * _stats->remainingCapacity / _stats->totalCapacity) + 0.5), 1/*precision*/, millis());
     if (Battery._verboseLogging) {
         MessageOutput.printf("%s AverageBMSTemperature: %.1f\r\n", TAG, _stats->averageBMSTemperature);
         MessageOutput.printf("%s AverageCellTemperature: %.1f\r\n", TAG, _stats->averageCellTemperature);
         MessageOutput.printf("%s MinCellTemperature: %.1f\r\n", TAG, _stats->minCellTemperature);
         MessageOutput.printf("%s MaxCellTemperature: %.1f\r\n", TAG, _stats->maxCellTemperature);
-        MessageOutput.printf("%s Current: %.1f, Voltage: %.3f\r\n", TAG, _stats->current, _stats->voltage);
+        MessageOutput.printf("%s Current: %.1f, Voltage: %.3f\r\n", TAG, _stats->current, _stats->getVoltage());
         MessageOutput.printf("%s Capacity Remaining: %.3f, Total: %.3f\r\n", TAG, _stats->remainingCapacity, _stats->totalCapacity);
         MessageOutput.printf("%s Total Power: %.3f kW\r\n", TAG, _stats->totalPower);
         MessageOutput.printf("%s State of Charge: %d%%, Cycles: %d\r\n", TAG, _stats->getSoC(), _stats->cycles);
@@ -620,15 +635,15 @@ void PylontechRS485Receiver::get_charge_discharge_management_info()
     _stats->ChargeDischargeManagementInfo.Status = *info;
 
     if (Battery._verboseLogging) {
-        MessageOutput.printf("%s CVL:%.3fV, DVL:%.3fV, CCL:%.1fA, DCL:%.1fA, CE:%d DE:%d CI:%d CI1:%d FCR:%d\r\n", TAG,
+        MessageOutput.printf("%s CVL:%.3fV, DVL:%.3fV, CCL:%.1fA, DCL:%.1fA, CE:%d DE:%d CI1:%d CI2:%d FCR:%d\r\n", TAG,
             _stats->ChargeDischargeManagementInfo.chargeVoltageLimit,
             _stats->ChargeDischargeManagementInfo.dischargeVoltageLimit,
             _stats->ChargeDischargeManagementInfo.chargeCurrentLimit,
             _stats->ChargeDischargeManagementInfo.dischargeCurrentLimit,
             _stats->ChargeDischargeManagementInfo.chargeEnable,
             _stats->ChargeDischargeManagementInfo.dischargeEnable,
-            _stats->ChargeDischargeManagementInfo.chargeImmediately,
             _stats->ChargeDischargeManagementInfo.chargeImmediately1,
+            _stats->ChargeDischargeManagementInfo.chargeImmediately2,
             _stats->ChargeDischargeManagementInfo.fullChargeRequest);
     }
 }

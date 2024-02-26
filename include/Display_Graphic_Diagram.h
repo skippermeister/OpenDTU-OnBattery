@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #ifdef USE_DISPLAY_GRAPHIC
-#ifdef USE_DISPLAY_GRAPHIC_DIAGRAM
 
 #pragma once
 
@@ -39,5 +38,4 @@ private:
     uint16_t _iRunningAverageCnt = 0;
 };
 
-#endif
 #endif

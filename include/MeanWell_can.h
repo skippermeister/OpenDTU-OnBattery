@@ -13,48 +13,6 @@
 #endif
 #include <AsyncJson.h>
 
-#ifdef CHARGER_USE_CAN0
-
-#ifndef CAN0_PIN_RX
-#define CAN0_PIN_RX 27
-#endif
-
-#ifndef CAN0_PIN_TX
-#define CAN0_PIN_TX 26
-#endif
-/*
-#ifndef CAN0_PIN_STB
-#define CAN0_PIN_STB    -1
-#endif
-*/
-#else
-
-#ifndef MCP2515_PIN_MISO
-#define MCP2515_PIN_MISO 12
-#endif
-
-#ifndef MCP2515_PIN_MOSI
-#define MCP2515_PIN_MOSI 13
-#endif
-
-#ifndef MCP2515_PIN_SCLK
-#define MCP2515_PIN_SCLK 26
-#endif
-
-#ifndef MCP2515_PIN_IRQ
-#define MCP2515_PIN_IRQ 25
-#endif
-
-#ifndef MCP2515_PIN_CS
-#define MCP2515_PIN_CS 15
-#endif
-
-#endif
-
-#ifndef MEANWELL_PIN_POWER
-#define MEANWELL_PIN_POWER 33
-#endif
-
 #define MEANWELL_MINIMAL_SET_VOLTAGE 42
 
 #define MAX_CURRENT_MULTIPLIER 20
@@ -245,6 +203,10 @@ private:
         NPB_750_48,
         NPB_1200_48,
         NPB_1700_48,
+        NPB_450_24,
+        NPB_750_24,
+        NPB_1200_24,
+        NPB_1700_24,
         NPB_unknown
     };
     NPB_Model_t _model = NPB_Model_t::NPB_450_48;

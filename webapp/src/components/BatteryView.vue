@@ -5,7 +5,6 @@
     </div>
   </div>
 
-
   <template v-else>
     <div class="row gy-3">
       <div class="tab-content col-sm-12 col-md-12" id="v-pills-tabContent">

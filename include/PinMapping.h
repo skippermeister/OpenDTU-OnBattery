@@ -67,9 +67,11 @@ struct PinMapping_t {
 
     int8_t battery_rx;
     int8_t battery_tx;
-#if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER)
-    //    int8_t battery_cts;
+#if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER) || defined(USE_JKMS_CONTROLLER)
     int8_t battery_rts;
+#ifdef USE_DALYBMS_CONTROLLER
+    int8_t battery_daly_wakeup;
+#endif
 #endif
 
     int8_t mcp2515_miso;
@@ -121,6 +123,8 @@ public:
     bool isValidPreChargeConfig() const;
 
 private:
+    void createPinMappingJson() const;
+
     PinMapping_t _pinMapping;
 };
 

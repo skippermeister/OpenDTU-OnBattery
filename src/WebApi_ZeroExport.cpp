@@ -19,11 +19,9 @@ void WebApiZeroExportClass::init(AsyncWebServer& server, Scheduler& scheduler)
 {
     using std::placeholders::_1;
 
-    _server = &server;
-
-    _server->on("/api/zeroexport/status", HTTP_GET, std::bind(&WebApiZeroExportClass::onStatus, this, _1));
-    _server->on("/api/zeroexport/config", HTTP_GET, std::bind(&WebApiZeroExportClass::onAdminGet, this, _1));
-    _server->on("/api/zeroexport/config", HTTP_POST, std::bind(&WebApiZeroExportClass::onAdminPost, this, _1));
+    server.on("/api/zeroexport/status", HTTP_GET, std::bind(&WebApiZeroExportClass::onStatus, this, _1));
+    server.on("/api/zeroexport/config", HTTP_GET, std::bind(&WebApiZeroExportClass::onAdminGet, this, _1));
+    server.on("/api/zeroexport/config", HTTP_POST, std::bind(&WebApiZeroExportClass::onAdminPost, this, _1));
 }
 
 void WebApiZeroExportClass::onStatus(AsyncWebServerRequest* request)

@@ -5,8 +5,11 @@
 #include "Utils.h"
 #include "Display_Graphic.h"
 #include "Led_Single.h"
+#include "Led_Strip.h"
 #include "MessageOutput.h"
+#include "PinMapping.h"
 #include <Esp.h>
+#include <LittleFS.h>
 
 uint32_t Utils::getChipId()
 {
@@ -82,4 +85,19 @@ bool Utils::checkJsonAlloc(const DynamicJsonDocument& doc, const char* function,
     }
 
     return true;
+}
+
+
+/// @brief Remove all files but the PINMAPPING_FILENAME
+void Utils::removeAllFiles()
+{
+    auto root = LittleFS.open("/");
+    auto file = root.getNextFileName();
+
+    while (file != "") {
+        if (file != PINMAPPING_FILENAME) {
+            LittleFS.remove(file);
+        }
+        file = root.getNextFileName();
+    }
 }

@@ -10,11 +10,8 @@
 #include "NetworkSettings.h"
 #include "PinMapping.h"
 #include "PowerMeter.h"
-#ifdef CHARGER_HUAWEI
 #include "Huawei_can.h"
-#else
 #include "MeanWell_can.h"
-#endif
 #include "MessageOutput.h"
 #include "SunPosition.h"
 #include <VictronMppt.h>
@@ -485,14 +482,15 @@ void PowerLimiterClass::loop()
     }
 
     if (_verbose_logging) {
-        MessageOutput.printf("%s%s: battery interface %s, SoC: %d %%, StartTH: %d %%, StopTH: %d %%, SoC age: %d s\r\n", TAG, __FUNCTION__,
+        MessageOutput.printf("%s%s: battery interface %s, SoC: %d %%, StartTH: %d %%, StopTH: %d %%, SoC age: %d s, ignore: %s\r\n", TAG, __FUNCTION__,
             (Configuration.get().Battery.Enabled ? "enabled" : "disabled"),
             Battery.getStats()->getSoC(),
             cPL.BatterySocStartThreshold,
             cPL.BatterySocStopThreshold,
-            Battery.getStats()->getSoCAgeSeconds());
+            Battery.getStats()->getSoCAgeSeconds(),
+            cPL.IgnoreSoc?"yes":"no");
 
-        float dcVoltage = _inverter->Statistics()->getChannelFieldValue(TYPE_DC, (ChannelNum_t)cPL.InverterChannelId, FLD_UDC);
+        auto dcVoltage = getBatteryVoltage(true/*log voltages only once per DPL loop*/);
         MessageOutput.printf("%s%s: dcVoltage: %.2f V, loadCorrectedVoltage: %.2f V, StartTH: %.2f V, StopTH: %.2f V\r\n", TAG, __FUNCTION__,
             dcVoltage, getLoadCorrectedVoltage(),
             cPL.VoltageStartThreshold,
@@ -532,6 +530,46 @@ void PowerLimiterClass::loop()
     }
 
     _calculationBackoffMs = _calculationBackoffMsDefault;
+}
+
+/**
+ * determines the battery's voltage, trying multiple data providers. the most
+ * accurate data is expected to be delivered by a BMS, if it's available. more
+ * accurate and more recent than the inverter's voltage reading is the volage
+ * at the charge controller's output, if it's available. only as a fallback
+ * the voltage reported by the inverter is used.
+ */
+float PowerLimiterClass::getBatteryVoltage(bool log) {
+    if (!_inverter) {
+        // there should be no need to call this method if no target inverter is known
+        MessageOutput.println("DPL getBatteryVoltage: no inverter (programmer error)");
+        return 0.0;
+    }
+
+    auto const& config = Configuration.get();
+    auto channel = static_cast<ChannelNum_t>(config.PowerLimiter.InverterChannelId);
+    float inverterVoltage = _inverter->Statistics()->getChannelFieldValue(TYPE_DC, channel, FLD_UDC);
+    float res = inverterVoltage;
+
+    float chargeControllerVoltage = -1;
+    if (VictronMppt.isDataValid()) {
+        res = chargeControllerVoltage = static_cast<float>(VictronMppt.getOutputVoltage());
+    }
+
+    float bmsVoltage = -1;
+    auto stats = Battery.getStats();
+    if (config.Battery.Enabled
+            && stats->isVoltageValid()
+            && stats->getVoltageAgeSeconds() < 60) {
+        res = bmsVoltage = stats->getVoltage();
+    }
+
+    if (log) {
+        MessageOutput.printf("[DPL::getBatteryVoltage] BMS: %.2f V, MPPT: %.2f V, inverter: %.2f V, returning: %.2fV\r\n",
+                bmsVoltage, chargeControllerVoltage, inverterVoltage, res);
+    }
+
+    return res;
 }
 
 /**
@@ -803,11 +841,10 @@ float PowerLimiterClass::getLoadCorrectedVoltage()
 
     PowerLimiter_CONFIG_T& cPL = Configuration.get().PowerLimiter;
 
-    auto channel = static_cast<ChannelNum_t>(cPL.InverterChannelId);
     float acPower = _inverter->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_PAC);
     if (_verbose_logging)
         MessageOutput.printf("%s%s: acPower %.1f\r\n", TAG, __FUNCTION__, acPower);
-    float dcVoltage = _inverter->Statistics()->getChannelFieldValue(TYPE_DC, channel, FLD_UDC);
+    float dcVoltage = getBatteryVoltage();
 
     if (dcVoltage <= 0.0) {
         return 0.0;
@@ -819,17 +856,20 @@ float PowerLimiterClass::getLoadCorrectedVoltage()
 bool PowerLimiterClass::testThreshold(float socThreshold, float voltThreshold,
     std::function<bool(float, float)> compare)
 {
-    // prefer SoC provided through battery interface
-    if (Configuration.get().Battery.Enabled && socThreshold > 0.0
-        && Battery.getStats()->isValid()
-        && Battery.getStats()->getSoCAgeSeconds() < 60) {
-        return compare(Battery.getStats()->getSoC(), socThreshold);
+    CONFIG_T& config = Configuration.get();
+
+    // prefer SoC provided through battery interface, unless disabled by user
+    auto stats = Battery.getStats();
+    if (!config.PowerLimiter.IgnoreSoc
+        && config.Battery.Enabled
+        && socThreshold > 0.0
+        && stats->isSoCValid()
+        && stats->getSoCAgeSeconds() < 60) {
+        return compare(stats->getSoC(), socThreshold);
     }
 
     // use voltage threshold as fallback
-    if (voltThreshold <= 0.0) {
-        return false;
-    }
+    if (voltThreshold <= 0.0) { return false; }
 
     return compare(getLoadCorrectedVoltage(), voltThreshold);
 }

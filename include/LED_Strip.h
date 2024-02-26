@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include "Configuration.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
@@ -96,10 +97,10 @@
 /****************************
         WS2812 Timing
  ****************************/
-#define LED_STRIP_RMT_TICKS_BIT_1_HIGH_WS2812 9 // 900ns (900ns +/- 150ns per datasheet)
-#define LED_STRIP_RMT_TICKS_BIT_1_LOW_WS2812 3 // 300ns (350ns +/- 150ns per datasheet)
-#define LED_STRIP_RMT_TICKS_BIT_0_HIGH_WS2812 3 // 300ns (350ns +/- 150ns per datasheet)
-#define LED_STRIP_RMT_TICKS_BIT_0_LOW_WS2812 9 // 900ns (900ns +/- 150ns per datasheet)
+#define LED_STRIP_RMT_TICKS_BIT_1_HIGH_WS2812 8 // 800ns (800ns +/- 150ns per datasheet)
+#define LED_STRIP_RMT_TICKS_BIT_1_LOW_WS2812 6 // 600ns (600ns +/- 150ns per datasheet)
+#define LED_STRIP_RMT_TICKS_BIT_0_HIGH_WS2812 4 // 350ns (350ns +/- 150ns per datasheet)
+#define LED_STRIP_RMT_TICKS_BIT_0_LOW_WS2812 7 // 700ns (700ns +/- 150ns per datasheet)
 // These two tables are declared outside the Adafruit_NeoPixel class
 // because some boards may require oldschool compilers that don't
 // handle the C++11 constexpr keyword.
@@ -166,7 +167,7 @@ typedef void (*led_fill_rmt_items_fn)(uint32_t* led_strip_buf, rmt_item32_t* rmt
 typedef uint8_t NeoPixelType; ///< 3rd arg to Adafruit_NeoPixel constructor
 class Color {
 public:
-    Color(uint8_t red, uint8_t green, uint8_t blue, uint8_t white = 0);
+    Color(uint8_t red, uint8_t green, uint8_t blue, uint8_t white, uint8_t saturation);
     explicit Color(uint32_t c);
 
     uint32_t value() { return _val; };
@@ -246,7 +247,7 @@ private:
         led_strip_fill_item_level(item, LED_STRIP_RMT_TICKS_BIT_1_HIGH_WS2812, LED_STRIP_RMT_TICKS_BIT_1_LOW_WS2812);
     }
 
-    void colorWipe(uint32_t color, int wait);
+    void colorWipe(uint32_t color, int wait, uint8_t pixel);
     void whiteOverRainbow(int whiteSpeed, int whiteLength);
     void pulseWhite(uint8_t wait);
     void rainbowFade2White(int wait, int rainbowLoops, int whiteLoops);
@@ -265,10 +266,10 @@ private:
         Off
     };
 
-    LedRGBState_t _ledRGBState[2];
+    LedRGBState_t _ledRGBState[LED_COUNT];
     LedRGBState_t _allMode;
 };
 
-extern LedStripClass LEDStrip;
+extern LedStripClass LedStrip;
 
 #endif

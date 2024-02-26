@@ -17,11 +17,9 @@ void WebApiBatteryClass::init(AsyncWebServer& server, Scheduler& scheduler)
 {
     using std::placeholders::_1;
 
-    _server = &server;
-
-    _server->on("/api/battery/status", HTTP_GET, std::bind(&WebApiBatteryClass::onStatus, this, _1));
-    _server->on("/api/battery/config", HTTP_GET, std::bind(&WebApiBatteryClass::onAdminGet, this, _1));
-    _server->on("/api/battery/config", HTTP_POST, std::bind(&WebApiBatteryClass::onAdminPost, this, _1));
+    server.on("/api/battery/status", HTTP_GET, std::bind(&WebApiBatteryClass::onStatus, this, _1));
+    server.on("/api/battery/config", HTTP_GET, std::bind(&WebApiBatteryClass::onAdminGet, this, _1));
+    server.on("/api/battery/config", HTTP_POST, std::bind(&WebApiBatteryClass::onAdminPost, this, _1));
 }
 
 void WebApiBatteryClass::onStatus(AsyncWebServerRequest* request)
@@ -46,9 +44,11 @@ void WebApiBatteryClass::onStatus(AsyncWebServerRequest* request)
     root["jkbms_polling_interval"] = 0;
 #endif
 #ifdef USE_MQTT_BATTERY
-    root["mqtt_topic"] = cBattery.MqttTopic;
+    root["mqtt_soc_topic"] = config.Battery.Mqtt.SocTopic;
+    root["mqtt_voltage_topic"] = config.Battery.Mqtt.VoltageTopic;
 #else
-    root["mqtt_topic"] = "";
+    root["mqtt_soc_topic"] = "";
+    root["mqtt_voltage_topic"] = "";
 #endif
     root["updatesonly"] = cBattery.UpdatesOnly;
     root["min_charge_temp"] = cBattery.MinChargeTemperature;
@@ -147,7 +147,8 @@ void WebApiBatteryClass::onAdminPost(AsyncWebServerRequest* request)
     cBattery.MinDischargeTemperature = root["min_discharge_temp"].as<int8_t>();
     cBattery.MaxDischargeTemperature = root["max_discharge_temp"].as<int8_t>();
 #ifdef USE_MQTT_BATTERY
-    strlcpy(cBattery.MqttTopic, root["mqtt_topic"].as<String>().c_str(), sizeof(cBattery.MqttTopic));
+    strlcpy(cBattery.Mqtt.SocTopic, root["mqtt_soc_topic"].as<String>().c_str(), sizeof(cBattery.Mqtt.SocTopic));
+    strlcpy(cBattery.Mqtt.VoltageTopic, root["mqtt_voltage_topic"].as<String>().c_str(), sizeof(cBattery.Mqtt.VoltageTopic));
 #endif
     Battery._verboseLogging = root["verbose_logging"].as<bool>();
 

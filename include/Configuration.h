@@ -39,6 +39,13 @@
 #define POWERMETER_MAX_HTTP_JSON_PATH_STRLEN 256
 #define POWERMETER_HTTP_TIMEOUT 2000 // FIXME original 1000
 
+#ifdef USE_LED_SINGLE
+    #define LED_COUNT   PINMAPPING_LED_COUNT
+#endif
+#ifdef USE_LED_STRIP
+    #define LED_COUNT   2
+#endif
+
 #define JSON_BUFFER_SIZE 16 * 1024
 
 struct CHANNEL_CONFIG_T {
@@ -159,6 +166,7 @@ struct PowerLimiter_CONFIG_T {
     int32_t TargetPowerConsumptionHysteresis;
     int32_t LowerPowerLimit;
     int32_t UpperPowerLimit;
+    bool IgnoreSoc;
     uint32_t BatterySocStartThreshold;
     uint32_t BatterySocStopThreshold;
     float VoltageStartThreshold;
@@ -179,6 +187,12 @@ struct Battery_CONFIG_T {
         uint8_t Interface;
         uint8_t PollingInterval;
     } JkBms;
+#endif
+#ifdef USE_MQTT_BATTERY
+    struct {
+        char SocTopic[MQTT_MAX_TOPIC_STRLEN + 1];
+        char VoltageTopic[MQTT_MAX_TOPIC_STRLEN + 1];
+    } Mqtt;
 #endif
     bool UpdatesOnly;
     int8_t MinChargeTemperature;
@@ -281,6 +295,12 @@ struct Cfg_T {
     uint32_t SaveCount;
 };
 
+#if defined(USE_LED_SINGLE) || defined(USE_LED_STRIP)
+struct Led_Config_T {
+        uint8_t Brightness;
+};
+#endif
+
 struct CONFIG_T {
     Cfg_T Cfg;
 
@@ -327,10 +347,8 @@ struct CONFIG_T {
 
     ZeroExport_CONFIG_T ZeroExport;
 
-#ifdef USE_LED_SINGLE
-    struct {
-        uint8_t Brightness;
-    } Led_Single[PINMAPPING_LED_COUNT];
+#if defined(USE_LED_SINGLE) || defined(USE_LED_STRIP)
+    Led_Config_T Led[PINMAPPING_LED_COUNT];
 #endif
 };
 

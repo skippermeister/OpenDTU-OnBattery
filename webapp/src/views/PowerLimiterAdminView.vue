@@ -9,7 +9,7 @@
                 <InputElement :label="$t('powerlimiteradmin.EnablePowerLimiter')"
                                 v-model="powerLimiterConfigList.enabled"
                                 type="checkbox" wide4_1/>
-                
+
                 <InputElement v-show="powerLimiterConfigList.enabled"
                                 :label="$t('powermeteradmin.PollInterval')"
                                 v-model="powerLimiterConfigList.pollinterval"
@@ -30,7 +30,7 @@
                                 :label="$t('powerlimiteradmin.EnableSolarPassthrough')"
                                 v-model="powerLimiterConfigList.solar_passthrough_enabled"
                                 type="checkbox" wide4_1/>
-                
+
                 <div class="row mb-3" v-show="powerLimiterConfigList.enabled && powerLimiterConfigList.solar_passthrough_enabled">
                     <label for="battery_drain_strategy" class="col-sm-4 col-form-label">
                         {{ $t('powerlimiteradmin.BatteryDrainStrategy') }}:
@@ -113,7 +113,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="row mb-3" v-show="powerLimiterConfigList.enabled">
                     <label for="inputLowerPowerLimit" class="col-sm-4 col-form-label">{{ $t('powerlimiteradmin.LowerPowerLimit') }}:</label>
                     <div class="col-sm-2">
@@ -155,7 +155,12 @@
             <CardElement :text="$t('powerlimiteradmin.Battery')" textVariant="text-bg-primary" add-space
                          v-show="powerLimiterConfigList.enabled"
             >
-                <div class="row mb-3">
+                <InputElement
+                    :label="$t('powerlimiteradmin.IgnoreSoc')"
+                    v-model="powerLimiterConfigList.ignore_soc"
+                    type="checkbox"/>
+
+                <div class="row mb-3" v-show="!powerLimiterConfigList.ignore_soc">
                     <label for="batterySocStartThreshold" class="col-sm-4 col-form-label">{{ $t('powerlimiteradmin.BatterySocStartThreshold') }}:</label>
                     <div class="col-sm-2">
                         <div class="input-group">
@@ -167,7 +172,7 @@
                     </div>
                 </div>
 
-                <div class="row mb-3">
+                <div class="row mb-3" v-show="!powerLimiterConfigList.ignore_soc">
                     <label for="batterySocStopThreshold" class="col-sm-4 col-form-label">{{ $t('powerlimiteradmin.BatterySocStopThreshold') }}</label>
                     <div class="col-sm-2">
                         <div class="input-group">
@@ -179,7 +184,7 @@
                     </div>
                 </div>
 
-                <div class="row mb-3" v-show="powerLimiterConfigList.solar_passthrough_enabled">
+                <div class="row mb-3" v-show="powerLimiterConfigList.solar_passthrough_enabled && !powerLimiterConfigList.ignore_soc">
                     <label for="batterySocSolarPassthroughStartThreshold" class="col-sm-4 col-form-label">{{ $t('powerlimiteradmin.BatterySocSolarPassthroughStartThreshold') }}
                       <BIconInfoCircle v-tooltip :title="$t('powerlimiteradmin.BatterySocSolarPassthroughStartThresholdHint')" />
                     </label>
@@ -193,7 +198,7 @@
                     </div>
                 </div>
 
-                <div class="alert alert-secondary" role="alert" v-html="$t('powerlimiteradmin.BatterySocInfo')"></div>
+                <div class="alert alert-secondary" role="alert" v-html="$t('powerlimiteradmin.BatterySocInfo')" v-show="!powerLimiterConfigList.ignore_soc"></div>
 
                 <div class="row mb-3">
                     <label for="inputVoltageStartThreshold" class="col-sm-4 col-form-label">{{ $t('powerlimiteradmin.VoltageStartThreshold') }}:</label>
@@ -260,7 +265,7 @@
                 <div class="alert alert-secondary" role="alert" v-html="$t('powerlimiteradmin.VoltageLoadCorrectionInfo')"></div>
             </CardElement>
 
-            <CardElement :text="$t('powerlimiteradmin.InverterRestart')" 
+            <CardElement :text="$t('powerlimiteradmin.InverterRestart')"
                          textVariant="text-bg-primary"
                          add-space
                          v-show="powerLimiterConfigList.enabled">

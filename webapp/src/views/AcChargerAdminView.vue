@@ -22,7 +22,7 @@
             </CardElement>
 
             <CardElement v-show="acChargerConfigList.enabled"
-                         :text="$t('acchargeradmin.ChargerParameter')" 
+                         :text="$t('acchargeradmin.ChargerParameter')"
                          textVariant="text-bg-primary"
                          add-space>
                 <InputElement :label="$t('acchargeradmin.PollInterval')"
@@ -32,22 +32,22 @@
 
                 <InputElement :label="$t('acchargeradmin.Min_Voltage')"
                               v-model="acChargerConfigList.min_voltage"
-                              type="number" step="0.01" min="42.00" max="54.00" placeholder="47,50" wide3_2
+                              type="number" step="0.01" min="21.00" max="80.00" placeholder="47,50" wide3_2
                               :postfix="$t('acchargeradmin.Volts')"/>
 
                 <InputElement :label="$t('acchargeradmin.Max_Voltage')"
                               v-model="acChargerConfigList.max_voltage"
-                              type="number" step="0.01" min="42.00" max="54.00" placeholder="53,25" wide3_2
+                              type="number" step="0.01" min="21.00" max="80.00" placeholder="53,25" wide3_2
                               :postfix="$t('acchargeradmin.Volts')"/>
 
                 <InputElement :label="$t('acchargeradmin.Min_Current')"
                               v-model="acChargerConfigList.min_current"
-                              type="number" step="0.01" min="1.36" max="25.00" placeholder="3,60" wide3_2
+                              type="number" step="0.01" min="1.36" max="50.00" placeholder="3,60" wide3_2
                               :postfix="$t('acchargeradmin.Amps')"/>
 
                 <InputElement :label="$t('acchargeradmin.Max_Current')"
                               v-model="acChargerConfigList.max_current"
-                              type="number" step="0.01" min="1.36" max="25.00" placeholder="18,00" wide3_2
+                              type="number" step="0.01" min="1.36" max="50.00" placeholder="18,00" wide3_2
                               :postfix="$t('acchargeradmin.Amps')"/>
 
                 <InputElement :label="$t('acchargeradmin.Hysteresis')"

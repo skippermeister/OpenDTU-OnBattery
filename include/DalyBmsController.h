@@ -18,6 +18,11 @@
 // Timeout threshold for UART = number of symbols (~10 tics) with unchanged state on receive pin
 #define ECHO_READ_TOUT (3) // 3.5T * 8 = 28 ticks, TOUT=3 -> ~24..33 ticks
 
+#define DALY_MIN_NUMBER_CELLS           1
+#define DALY_MAX_NUMBER_CELLS           48
+#define DALY_MIN_NUMBER_TEMP_SENSORS    1
+#define DALY_MAX_NUMBER_TEMP_SENSORS    16
+
 class DalyBmsController : public BatteryProvider {
     public:
         bool init() final;
@@ -29,10 +34,6 @@ class DalyBmsController : public BatteryProvider {
 
     private:
         static const uint8_t XFER_BUFFER_LENGTH = 13;
-        static const uint8_t MIN_NUMBER_CELLS = 1;
-        static const uint8_t MAX_NUMBER_CELLS = 48;
-        static const uint8_t MIN_NUMBER_TEMP_SENSORS = 1;
-        static const uint8_t MAX_NUMBER_TEMP_SENSORS = 16;
 
         static const uint8_t START_BYTE = 0xA5; // Start byte
         static const uint8_t HOST_ADRESS = 0x40; // Host address
@@ -156,7 +157,12 @@ class DalyBmsController : public BatteryProvider {
             rc.l = *c;
             return rc.i;
         }
-        float to_Volt(uint8_t* c) { return static_cast<float>(ToUint16(c)) / 1000.0; }
+        float ToFloat(uint8_t* c) { return static_cast<float>(ToUint16(c)); }
+        float to_Amp_1(uint8_t* c) { return static_cast<float>(DALY_CURRENT_OFFSET - ToUint16(c)) / 10.0; }
+        float to_Volt_1(uint8_t* c) { return static_cast<float>(ToUint16(c)) / 10.0; }
+        float to_Volt_001(uint8_t* c) { return static_cast<float>(ToUint16(c)) / 1000.0; }
+        float to_AmpHour(uint8_t* c) { return static_cast<float>(ToUint32(c)) / 1000.0; }
+        float to_mOhm(uint8_t* c) { return static_cast<float>(ToUint16(c)); }
 
         bool _wasActive;
 

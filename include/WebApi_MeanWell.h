@@ -22,8 +22,6 @@ private:
     void onAdminGet(AsyncWebServerRequest* request);
     void onAdminPost(AsyncWebServerRequest* request);
     //    void onPost(AsyncWebServerRequest* request);
-
-    AsyncWebServer* _server;
 };
 
 #endif

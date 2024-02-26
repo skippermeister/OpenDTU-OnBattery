@@ -19,11 +19,9 @@ void WebApiREFUsolClass::init(AsyncWebServer& server, Scheduler& scheduler)
 {
     using std::placeholders::_1;
 
-    _server = &server;
-
-    _server->on("/api/refusol/status", HTTP_GET, std::bind(&WebApiREFUsolClass::onREFUsolStatus, this, _1));
-    _server->on("/api/refusol/config", HTTP_GET, std::bind(&WebApiREFUsolClass::onREFUsolAdminGet, this, _1));
-    _server->on("/api/refusol/config", HTTP_POST, std::bind(&WebApiREFUsolClass::onREFUsolAdminPost, this, _1));
+    server.on("/api/refusol/status", HTTP_GET, std::bind(&WebApiREFUsolClass::onREFUsolStatus, this, _1));
+    server.on("/api/refusol/config", HTTP_GET, std::bind(&WebApiREFUsolClass::onREFUsolAdminGet, this, _1));
+    server.on("/api/refusol/config", HTTP_POST, std::bind(&WebApiREFUsolClass::onREFUsolAdminPost, this, _1));
 }
 
 void WebApiREFUsolClass::onREFUsolStatus(AsyncWebServerRequest* request)

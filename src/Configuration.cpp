@@ -122,11 +122,11 @@ bool ConfigurationClass::write()
     display["diagram_mode"] = config.Display.Diagram.Mode;
 #endif
 
-#ifdef USE_LED_SINGLE
+#if defined(USE_LED_SINGLE) || defined(USE_LED_STRIP)
     JsonArray leds = device.createNestedArray("led");
-    for (uint8_t i = 0; i < PINMAPPING_LED_COUNT; i++) {
+    for (uint8_t i = 0; i < LED_COUNT; i++) {
         JsonObject led = leds.createNestedObject();
-        led["brightness"] = config.Led_Single[i].Brightness;
+        led["brightness"] = config.Led[i].Brightness;
     }
 #endif
 
@@ -207,6 +207,7 @@ bool ConfigurationClass::write()
     powerlimiter["target_power_consumption_hysteresis"] = config.PowerLimiter.TargetPowerConsumptionHysteresis;
     powerlimiter["lower_power_limit"] = config.PowerLimiter.LowerPowerLimit;
     powerlimiter["upper_power_limit"] = config.PowerLimiter.UpperPowerLimit;
+    powerlimiter["ignore_soc"] = config.PowerLimiter.IgnoreSoc;
     powerlimiter["battery_soc_start_threshold"] = config.PowerLimiter.BatterySocStartThreshold;
     powerlimiter["battery_soc_stop_threshold"] = config.PowerLimiter.BatterySocStopThreshold;
     powerlimiter["voltage_start_threshold"] = config.PowerLimiter.VoltageStartThreshold;
@@ -225,6 +226,10 @@ bool ConfigurationClass::write()
 #ifdef USE_JKBMS_CONTROLLER
     battery["jkbms_interface"] = config.Battery.JkBms.Interface;
     battery["jkbms_polling_interval"] = config.Battery.JkBms.PollingInterval;
+#endif
+#ifdef USE_MQTT_BATTERY
+    battery["mqtt_topic"] = config.Battery.Mqtt.SocTopic;
+    battery["mqtt_voltage_topic"] = config.Battery.Mqtt.VoltageTopic;
 #endif
     battery["min_charge_temp"] = config.Battery.MinChargeTemperature;
     battery["max_charge_temp"] = config.Battery.MaxChargeTemperature;
@@ -408,11 +413,11 @@ bool ConfigurationClass::read()
     config.Display.Diagram.Mode = display["diagram_mode"] | DISPLAY_DIAGRAM_MODE;
 #endif
 
-#ifdef USE_LED_SINGLE
+#if defined(USE_LED_SINGLE) || defined(USE_LED_STRIP)
     JsonArray leds = device["led"];
-    for (uint8_t i = 0; i < PINMAPPING_LED_COUNT; i++) {
+    for (uint8_t i = 0; i < LED_COUNT; i++) {
         JsonObject led = leds[i].as<JsonObject>();
-        config.Led_Single[i].Brightness = led["brightness"] | LED_BRIGHTNESS;
+        config.Led[i].Brightness = led["brightness"] | LED_BRIGHTNESS;
     }
 #endif
 
@@ -493,6 +498,7 @@ bool ConfigurationClass::read()
     config.PowerLimiter.TargetPowerConsumptionHysteresis = powerlimiter["target_power_consumption_hysteresis"] | POWERLIMITER_TARGET_POWER_CONSUMPTION_HYSTERESIS;
     config.PowerLimiter.LowerPowerLimit = powerlimiter["lower_power_limit"] | POWERLIMITER_LOWER_POWER_LIMIT;
     config.PowerLimiter.UpperPowerLimit = powerlimiter["upper_power_limit"] | POWERLIMITER_UPPER_POWER_LIMIT;
+    config.PowerLimiter.IgnoreSoc = powerlimiter["ignore_soc"] | POWERLIMITER_IGNORE_SOC;
     config.PowerLimiter.BatterySocStartThreshold = powerlimiter["battery_soc_start_threshold"] | POWERLIMITER_BATTERY_SOC_START_THRESHOLD;
     config.PowerLimiter.BatterySocStopThreshold = powerlimiter["battery_soc_stop_threshold"] | POWERLIMITER_BATTERY_SOC_STOP_THRESHOLD;
     config.PowerLimiter.VoltageStartThreshold = powerlimiter["voltage_start_threshold"] | POWERLIMITER_VOLTAGE_START_THRESHOLD;
@@ -511,6 +517,10 @@ bool ConfigurationClass::read()
 #ifdef USE_JKBMS_CONTROLLER
     config.Battery.JkBms.Interface = battery["jkbms_interface"] | BATTERY_JKBMS_INTERFACE;
     config.Battery.JkBms.PollingInterval = battery["jkbms_polling_interval"] | BATTERY_JKBMS_POLLING_INTERVAL;
+#endif
+#ifdef USE_MQTT_BATTERY
+    strlcpy(config.Battery.Mqtt.SocTopic, battery["mqtt_topic"] | "", sizeof(config.Battery.Mqtt.SocTopic));
+    strlcpy(config.Battery.Mqtt.VoltageTopic, battery["mqtt_voltage_topic"] | "", sizeof(config.Battery.Mqtt.VoltageTopic));
 #endif
     config.Battery.MinChargeTemperature = battery["min_charge_temp"] | BATTERY_MIN_CHARGE_TEMPERATURE;
     config.Battery.MaxChargeTemperature = battery["max_charge_temp"] | BATTERY_MAX_CHARGE_TEMPERATURE;

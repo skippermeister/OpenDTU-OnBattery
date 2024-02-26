@@ -14,7 +14,5 @@ private:
     void onREFUsolStatus(AsyncWebServerRequest* request);
     void onREFUsolAdminGet(AsyncWebServerRequest* request);
     void onREFUsolAdminPost(AsyncWebServerRequest* request);
-
-    AsyncWebServer* _server;
 };
 #endif

@@ -46,12 +46,6 @@ void WebApiWsHuaweiLiveClass::wsCleanupTaskCb()
 {
     // see: https://github.com/me-no-dev/ESPAsyncWebServer#limiting-the-number-of-web-socket-clients
     _ws.cleanupClients();
-
-    if (Configuration.get().Security.AllowReadonly) {
-        _ws.setAuthentication("", "");
-    } else {
-        _ws.setAuthentication(AUTH_USERNAME, Configuration.get().Security.Password);
-    }
 }
 
 void WebApiWsHuaweiLiveClass::sendDataTaskCb()
@@ -70,6 +64,12 @@ void WebApiWsHuaweiLiveClass::sendDataTaskCb()
 
             String buffer;
             serializeJson(root, buffer);
+
+            if (Configuration.get().Security.AllowReadonly) {
+                _ws.setAuthentication("", "");
+            } else {
+                _ws.setAuthentication(AUTH_USERNAME, Configuration.get().Security.Password);
+            }
 
             _ws.textAll(buffer);
         }

@@ -29,10 +29,10 @@ void WebApiWsMeanWellLiveClass::init(AsyncWebServer& server, Scheduler& schedule
     using std::placeholders::_5;
     using std::placeholders::_6;
 
-    _server = &server;
-    _server->on("/api/meanwelllivedata/status", HTTP_GET, std::bind(&WebApiWsMeanWellLiveClass::onLivedataStatus, this, _1));
+//    _server = &server;
+    server.on("/api/meanwelllivedata/status", HTTP_GET, std::bind(&WebApiWsMeanWellLiveClass::onLivedataStatus, this, _1));
 
-    _server->addHandler(&_ws);
+    server.addHandler(&_ws);
     _ws.onEvent(std::bind(&WebApiWsMeanWellLiveClass::onWebsocketEvent, this, _1, _2, _3, _4, _5, _6));
 
     scheduler.addTask(_wsCleanupTask);
@@ -46,12 +46,6 @@ void WebApiWsMeanWellLiveClass::wsCleanupTaskCb()
 {
     // see: https://github.com/me-no-dev/ESPAsyncWebServer#limiting-the-number-of-web-socket-clients
     _ws.cleanupClients();
-
-    if (Configuration.get().Security.AllowReadonly) {
-        _ws.setAuthentication("", "");
-    } else {
-        _ws.setAuthentication(AUTH_USERNAME, Configuration.get().Security.Password);
-    }
 }
 
 void WebApiWsMeanWellLiveClass::sendDataTaskCb()
@@ -74,6 +68,12 @@ void WebApiWsMeanWellLiveClass::sendDataTaskCb()
 
             String buffer;
             serializeJson(root, buffer);
+
+            if (Configuration.get().Security.AllowReadonly) {
+                _ws.setAuthentication("", "");
+            } else {
+                _ws.setAuthentication(AUTH_USERNAME, Configuration.get().Security.Password);
+            }
 
             _ws.textAll(buffer);
         }

@@ -31,13 +31,10 @@
 #include "WebApi_ws_console.h"
 #include "WebApi_ws_live.h"
 #include "WebApi_ws_vedirect_live.h"
-#ifdef CHARGER_HUAWEI
 #include "WebApi_Huawei.h"
 #include "WebApi_ws_Huawei.h"
-#else
 #include "WebApi_MeanWell.h"
 #include "WebApi_ws_MeanWell.h"
-#endif
 #include "WebApi_ws_battery.h"
 #include <ESPAsyncWebServer.h>
 #include <TaskSchedulerDeclarations.h>

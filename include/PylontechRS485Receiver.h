@@ -12,22 +12,6 @@
 #include <espMqttClient.h>
 #include <memory>
 
-#ifndef RS485_PIN_RX
-#define RS485_PIN_RX 16
-#endif
-
-#ifndef RS485_PIN_TX
-#define RS485_PIN_TX 17
-#endif
-
-#ifndef RS485_PIN_CTS
-#define RS485_PIN_CTS -1
-#endif
-
-#ifndef RS485_PIN_RTS
-#define RS485_PIN_RTS 4
-#endif
-
 #define RS485 Serial2
 
 // Timeout threshold for UART = number of symbols (~10 tics) with unchanged state on receive pin

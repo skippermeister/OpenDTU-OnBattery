@@ -12,6 +12,4 @@ private:
     void onVedirectStatus(AsyncWebServerRequest* request);
     void onVedirectAdminGet(AsyncWebServerRequest* request);
     void onVedirectAdminPost(AsyncWebServerRequest* request);
-
-    AsyncWebServer* _server;
 };

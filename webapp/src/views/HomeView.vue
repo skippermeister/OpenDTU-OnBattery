@@ -2,7 +2,7 @@
     <BasePage :title="$t('home.LiveData')" :isLoading="dataLoading" :isWideScreen="true" :showWebSocket="true" :isWebsocketConnected="isWebsocketConnected" @reload="reloadData">
         <HintView :hints="liveData.hints" />
         <InverterTotalInfo :totalData="liveData.total" :totalREFUsolData="liveData.refusol" :totalVeData="liveData.vedirect" :totalBattData="liveData.battery" :powerMeterData="liveData.power_meter" :meanwellData="liveData.meanwell"/><br />
-        <HoursChartElement :data="liveData.total.Hours" /><br />
+        <HoursChartElement :data="liveData.hours" /><br />
         <div class="row gy-3">
             <div class="col-sm-3 col-md-2" :style="[inverterData.length == 1 ? { 'display': 'none' } : {}]">
                 <div class="nav nav-pills row-cols-sm-1" id="v-pills-tab" role="tablist" aria-orientation="vertical">
@@ -104,20 +104,29 @@
                         <div class="card-body">
                             <div class="row flex-row-reverse flex-wrap-reverse g-3">
                                 <template v-for="chanType in [{obj: inverter.INV, name: 'INV'}, {obj: inverter.AC, name: 'AC'}, {obj: inverter.DC, name: 'DC'}].reverse()">
-                                    <template v-for="channel in Object.keys(chanType.obj).sort().reverse().map(x=>+x)" :key="channel">
-                                        <template v-if="(chanType.name != 'DC') ||
-                                            (chanType.name == 'DC' && getSumIrridiation(inverter) == 0) ||
-                                            (chanType.name == 'DC' && getSumIrridiation(inverter) > 0 && chanType.obj[channel].Irradiation?.max || 0 > 0)
-                                            ">
-                                            <div class="col">
-                                                <InverterChannelInfo :channelData="chanType.obj[channel]"
-                                                    :channelType="chanType.name"
-                                                    :channelNumber="channel" />
-                                            </div>
-                                        </template>
+                                    <template v-if="chanType.obj != null">
+                                        <template v-for="channel in Object.keys(chanType.obj).sort().reverse().map(x=>+x)" :key="channel">
+                                            <template v-if="(chanType.name != 'DC') ||
+                                                (chanType.name == 'DC' && getSumIrridiation(inverter) == 0) ||
+                                                (chanType.name == 'DC' && getSumIrridiation(inverter) > 0 && chanType.obj[channel].Irradiation?.max || 0 > 0)
+                                                ">
+                                                <div class="col">
+                                                    <InverterChannelInfo :channelData="chanType.obj[channel]"
+                                                        :channelType="chanType.name"
+                                                        :channelNumber="channel" />
+                                                </div>
+                                            </template>                                        </template>
                                     </template>
                                 </template>
                             </div>
+                            <BootstrapAlert class="m-3" :show="!inverter.hasOwnProperty('INV')">
+                                <div class="d-flex justify-content-center align-items-center">
+                                    <div class="spinner-border m-1" role="status">
+                                        <span class="visually-hidden">{{ $t('home.LoadingInverter') }}</span>
+                                    </div>
+                                    <span>{{ $t('home.LoadingInverter') }}</span>
+                                </div>
+                            </BootstrapAlert>
                         </div>
                     </div>
                 </div>
@@ -472,7 +481,22 @@ export default defineComponent({
             this.socket.onmessage = (event) => {
                 console.log(event);
                 if (event.data != "{}") {
-                    this.liveData = JSON.parse(event.data);
+                    const newData = JSON.parse(event.data);
+                    Object.assign(this.liveData.total, newData.total);
+                    Object.assign(this.liveData.hints, newData.hints);
+                    Object.assign(this.liveData.hours, newData.hours);
+                    Object.assign(this.liveData.power_meter, newData.power_meter);
+                    Object.assign(this.liveData.battery, newData.battery);
+                    Object.assign(this.liveData.vedirect, newData.vedirect);
+                    Object.assign(this.liveData.refusol, newData.refusol);
+                    Object.assign(this.liveData.meanwell, newData.meanwell);
+
+                    const foundIdx = this.liveData.inverters.findIndex((element) => element.serial == newData.inverters[0].serial);
+                    if (foundIdx == -1) {
+                        Object.assign(this.liveData.inverters, newData.inverters);
+                    } else {
+                        Object.assign(this.liveData.inverters[foundIdx], newData.inverters[0]);
+                    }
                     this.dataLoading = false;
                     this.heartCheck(); // Reset heartbeat detection
                 } else {

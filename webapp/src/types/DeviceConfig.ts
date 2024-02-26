@@ -8,6 +8,7 @@ export interface Display {
     language: number;
     diagramduration: number;
     diagrammode: number;
+    typedescription: string;
 }
 
 export interface Led {

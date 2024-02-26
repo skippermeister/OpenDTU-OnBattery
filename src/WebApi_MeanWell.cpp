@@ -19,17 +19,15 @@ void WebApiMeanWellClass::init(AsyncWebServer& server, Scheduler& scheduler)
 {
     using std::placeholders::_1;
 
-    _server = &server;
+    server.on("/api/meanwell/status", HTTP_GET, std::bind(&WebApiMeanWellClass::onStatus, this, _1));
+    server.on("/api/meanwell/config", HTTP_GET, std::bind(&WebApiMeanWellClass::onAdminGet, this, _1));
+    server.on("/api/meanwell/config", HTTP_POST, std::bind(&WebApiMeanWellClass::onAdminPost, this, _1));
 
-    _server->on("/api/meanwell/status", HTTP_GET, std::bind(&WebApiMeanWellClass::onStatus, this, _1));
-    _server->on("/api/meanwell/config", HTTP_GET, std::bind(&WebApiMeanWellClass::onAdminGet, this, _1));
-    _server->on("/api/meanwell/config", HTTP_POST, std::bind(&WebApiMeanWellClass::onAdminPost, this, _1));
+    server.on("/api/meanwell/limit/config", HTTP_GET, std::bind(&WebApiMeanWellClass::onLimitGet, this, _1));
+    server.on("/api/meanwell/limit/config", HTTP_POST, std::bind(&WebApiMeanWellClass::onLimitPost, this, _1));
 
-    _server->on("/api/meanwell/limit/config", HTTP_GET, std::bind(&WebApiMeanWellClass::onLimitGet, this, _1));
-    _server->on("/api/meanwell/limit/config", HTTP_POST, std::bind(&WebApiMeanWellClass::onLimitPost, this, _1));
-
-    _server->on("/api/meanwell/power/config", HTTP_GET, std::bind(&WebApiMeanWellClass::onPowerGet, this, _1));
-    _server->on("/api/meanwell/power/config", HTTP_POST, std::bind(&WebApiMeanWellClass::onPowerPost, this, _1));
+    server.on("/api/meanwell/power/config", HTTP_GET, std::bind(&WebApiMeanWellClass::onPowerGet, this, _1));
+    server.on("/api/meanwell/power/config", HTTP_POST, std::bind(&WebApiMeanWellClass::onPowerPost, this, _1));
 }
 
 void WebApiMeanWellClass::onStatus(AsyncWebServerRequest* request)
@@ -236,7 +234,7 @@ void WebApiMeanWellClass::onLimitPost(AsyncWebServerRequest* request)
         if (root["voltageValid"].as<bool>()) {
             if (root["voltage"].as<float>() < cMeanWell.MinVoltage
                 || root["voltage"].as<float>() > cMeanWell.MaxVoltage) {
-                retMsg["message"] = "voltage not in range between 42V and 58V !";
+                retMsg["message"] = "voltage not in range between " + String(cMeanWell.MinVoltage,0) + "V and " + String(cMeanWell.MaxVoltage,0) + "V !";
                 retMsg["code"] = WebApiError::LimitInvalidLimit;
                 retMsg["param"]["max"] = cMeanWell.MaxVoltage;
                 retMsg["param"]["min"] = cMeanWell.MinVoltage;
@@ -254,7 +252,7 @@ void WebApiMeanWellClass::onLimitPost(AsyncWebServerRequest* request)
         if (root["currentValid"].as<bool>()) {
             if (root["current"].as<float>() < cMeanWell.MinCurrent
                 || root["current"].as<float>() > cMeanWell.MaxCurrent) {
-                retMsg["message"] = "current must be in range between 0 and 25!";
+                retMsg["message"] = "current must be in range between " + String(cMeanWell.MinCurrent,2) + "A and " + String(cMeanWell.MaxCurrent,2) + "A !";
                 retMsg["code"] = WebApiError::LimitInvalidLimit;
                 retMsg["param"]["max"] = cMeanWell.MaxCurrent;
                 retMsg["param"]["min"] = cMeanWell.MinCurrent;
@@ -272,7 +270,7 @@ void WebApiMeanWellClass::onLimitPost(AsyncWebServerRequest* request)
         if (root["curveCVvalid"].as<bool>()) {
             if (root["curveCV"].as<float>() < cMeanWell.MinVoltage
                 || root["curveCV"].as<float>() > cMeanWell.MaxVoltage) {
-                retMsg["message"] = "voltage not in range between 42V and 58V !";
+                retMsg["message"] = "voltage not in range between " + String(cMeanWell.MinVoltage,0) + "V and " + String(cMeanWell.MaxVoltage,0) +"V !";
                 retMsg["code"] = WebApiError::LimitInvalidLimit;
                 retMsg["param"]["max"] = cMeanWell.MaxVoltage;
                 retMsg["param"]["min"] = cMeanWell.MinVoltage;
@@ -290,7 +288,7 @@ void WebApiMeanWellClass::onLimitPost(AsyncWebServerRequest* request)
         if (root["curveCCvalid"].as<bool>()) {
             if (root["curveCC"].as<float>() < cMeanWell.MinCurrent
                 || root["curveCC"].as<float>() > cMeanWell.MaxCurrent) {
-                retMsg["message"] = "Curve constant current must be in range between 0 and 25!";
+                retMsg["message"] = "Curve constant current must be in range between " + String(cMeanWell.MinCurrent,2) + "A and " + String(cMeanWell.MaxCurrent,2) + "A !";
                 retMsg["code"] = WebApiError::LimitInvalidLimit;
                 retMsg["param"]["max"] = cMeanWell.MaxCurrent;
                 retMsg["param"]["min"] = cMeanWell.MinCurrent;
@@ -308,7 +306,7 @@ void WebApiMeanWellClass::onLimitPost(AsyncWebServerRequest* request)
         if (root["curveFVvalid"].as<bool>()) {
             if (root["curveFV"].as<float>() < cMeanWell.MinVoltage
                 || root["curveFV"].as<float>() > cMeanWell.MaxVoltage) {
-                retMsg["message"] = "Curve float voltage not in range between 42V and 58V !";
+                retMsg["message"] = "Curve float voltage not in range between " + String(cMeanWell.MinVoltage,0) + "V and " + String(cMeanWell.MaxVoltage,0) + "V !";
                 retMsg["code"] = WebApiError::LimitInvalidLimit;
                 retMsg["param"]["max"] = cMeanWell.MaxVoltage;
                 retMsg["param"]["min"] = cMeanWell.MinVoltage;
@@ -326,7 +324,7 @@ void WebApiMeanWellClass::onLimitPost(AsyncWebServerRequest* request)
         if (root["curveTCvalid"].as<bool>()) {
             if (root["curveTC"].as<float>() < cMeanWell.MinCurrent / 10.0
                 || root["curveTC"].as<float>() > cMeanWell.MaxCurrent / 3.33333333) {
-                retMsg["message"] = "Taper constant current must be in range between 0.14 and 7.5!";
+                retMsg["message"] = "Taper constant current must be in range between " + String(cMeanWell.MinCurrent/10,2) + "A and " + String(cMeanWell.MaxCurrent/3.3333,2) + "A !";
                 retMsg["code"] = WebApiError::LimitInvalidLimit;
                 retMsg["param"]["max"] = cMeanWell.MaxCurrent / 3.33333333;
                 retMsg["param"]["min"] = cMeanWell.MinCurrent / 10.0;

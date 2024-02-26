@@ -13,5 +13,5 @@ private:
     void onAdminGet(AsyncWebServerRequest* request);
     void onAdminPost(AsyncWebServerRequest* request);
 
-    AsyncWebServer* _server;
+   // AsyncWebServer* _server;
 };
