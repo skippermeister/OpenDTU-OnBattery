@@ -118,8 +118,8 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
     }
 #endif
 
-    auto display = root.createNestedObject("display");
 #if defined(USE_DISPLAY_GRAPHIC)
+    auto display = root.createNestedObject("display");
     display["rotation"] = config.Display.Rotation;
     display["power_safe"] = config.Display.PowerSafe;
     display["screensaver"] = config.Display.ScreenSaver;
@@ -137,6 +137,7 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
                                : pin.display_type == DisplayType_t::ePaper154           ? "ePaper154 (SW SPI)"
                                                                                         : "unknown";
 #else
+/*
     display["rotation"] = 2;
     display["power_safe"] = false;
     display["screensaver"] = false;
@@ -145,6 +146,7 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
     display["diagramduration"] = 36000;
     display["diagrammode"] = 1;
     display["typedescription"] = "None";
+*/
 #endif
 
     auto victronPinObj = curPin.createNestedObject("victron");
@@ -261,7 +263,11 @@ void WebApiDeviceClass::onDeviceAdminPost(AsyncWebServerRequest* request)
         return;
     }
 
-    if (!(root.containsKey("curPin") || root.containsKey("display"))) {
+    if (!(root.containsKey("curPin")
+#if defined(USE_DISPLAY_GRAFIC)
+    || root.containsKey("display")
+#endif
+        )) {
         retMsg["message"] = ValuesAreMissing;
         retMsg["code"] = WebApiError::GenericValueMissing;
         response->setLength();
@@ -286,7 +292,7 @@ void WebApiDeviceClass::onDeviceAdminPost(AsyncWebServerRequest* request)
     bool performRestart = root["curPin"]["name"].as<String>() != config.Dev_PinMapping;
 
     strlcpy(config.Dev_PinMapping, root["curPin"]["name"].as<String>().c_str(), sizeof(config.Dev_PinMapping));
-#ifdef USE_DISPLAY_GRAPHIC
+#if defined(USE_DISPLAY_GRAPHIC)
     config.Display.Rotation = root["display"]["rotation"].as<uint8_t>();
     config.Display.PowerSafe = root["display"]["power_safe"].as<bool>();
     config.Display.ScreenSaver = root["display"]["screensaver"].as<bool>();

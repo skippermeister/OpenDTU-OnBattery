@@ -11,10 +11,14 @@
                         type="button" role="tab" aria-controls="nav-pin" aria-selected="true">{{
                             $t('deviceadmin.PinAssignment')
                         }}</button>
+                    <template v-if="deviceConfigList.display != undefined">
                     <button class="nav-link" id="nav-display-tab" data-bs-toggle="tab" data-bs-target="#nav-display"
                         type="button" role="tab" aria-controls="nav-display">{{ $t('deviceadmin.Display') }}</button>
+                    </template>
+                    <template v-if="deviceConfigList.led != undefined">
                     <button class="nav-link" id="nav-leds-tab" data-bs-toggle="tab" data-bs-target="#nav-leds"
                         type="button" role="tab" aria-controls="nav-leds">{{ $t('deviceadmin.Leds') }}</button>
+                    </template>
                 </div>
             </nav>
             <div class="tab-content" id="nav-tabContent">
@@ -55,6 +59,7 @@
                     </div>
                 </div>
 
+                <template v-if="deviceConfigList.display != undefined">
                 <div class="tab-pane fade show" id="nav-display" role="tabpanel" aria-labelledby="nav-display-tab"
                     tabindex="0">
                     <div class="card">
@@ -139,7 +144,9 @@
                         </div>
                     </div>
                 </div>
+                </template>
 
+                <template v-if="deviceConfigList.led != undefined">
                 <div class="tab-pane fade show" id="nav-leds" role="tabpanel" aria-labelledby="nav-leds-tab" tabindex="0">
                     <div class="card">
                         <div class="card-body">
@@ -162,6 +169,7 @@
                         </div>
                     </div>
                 </div>
+                </template>
             </div>
 
             <FormFooter @reload="getDeviceConfig"/>
@@ -264,7 +272,9 @@ export default defineComponent({
                     }
                 )
                 .then(() => {
-                    this.equalBrightnessCheckVal = this.isEqualBrightness();
+                    if (this.deviceConfigList.led != null) {
+                        this.equalBrightnessCheckVal = this.isEqualBrightness();
+                    }
                 });
         },
         savePinConfig(e: Event) {

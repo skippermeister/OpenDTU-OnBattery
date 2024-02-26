@@ -236,38 +236,38 @@ float MeanWellCanClass::calcEfficency(float x)
     int i;
 
     static coord_t c[] = {
-        { 0.0, 0.750 },
-        { 100.0, 0.9000 },
-        { 177.0, 0.9222 },
-        { 222.0, 0.9535 },
-        { 440.0, 0.9522 },
-        { 666.0, 0.9498 },
-        { 888.0, 0.9380 },
-        { 1000.0, 0.9250 },
-        { 1100.0, 0.9200 },
-        { 1300.0, 0.9150 }
+        {    0.0f, 0.7500f },
+        {  100.0f, 0.9000f },
+        {  177.0f, 0.9222f },
+        {  222.0f, 0.9535f },
+        {  440.0f, 0.9522f },
+        {  666.0f, 0.9498f },
+        {  888.0f, 0.9380f },
+        { 1000.0f, 0.9250f },
+        { 1100.0f, 0.9200f },
+        { 1300.0f, 0.9150f }
     };
 
-    float scaling = 1.0;
+    float scaling = 1.0f;
     switch (_model) {
     case NPB_Model_t::NPB_450_24:
     case NPB_Model_t::NPB_450_48:
-        scaling = 450.0 / 1200.0;
+        scaling = 450.0f / 1200.0f;
         break;
     case NPB_Model_t::NPB_750_24:
     case NPB_Model_t::NPB_750_48:
-        scaling = 750.0 / 1200.0;
+        scaling = 750.0f / 1200.0f;
         break;
     case NPB_Model_t::NPB_1200_24:
     case NPB_Model_t::NPB_1200_48:
-        scaling = 1200.0 / 1200.0;
+        scaling = 1200.0f / 1200.0f;
         break;
     case NPB_Model_t::NPB_1700_24:
     case NPB_Model_t::NPB_1700_48:
-        scaling = 1700.0 / 1200.0;
+        scaling = 1700.0f / 1200.0f;
         break;
     case NPB_Model_t::NPB_unknown:
-        scaling = 1.0;
+        scaling = 1.0f;
         break;
     }
 
@@ -296,7 +296,7 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
         break;
 
     case 0x0020: // VOUT_SET 2 bytes Output voltage setting (format: value, F=0.01)
-        _rp.outputVoltageSet = scaleValue(readUnsignedInt16(frame + 2), 0.01);
+        _rp.outputVoltageSet = scaleValue(readUnsignedInt16(frame + 2), 0.01f);
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging)
             MessageOutput.printf("%s OutputVoltage(VOUT_SET): %.2fV\r\n", TAG, _rp.outputVoltageSet);
@@ -305,7 +305,7 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
         break;
 
     case 0x0030: // IOUT_SET 2 bytes Output current setting (format: value, F=0.01)
-        _rp.outputCurrentSet = scaleValue(readUnsignedInt16(frame + 2), 0.01);
+        _rp.outputCurrentSet = scaleValue(readUnsignedInt16(frame + 2), 0.01f);
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging)
             MessageOutput.printf("%s OutputCurrent(IOUT_SET): %.2fA\r\n", TAG, _rp.outputCurrentSet);
@@ -331,7 +331,7 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
         break;
 
     case 0x0050: // READ_VIN	2 bytes Input voltage read value (format: value, F=0.1)
-        _rp.inputVoltage = scaleValue(readUnsignedInt16(frame + 2), 0.1);
+        _rp.inputVoltage = scaleValue(readUnsignedInt16(frame + 2), 0.1f);
         if (_model == NPB_Model_t::NPB_450_48)
             _rp.inputVoltage = 230.0;
 #ifdef MEANWELL_DEBUG_ENABLED
@@ -342,10 +342,10 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
         break;
 
     case 0x0060: // READ_VOUT 2 bytes Output voltage read value (format: value, F=0.01)
-        _rp.outputVoltage = scaleValue(readUnsignedInt16(frame + 2), 0.01);
+        _rp.outputVoltage = scaleValue(readUnsignedInt16(frame + 2), 0.01f);
         _rp.outputPower = _rp.outputCurrent * _rp.outputVoltage;
-        _rp.inputPower = _rp.outputPower / calcEfficency(_rp.outputPower) + (0.75 * 240.0 / 1000.0); // efficiency of NPB-1200-48 and leakage
-        _rp.efficiency = (_rp.inputPower > 0.0) ? 100.0 * _rp.outputPower / _rp.inputPower : 0.0;
+        _rp.inputPower = _rp.outputPower / calcEfficency(_rp.outputPower) + (0.75f * 240.0f / 1000.0f); // efficiency of NPB-1200-48 and leakage
+        _rp.efficiency = (_rp.inputPower > 0.0f) ? 100.0f * _rp.outputPower / _rp.inputPower : 0.0f;
         _lastUpdate = millis();
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging)
@@ -353,10 +353,10 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
 #endif
         break;
     case 0x0061: // READ_IOUT 2 bytes Output current read value (format: value, F=0.01)
-        _rp.outputCurrent = scaleValue(readUnsignedInt16(frame + 2), 0.01);
+        _rp.outputCurrent = scaleValue(readUnsignedInt16(frame + 2), 0.01f);
         _rp.outputPower = _rp.outputCurrent * _rp.outputVoltage;
-        _rp.inputPower = _rp.outputPower / calcEfficency(_rp.outputPower) + (0.75 * 240.0 / 1000.0); // efficiency of NPB-1200-48 and leakage
-        _rp.efficiency = (_rp.inputPower > 0.0) ? 100.0 * _rp.outputPower / _rp.inputPower : 0.0;
+        _rp.inputPower = _rp.outputPower / calcEfficency(_rp.outputPower) + (0.75f * 240.0f / 1000.0f); // efficiency of NPB-1200-48 and leakage
+        _rp.efficiency = (_rp.inputPower > 0.0f) ? 100.0f * _rp.outputPower / _rp.inputPower : 0.0f;
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging)
             MessageOutput.printf("%s OutputCurrent: %.2fA\r\n", TAG, _rp.outputCurrent);
@@ -365,7 +365,7 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
         break;
 
     case 0x0062: // READ_TEMPERATURE_1 2 bytes Internal ambient temperature (format: value, F=0.1)
-        _rp.internalTemperature = scaleValue(readSignedInt16(frame + 2), 0.1);
+        _rp.internalTemperature = scaleValue(readSignedInt16(frame + 2), 0.1f);
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging)
             MessageOutput.printf("%s Temperature: %.1f°C\r\n", TAG, _rp.internalTemperature);
@@ -409,58 +409,58 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
         MeanWell_CONFIG_T& cMeanWell = Configuration.get().MeanWell;
         if (strcmp(_rp.ManufacturerModelName, "NPB-450-48") == 0) {
             _model = NPB_Model_t::NPB_450_48;
-            cMeanWell.MinCurrent = 1.36; // 1.36A
-            cMeanWell.MaxCurrent = 6.8; // 6.8A
-            cMeanWell.MinVoltage = 42.0;
-            cMeanWell.MaxVoltage = 80.0;
+            cMeanWell.MinCurrent = 1.36f; // 1.36A
+            cMeanWell.MaxCurrent = 6.8f; // 6.8A
+            cMeanWell.MinVoltage = 42.0f;
+            cMeanWell.MaxVoltage = 80.0f;
         } else if (strcmp(_rp.ManufacturerModelName, "NPB-750-48") == 0) {
             _model = NPB_Model_t::NPB_750_48;
-            cMeanWell.MinCurrent = 2.26; // 2.26A
-            cMeanWell.MaxCurrent = 11.3; // 11.3A
-            cMeanWell.MinVoltage = 42.0;
-            cMeanWell.MaxVoltage = 80.0;
+            cMeanWell.MinCurrent = 2.26f; // 2.26A
+            cMeanWell.MaxCurrent = 11.3f; // 11.3A
+            cMeanWell.MinVoltage = 42.0f;
+            cMeanWell.MaxVoltage = 80.0f;
         } else if (strcmp(_rp.ManufacturerModelName, "NPB-1200-48") == 0) {
             _model = NPB_Model_t::NPB_1200_48;
-            cMeanWell.MinCurrent = 3.6; // 3.6A
-            cMeanWell.MaxCurrent = 18.0; // 18.0A
-            cMeanWell.MinVoltage = 42.0;
-            cMeanWell.MaxVoltage = 80.0;
+            cMeanWell.MinCurrent = 3.6f; // 3.6A
+            cMeanWell.MaxCurrent = 18.0f; // 18.0A
+            cMeanWell.MinVoltage = 42.0f;
+            cMeanWell.MaxVoltage = 80.0f;
         } else if (strcmp(_rp.ManufacturerModelName, "NPB-1700-48") == 0) {
             _model = NPB_Model_t::NPB_1700_48;
-            cMeanWell.MinCurrent = 5.0; // 5.0A
-            cMeanWell.MaxCurrent = 25.0; // 25.0A
-            cMeanWell.MinVoltage = 42.0;
-            cMeanWell.MaxVoltage = 80.0;
+            cMeanWell.MinCurrent = 5.0f; // 5.0A
+            cMeanWell.MaxCurrent = 25.0f; // 25.0A
+            cMeanWell.MinVoltage = 42.0f;
+            cMeanWell.MaxVoltage = 80.0f;
         } else if (strcmp(_rp.ManufacturerModelName, "NPB-450-24") == 0) {
             _model = NPB_Model_t::NPB_450_24;
-            cMeanWell.MinCurrent = 2.7; // 2.7A
-            cMeanWell.MaxCurrent = 13.5; // 13.5A
-            cMeanWell.MinVoltage = 21.0;
-            cMeanWell.MaxVoltage = 42.0;
+            cMeanWell.MinCurrent = 2.7f; // 2.7A
+            cMeanWell.MaxCurrent = 13.5f; // 13.5A
+            cMeanWell.MinVoltage = 21.0f;
+            cMeanWell.MaxVoltage = 42.0f;
         } else if (strcmp(_rp.ManufacturerModelName, "NPB-750-24") == 0) {
             _model = NPB_Model_t::NPB_750_24;
-            cMeanWell.MinCurrent = 4.5; // 4.5A
-            cMeanWell.MaxCurrent = 22.5; // 22.5A
-            cMeanWell.MinVoltage = 21.0;
-            cMeanWell.MaxVoltage = 42.0;
+            cMeanWell.MinCurrent = 4.5f; // 4.5A
+            cMeanWell.MaxCurrent = 22.5f; // 22.5A
+            cMeanWell.MinVoltage = 21.0f;
+            cMeanWell.MaxVoltage = 42.0f;
         } else if (strcmp(_rp.ManufacturerModelName, "NPB-1200-24") == 0) {
             _model = NPB_Model_t::NPB_1200_24;
-            cMeanWell.MinCurrent = 7.2; // 7.2A
-            cMeanWell.MaxCurrent = 36.0; // 36.0A
-            cMeanWell.MinVoltage = 21.0;
-            cMeanWell.MaxVoltage = 42.0;
+            cMeanWell.MinCurrent = 7.2f; // 7.2A
+            cMeanWell.MaxCurrent = 36.0f; // 36.0A
+            cMeanWell.MinVoltage = 21.0f;
+            cMeanWell.MaxVoltage = 42.0f;
         } else if (strcmp(_rp.ManufacturerModelName, "NPB-1700-24") == 0) {
             _model = NPB_Model_t::NPB_1700_24;
-            cMeanWell.MinCurrent = 10.0; // 10.0A
-            cMeanWell.MaxCurrent = 50.0; // 50.0A
-            cMeanWell.MinVoltage = 21.0;
-            cMeanWell.MaxVoltage = 42.0;
+            cMeanWell.MinCurrent = 10.0f; // 10.0A
+            cMeanWell.MaxCurrent = 50.0f; // 50.0A
+            cMeanWell.MinVoltage = 21.0f;
+            cMeanWell.MaxVoltage = 42.0f;
         } else {
             _model = NPB_Model_t::NPB_450_48;
-            cMeanWell.MinCurrent = 1.36; // 1.36A
-            cMeanWell.MaxCurrent = 6.8; // 6.8A
-            cMeanWell.MinVoltage = 42.0;
-            cMeanWell.MaxVoltage = 80.0;
+            cMeanWell.MinCurrent = 1.36f; // 1.36A
+            cMeanWell.MaxCurrent = 6.8f; // 6.8A
+            cMeanWell.MinVoltage = 42.0f;
+            cMeanWell.MaxVoltage = 80.0f;
         }
 
 #ifdef MEANWELL_DEBUG_ENABLED
@@ -521,7 +521,7 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
         break;
 
     case 0x00B0: // CURVE_CC 2 bytes Constant current setting of charge curve (format: value, F=0.01)
-        _rp.curveCC = scaleValue(readUnsignedInt16(frame + 2), 0.01);
+        _rp.curveCC = scaleValue(readUnsignedInt16(frame + 2), 0.01f);
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging)
             MessageOutput.printf("%s CurveCC: %.2fA\r\n", TAG, _rp.curveCC);
@@ -530,7 +530,7 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
         break;
 
     case 0x00B1: // CURVE_CV 2 bytes Constant voltage setting of charge curve (format: value, F=0.01)
-        _rp.curveCV = scaleValue(readUnsignedInt16(frame + 2), 0.01);
+        _rp.curveCV = scaleValue(readUnsignedInt16(frame + 2), 0.01f);
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging)
             MessageOutput.printf("%s CurveCV: %.2fV\r\n", TAG, _rp.curveCV);
@@ -539,7 +539,7 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
         break;
 
     case 0x00B2: // CURVE_FV 2 bytes Floating voltage setting of charge curve (format: value, F=0.01)
-        _rp.curveFV = scaleValue(readUnsignedInt16(frame + 2), 0.01);
+        _rp.curveFV = scaleValue(readUnsignedInt16(frame + 2), 0.01f);
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging)
             MessageOutput.printf("%s CurveFV: %.2fV\r\n", TAG, _rp.curveFV);
@@ -548,7 +548,7 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
         break;
 
     case 0x00B3: // CURVE_TC 2 bytes Taper current setting value of charging curve (format: value, F=0.01)
-        _rp.curveTC = scaleValue(readUnsignedInt16(frame + 2), 0.01);
+        _rp.curveTC = scaleValue(readUnsignedInt16(frame + 2), 0.01f);
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging)
             MessageOutput.printf("%s CurveTC: %.2f\r\n", TAG, _rp.curveTC);
@@ -686,21 +686,21 @@ void MeanWellCanClass::setupParameter()
     readCmd(ChargerID, 0x0088); // read Product Serial No
     yield();
 
-    sendCmd(ChargerID, 0x0020, Float2Uint(53.0 / 0.01), 2); // set Output Voltage
+    sendCmd(ChargerID, 0x0020, Float2Uint(53.0f / 0.01f), 2); // set Output Voltage
     vTaskDelay(100); // delay 100 tick
     yield();
     getCanCharger();
     readCmd(ChargerID, 0x0020); // read Output Voltage
     yield();
 
-    sendCmd(ChargerID, 0x0030, Float2Uint(cMeanWell.MinCurrent / 0.01), 2); // set Output Current
+    sendCmd(ChargerID, 0x0030, Float2Uint(cMeanWell.MinCurrent / 0.01f), 2); // set Output Current
     vTaskDelay(100); // delay 100 tick
     yield();
     getCanCharger();
     readCmd(ChargerID, 0x0030); // read Output Current
     yield();
 
-    sendCmd(ChargerID, 0x00B0, Float2Uint(cMeanWell.MaxCurrent / 0.01), 2); // set Curve_CC
+    sendCmd(ChargerID, 0x00B0, Float2Uint(cMeanWell.MaxCurrent / 0.01f), 2); // set Curve_CC
     vTaskDelay(100); // delay 200 tick
     yield();
     getCanCharger();
@@ -708,15 +708,15 @@ void MeanWellCanClass::setupParameter()
     readCmd(ChargerID, 0x00B0); // read CURVE_CC
     yield();
 
-    sendCmd(ChargerID, 0x00B1, Float2Uint(53.0 / 0.01), 2); // set Curve_CV
+    sendCmd(ChargerID, 0x00B1, Float2Uint(53.0f / 0.01f), 2); // set Curve_CV
     getCanCharger();
     readCmd(ChargerID, 0x00B1); // read CURVE_CV
 
-    sendCmd(ChargerID, 0x00B2, Float2Uint(52.9 / 0.01), 2); // set Curve_FV
+    sendCmd(ChargerID, 0x00B2, Float2Uint(52.9f / 0.01f), 2); // set Curve_FV
     getCanCharger();
     readCmd(ChargerID, 0x00B2); // read CURVE_FV
 
-    sendCmd(ChargerID, 0x00B3, Float2Uint(1.0 / 0.01), 2); // set Curve_TC
+    sendCmd(ChargerID, 0x00B3, Float2Uint(1.0f / 0.01f), 2); // set Curve_TC
     vTaskDelay(100); // delay 100 tick
     getCanCharger();
     readCmd(ChargerID, 0x00B3); // read CURVE_TC
@@ -877,9 +877,9 @@ void MeanWellCanClass::loop()
                 setPower(true);
                 setValue(cMeanWell.MinCurrent, MEANWELL_SET_CURRENT); // set minimum current to softstart charging
                 setValue(cMeanWell.MinCurrent, MEANWELL_SET_CURVE_CC); // set minimum current to softstart charging
-                setValue(Battery.getStats()->getRecommendedChargeVoltageLimit() - 0.25, MEANWELL_SET_CURVE_CV); // set to battery recommended charge voltage according to BMS value and user manual
-                setValue(Battery.getStats()->getRecommendedChargeVoltageLimit() - 0.30, MEANWELL_SET_CURVE_FV); // set to battery recommended charge voltage according to BMS value and user manual
-                setValue(Battery.getStats()->getRecommendedChargeVoltageLimit() - 0.25, MEANWELL_SET_VOLTAGE); // set to battery recommended charge voltage according to BMS value and user manual
+                setValue(Battery.getStats()->getRecommendedChargeVoltageLimit() - 0.25f, MEANWELL_SET_CURVE_CV); // set to battery recommended charge voltage according to BMS value and user manual
+                setValue(Battery.getStats()->getRecommendedChargeVoltageLimit() - 0.30f, MEANWELL_SET_CURVE_FV); // set to battery recommended charge voltage according to BMS value and user manual
+                setValue(Battery.getStats()->getRecommendedChargeVoltageLimit() - 0.25f, MEANWELL_SET_VOLTAGE); // set to battery recommended charge voltage according to BMS value and user manual
                 readCmd(ChargerID, 0x0060); // read VOUT
                 readCmd(ChargerID, 0x0061); // read IOUT
             } else {
@@ -903,7 +903,7 @@ void MeanWellCanClass::loop()
                 if (_verboseLogging)
                     MessageOutput.printf("%s Zero Grid Charger controller", TAG);
                 float pCharger = _rp.outputCurrentSet * Battery.getStats()->getVoltage();
-                if (_rp.outputPower > 0.0)
+                if (_rp.outputPower > 0.0f)
                     pCharger = _rp.outputPower;
                 if (GridPower - _rp.outputPower < -(pCharger + cMeanWell.Hysteresis)) { // 25 Watt Hysteresic
                     if (_verboseLogging)
@@ -924,15 +924,15 @@ void MeanWellCanClass::loop()
                         setValue(_rp.outputCurrentSet + increment, MEANWELL_SET_CURRENT);
                         setValue(_rp.outputCurrentSet, MEANWELL_SET_CURVE_CC);
                     }
-                } else if (GridPower - _rp.outputPower > -pCharger && _rp.outputCurrent > 0.0) {
+                } else if (GridPower - _rp.outputPower > -pCharger && _rp.outputCurrent > 0.0f) {
                     if (_verboseLogging)
                         MessageOutput.printf(", decrement");
                     float decrement = fabs(GridPower) / Battery.getStats()->getVoltage();
                     // check if Solar Inverter produces not enough power, then we have to reduce switch off the charger
                     // otherwise we have to reduce the OutputCurrent
-                    if ((_rp.outputCurrent < cMeanWell.MinCurrent - 0.01
-                            && _rp.outputCurrentSet >= cMeanWell.MinCurrent - 0.01
-                            && _rp.outputCurrentSet <= cMeanWell.MinCurrent + 0.024)
+                    if ((_rp.outputCurrent < cMeanWell.MinCurrent - 0.01f
+                            && _rp.outputCurrentSet >= cMeanWell.MinCurrent - 0.01f
+                            && _rp.outputCurrentSet <= cMeanWell.MinCurrent + 0.024f)
                         || (_rp.outputCurrentSet - decrement < cMeanWell.MinCurrent)) {
                         // we have to switch off the charger, the charger consums with minimum OutputCurrent to much power.
                         // we can not reduce the power consumption and have to switch off the charger
@@ -950,7 +950,7 @@ void MeanWellCanClass::loop()
                         if (_verboseLogging)
                             MessageOutput.printf(", sorry I don't know, OutputCurrent: %.3f, MinCurrent: %.3f", _rp.outputCurrent, cMeanWell.MinCurrent);
                     }
-                } else if (_rp.outputCurrent > 0.0) {
+                } else if (_rp.outputCurrent > 0.0f) {
                     if (_verboseLogging)
                         MessageOutput.print(" constant");
                 } else {
@@ -1016,69 +1016,56 @@ void MeanWellCanClass::setValue(float in, uint8_t parameterType)
 
     switch (parameterType) {
     case MEANWELL_SET_VOLTAGE:
-        if (in > cMeanWell.MaxVoltage)
-            in = cMeanWell.MaxVoltage; // Pylontech US3000C max voltage limit
-        if (in < cMeanWell.MinVoltage)
-            in = cMeanWell.MinVoltage; // Pylontech US3000C min voltage limit
+        in = min(in, Battery.getStats()->getRecommendedChargeVoltageLimit()); // Pylontech US3000C max voltage limit
+        in = max(in, Battery.getStats()->getRecommendedDischargeVoltageLimit()); // Pylontech US3000C min voltage limit
 
-        sendCmd(ChargerID, 0x0020, Float2Uint(in / 0.01), 2); // set Output Voltage
+        sendCmd(ChargerID, 0x0020, Float2Uint(in / 0.01f), 2); // set Output Voltage
         vTaskDelay(100); // delay 100 tick
         getCanCharger();
         readCmd(ChargerID, 0x0020); // read UOUT_SET
         break;
 
     case MEANWELL_SET_CURVE_CV:
-        if (in > cMeanWell.MaxVoltage)
-            in = cMeanWell.MaxVoltage; // Pylontech US3000C max voltage limit
-        if (in < cMeanWell.MinVoltage)
-            in = cMeanWell.MinVoltage; // Pylontech US3000C min voltage limit
-        sendCmd(ChargerID, 0x00B1, Float2Uint(in / 0.01), 2); // set Curve_CV
+        in = min(in, Battery.getStats()->getRecommendedChargeVoltageLimit()); // Pylontech US3000C max voltage limit
+        in = max(in, Battery.getStats()->getRecommendedDischargeVoltageLimit()); // Pylontech US3000C min voltage limit
+        sendCmd(ChargerID, 0x00B1, Float2Uint(in / 0.01f), 2); // set Curve_CV
         getCanCharger();
         readCmd(ChargerID, 0x00B1); // read Curve_CV
         break;
 
     case MEANWELL_SET_CURVE_FV:
-        if (in > cMeanWell.MaxVoltage)
-            in = cMeanWell.MaxVoltage; // Pylontech US3000C max voltage limit
-        if (in > _rp.curveCV)
-            in = _rp.curveCV; // Pylontech US3000C max voltage limit
-        if (in < cMeanWell.MinVoltage)
-            in = cMeanWell.MinVoltage; // Pylontech US3000C min voltage limit
-        sendCmd(ChargerID, 0x00B2, Float2Uint(in / 0.01), 2); // set Curve_FV
+        in = min(in, Battery.getStats()->getRecommendedChargeVoltageLimit()); // Pylontech US3000C max voltage limit
+        in = min(in, _rp.curveCV); // Pylontech US3000C max voltage limit, must be below or equal constant voltage curveCV
+        in = max(in, Battery.getStats()->getRecommendedDischargeVoltageLimit()); // Pylontech US3000C min voltage limit
+        sendCmd(ChargerID, 0x00B2, Float2Uint(in / 0.01f), 2); // set Curve_FV
         getCanCharger();
         readCmd(ChargerID, 0x00B2); // read Curve_FV
         break;
 
     case MEANWELL_SET_CURRENT:
-        if (in > cMeanWell.MaxCurrent)
-            in = cMeanWell.MaxCurrent; // Meanwell NPB-1200-48 OutputCurrent max limit
-        if (in < cMeanWell.MinCurrent)
-            in = cMeanWell.MinCurrent; // Meanwell NPB-1200-48 OutputCurrent min limit
+        in = min(in, cMeanWell.MaxCurrent); // Meanwell NPB-xxxx-xx OutputCurrent max limit
+        in = max(in, cMeanWell.MinCurrent); // Meanwell NPB-xxxx-xx OutputCurrent min limit
 
-        sendCmd(ChargerID, 0x0030, Float2Uint(in / 0.01), 2); // set Output Current
+        sendCmd(ChargerID, 0x0030, Float2Uint(in / 0.01f), 2); // set Output Current
         vTaskDelay(100); // delay 100 tick
         getCanCharger();
         readCmd(ChargerID, 0x0030); // read IOUT_SET
         break;
 
     case MEANWELL_SET_CURVE_CC:
-        if (in > cMeanWell.MaxCurrent)
-            in = cMeanWell.MaxCurrent; // Meanwell NPB-1200-48 OutputCurrent max limit
-        if (in < cMeanWell.MinCurrent)
-            in = cMeanWell.MinCurrent; // Meanwell NPB-1200-48 OutputCurrent min limit
+        in = min(in, cMeanWell.MaxCurrent); // Meanwell NPB-xxxx-xx OutputCurrent max limit
+        in = max(in, cMeanWell.MinCurrent); // Meanwell NPB-xxxx-xx OutputCurrent min limit
 
-        sendCmd(ChargerID, 0x00B0, Float2Uint(in / 0.01), 2); // set Curve_CC
+        sendCmd(ChargerID, 0x00B0, Float2Uint(in / 0.01f), 2); // set Curve_CC
         vTaskDelay(100); // delay 100 tick
         getCanCharger();
         readCmd(ChargerID, 0x00B0); // read Curve_CC
         break;
 
     case MEANWELL_SET_CURVE_TC:
-        if (in > cMeanWell.MaxCurrent / 3.333333333)
-            in = cMeanWell.MaxCurrent / 3.333333333; // Meanwell NPB-1200-48 OutputCurrent max limit
-        if (in < cMeanWell.MinCurrent / 10.0)
-            in = cMeanWell.MinCurrent / 10.0; // Meanwell NPB-1200-48 OutputCurrent min limit
-        sendCmd(ChargerID, 0x00B3, Float2Uint(in / 0.01), 2); // set Curve_TC
+        in = min(in, cMeanWell.MaxCurrent / 3.333333333f); // 3.3% Meanwell NPB-xxxx-xx OutputCurrent max limit
+        in = max(in, cMeanWell.MinCurrent / 10.0f); // 10% of Meanwell NPB-xxxx-xx OutputCurrent min limit
+        sendCmd(ChargerID, 0x00B3, Float2Uint(in / 0.01f), 2); // set Curve_TC
         getCanCharger();
         readCmd(ChargerID, 0x00B3); // read Curve_TC
         break;
