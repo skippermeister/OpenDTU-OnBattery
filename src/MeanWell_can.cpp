@@ -766,16 +766,13 @@ void MeanWellCanClass::loop()
         return;
     }
 
-    if (_setupParameter)
-        setupParameter();
+    if (_setupParameter) setupParameter();
 
     uint32_t t_start = millis();
 
     parseCanPackets();
 
-    if (t_start - _previousMillis < cMeanWell.PollInterval * 1000) {
-        return;
-    }
+    if (t_start - _previousMillis < cMeanWell.PollInterval * 1000) { return; }
     _previousMillis = t_start;
 
     static int state = 0;
@@ -810,10 +807,12 @@ void MeanWellCanClass::loop()
         state = 0;
 
     float InverterPower = 0.0;
-    char invName[MAX_NAME_LENGTH + (INV_MAX_COUNT - 1) * (MAX_NAME_LENGTH + 3)] = "";
+    String invName;
+    String BattInvName;
     bool isProducing = false;
     bool isReachable = false;
     bool first = true;
+    bool batteryConnected_isProducing = false;
 
     for (uint8_t i = 0; i < Hoymiles.getNumInverters(); i++) {
         auto inv = Hoymiles.getInverterByPos(i);
@@ -823,14 +822,16 @@ void MeanWellCanClass::loop()
                 if (first) {
                     isProducing = inv->isProducing();
                     isReachable = inv->isReachable();
-                    strncpy(invName, inv->name(), sizeof(invName));
+                    invName = inv->name();
                     first = false;
                 } else {
                     isProducing = (isProducing && inv->isProducing()) ? true : false;
                     isReachable = (isReachable && inv->isReachable()) ? true : false;
-                    strcat(invName, " + ");
-                    strcat(invName, inv->name());
+                    invName += String(" + ") + inv->name();
                 }
+            } else {
+                batteryConnected_isProducing = inv->isProducing();
+                BattInvName = inv->name();
             }
         }
     }
@@ -838,21 +839,24 @@ void MeanWellCanClass::loop()
     // static_cast<unsigned int>(inv0->Statistics()->getChannelFieldDigits(TYPE_AC, CH0, FLD_PAC)));
     float GridPower = PowerMeter.getPowerTotal(false);
     if (_verboseLogging)
-        MessageOutput.printf("%s State: %d, %lu ms, House Power: %.1fW, Grid Power: %.1fW, Inverter (%s) Day Power: %.1fW, Charger Power: %.1fW\r\n", TAG,
-            state, millis() - t_start, PowerMeter.getHousePower(), GridPower, invName, InverterPower, _rp.outputPower);
+        MessageOutput.printf("%s State: %d, %lu ms, House Power: %.1fW, Grid Power: %.1fW, Inverter (%s) Day Power: %.1fW, Batt con. Inverter (%s), Charger Power: %.1fW\r\n", TAG,
+            state, millis() - t_start, PowerMeter.getHousePower(), GridPower, invName.c_str(), InverterPower, BattInvName.c_str(), _rp.outputPower);
 
     if (!Battery.getStats()->initialized())
         goto exit;
 
     if (_automaticCharge) {
         if (_verboseLogging)
-            MessageOutput.printf("%s automatic mode, it's %s, SOC: %d%%, %scharge%sabled, %s is %sproducing, Charger is %s", TAG,
+            MessageOutput.printf("%s automatic mode, it's %s, SOC: %d%%, %s%s%scharge%sabled, ChargeTemperatur is %svalid, %s is %sproducing, %s is %sproducing, Charger is %s", TAG,
                 SunPosition.isDayPeriod() ? "day" : "night",
                 Battery.getStats()->getSoC(),
-                Battery.getStats()->getAlarm().overVoltage ? "alarmOverVoltage " : "",
+                Battery.getStats()->getAlarm().overVoltage ? "alarmOverVoltage, " : "",
+                Battery.getStats()->getAlarm().underTemperature ? "alarmUnderTemperature, " : "",
+                Battery.getStats()->getAlarm().overTemperature ? "alarmOverTemperature, " : "",
                 Battery.getStats()->getChargeEnabled() ? "En" : "Dis",
-                invName,
-                isProducing ? "" : "not ",
+                Battery.getStats()->isChargeTemperatureValid()? "" : "not ",
+                invName.c_str(), isProducing ? "" : "not ",
+                BattInvName.c_str(), batteryConnected_isProducing ? "" : "not ",
                 _rp.operation ? "ON" : "OFF");
 
         // check if battery overvoltage, or night, or inverter is not producing, than switch of charger
@@ -861,6 +865,7 @@ void MeanWellCanClass::loop()
             || Battery.getStats()->getAlarm().overTemperature
             || !Battery.getStats()->isChargeTemperatureValid()
             || !SunPosition.isDayPeriod()
+            || batteryConnected_isProducing
             || !Battery.getStats()->getChargeEnabled()
             || !isProducing) {
             switchChargerOff("");
@@ -868,10 +873,19 @@ void MeanWellCanClass::loop()
             // check if battery request immediate charging or SoC is less than 100%
             // and inverter is producing and reachable and day
             // than switch on charger
-        } else if (Battery.getStats()->getSoC() < 100 && isProducing && isReachable && SunPosition.isDayPeriod() /*&& Battery.chargeEnabled*/) {
-            if (!_rp.operation && (GridPower < -cMeanWell.MinCurrent * Battery.getStats()->getVoltage() || Battery.getStats()->getChargeImmediately())) {
-                if (_verboseLogging)
-                    MessageOutput.println(", switch Charger ON");
+        } else if (Battery.getStats()->getSoC() < 100
+                   && isProducing && isReachable
+                   && SunPosition.isDayPeriod()
+                   /*&& Battery.chargeEnabled*/
+                  )
+        {
+            if (!_rp.operation
+                 && (GridPower < -cMeanWell.MinCurrent * Battery.getStats()->getVoltage()
+                     || Battery.getStats()->getChargeImmediately()
+                    )
+               )
+            {
+                if (_verboseLogging) MessageOutput.println(", switch Charger ON");
                 // only start if charger is off and enough GridPower is available
                 setAutomaticChargeMode(true);
                 setPower(true);
@@ -883,8 +897,7 @@ void MeanWellCanClass::loop()
                 readCmd(ChargerID, 0x0060); // read VOUT
                 readCmd(ChargerID, 0x0061); // read IOUT
             } else {
-                if (_verboseLogging)
-                    MessageOutput.println();
+                if (_verboseLogging) MessageOutput.println();
             }
 
             static boolean _chargeImmediateRequested = false;
@@ -892,41 +905,39 @@ void MeanWellCanClass::loop()
                 _chargeImmediateRequested = false;
             }
 
-            if ((Battery.getStats()->getChargeImmediately() || _chargeImmediateRequested) && Battery.getStats()->getSoC() < (Configuration.get().PowerLimiter.BatterySocStartThreshold - 10)) {
-                if (_verboseLogging)
-                    MessageOutput.printf("%s Immediate Charge requested", TAG);
+            if ((Battery.getStats()->getChargeImmediately()
+                 || _chargeImmediateRequested
+                )
+                && Battery.getStats()->getSoC() < (Configuration.get().PowerLimiter.BatterySocStartThreshold - 10)
+               )
+            {
+                if (_verboseLogging) MessageOutput.printf("%s Immediate Charge requested", TAG);
                 setValue(cMeanWell.MaxCurrent, MEANWELL_SET_CURRENT);
                 setValue(cMeanWell.MaxCurrent, MEANWELL_SET_CURVE_CC);
                 _chargeImmediateRequested = true;
             } else {
                 // Zero Grid Export Charging Algorithm (Charger consums at operation minimum 180 Watt = 3.6A*50V)
-                if (_verboseLogging)
-                    MessageOutput.printf("%s Zero Grid Charger controller", TAG);
+                if (_verboseLogging) MessageOutput.printf("%s Zero Grid Charger controller", TAG);
                 float pCharger = _rp.outputCurrentSet * Battery.getStats()->getVoltage();
-                if (_rp.outputPower > 0.0f)
-                    pCharger = _rp.outputPower;
+                if (_rp.outputPower > 0.0f) pCharger = _rp.outputPower;
                 if (GridPower - _rp.outputPower < -(pCharger + cMeanWell.Hysteresis)) { // 25 Watt Hysteresic
-                    if (_verboseLogging)
-                        MessageOutput.printf(", increment");
+                    if (_verboseLogging) MessageOutput.printf(", increment");
                     // Solar Inverter produces enough power, we export to the Grid
-                    //					if (_rp.OutputCurrent < _rp.CurveCC || _rp.OutputCurrent < _rp.OutputCurrentSetting) {
+                    //	if (_rp.OutputCurrent < _rp.CurveCC || _rp.OutputCurrent < _rp.OutputCurrentSetting) {
                     if (_rp.outputCurrent >= cMeanWell.MaxCurrent) {
                         // do nothing, _OutputCurrentSetting && CurveCC is higher than actual OutputCurrent, the charger is regulating
-                        if (_verboseLogging)
-                            MessageOutput.print(" not");
+                        if (_verboseLogging) MessageOutput.print(" not");
                     }
                     // check if outputCurrent is less than recommended charging current from battery
                     // if so than increase charging current by 0,5A (round about 25W)
                     else if (_rp.outputCurrent < Battery.getStats()->getRecommendedChargeCurrentLimit()) {
                         float increment = fabs(GridPower) / Battery.getStats()->getVoltage();
-                        if (_verboseLogging)
-                            MessageOutput.printf(" by %.2f A", increment);
+                        if (_verboseLogging) MessageOutput.printf(" by %.2f A", increment);
                         setValue(_rp.outputCurrentSet + increment, MEANWELL_SET_CURRENT);
                         setValue(_rp.outputCurrentSet, MEANWELL_SET_CURVE_CC);
                     }
                 } else if (GridPower - _rp.outputPower > -pCharger && _rp.outputCurrent > 0.0f) {
-                    if (_verboseLogging)
-                        MessageOutput.printf(", decrement");
+                    if (_verboseLogging) MessageOutput.printf(", decrement");
                     float decrement = fabs(GridPower) / Battery.getStats()->getVoltage();
                     // check if Solar Inverter produces not enough power, then we have to reduce switch off the charger
                     // otherwise we have to reduce the OutputCurrent
@@ -940,19 +951,16 @@ void MeanWellCanClass::loop()
                         // set current to minimum value
                         switchChargerOff(", not enough solar power");
                     }
-                    //					else if (_rp.OutputCurrent > _rp.CurveCC && _rp.OutputCurrent < _rp.OutputCurrentSetting) {
+                    // else if (_rp.OutputCurrent > _rp.CurveCC && _rp.OutputCurrent < _rp.OutputCurrentSetting) {
                     else if (_rp.outputCurrent > cMeanWell.MinCurrent) {
-                        if (_verboseLogging)
-                            MessageOutput.printf(" by %.2f A", decrement);
+                        if (_verboseLogging) MessageOutput.printf(" by %.2f A", decrement);
                         setValue(_rp.outputCurrentSet - decrement, MEANWELL_SET_CURRENT);
                         setValue(_rp.outputCurrentSet, MEANWELL_SET_CURVE_CC);
                     } else {
-                        if (_verboseLogging)
-                            MessageOutput.printf(", sorry I don't know, OutputCurrent: %.3f, MinCurrent: %.3f", _rp.outputCurrent, cMeanWell.MinCurrent);
+                        if (_verboseLogging) MessageOutput.printf(", sorry I don't know, OutputCurrent: %.3f, MinCurrent: %.3f", _rp.outputCurrent, cMeanWell.MinCurrent);
                     }
                 } else if (_rp.outputCurrent > 0.0f) {
-                    if (_verboseLogging)
-                        MessageOutput.print(" constant");
+                    if (_verboseLogging) MessageOutput.print(" constant");
                 } else {
                     switchChargerOff(", unknown reason");
                 }
@@ -961,8 +969,7 @@ void MeanWellCanClass::loop()
             }
         }
 
-        if (_verboseLogging)
-            MessageOutput.println();
+        if (_verboseLogging) MessageOutput.println();
 
     } else { // not automatic mode
         /*

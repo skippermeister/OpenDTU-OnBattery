@@ -30,6 +30,13 @@
                             </select>
                         </div>
                     </div>
+
+                    <InputElement v-show="batteryConfigList.provider == 0 ||
+                                          batteryConfigList.provider == 3 ||
+                                        batteryConfigList.provider == 5"
+                                :label="$t('batteryadmin.NumberOfBatteries')"
+                                v-model="batteryConfigList.numberOfBatteries"
+                                type="number" min="1" max="5" wide4_1/>
                 </div>
             </CardElement>
 

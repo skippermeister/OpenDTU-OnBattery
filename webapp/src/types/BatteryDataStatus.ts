@@ -1,13 +1,22 @@
 import type { ValueObject, CellObject } from '@/types/LiveDataStatus';
 
-export interface Battery {
-    manufacturer: string;
+export interface Pack {
+    moduleNumber: number;
+    moduleName: string;
     device_name: string;
-    data_age: number;
+    moduleSerialNumber: string;
     software_version: string;
     values: (ValueObject | string)[];
     parameters: (ValueObject | string)[];
-    issues: number[];
     cell: CellObject;
     tempSensor: ValueObject[];
+}
+
+export interface BatteryData {
+    manufacturer: string;
+    data_age: number;
+    values: (ValueObject | string)[];
+    issues: number[];
+    numberOfPacks: number;
+    packs: Pack[];
 }

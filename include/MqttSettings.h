@@ -40,7 +40,7 @@ private:
     Ticker _mqttReconnectTimer;
     MqttSubscribeParser _mqttSubscribeParser;
     std::mutex _clientLock;
-    bool _verboseLogging = true;
+    bool _verboseLogging = false;
 };
 
 extern MqttSettingsClass MqttSettings;

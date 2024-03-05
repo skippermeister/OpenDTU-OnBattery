@@ -280,6 +280,7 @@ void PinMappingClass::init(const String& deviceMapping)
             if (devName == deviceMapping) {
                 MessageOutput.printf("found valid mapping %s ", devName.c_str());
 
+#if defined(USE_RADIO_NRF)
                 strlcpy(_pinMapping.name, devName.c_str(), sizeof(_pinMapping.name));
                 _pinMapping.nrf24_clk = doc[i]["nrf24"]["clk"] | NRF24_PIN_SCLK;
                 _pinMapping.nrf24_cs = doc[i]["nrf24"]["cs"] | NRF24_PIN_CS;
@@ -287,6 +288,7 @@ void PinMappingClass::init(const String& deviceMapping)
                 _pinMapping.nrf24_irq = doc[i]["nrf24"]["irq"] | NRF24_PIN_IRQ;
                 _pinMapping.nrf24_miso = doc[i]["nrf24"]["miso"] | NRF24_PIN_MISO;
                 _pinMapping.nrf24_mosi = doc[i]["nrf24"]["mosi"] | NRF24_PIN_MOSI;
+#endif
 
 #if defined(USE_RADIO_CMT)
                 _pinMapping.cmt_clk = doc[i]["cmt"]["clk"] | CMT_CLK;
@@ -409,7 +411,7 @@ void PinMappingClass::init(const String& deviceMapping)
 
                 _pinMapping.sml_rx = doc[i]["sml"]["rs232_rx"] | SML_RX_PIN;
 
-    createPinMappingJson();
+//    createPinMappingJson();
 
                 MessageOutput.println("... done");
                 return;
@@ -417,11 +419,12 @@ void PinMappingClass::init(const String& deviceMapping)
         }
     }
 
-    createPinMappingJson();
+//    createPinMappingJson();
 
     MessageOutput.println("using default config");
 }
 
+#if defined(USE_RADIO_NRF)
 bool PinMappingClass::isValidNrf24Config() const
 {
     return _pinMapping.nrf24_clk >= 0
@@ -431,6 +434,7 @@ bool PinMappingClass::isValidNrf24Config() const
         && _pinMapping.nrf24_miso >= 0
         && _pinMapping.nrf24_mosi >= 0;
 }
+#endif
 
 #if defined(USE_RADIO_CMT)
 bool PinMappingClass::isValidCmt2300Config() const
@@ -514,6 +518,7 @@ void PinMappingClass::createPinMappingJson() const
 
     doc["name"] = "my_very_special_board";
 
+#if defined(USE_RADIO_NRF)
     JsonObject nrf24 = doc.createNestedObject("nrf24");
     nrf24["clk"]  = _pinMapping.nrf24_clk;
     nrf24["cs"]   = _pinMapping.nrf24_cs;
@@ -521,26 +526,20 @@ void PinMappingClass::createPinMappingJson() const
     nrf24["irq"]  = _pinMapping.nrf24_irq;
     nrf24["miso"] = _pinMapping.nrf24_miso;
     nrf24["mosi"] = _pinMapping.nrf24_mosi;
+#endif
 
-    JsonObject cmt = doc.createNestedObject("cmt");
 #if defined(USE_RADIO_CMT)
+    JsonObject cmt = doc.createNestedObject("cmt");
     cmt["clk"]   = _pinMapping.cmt_clk;
     cmt["cs"]    = _pinMapping.cmt_cs;
     cmt["fcs"]   = _pinMapping.cmt_fcs;
     cmt["gpio2"] = _pinMapping.cmt_gpio2;
     cmt["gpio3"] = _pinMapping.cmt_gpio3;
     cmt["sdio"]  = _pinMapping.cmt_sdio;
-#else
-    cmt["clk"]   = -1;
-    cmt["cs"]    = -1;
-    cmt["fcs"]   = -1;
-    cmt["gpio2"] = -1;
-    cmt["gpio3"] = -1;
-    cmt["sdio"]  = -1;
 #endif
 
-    JsonObject eth = doc.createNestedObject("eth");
 #if defined(OPENDTU_ETHERNET)
+    JsonObject eth = doc.createNestedObject("eth");
     eth["enabled"]  = _pinMapping.eth_enabled;
     eth["phy_addr"] = _pinMapping.eth_phy_addr;
     eth["power"]    = _pinMapping.eth_power;
@@ -548,12 +547,10 @@ void PinMappingClass::createPinMappingJson() const
     eth["mdio"]     = _pinMapping.eth_mdio;
     eth["type"]     = _pinMapping.eth_type;
     eth["clk_mode"] = _pinMapping.eth_clk_mode;
-#else
-   eth["enabled"]  = false;
 #endif
 
-    JsonObject display = doc.createNestedObject("display");
 #if defined(USE_DISPLAY_GRAPHIC)
+    JsonObject display = doc.createNestedObject("display");
     display["type"]  = _pinMapping.display_type;
     display["data"]  = _pinMapping.display_data;
     display["clk"]   = _pinMapping.display_clk;
@@ -561,41 +558,26 @@ void PinMappingClass::createPinMappingJson() const
     display["reset"] = _pinMapping.display_reset;
     display["busy"]  = _pinMapping.display_busy;
     display["dc"]    = _pinMapping.display_dc;
-#else
-    display["type"]  = 0;
-    display["data"]  = -1;
-    display["clk"]   = -1;
-    display["cs"]    = -1;
-    display["reset"] = -1;
-    display["busy"]  = -1;
-    display["dc"]    = -1;
 #endif
 
+#if defined(USE_LED_SINGLE) || defined(USE_LED_STRIP)
     JsonObject led = doc.createNestedObject("led");
-#if defined(USE_LED_SINGLE)
     led["led0"] = _pinMapping.led[0];
     led["led1"] = _pinMapping.led[1];
-#else
-//    led["led0"] = -1;
-//    led["led1"] = -1;
-#endif
 #if defined(USE_LED_STRIP)
     led["rgb"] = _pinMapping.led_rgb;
-#else
-//    led["rgb"] = -1;
 #endif
+#endif
+
     JsonObject victron = doc.createNestedObject("victron");
     victron["rs232_rx"] = _pinMapping.victron_rx;
     victron["rs232_tx"] = _pinMapping.victron_tx;
 
-    JsonObject refusol = doc.createNestedObject("refusol");
 #if defined(USE_REFUsol_INVERTER)
+    JsonObject refusol = doc.createNestedObject("refusol");
     refusol["rs485_rx"] = _pinMapping.REFUsol_rx;
     refusol["rs485_tx"] = _pinMapping.REFUsol_tx;
     if (_pinMapping.refusul_rts >= 0) refusol["rs485_rts"] = _pinMapping.REFUsol_rts;
-#else
-    refusol["rs485_rx"] = -1;
-    refusol["rs485_tx"] = -1;
 #endif
 
     JsonObject battery = doc.createNestedObject("battery");

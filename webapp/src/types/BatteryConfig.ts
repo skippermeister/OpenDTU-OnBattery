@@ -1,5 +1,6 @@
 export interface BatteryConfig {
     enabled: boolean;
+    numberOfBatteries: number;
     pollinterval: number;
     updatesonly: boolean;
     verbose_logging: boolean;

@@ -115,7 +115,8 @@
                                                         :channelType="chanType.name"
                                                         :channelNumber="channel" />
                                                 </div>
-                                            </template>                                        </template>
+                                            </template>
+                                        </template>
                                     </template>
                                 </template>
                             </div>

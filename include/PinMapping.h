@@ -12,14 +12,17 @@
 
 struct PinMapping_t {
     char name[MAPPING_NAME_STRLEN + 1];
+
+#if defined(USE_RADIO_NRF)
     int8_t nrf24_miso;
     int8_t nrf24_mosi;
     int8_t nrf24_clk;
     int8_t nrf24_irq;
     int8_t nrf24_en;
     int8_t nrf24_cs;
+#endif
 
-#ifdef USE_RADIO_CMT
+#if defined(USE_RADIO_CMT)
     int8_t cmt_clk;
     int8_t cmt_cs;
     int8_t cmt_fcs;
@@ -28,7 +31,7 @@ struct PinMapping_t {
     int8_t cmt_sdio;
 #endif
 
-#ifdef OPENDTU_ETHERNET
+#if defined(OPENDTU_ETHERNET)
     bool eth_enabled;
     int8_t eth_phy_addr;
     int eth_power;
@@ -38,7 +41,7 @@ struct PinMapping_t {
     eth_clock_mode_t eth_clk_mode;
 #endif
 
-#ifdef USE_DISPLAY_GRAPHIC
+#if defined(USE_DISPLAY_GRAPHIC)
     uint8_t display_type;
     int8_t display_data;
     int8_t display_clk;
@@ -48,17 +51,17 @@ struct PinMapping_t {
     int8_t display_dc;
 #endif
 
-#ifdef USE_LED_SINGLE
+#if defined(USE_LED_SINGLE)
     int8_t led[PINMAPPING_LED_COUNT];
 #endif
-#ifdef USE_LED_STRIP
+#if defined(USE_LED_STRIP)
     int8_t led_rgb;
 #endif
 
     int8_t victron_tx;
     int8_t victron_rx;
 
-#ifdef REFUsol_IMPLEMENTED
+#if defined(REFUsol_IMPLEMENTED)
     int8_t REFUsol_rx;
     int8_t REFUsol_tx;
     //    int8_t REFUsol_cts;
@@ -69,7 +72,7 @@ struct PinMapping_t {
     int8_t battery_tx;
 #if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER) || defined(USE_JKMS_CONTROLLER)
     int8_t battery_rts;
-#ifdef USE_DALYBMS_CONTROLLER
+#if defined(USE_DALYBMS_CONTROLLER)
     int8_t battery_daly_wakeup;
 #endif
 #endif
@@ -80,7 +83,7 @@ struct PinMapping_t {
     int8_t mcp2515_irq;
     int8_t mcp2515_cs;
 
-#ifdef CHARGER_HUAWEI
+#if defined(CHARGER_HUAWEI)
     int8_t huawei_power;
 #endif
     int8_t can0_rx;
@@ -103,18 +106,20 @@ public:
     void init(const String& deviceMapping);
     PinMapping_t& get();
 
+#if defined(USE_RADIO_NRF)
     bool isValidNrf24Config() const;
-#ifdef USE_RADIO_CMT
+#endif
+#if defined(USE_RADIO_CMT)
     bool isValidCmt2300Config() const;
 #endif
-#ifdef OPENDTU_ETHERNET
+#if defined(OPENDTU_ETHERNET)
     bool isValidEthConfig() const;
 #endif
-#ifdef REFUsol_IMPLEMENTED
+#if defined(REFUsol_IMPLEMENTED)
     bool isValidREFUsolConfig() const;
 #endif
     bool isValidBatteryConfig() const;
-#ifdef CHARGER_HUAWEI
+#if defined(CHARGER_HUAWEI)
     bool isValidHuaweiConfig() const;
 #else
     bool isValidMeanWellConfig() const;

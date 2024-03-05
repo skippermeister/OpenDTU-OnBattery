@@ -41,10 +41,6 @@ void WebApiVedirectClass::onVedirectStatus(AsyncWebServerRequest* request)
 
 void WebApiVedirectClass::onVedirectAdminGet(AsyncWebServerRequest* request)
 {
-    if (!WebApi.checkCredentials(request)) {
-        return;
-    }
-
     this->onVedirectStatus(request);
 }
 

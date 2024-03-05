@@ -19,16 +19,17 @@ bool PylontechRS485Receiver::init()
 {
     _lastBatteryCheck.set(Configuration.get().Battery.PollInterval * 1000);
 
-    if (!Configuration.get().Battery.Enabled)
-        return false;
+    if (!Configuration.get().Battery.Enabled) { return false; }
 
     const PinMapping_t& pin = PinMapping.get();
     MessageOutput.printf("Initialize Pylontech battery interface... ");
 
-    if (pin.battery_rx < 0 ||
-        pin.battery_tx < 0 ||
-        (pin.battery_rx == pin.battery_tx) ||
-        (pin.battery_rts >= 0 && (pin.battery_rts == pin.battery_rx || pin.battery_rts == pin.battery_tx)))
+    if (pin.battery_rx < 0 || pin.battery_tx < 0
+        || pin.battery_rx == pin.battery_tx
+        || (pin.battery_rts >= 0
+            && (pin.battery_rts == pin.battery_rx || pin.battery_rts == pin.battery_tx)
+           )
+        )
     {
         MessageOutput.println("Invalid pin config");
         return false;
@@ -64,33 +65,34 @@ bool PylontechRS485Receiver::init()
     }
 
     MessageOutput.print("Read basic infos and parameters. ");
-//    boolean temp = Battery._verboseLogging;
-//Battery._verboseLogging = true;
-    get_protocol_version();
-    get_manufacturer_info();
-    get_module_serial_number();
-    get_firmware_info();
+    boolean temp = Battery._verboseLogging;
 
-    send_cmd(2, Command::GetSystemParameter, false);
-    vTaskDelay(100);
-    get_system_parameters();
+    Battery._verboseLogging = true;
 
-    get_pack_count();
-//    get_barcode();
-//    get_version_info();
+    _masterBatteryID = 2;   // Master battery starts with ID = 2
+    _lastSlaveBatteryID = _masterBatteryID + Configuration.get().Battery.numberOfBatteries;
 
-    send_cmd(2, Command::GetChargeDischargeManagementInfo);
-    vTaskDelay(100);
-    get_charge_discharge_management_info();
+    get_pack_count(REQUEST_AND_GET, _masterBatteryID);
 
-    send_cmd(2, Command::GetAnalogValue);
-    vTaskDelay(100);
-    get_analog_value();
+    for (uint8_t i=_masterBatteryID; i<_lastSlaveBatteryID; i++) {
+        MessageOutput.printf("%s %s Battery Pack %d\r\n", TAG, i==2 ? "Master" : "Slave", i);
+        get_protocol_version(REQUEST_AND_GET, i);
+        get_manufacturer_info(REQUEST_AND_GET, i);
+        get_module_serial_number(REQUEST_AND_GET, i);
+        get_firmware_info(REQUEST_AND_GET, i);
 
-    send_cmd(2, Command::GetAlarmInfo);
-    vTaskDelay(100);
-    get_alarm_info();
-//    Battery._verboseLogging = temp;
+        get_system_parameters(REQUEST_AND_GET, i);
+
+//        get_barcode(REQUEST_AND_GET, i);
+//        get_version_info(REQUEST_AND_GET, i);
+
+        get_charge_discharge_management_info(REQUEST_AND_GET, i);
+
+        get_analog_value(REQUEST_AND_GET, i);
+
+        get_alarm_info(REQUEST_AND_GET, i);
+    }
+    Battery._verboseLogging = temp;
 
     _isInstalled = true;
 
@@ -101,9 +103,7 @@ bool PylontechRS485Receiver::init()
 
 void PylontechRS485Receiver::deinit()
 {
-    if (!_isInstalled) {
-        return;
-    }
+    if (!_isInstalled) { return; }
 
     MessageOutput.printf("%s RS485 driver uninstalled\r\n", TAG);
     _isInstalled = false;
@@ -114,8 +114,7 @@ void PylontechRS485Receiver::loop()
     Battery_CONFIG_T& cBattery = Configuration.get().Battery;
 
     if (!cBattery.Enabled || !_stats->_initialized) {
-        if (!cBattery.Enabled)
-            deinit();
+        if (!cBattery.Enabled) { deinit(); }
         return;
     }
 
@@ -123,20 +122,25 @@ void PylontechRS485Receiver::loop()
         init();
         return;
     }
+
+    static uint8_t BatteryID = _lastSlaveBatteryID;
+    uint8_t module = BatteryID;
+    if (module >= _lastSlaveBatteryID) module = _masterBatteryID; // inital check
+
     if (RS485.available()) {
         uint32_t t_start = millis();
         switch (_lastCmnd) {
         case Command::GetChargeDischargeManagementInfo:
-            get_charge_discharge_management_info();
+            get_charge_discharge_management_info(PylontechRS485Receiver::Function::GET, module);
             break;
         case Command::GetAlarmInfo:
-            get_alarm_info();
+            get_alarm_info(PylontechRS485Receiver::Function::GET, module);
             break;
         case Command::GetAnalogValue:
-            get_analog_value();
+            get_analog_value(PylontechRS485Receiver::Function::GET, module);
             break;
         case Command::GetSystemParameter:
-            get_system_parameters();
+            get_system_parameters(PylontechRS485Receiver::Function::GET, module);
             break;
         case 0xff:
             while (RS485.available())
@@ -149,14 +153,12 @@ void PylontechRS485Receiver::loop()
         _stats->setLastUpdate(millis());
     }
 
-    if (!_lastBatteryCheck.occured()) {
-        return;
-    }
+    if (!_lastBatteryCheck.occured()) { return; }
     _lastBatteryCheck.set(Configuration.get().Battery.PollInterval * 1000);
 
     typedef struct {
         Command cmd;
-        boolean Pack;
+        boolean flag;
     } Commands_t;
 
     static const Commands_t Commands[] = {
@@ -169,124 +171,195 @@ void PylontechRS485Receiver::loop()
     };
 
     static uint8_t state = 0;
-    send_cmd(2, Commands[state].cmd, Commands[state].Pack);
-    state++;
-    if (state >= sizeof(Commands)/sizeof(Commands_t)) state=0;
+    if (state==0) {
+        if (++BatteryID >= _lastSlaveBatteryID) BatteryID = _masterBatteryID;
+    }
+    MessageOutput.printf("%s %s Battery Pack %d\r\n", TAG, BatteryID==_masterBatteryID ? "Master" : "Slave", BatteryID);
+
+    send_cmd(BatteryID, Commands[state].cmd, Commands[state].flag);
+
+    if (++state >= sizeof(Commands)/sizeof(Commands_t)) state=0;
 
     MessageOutput.printf("%s request time %u ms, Cmnd: %02X\r\n", TAG, _lastBatteryCheck.elapsed(), _lastCmnd);
 }
 
-void PylontechRS485Receiver::get_protocol_version(uint8_t devid)
-{
-    if (Battery._verboseLogging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
+static void errorBatteryNotResponding() {
+    MessageOutput.printf("%s Battery not responding, check cabling or battery power switch\r\n", TAG);
+}
 
-    send_cmd(devid, Command::GetProtocolVersion, false);
-    yield();
-    if (read_frame() == NULL) {
-        MessageOutput.printf("%s Battery not responding, check cabling or battery power switch\r\f", TAG);
+static const char *_Function_[] = {"REQUEST", "REQUEST & GET", "GET"};
+void PylontechRS485Receiver::get_protocol_version(const PylontechRS485Receiver::Function function, uint8_t module)
+{
+    if (Battery._verboseLogging) MessageOutput.printf("%s::%s %s Module %d\r\n", TAG, __FUNCTION__, _Function_[function], module);
+
+    if (function != PylontechRS485Receiver::Function::GET) {
+        send_cmd(module, Command::GetProtocolVersion, false);
+        yield();
+        if (function == PylontechRS485Receiver::Function::REQUEST)
+            return;
+        else {
+            vTaskDelay(100);
+            // and fall through to get the data from the battery
+        }
+    }
+
+    format_t *f;
+    if ((f = read_frame()) == NULL) {
+        errorBatteryNotResponding();
+        return;
     };
-    yield();
 
-    return;
+    if (Battery._verboseLogging) MessageOutput.printf("%s Protocol Version: %d.%d\r\n", TAG, (f->ver&0xF0)>>4, f->ver&0xF);
 }
 
-void PylontechRS485Receiver::get_barcode(uint8_t devid)
+void PylontechRS485Receiver::get_barcode(const PylontechRS485Receiver::Function function, uint8_t module)
 {
-    if (Battery._verboseLogging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
+    if (Battery._verboseLogging) MessageOutput.printf("%s::%s %s Module %d\r\n", TAG, __FUNCTION__, _Function_[function], module);
 
-    send_cmd(devid, Command::GetBarCode);
-    yield();
+    if (function != PylontechRS485Receiver::Function::GET) {
+        send_cmd(module, Command::GetBarCode);
+        yield();
+        if (function == PylontechRS485Receiver::Function::REQUEST)
+            return;
+        else {
+            vTaskDelay(100);
+            // and fall through to get the data from the battery
+        }
+    }
 
     format_t* f = read_frame();
-    yield();
-
-    if (f == NULL)
+    if (f == NULL) {
+        errorBatteryNotResponding();
         return;
-}
-
-void PylontechRS485Receiver::get_firmware_info(uint8_t devid)
-{
-    if (Battery._verboseLogging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
-
-    send_cmd(devid, Command::GetFirmwareInfo);
-    yield();
-
-    format_t* f = read_frame();
-    yield();
-
-    if (f == NULL)
-        return;
-
-    uint8_t* info = &f->info[1];
-
-    uint32_t version = ToUint16(info);
-    info+=2;
-    _stats->_manufacturerVersion = String((version >> 8) & 0x0F) + '.' + String(version & 0x0F);
-    version = ToUint24(info);
-    _stats->_mainLineVersion = String((version >> 16) & 0x0F) + '.' + String((version >> 8) & 0x0F) + '.' + String(version & 0x0F);
-
-    if (Battery._verboseLogging) {
-        MessageOutput.printf("%s Manufacturer Version: '%s'\r\n", TAG, _stats->_manufacturerVersion.c_str());
-        MessageOutput.printf("%s Main Line Version: '%s'\r\n", TAG, _stats->_mainLineVersion.c_str());
     }
 }
 
-void PylontechRS485Receiver::get_version_info(uint8_t devid)
+void PylontechRS485Receiver::get_firmware_info(const PylontechRS485Receiver::Function function, uint8_t module)
 {
-    if (Battery._verboseLogging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
+    if (Battery._verboseLogging) MessageOutput.printf("%s::%s %s Module %d\r\n", TAG, __FUNCTION__, _Function_[function], module);
 
-    send_cmd(devid, Command::GetVersionInfo);
-    yield();
+    if (function != PylontechRS485Receiver::Function::GET) {
+        send_cmd(module, Command::GetFirmwareInfo);
+        yield();
+        if (function == PylontechRS485Receiver::Function::REQUEST)
+            return;
+        else {
+            vTaskDelay(100);
+            // and fall through to get the data from the battery
+        }
+    }
 
     format_t* f = read_frame();
-    yield();
-
-    if (f == NULL)
+    if (f == NULL) {
+        errorBatteryNotResponding();
         return;
+    }
+
+    module -= _masterBatteryID; // point to index in Battery array
+
+
+    uint8_t CommandValue = f->info[0];
+    uint8_t* info = &f->info[1];
+
+    // point to battery pack structure of selected battery
+    PylontechRS485BatteryStats::Pack_t &Pack = _stats->Pack[module];
+
+    uint32_t version = ToUint16(info);
+    Pack.manufacturerVersion = String((version >> 8) & 0x0F) + '.' + String(version & 0x0F);
+    version = ToUint24(info);
+    Pack.mainLineVersion = String((version >> 16) & 0x0F) + '.' + String((version >> 8) & 0x0F) + '.' + String(version & 0x0F);
+
+    if (Battery._verboseLogging) {
+        MessageOutput.printf("%s CommandValue: %d, Manufacturer Version: '%s'\r\n", TAG, CommandValue, Pack.manufacturerVersion.c_str());
+        MessageOutput.printf("%s Main Line Version: '%s'\r\n", TAG, Pack.mainLineVersion.c_str());
+    }
 }
 
-void PylontechRS485Receiver::get_pack_count(uint8_t devid)
+void PylontechRS485Receiver::get_version_info(const PylontechRS485Receiver::Function function, uint8_t module)
 {
-    if (Battery._verboseLogging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
+    if (Battery._verboseLogging) MessageOutput.printf("%s::%s %s Module %d\r\n", TAG, __FUNCTION__, _Function_[function], module);
 
-    send_cmd(devid, Command::GetPackCount);
-    yield();
+    if (function != PylontechRS485Receiver::Function::GET) {
+        send_cmd(module, Command::GetVersionInfo);
+        yield();
+        if (function == PylontechRS485Receiver::Function::REQUEST)
+            return;
+        else {
+            vTaskDelay(100);
+            // and fall through to get the data from the battery
+        }
+    }
 
     format_t* f = read_frame();
-    yield();
-
-    if (f == NULL)
+    if (f == NULL) {
+        errorBatteryNotResponding();
         return;
-
-    _number_of_packs = f->info[0];
-
-    if (Battery._verboseLogging)
-        MessageOutput.printf("%s::%s Number of Battery Packs %u\r\n", TAG, __FUNCTION__, _number_of_packs);
+    }
 }
 
-void PylontechRS485Receiver::get_manufacturer_info(uint8_t devid)
+void PylontechRS485Receiver::get_pack_count(const PylontechRS485Receiver::Function function, uint8_t module)
 {
-    if (Battery._verboseLogging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
+    if (Battery._verboseLogging) MessageOutput.printf("%s::%s %s Module %d\r\n", TAG, __FUNCTION__, _Function_[function], module);
 
-    send_cmd(devid, Command::GetManufacturerInfo, false);
-    yield();
+    if (function != PylontechRS485Receiver::Function::GET) {
+        send_cmd(module, Command::GetPackCount);
+        yield();
+        if (function == PylontechRS485Receiver::Function::REQUEST)
+            return;
+        else {
+            vTaskDelay(100);
+            // and fall through to get the data from the battery
+        }
+    }
 
     format_t* f = read_frame();
-    yield();
-
-    if (f == NULL)
+    if (f == NULL) {
+        errorBatteryNotResponding();
         return;
+    }
+
+    _stats->_number_of_packs = f->info[0];
+
+    if (Battery._verboseLogging) MessageOutput.printf("%s::%s Number of Battery Packs %u\r\n", TAG, __FUNCTION__, _stats->_number_of_packs);
+}
+
+void PylontechRS485Receiver::get_manufacturer_info(const PylontechRS485Receiver::Function function, uint8_t module)
+{
+    if (Battery._verboseLogging) MessageOutput.printf("%s::%s %s Module %d\r\n", TAG, __FUNCTION__, _Function_[function], module);
+
+    if (function != PylontechRS485Receiver::Function::GET) {
+        send_cmd(module, Command::GetManufacturerInfo, false);
+        yield();
+        if (function == PylontechRS485Receiver::Function::REQUEST)
+            return;
+        else {
+            vTaskDelay(100);
+            // and fall through to get the data from the battery
+        }
+    }
+
+    format_t* f = read_frame();
+    if (f == NULL) {
+        errorBatteryNotResponding();
+        return;
+    }
+
+    module -= _masterBatteryID; // point to index in Battery array
+
+    // point to battery pack structure of selected battery
+    PylontechRS485BatteryStats::Pack_t &Pack = _stats->Pack[module];
 
     uint8_t* info = &f->info[0];
 
     String deviceName(reinterpret_cast<char*>(info), 10);
-    uint16_t sw_version = ToUint16(info + 10);
-    _stats->softwareVersion = String((sw_version >> 8) & 0x0F) + '.' + String(sw_version & 0x0F);
-    String manufacturer(reinterpret_cast<char*>(info + 12), 20);
+    info += 10;
+    uint16_t sw_version = ToUint16(info);
+    Pack.softwareVersion = String((sw_version >> 8) & 0x0F) + '.' + String(sw_version & 0x0F);
+    String manufacturer(reinterpret_cast<char*>(info), 20);
 
     if (Battery._verboseLogging) {
         MessageOutput.printf("%s Manufacturer: '%s' size: %d\r\n", TAG, manufacturer.c_str(), manufacturer.length());
-        MessageOutput.printf("%s Software Version: %s\r\n", TAG, _stats->softwareVersion.c_str());
+        MessageOutput.printf("%s Software Version: %s\r\n", TAG, Pack.softwareVersion.c_str());
         MessageOutput.printf("%s Device Name: '%s' size: %d\r\n", TAG, deviceName.c_str(), deviceName.length());
     }
 
@@ -312,376 +385,488 @@ void PylontechRS485Receiver::get_manufacturer_info(uint8_t devid)
     }
 
     _stats->setManufacturer(std::move(manufacturer));
-    _stats->setDeviceName(std::move(deviceName));
+    Pack.deviceName = deviceName;
 
     if (Battery._verboseLogging)
-        MessageOutput.printf("%s Device Name: '%s' Manufacturer Name: '%s'\r\n", TAG,
-            _stats->getDeviceName().c_str(), _stats->getManufacturer().c_str());
+        MessageOutput.printf("%s Device Name: '%s' Manufacturer Name: '%s'\r\n", TAG, Pack.deviceName.c_str(), _stats->getManufacturer().c_str());
 }
 
-void PylontechRS485Receiver::get_analog_value()
+void PylontechRS485Receiver::get_analog_value(const PylontechRS485Receiver::Function function, uint8_t module)
 {
-    if (Battery._verboseLogging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
+    if (Battery._verboseLogging) MessageOutput.printf("%s::%s %s Module %d\r\n", TAG, __FUNCTION__, _Function_[function], module);
+
+    if (function != PylontechRS485Receiver::Function::GET) {
+        send_cmd(module, Command::GetAnalogValue);
+        yield();
+        if (function == PylontechRS485Receiver::Function::REQUEST)
+            return;
+        else {
+            vTaskDelay(100);
+            // and fall through to get the data from the battery
+        }
+    }
 
     format_t* f = read_frame();
-    yield();
-
-    if (f == NULL)
+    if (f == NULL) {
+        errorBatteryNotResponding();
         return;
+    }
+
+    module -= _masterBatteryID;
+
+    // point to battery pack structure of selected battery
+    PylontechRS485BatteryStats::Pack_t &Pack = _stats->Pack[module];
 
     // INFO = INFOFLAG + DATAI
-    // uint8_t InfoFlag = f->info[0];
+    uint8_t InfoFlag = f->info[0];
     uint8_t* info = &(f->info[1]);
 
-    _stats->numberOfModule = *info++;
-    _stats->numberOfCells = *info++;
+    Pack.numberOfModule = *info++;
+    Pack.numberOfCells = *info++;
 
-    if (Battery._verboseLogging)
-        MessageOutput.printf("%s Number of Module: %d, Number of Cells: %d\r\n", TAG, _stats->numberOfModule, _stats->numberOfCells);
+    if (Battery._verboseLogging) MessageOutput.printf("%s InfoFlag: %02X, Number of Cells: %d\r\n", TAG, InfoFlag, Pack.numberOfCells);
 
-    _stats->cellMinVoltage = 999999.0;
-    _stats->cellMaxVoltage = -999999.0;
-    _stats->CellVoltages = reinterpret_cast<float*>(realloc(_stats->CellVoltages, _stats->numberOfCells * sizeof(float)));
-    for (int i = 0; i < _stats->numberOfCells; i++) {
+    Pack.cellMinVoltage = 999999.0;
+    Pack.cellMaxVoltage = -999999.0;
+    Pack.CellVoltages = reinterpret_cast<float*>(realloc(Pack.CellVoltages, Pack.numberOfCells * sizeof(float)));
+    for (int i = 0; i < Pack.numberOfCells; i++) {
         float value = to_CellVolt(info);
-        info += 2;
-        _stats->CellVoltages[i] = value;
-        if (_stats->cellMinVoltage > value)
-            _stats->cellMinVoltage = value;
-        if (_stats->cellMaxVoltage < value)
-            _stats->cellMaxVoltage = value;
+        Pack.CellVoltages[i] = value;
+        Pack.cellMinVoltage = min(Pack.cellMinVoltage, value);
+        Pack.cellMaxVoltage = max(Pack.cellMaxVoltage, value);
 #ifdef PYLONTECH_RS485_DEBUG_ENABLED
-        MessageOutput.printf("%s CellVoltage[%d]: %.3f\r\n", TAG, i + 1, _stats->CellVoltages[i]);
+        MessageOutput.printf("%s CellVoltage[%d]: %.3f\r\n", TAG, i + 1, Pack.CellVoltages[i]);
 #endif
     }
-    _stats->cellDiffVoltage = (_stats->cellMaxVoltage - _stats->cellMinVoltage) * 1000.0; // in mV
+    Pack.cellDiffVoltage = (Pack.cellMaxVoltage - Pack.cellMinVoltage) * 1000.0; // in mV
 
-    _stats->numberOfTemperatures = *info++;
-    if (Battery._verboseLogging)
-        MessageOutput.printf("%s Number of Temperatures: %d\r\n", TAG, _stats->numberOfTemperatures);
+    Pack.numberOfTemperatures = *info++;
+    if (Battery._verboseLogging) MessageOutput.printf("%s Number of Temperatures: %d\r\n", TAG, Pack.numberOfTemperatures);
 
-    _stats->averageBMSTemperature = to_Celsius(info);
-    info += 2;
-    _stats->averageCellTemperature = 0.0;
-    _stats->minCellTemperature = 10000.0;
-    _stats->maxCellTemperature = -10000.0;
-    _stats->GroupedCellsTemperatures = reinterpret_cast<float*>(realloc(_stats->GroupedCellsTemperatures, (_stats->numberOfTemperatures - 1) * sizeof(float)));
-    for (int i = 0; i < _stats->numberOfTemperatures - 1; i++) {
+    Pack.averageBMSTemperature = to_Celsius(info);
+    Pack.averageCellTemperature = 0.0;
+    Pack.minCellTemperature = 10000.0;
+    Pack.maxCellTemperature = -10000.0;
+    Pack.GroupedCellsTemperatures = reinterpret_cast<float*>(realloc(Pack.GroupedCellsTemperatures, (Pack.numberOfTemperatures - 1) * sizeof(float)));
+    for (int i = 0; i < Pack.numberOfTemperatures - 1; i++) {
         float t = to_Celsius(info);
-        info += 2;
-        _stats->GroupedCellsTemperatures[i] = t;
-        _stats->averageCellTemperature += t;
-        if (_stats->minCellTemperature > t)
-            _stats->minCellTemperature = t;
-        if (_stats->maxCellTemperature < t)
-            _stats->maxCellTemperature = t;
+        Pack.GroupedCellsTemperatures[i] = t;
+        Pack.averageCellTemperature += t;
+        Pack.minCellTemperature = min(Pack.minCellTemperature, t);
+        Pack.maxCellTemperature = max(Pack.maxCellTemperature, t);
 #ifdef PYLONTECH_RS485_DEBUG_ENABLED
-        MessageOutput.printf("%s GroupedCellsTemperatures[%d]: %.1f\r\n", TAG, i + 1, _stats->GroupedCellsTemperatures[i]);
+        MessageOutput.printf("%s GroupedCellsTemperatures[%d]: %.1f\r\n", TAG, i + 1, Pack.GroupedCellsTemperatures[i]);
 #endif
     }
-    _stats->averageCellTemperature /= (_stats->numberOfTemperatures - 1);
-    _stats->current = to_Amp(info);
-    info += 2;
-    _stats->setVoltage(to_Volt(info), millis());
-    info += 2;
-    _stats->chargeVoltage = _stats->getVoltage();
-    _stats->power = _stats->current * _stats->getVoltage() / 1000.0; // kW
-    _stats->remainingCapacity = DivideUint16By1000(info);
-    info += 2; // DivideBy1000(Int16ub),
+    Pack.averageCellTemperature /= (Pack.numberOfTemperatures - 1);
+    Pack.current = to_Amp(info);
+    Pack.chargeVoltage = to_Volt(info);
+    Pack.power = _stats->totals.current * Pack.chargeVoltage / 1000.0; // kW
+    Pack.remainingCapacity = DivideUint16By1000(info); // DivideBy1000(Int16ub),
     uint8_t _UserDefinedItems = *info++;
-    _stats->totalCapacity = DivideUint16By1000(info);
-    info += 2;
-    _stats->cycles = ToUint16(info);
-    info += 2;
+    Pack.capacity = DivideUint16By1000(info);
+    Pack.cycles = ToUint16(info);
     if (_UserDefinedItems > 2) {
-        _stats->remainingCapacity = DivideUint24By1000(info);
-        info += 3;
-        _stats->totalCapacity = DivideUint24By1000(info);
-        info += 3;
+        Pack.remainingCapacity = DivideUint24By1000(info);
+        Pack.capacity = DivideUint24By1000(info);
     }
-    _stats->totalPower = _stats->power;
-    _stats->setSoC(static_cast<uint8_t>((100.0 * _stats->remainingCapacity / _stats->totalCapacity) + 0.5), 1/*precision*/, millis());
+    Pack.SoC = (100.0 * Pack.remainingCapacity / Pack.capacity) + 0.5;
+
+    // point to battery totals structure of selected battery
+    PylontechRS485BatteryStats::Totals_t &totals = _stats->totals;
+
+    totals.chargeVoltage = -99999.0;
+    totals.power = 0.0f;
+    totals.current = 0.0f;
+    totals.capacity = 0.0f;
+    totals.remainingCapacity = 0.0f;
+    totals.averageBMSTemperature = 0.0f;
+    totals.averageCellTemperature = 0.0f;
+    totals.minCellTemperature = 10000.0;
+    totals.maxCellTemperature = -10000.0;
+    totals.cellMinVoltage = 10000.0;
+    totals.cellMaxVoltage = -10000.0;
+
+    // build total values over the battery pack
+    for (uint8_t i=0; i<_stats->_number_of_packs; i++) {
+        totals.chargeVoltage = max(totals.chargeVoltage, _stats->Pack[i].chargeVoltage);
+        totals.power += _stats->Pack[i].power;
+        totals.current += _stats->Pack[i].current;
+        totals.capacity += _stats->Pack[i].capacity;
+        totals.remainingCapacity += _stats->Pack[i].remainingCapacity;
+
+        totals.cellMinVoltage = min(totals.cellMinVoltage, _stats->Pack[i].cellMinVoltage);
+        totals.cellMaxVoltage = max(totals.cellMaxVoltage, _stats->Pack[i].cellMaxVoltage);
+
+        totals.averageBMSTemperature += _stats->Pack[i].averageBMSTemperature;
+        totals.averageCellTemperature += _stats->Pack[i].averageCellTemperature;
+        totals.minCellTemperature = min(totals.minCellTemperature, _stats->Pack[i].minCellTemperature);
+        totals.maxCellTemperature = max(totals.maxCellTemperature, _stats->Pack[i].maxCellTemperature);
+    }
+    _stats->setVoltage(totals.chargeVoltage, millis());
+    totals.cellDiffVoltage = (totals.cellMaxVoltage - totals.cellMinVoltage) * 1000.0; // in mV
+    totals.averageCellTemperature /= _stats->_number_of_packs;
+    totals.SoC = 100.0 * totals.remainingCapacity / totals.capacity;
+
+    _stats->setSoC(static_cast<uint8_t>((totals.SoC) + 0.5), 1/*precision*/, millis());
+
     if (Battery._verboseLogging) {
-        MessageOutput.printf("%s AverageBMSTemperature: %.1f\r\n", TAG, _stats->averageBMSTemperature);
-        MessageOutput.printf("%s AverageCellTemperature: %.1f\r\n", TAG, _stats->averageCellTemperature);
-        MessageOutput.printf("%s MinCellTemperature: %.1f\r\n", TAG, _stats->minCellTemperature);
-        MessageOutput.printf("%s MaxCellTemperature: %.1f\r\n", TAG, _stats->maxCellTemperature);
-        MessageOutput.printf("%s Current: %.1f, Voltage: %.3f\r\n", TAG, _stats->current, _stats->getVoltage());
-        MessageOutput.printf("%s Capacity Remaining: %.3f, Total: %.3f\r\n", TAG, _stats->remainingCapacity, _stats->totalCapacity);
-        MessageOutput.printf("%s Total Power: %.3f kW\r\n", TAG, _stats->totalPower);
-        MessageOutput.printf("%s State of Charge: %d%%, Cycles: %d\r\n", TAG, _stats->getSoC(), _stats->cycles);
+        MessageOutput.printf("%s AverageBMSTemperature: %.1f\r\n", TAG, Pack.averageBMSTemperature);
+        MessageOutput.printf("%s AverageCellTemperature: %.1f\r\n", TAG, Pack.averageCellTemperature);
+        MessageOutput.printf("%s MinCellTemperature: %.1f\r\n", TAG, Pack.minCellTemperature);
+        MessageOutput.printf("%s MaxCellTemperature: %.1f\r\n", TAG, Pack.maxCellTemperature);
+        MessageOutput.printf("%s Current: %.1f, Voltage: %.3f\r\n", TAG, Pack.current, _stats->getVoltage());
+        MessageOutput.printf("%s Capacity: %.3f, Remaining: %.3f\r\n", TAG, Pack.capacity, Pack.remainingCapacity);
+        MessageOutput.printf("%s Power: %.3f kW\r\n", TAG, Pack.power);
+        MessageOutput.printf("%s State of Charge: %d%%, Cycles: %d\r\n", TAG, _stats->getSoC(), Pack.cycles);
     }
 }
 
-void PylontechRS485Receiver::get_analog_value_multiple(void)
+void PylontechRS485Receiver::get_system_parameters(const PylontechRS485Receiver::Function function, uint8_t module)
 {
-    if (Battery._verboseLogging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
+    if (Battery._verboseLogging) MessageOutput.printf("%s::%s %s Module %d\r\n", TAG, __FUNCTION__, _Function_[function], module);
 
-    send_cmd(2, Command::GetAnalogValue, true);
-    yield();
+    if (function != PylontechRS485Receiver::Function::GET) {
+        send_cmd(module, Command::GetSystemParameter, false);
+        yield();
+        if (function == PylontechRS485Receiver::Function::REQUEST)
+            return;
+        else {
+            vTaskDelay(100);
+            // and fall through to get the data from the battery
+        }
+    }
 
     format_t* f = read_frame();
-    yield();
-
-    if (f == NULL)
+    if (f == NULL) {
+        errorBatteryNotResponding();
         return;
+    }
+
+    module -= _masterBatteryID;
 
     // INFO = INFOFLAG + DATAI
-    // uint8_t InfoFlag = f->info[0];
-    // uint8_t CommandValue = f->info[1];
-    //    uint8_t *info = &(f->info[2]);
-}
-
-void PylontechRS485Receiver::get_system_parameters()
-{
-    if (Battery._verboseLogging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
-
-    format_t* f = read_frame();
-    yield();
-
-    if (f == NULL)
-        return;
-
-    // INFO = INFOFLAG + DATAI
+    uint8_t InfoFlag = f->info[0];
     uint8_t* info = &(f->info[1]);
-    _stats->SystemParameters.cellHighVoltageLimit = to_Volt(info);
-    info += 2;
-    _stats->SystemParameters.cellLowVoltageLimit = to_Volt(info);
-    info += 2;
-    _stats->SystemParameters.cellUnderVoltageLimit = to_Volt(info);
-    info += 2;
-    _stats->SystemParameters.chargeHighTemperatureLimit = to_Celsius(info);
-    info += 2;
-    _stats->SystemParameters.chargeLowTemperatureLimit = to_Celsius(info);
-    info += 2;
-    _stats->SystemParameters.chargeCurrentLimit = to_Amp(info);
-    info += 2;
-    _stats->SystemParameters.moduleHighVoltageLimit = to_Volt(info);
-    info += 2;
-    _stats->SystemParameters.moduleLowVoltageLimit = to_Volt(info);
-    info += 2;
-    _stats->SystemParameters.moduleUnderVoltageLimit = to_Volt(info);
-    info += 2;
-    _stats->SystemParameters.dischargeHighTemperatureLimit = to_Celsius(info);
-    info += 2;
-    _stats->SystemParameters.dischargeLowTemperatureLimit = to_Celsius(info);
-    info += 2;
-    _stats->SystemParameters.dischargeCurrentLimit = to_Amp(info);
-    info += 2;
+
+    // point to Systemparameter structure of selected battery
+    SystemParameters_t &SystemParameters =  _stats->Pack[module].SystemParameters;
+
+    SystemParameters.cellHighVoltageLimit = to_Volt(info);
+    SystemParameters.cellLowVoltageLimit = to_Volt(info);
+    SystemParameters.cellUnderVoltageLimit = to_Volt(info);
+    SystemParameters.chargeHighTemperatureLimit = to_Celsius(info);
+    SystemParameters.chargeLowTemperatureLimit = to_Celsius(info);
+    SystemParameters.chargeCurrentLimit = to_Amp(info);
+    SystemParameters.moduleHighVoltageLimit = to_Volt(info);
+    SystemParameters.moduleLowVoltageLimit = to_Volt(info);
+    SystemParameters.moduleUnderVoltageLimit = to_Volt(info);
+    SystemParameters.dischargeHighTemperatureLimit = to_Celsius(info);
+    SystemParameters.dischargeLowTemperatureLimit = to_Celsius(info);
+    SystemParameters.dischargeCurrentLimit = to_Amp(info);
+
+    // build totals over the battery pack
+    _stats->totals.SystemParameters.chargeCurrentLimit = 0;
+    _stats->totals.SystemParameters.dischargeCurrentLimit = 0;
+    _stats->totals.SystemParameters.chargeLowTemperatureLimit = -999999.0;
+    _stats->totals.SystemParameters.chargeHighTemperatureLimit = 999999.0;
+    _stats->totals.SystemParameters.dischargeLowTemperatureLimit = -999999.0;
+    _stats->totals.SystemParameters.dischargeHighTemperatureLimit = 999999.0;
+    for (uint8_t i=0; i<_stats->_number_of_packs; i++) {
+        _stats->totals.SystemParameters.chargeCurrentLimit += _stats->Pack[i].SystemParameters.chargeCurrentLimit;
+        _stats->totals.SystemParameters.dischargeCurrentLimit += _stats->Pack[i].SystemParameters.dischargeCurrentLimit;
+        _stats->totals.SystemParameters.chargeLowTemperatureLimit = max(_stats->totals.SystemParameters.chargeLowTemperatureLimit, _stats->Pack[i].SystemParameters.chargeLowTemperatureLimit);
+        _stats->totals.SystemParameters.chargeHighTemperatureLimit = min(_stats->totals.SystemParameters.chargeHighTemperatureLimit, _stats->Pack[i].SystemParameters.chargeHighTemperatureLimit);
+        _stats->totals.SystemParameters.dischargeLowTemperatureLimit = max(_stats->totals.SystemParameters.dischargeLowTemperatureLimit, _stats->Pack[i].SystemParameters.dischargeLowTemperatureLimit);
+        _stats->totals.SystemParameters.dischargeHighTemperatureLimit = min(_stats->totals.SystemParameters.dischargeHighTemperatureLimit, _stats->Pack[i].SystemParameters.dischargeHighTemperatureLimit);
+    }
 
     if (Battery._verboseLogging) {
-        MessageOutput.printf("%s CurrentLimit charge: %.2fA, discharge: %.2fA\r\n", TAG,
-            _stats->SystemParameters.chargeCurrentLimit,
-            _stats->SystemParameters.dischargeCurrentLimit);
+        MessageOutput.printf("%s InfoFlag: %02X, CurrentLimit charge: %.2fA, discharge: %.2fA\r\n", TAG,
+            InfoFlag,
+            SystemParameters.chargeCurrentLimit,
+            SystemParameters.dischargeCurrentLimit);
         MessageOutput.printf("%s Cell VoltageLimit High: %.3fV, Low: %.3fV, Under: %.3fV\r\n", TAG,
-            _stats->SystemParameters.cellHighVoltageLimit,
-            _stats->SystemParameters.cellLowVoltageLimit,
-            _stats->SystemParameters.cellUnderVoltageLimit);
+            SystemParameters.cellHighVoltageLimit,
+            SystemParameters.cellLowVoltageLimit,
+            SystemParameters.cellUnderVoltageLimit);
         MessageOutput.printf("%s Charge TemperatureLimit High: %.1f°C, Low: %.1f°C\r\n", TAG,
-            _stats->SystemParameters.chargeHighTemperatureLimit,
-            _stats->SystemParameters.chargeLowTemperatureLimit);
-        MessageOutput.printf("%s Module VoltageLimit High: %.3fV, Low: %.3fV, Under: %.3fV\r\n", TAG,
-            _stats->SystemParameters.moduleHighVoltageLimit,
-            _stats->SystemParameters.moduleLowVoltageLimit,
-            _stats->SystemParameters.moduleUnderVoltageLimit);
+            SystemParameters.chargeHighTemperatureLimit,
+            SystemParameters.chargeLowTemperatureLimit);
+        MessageOutput.printf("%s VoltageLimit High: %.3fV, Low: %.3fV, Under: %.3fV\r\n", TAG,
+            SystemParameters.moduleHighVoltageLimit,
+            SystemParameters.moduleLowVoltageLimit,
+            SystemParameters.moduleUnderVoltageLimit);
         MessageOutput.printf("%s Discharge TemperatureLimit High: %.1f°C, Low: %.1f°C\r\n", TAG,
-            _stats->SystemParameters.dischargeHighTemperatureLimit,
-            _stats->SystemParameters.dischargeLowTemperatureLimit);
+            SystemParameters.dischargeHighTemperatureLimit,
+            SystemParameters.dischargeLowTemperatureLimit);
     }
 }
 
-void PylontechRS485Receiver::get_alarm_info()
+void PylontechRS485Receiver::get_alarm_info(const PylontechRS485Receiver::Function function, uint8_t module)
 {
-    if (Battery._verboseLogging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
+    if (Battery._verboseLogging) MessageOutput.printf("%s::%s %s Module %d\r\n", TAG, __FUNCTION__, _Function_[function], module);
+
+    if (function != PylontechRS485Receiver::Function::GET) {
+        send_cmd(module, Command::GetAlarmInfo);
+        yield();
+        if (function == PylontechRS485Receiver::Function::REQUEST)
+            return;
+        else {
+            vTaskDelay(100);
+            // and fall through to get the data from the battery
+        }
+    }
 
     format_t* f = read_frame();
-    yield();
-
-    if (f == NULL)
+    if (f == NULL) {
+        errorBatteryNotResponding();
         return;
+    }
+
+    module -= _masterBatteryID;
 
     // INFO = DATAFLAG + WARNSTATE
-    // uint8_t DataFlag = f->info[0];
-    // uint8_t CommandValue = f->info[1];
+    uint8_t DataFlag = f->info[0];
+    uint8_t CommandValue = f->info[1];
     uint8_t* info = &f->info[2];
 
-    _stats->AlarmInfo.numberOfCells = *info++;
+    // point to Alarm and Warning structure of selected battery
+    Alarm_t &Alarm = _stats->Pack[module].Alarm;
+    Warning_t &Warning = _stats->Pack[module].Warning;
+
+    // structure of Pylontech RS485 response
+    AlarmInfo_t AlarmInfo;
+
+    AlarmInfo.numberOfCells = *info++;
+    Warning.lowVoltage = 0;
+    Warning.highVoltage = 0;
+
+    char buffer[AlarmInfo.numberOfCells*3+1];
+    for (int i = 0; i < AlarmInfo.numberOfCells; i++) {
+        AlarmInfo.cellVoltages[i] = *info++;
+
+        if (AlarmInfo.cellVoltages[i] & 0x01) Warning.lowVoltage = 1;
+        if (AlarmInfo.cellVoltages[i] & 0x02) Warning.highVoltage = 1;
+
+        if (Battery._verboseLogging) snprintf(&buffer[i * 3], 4, "%02X ", AlarmInfo.cellVoltages[i]);
+    }
+    if (Battery._verboseLogging) MessageOutput.printf("%s DataFlag: %02X, CommandValue: %02X, Number of Cell: %d, Status: %s\r\n", TAG,
+        DataFlag,
+        CommandValue,
+        AlarmInfo.numberOfCells, buffer);
+
+    AlarmInfo.numberOfTemperatures = *info++;
+    Warning.lowTemperature = 0; // set to normal
+    Warning.highTemperature = 0; // set nor normal
+
+    AlarmInfo.BMSTemperature = *info++;
+    if (AlarmInfo.BMSTemperature & 0x01) Warning.lowTemperature = 1;
+    if (AlarmInfo.BMSTemperature & 0x02) Warning.highTemperature = 1;
+
+    for (int i = 0; i < _stats->Pack[module].numberOfTemperatures - 1; i++) {
+        AlarmInfo.Temperatures[i] = *info++;
 #ifdef PYLONTECH_RS485_DEBUG_ENABLED
-    char buffer[128];
+        snprintf(&buffer[i * 3], 4, "%02X ", AlarmInfo.Temperatures[i]);
 #endif
-    _stats->Warning.lowVoltage = 0;
-    _stats->Warning.highVoltage = 0;
-    _stats->AlarmInfo.cellVoltages = reinterpret_cast<uint8_t*>(realloc(_stats->AlarmInfo.cellVoltages, _stats->AlarmInfo.numberOfCells * sizeof(uint8_t)));
-    for (int i = 0; i < _stats->AlarmInfo.numberOfCells; i++) {
-        _stats->AlarmInfo.cellVoltages[i] = *info++;
-#ifdef PYLONTECH_RS485_DEBUG_ENABLED
-        snprintf(&buffer[i * 3], 4, "%02X ", _stats->AlarmInfo.CellVoltages[i]);
-#endif
-        if (_stats->AlarmInfo.cellVoltages[i] & 0x01)
-            _stats->Warning.lowVoltage = 1;
-        if (_stats->AlarmInfo.cellVoltages[i] & 0x02)
-            _stats->Warning.highVoltage = 1;
+        if (AlarmInfo.Temperatures[i] & 0x01) Warning.lowTemperature = 1;
+        if (AlarmInfo.Temperatures[i] & 0x02) Warning.highTemperature = 1;
     }
 #ifdef PYLONTECH_RS485_DEBUG_ENABLED
-    MessageOutput.printf("%s Number of Cell: %d, Status: %s\r\n", TAG, _stats->AlarmInfo.NumberOfCells, buffer);
+    MessageOutput.printf("%s Number of Temperature Sensors: %d,  Status: %s\r\n", TAG, AlarmInfo.NumberOfTemperatures, buffer);
 #endif
 
-    _stats->AlarmInfo.numberOfTemperatures = *info++;
-    _stats->Warning.lowTemperature = 0; // set to normal
-    _stats->Warning.highTemperature = 0; // set nor normal
+    AlarmInfo.chargeCurrent = *info++;
+    Warning.highCurrentCharge = (AlarmInfo.chargeCurrent & 0x02) ? 1 : 0;
 
-    _stats->AlarmInfo.BMSTemperature = *info++;
-    if (_stats->AlarmInfo.BMSTemperature & 0x01)
-        _stats->Warning.lowTemperature = 1;
-    if (_stats->AlarmInfo.BMSTemperature & 0x02)
-        _stats->Warning.highTemperature = 1;
+    AlarmInfo.moduleVoltage = *info++;
+    if (AlarmInfo.moduleVoltage & 0x01) Warning.lowVoltage = 1;
+    if (AlarmInfo.moduleVoltage & 0x02) Warning.highVoltage = 1;
 
-    _stats->AlarmInfo.Temperatures = reinterpret_cast<uint8_t*>(realloc(_stats->AlarmInfo.Temperatures, (_stats->AlarmInfo.numberOfTemperatures - 1) * sizeof(uint8_t)));
-    for (int i = 0; i < _stats->numberOfTemperatures - 1; i++) {
-        _stats->AlarmInfo.Temperatures[i] = *info++;
-#ifdef PYLONTECH_RS485_DEBUG_ENABLED
-        snprintf(&buffer[i * 3], 4, "%02X ", _stats->AlarmInfo.Temperatures[i]);
-#endif
-        if (_stats->AlarmInfo.Temperatures[i] & 0x01)
-            _stats->Warning.lowTemperature = 1;
-        if (_stats->AlarmInfo.Temperatures[i] & 0x02)
-            _stats->Warning.highTemperature = 1;
+    AlarmInfo.dischargeCurrent = *info++;
+    Warning.highCurrentDischarge = (AlarmInfo.dischargeCurrent & 0x02) ? 1 : 0;
+
+    AlarmInfo.status1 = *info++;
+    Alarm.underVoltage = AlarmInfo.moduleUnderVoltage;
+    Alarm.overVoltage = AlarmInfo.moduleOverVoltage;
+    Alarm.overCurrentCharge = AlarmInfo.chargeOverCurrent;
+    Alarm.overCurrentDischarge =AlarmInfo.dischargeOverCurrent;
+    Alarm.underTemperature = _stats->Pack[module].averageBMSTemperature < _stats->Pack[module].SystemParameters.dischargeLowTemperatureLimit;
+    Alarm.overTemperature = AlarmInfo.dischargeOverTemperature | AlarmInfo.chargeOverTemperature;
+
+    AlarmInfo.status2 = *info++;
+    AlarmInfo.status3 = *info++;
+    AlarmInfo.status4 = *info++;
+    AlarmInfo.status5 = *info;
+
+    for (int i = 0; i < AlarmInfo.numberOfCells; i++) {
+        if ((AlarmInfo.cellVoltages[i] & 0x01) && (AlarmInfo.cellError & (1 << i))) Alarm.underVoltage = 1;
+        if ((AlarmInfo.cellVoltages[i] & 0x02) && (AlarmInfo.cellError & (1 << i))) Alarm.overVoltage = 1;
     }
-#ifdef PYLONTECH_RS485_DEBUG_ENABLED
-    MessageOutput.printf("%s Number of Temperature Sensors: %d,  Status: %s\r\n", TAG, _stats->AlarmInfo.NumberOfTemperatures, buffer);
-#endif
 
-    _stats->AlarmInfo.chargeCurrent = *info++;
-    _stats->Warning.highCurrentCharge = (_stats->AlarmInfo.chargeCurrent & 0x02) ? 1 : 0;
-
-    _stats->AlarmInfo.moduleVoltage = *info++;
-    if (_stats->AlarmInfo.moduleVoltage & 0x01)
-        _stats->Warning.lowVoltage = 1;
-    if (_stats->AlarmInfo.moduleVoltage & 0x02)
-        _stats->Warning.highVoltage = 1;
-
-    _stats->AlarmInfo.dischargeCurrent = *info++;
-    _stats->Warning.highCurrentDischarge = (_stats->AlarmInfo.dischargeCurrent & 0x02) ? 1 : 0;
-
-    _stats->AlarmInfo.status1 = *info++;
-    _stats->Alarm.underVoltage = _stats->AlarmInfo.moduleUnderVoltage;
-    _stats->Alarm.overVoltage = _stats->AlarmInfo.moduleOverVoltage;
-    _stats->Alarm.overCurrentCharge = _stats->AlarmInfo.chargeOverCurrent;
-    _stats->Alarm.overCurrentDischarge = _stats->AlarmInfo.dischargeOverCurrent;
-    _stats->Alarm.underTemperature = _stats->averageBMSTemperature < _stats->SystemParameters.dischargeLowTemperatureLimit;
-    _stats->Alarm.overTemperature = _stats->AlarmInfo.dischargeOverTemperature | _stats->AlarmInfo.chargeOverTemperature;
-
-    _stats->AlarmInfo.status2 = *info++;
-    _stats->AlarmInfo.status3 = *info++;
-    _stats->AlarmInfo.status4 = *info++;
-    _stats->AlarmInfo.status5 = *info;
-    for (int i = 0; i < _stats->AlarmInfo.numberOfCells; i++) {
-        if ((_stats->AlarmInfo.cellVoltages[i] & 0x01) && (_stats->AlarmInfo.cellError & (1 << i)))
-            _stats->Alarm.underVoltage = 1;
-        if ((_stats->AlarmInfo.cellVoltages[i] & 0x02) && (_stats->AlarmInfo.cellError & (1 << i)))
-            _stats->Alarm.overVoltage = 1;
+    // build total alarms and warnings over all batteries
+    _stats->totals.Alarm.alarms = _stats->totals.Warning.warnings = 0;
+    for (uint8_t i= 0; i<_stats->_number_of_packs; i++) {
+        _stats->totals.Alarm.alarms |= _stats->Pack[i].Alarm.alarms;
+        _stats->totals.Warning.warnings |= _stats->Pack[i].Warning.warnings;
     }
 
     if (Battery._verboseLogging) {
         MessageOutput.printf("%s Status ChargeCurrent: %02X ModuleVoltage: %02X DischargeCurrent: %02X\r\n", TAG,
-            _stats->AlarmInfo.chargeCurrent, _stats->AlarmInfo.moduleVoltage, _stats->AlarmInfo.dischargeCurrent);
+            AlarmInfo.chargeCurrent, AlarmInfo.moduleVoltage, AlarmInfo.dischargeCurrent);
         MessageOutput.printf("%s Status 1: MOV:%s, CUV:%s, COC:%s, DOC:%s, DOT:%s, COT:%s, MUV:%s\r\n", TAG,
-            _stats->AlarmInfo.moduleOverVoltage ? "trigger" : "normal",
-            _stats->AlarmInfo.cellUnderVoltage ? "trigger" : "normal",
-            _stats->AlarmInfo.chargeOverCurrent ? "trigger" : "normal",
-            _stats->AlarmInfo.dischargeOverCurrent ? "trigger" : "normal",
-            _stats->AlarmInfo.dischargeOverTemperature ? "trigger" : "normal",
-            _stats->AlarmInfo.chargeOverTemperature ? "trigger" : "normal",
-            _stats->AlarmInfo.moduleUnderVoltage ? "trigger" : "normal");
+            AlarmInfo.moduleOverVoltage ? "trigger" : "normal",
+            AlarmInfo.cellUnderVoltage ? "trigger" : "normal",
+            AlarmInfo.chargeOverCurrent ? "trigger" : "normal",
+            AlarmInfo.dischargeOverCurrent ? "trigger" : "normal",
+            AlarmInfo.dischargeOverTemperature ? "trigger" : "normal",
+            AlarmInfo.chargeOverTemperature ? "trigger" : "normal",
+            AlarmInfo.moduleUnderVoltage ? "trigger" : "normal");
         MessageOutput.printf("%s Status 2: %s using battery module power, Discharge MOSFET %s, Charge MOSFEET %s, Pre MOSFET %s\r\n", TAG,
-            _stats->AlarmInfo.usingBatteryModulePower ? "" : "not",
-            _stats->AlarmInfo.dischargeMOSFET ? "ON" : "OFF",
-            _stats->AlarmInfo.chargeMOSFEET ? "ON" : "OFF",
-            _stats->AlarmInfo.preMOSFET ? "ON" : "OFF");
+            AlarmInfo.usingBatteryModulePower ? "" : "not",
+            AlarmInfo.dischargeMOSFET ? "ON" : "OFF",
+            AlarmInfo.chargeMOSFEET ? "ON" : "OFF",
+            AlarmInfo.preMOSFET ? "ON" : "OFF");
         MessageOutput.printf("%s Status 3: buzzer %s, fully Charged (SOC=%s), discharge current detected by BMS %s, charge current detected by BMS %s\r\n", TAG,
-            _stats->AlarmInfo.buzzer ? "on" : "off",
-            _stats->AlarmInfo.fullyCharged ? "100%" : "normal",
-            _stats->AlarmInfo.effectiveDischargeCurrent ? "＞0.1A" : "normal",
-            _stats->AlarmInfo.effectiveChargeCurrent ? "<-0.1A" : "normal");
-        MessageOutput.printf("%s Cell Error: %04X\r\n", TAG, _stats->AlarmInfo.cellError);
+            AlarmInfo.buzzer ? "on" : "off",
+            AlarmInfo.fullyCharged ? "100%" : "normal",
+            AlarmInfo.effectiveDischargeCurrent ? ">0.1A" : "normal",
+            AlarmInfo.effectiveChargeCurrent ? "<-0.1A" : "normal");
+        MessageOutput.printf("%s Cell Error: %04X\r\n", TAG, AlarmInfo.cellError);
     }
     /*
-        _stats->alarm.BmsInternal =
+        Alarm.BmsInternal =
     */
 }
 
-void PylontechRS485Receiver::get_charge_discharge_management_info()
+void PylontechRS485Receiver::get_charge_discharge_management_info(const PylontechRS485Receiver::Function function, uint8_t module)
 {
-    if (Battery._verboseLogging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
+    if (Battery._verboseLogging) MessageOutput.printf("%s::%s %s Module %d\r\n", TAG, __FUNCTION__, _Function_[function], module);
+
+    if (function != PylontechRS485Receiver::Function::GET) {
+        send_cmd(module, Command::GetChargeDischargeManagementInfo);
+        yield();
+        if (function == PylontechRS485Receiver::Function::REQUEST)
+            return;
+        else {
+            vTaskDelay(100);
+            // and fall through to get the data from the battery
+        }
+    }
 
     format_t* f = read_frame();
-    yield();
-
-    if (f == NULL)
+    if (f == NULL) {
+        errorBatteryNotResponding();
         return;
+    }
+
+    module -= _masterBatteryID;
 
     // INFO = DATAI
-    // uint8_t CommandValue = f->info[0];
+    uint8_t CommandValue = f->info[0];
     uint8_t* info = &(f->info[1]);
 
-    _stats->ChargeDischargeManagementInfo.chargeVoltageLimit = to_Volt(info);
-    info += 2;
-    _stats->ChargeDischargeManagementInfo.dischargeVoltageLimit = to_Volt(info);
-    info += 2;
-    _stats->ChargeDischargeManagementInfo.chargeCurrentLimit = to_Amp(info);
-    info += 2;
-    _stats->ChargeDischargeManagementInfo.dischargeCurrentLimit = to_Amp(info);
-    info += 2;
-    _stats->ChargeDischargeManagementInfo.Status = *info;
+    ChargeDischargeManagementInfo_t &ChargeDischargeManagementInfo = _stats->Pack[module].ChargeDischargeManagementInfo;
+
+    ChargeDischargeManagementInfo.chargeVoltageLimit = to_Volt(info);
+    ChargeDischargeManagementInfo.dischargeVoltageLimit = to_Volt(info);
+    ChargeDischargeManagementInfo.chargeCurrentLimit = to_Amp(info);
+    ChargeDischargeManagementInfo.dischargeCurrentLimit = to_Amp(info);
+    ChargeDischargeManagementInfo.Status = *info;
+
+    // build totals over all batteries
+    _stats->totals.ChargeDischargeManagementInfo.chargeVoltageLimit = 10000.;
+    _stats->totals.ChargeDischargeManagementInfo.dischargeVoltageLimit = -10000.;
+    _stats->totals.ChargeDischargeManagementInfo.chargeCurrentLimit = 0;
+    _stats->totals.ChargeDischargeManagementInfo.dischargeCurrentLimit = 0;
+    _stats->totals.ChargeDischargeManagementInfo.Status = 0;
+    for (uint8_t i=0; i<_stats->_number_of_packs; i++) {
+        _stats->totals.ChargeDischargeManagementInfo.chargeCurrentLimit += _stats->Pack[i].ChargeDischargeManagementInfo.chargeCurrentLimit;
+        _stats->totals.ChargeDischargeManagementInfo.dischargeCurrentLimit += _stats->Pack[i].ChargeDischargeManagementInfo.dischargeCurrentLimit;
+        _stats->totals.ChargeDischargeManagementInfo.chargeVoltageLimit = min(_stats->totals.ChargeDischargeManagementInfo.chargeVoltageLimit, ChargeDischargeManagementInfo.chargeVoltageLimit);
+        _stats->totals.ChargeDischargeManagementInfo.dischargeVoltageLimit = max(_stats->totals.ChargeDischargeManagementInfo.dischargeVoltageLimit, ChargeDischargeManagementInfo.dischargeVoltageLimit);
+        _stats->totals.ChargeDischargeManagementInfo.Status |= _stats->Pack[i].ChargeDischargeManagementInfo.Status;
+    }
 
     if (Battery._verboseLogging) {
-        MessageOutput.printf("%s CVL:%.3fV, DVL:%.3fV, CCL:%.1fA, DCL:%.1fA, CE:%d DE:%d CI1:%d CI2:%d FCR:%d\r\n", TAG,
-            _stats->ChargeDischargeManagementInfo.chargeVoltageLimit,
-            _stats->ChargeDischargeManagementInfo.dischargeVoltageLimit,
-            _stats->ChargeDischargeManagementInfo.chargeCurrentLimit,
-            _stats->ChargeDischargeManagementInfo.dischargeCurrentLimit,
-            _stats->ChargeDischargeManagementInfo.chargeEnable,
-            _stats->ChargeDischargeManagementInfo.dischargeEnable,
-            _stats->ChargeDischargeManagementInfo.chargeImmediately1,
-            _stats->ChargeDischargeManagementInfo.chargeImmediately2,
-            _stats->ChargeDischargeManagementInfo.fullChargeRequest);
+        MessageOutput.printf("%s CommandValue: %02X, CVL:%.3fV, DVL:%.3fV, CCL:%.1fA, DCL:%.1fA, CE:%d DE:%d CI1:%d CI2:%d FCR:%d\r\n", TAG,
+            CommandValue,
+            ChargeDischargeManagementInfo.chargeVoltageLimit,
+            ChargeDischargeManagementInfo.dischargeVoltageLimit,
+            ChargeDischargeManagementInfo.chargeCurrentLimit,
+            ChargeDischargeManagementInfo.dischargeCurrentLimit,
+            ChargeDischargeManagementInfo.chargeEnable,
+            ChargeDischargeManagementInfo.dischargeEnable,
+            ChargeDischargeManagementInfo.chargeImmediately1,
+            ChargeDischargeManagementInfo.chargeImmediately2,
+            ChargeDischargeManagementInfo.fullChargeRequest);
     }
 }
 
-void PylontechRS485Receiver::get_module_serial_number(uint8_t devid)
+void PylontechRS485Receiver::get_module_serial_number(const PylontechRS485Receiver::Function function, uint8_t module)
 {
-    if (Battery._verboseLogging) MessageOutput.printf("%s::%s\r\n", TAG, __FUNCTION__);
+    if (Battery._verboseLogging) MessageOutput.printf("%s::%s %s Module %d\r\n", TAG, __FUNCTION__, _Function_[function], module);
 
-    send_cmd(devid, Command::GetSerialNumber);
-    yield();
+    if (function != PylontechRS485Receiver::Function::GET) {
+        send_cmd(module, Command::GetSerialNumber);
+        yield();
+        if (function == PylontechRS485Receiver::Function::REQUEST)
+            return;
+        else {
+            vTaskDelay(100);
+            // and fall through to get the data from the battery
+        }
+    }
 
     format_t* f = read_frame();
-    yield();
-
-    if (f == NULL)
+    if (f == NULL) {
+        errorBatteryNotResponding();
         return;
+    }
+
+    module -= _masterBatteryID;
+
+    ModuleSerialNumber_t &ModuleSerialNumber = _stats->Pack[module].ModuleSerialNumber;
 
     // INFO = DATAI
-    // uint8_t CommandValue = f->info[0];
-    uint8_t* info = &(f->info[1]);
-    for (int i = 0; i < 16; i++)
-        _stats->ModuleSerialNumber.moduleSerialNumber[i] = *info++;
-    _stats->ModuleSerialNumber.moduleSerialNumber[16] = 0;
+    uint8_t CommandValue = f->info[0];
+    memcpy(ModuleSerialNumber.moduleSerialNumber, &(f->info[1]), 16);
+    ModuleSerialNumber.moduleSerialNumber[16] = 0;
 
     if (Battery._verboseLogging)
-        MessageOutput.printf("%s S/N %s\r\n", TAG, _stats->ModuleSerialNumber.moduleSerialNumber);
+        MessageOutput.printf("%s CommandValue %02X, S/N '%s'\r\n", TAG, CommandValue, ModuleSerialNumber.moduleSerialNumber);
 }
 
-void PylontechRS485Receiver::setting_charge_discharge_management_info(uint8_t devid, const char* info)
+void PylontechRS485Receiver::setting_charge_discharge_management_info(const PylontechRS485Receiver::Function function, uint8_t module, const char* info)
 {
-    send_cmd(devid, Command::SetChargeDischargeManagementInfo);
-    yield();
+    if (Battery._verboseLogging) MessageOutput.printf("%s::%s %s Module %d\r\n", TAG, __FUNCTION__, _Function_[function], module);
+
+    if (function != PylontechRS485Receiver::Function::GET) {
+        send_cmd(module, Command::SetChargeDischargeManagementInfo);
+        yield();
+        if (function == PylontechRS485Receiver::Function::REQUEST)
+            return;
+        else {
+            vTaskDelay(100);
+            // and fall through to get the data from the battery
+        }
+    }
 }
 
-void PylontechRS485Receiver::turn_off_module(uint8_t devid)
+void PylontechRS485Receiver::turn_off_module(const PylontechRS485Receiver::Function function, uint8_t module)
 {
-    send_cmd(devid, Command::TurnOffModule);
-    yield();
+    if (Battery._verboseLogging) MessageOutput.printf("%s::%s %s Module %d\r\n", TAG, __FUNCTION__, _Function_[function], module);
+
+    if (function != PylontechRS485Receiver::Function::GET) {
+        send_cmd(module, Command::TurnOffModule);
+        yield();
+        if (function == PylontechRS485Receiver::Function::REQUEST)
+            return;
+        else {
+            vTaskDelay(100);
+            // and fall through to get the data from the battery
+        }
+    }
 
     /*format_t *f =*/read_frame();
 }

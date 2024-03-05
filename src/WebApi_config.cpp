@@ -29,7 +29,7 @@ void WebApiConfigClass::init(AsyncWebServer& server, Scheduler& scheduler)
 
 void WebApiConfigClass::onConfigGet(AsyncWebServerRequest* request)
 {
-    if (!WebApi.checkCredentials(request)) {
+    if (!WebApi.checkCredentialsReadonly(request)) {
         return;
     }
 

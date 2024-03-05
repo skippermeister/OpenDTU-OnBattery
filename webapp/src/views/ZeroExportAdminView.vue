@@ -26,7 +26,7 @@
 
                 <div class="row mb-3">
                     <label for="zeroexportInverterlist" class="col-sm-4 col-form-label">
-                        {{ $t('powerlimiteradmin.InverterId') }}:
+                        {{ $t('zeroexportadmin.InverterId') }}:
                         <BIconInfoCircle v-tooltip :title="$t('zeroexportadmin.InverterIdHint')" />
                     </label>
                     <div class="col-sm-2">

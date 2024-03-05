@@ -43,7 +43,6 @@ typedef union {
 class BatteryStats {
     public:
         String const& getManufacturer() const { return _manufacturer; }
-        String const& getDeviceName() const { return _deviceName; }
 
         // the last time *any* datum was updated
         uint32_t getAgeSeconds() const { return (millis() - _lastUpdate) / 1000; }
@@ -54,6 +53,9 @@ class BatteryStats {
 
         // convert stats to JSON for web application live view
         virtual void getLiveViewData(JsonVariant& root) const;
+        virtual void generatePackCommonJsonResponse(JsonObject& packObject, const uint8_t m) const;
+
+        virtual uint8_t get_number_of_packs() const { return 1; };
 
         void mqttLoop();
 
@@ -102,7 +104,6 @@ class BatteryStats {
         }
 
         String _manufacturer = "unknown";
-        String _deviceName = "";
         uint32_t _lastUpdate = 0;
 
     private:
@@ -114,64 +115,6 @@ class BatteryStats {
         float _voltage = 0.0; // total battery pack voltage
         uint32_t _lastUpdateVoltage = 0;
 };
-
-/*
-typedef struct {
-    uint8_t NumberOfModules; // construct.Byte,
-    struct { // NumberOfModules
-        uint8_t NumberOfCells; // construct.Int8ub,
-        float *CellVoltages; // pointer to array NumberOfCells ToVolt(construct.Int16sb)),
-        uint8_t NumberOfTemperatures; // construct.Int8ub,
-        float AverageBMSTemperature; // ToCelsius(construct.Int16sb),
-        float *GroupedCellsTemperatures; // NumberOfTemperatures - 1, ToCelsius(construct.Int16sb)),
-        float Current; // ToAmp(construct.Int16sb),
-        float Voltage; // ToVolt(construct.Int16ub),
-        float Power; // construct.Computed(construct.this.Current * construct.this.Voltage),
-        float _RemainingCapacity1; // DivideBy1000(construct.Int16ub),
-        uint8_t _UserDefinedItems; // Int8ub,
-        float _TotalCapacity1; // DivideBy1000(Int16ub),
-        int16_t CycleNumber; // construct.Int16ub,
-        union {
-            struct {
-                // If(construct.this._UserDefinedItems > 2,
-                float RemainingCapacity2; // DivideBy1000(Int24ub),
-                float TotalCapacity2;  // DivideBy1000(Int24ub))),
-            } _OptionalFields_t;
-        };
-        float RemainingCapacity; // if _UserDefinedItems > 2 then _OptionalFields.RemainingCapacity2 else this._RemainingCapacity1
-        float TotalCapacity; // if _UserDefinedItems > 2_OptionalFields.TotalCapacity2 else this._TotalCapacity1
-    } Module_t;
-    float TotalPower; // Computed(lambda this: sum([x.Power for x in this.Module])),
-    float StateOfCharge; // Computed(lambda this: sum([x.RemainingCapacity for x in this.Module]) / sum([x.TotalCapacity for x in this.Module])),
-} Values_t;
-
-typedef struct{
-    uint8_t NumberOfModule; // Byte,
-    uint8_t NumberOfCells; // Int8ub,
-    float *CellVoltages; // pointer to Array( NumberOfCells, ToVolt(Int16sb)),
-    uint8_t NumberOfTemperatures; // Int8ub
-    float AverageBMSTemperature; // ToCelsius(Int16sb),
-    float *GroupedCellsTemperatures; // pointer to Array(NumberOfTemperatures - 1, ToCelsius(Int16sb)),
-    float Current; // ToAmp(Int16sb),
-    float Voltage; // ToVolt(Int16ub),
-    float Power; // compute Current * Voltage
-    float _RemainingCapacity1; // DivideBy1000(Int16ub),
-    uint8_t _UserDefinedItems; // Int8ub,
-    float _TotalCapacity1; // DivideBy1000(Int16ub),
-    int16_t CycleNumber; // Int16ub,
-    union {
-        // If(_UserDefinedItems > 2,
-        struct {
-            float RemainingCapacity2; // DivideBy1000(Int24ub),
-            float TotalCapacity2; // DivideBy1000(Int24ub))),
-        };
-    } _OptionalFields;
-    float RemainingCapacity; // if _UserDefinedItems > 2 then _OptionalFields.RemainingCapacity2 else _RemainingCapacity1
-    float TotalCapacity; // if _UserDefinedItems > 2 then _OptionalFields.TotalCapacity2 else _TotalCapacity1
-    float TotalPower; // Power
-    float StateOfCharge; // RemainingCapacity / TotalCapacity),
-} AnalogValue_t;
-*/
 
 typedef struct {
     char deviceName[11]; // JoinBytes(construct.Array(10, construct.Byte)),
@@ -197,10 +140,10 @@ typedef struct {
 typedef struct {
     uint8_t commandValue; // construct.Byte,
     uint8_t numberOfCells; // Int8ub,
-    uint8_t* cellVoltages;
+    uint8_t cellVoltages[15];
     uint8_t numberOfTemperatures; // Int8ub
     uint8_t BMSTemperature;
-    uint8_t* Temperatures;
+    uint8_t Temperatures[5];
     uint8_t chargeCurrent;
     uint8_t moduleVoltage;
     uint8_t dischargeCurrent;
@@ -306,8 +249,9 @@ public:
 
 private:
     void setManufacturer(String&& m) { _manufacturer = std::move(m) + "tech"; }
-    void setDeviceName(String&& m) { _deviceName = std::move(m); }
     void setLastUpdate(uint32_t ts) { _lastUpdate = ts; }
+
+    uint8_t _number_of_packs = 0;
 
     float chargeVoltage;
     float chargeCurrentLimit;
@@ -370,33 +314,36 @@ class PylontechRS485BatteryStats : public BatteryStats {
 
 public:
     void getLiveViewData(JsonVariant& root) const final;
+    void generatePackCommonJsonResponse(JsonObject& packObject, const uint8_t m) const final;
 
-    const Alarm_t& getAlarm() const final { return Alarm; };
-    const Warning_t& getWarning() const final { return Warning; };
-    bool getChargeEnabled() const final { return ChargeDischargeManagementInfo.chargeEnable; };
-    bool getDischargeEnabled() const final { return ChargeDischargeManagementInfo.dischargeEnable; };
-    bool getChargeImmediately() const final { return (ChargeDischargeManagementInfo.chargeImmediately1 || ChargeDischargeManagementInfo.chargeImmediately2 || ChargeDischargeManagementInfo.fullChargeRequest); };
+    uint8_t get_number_of_packs() const final { return _number_of_packs; };
+
+    const Alarm_t& getAlarm() const final { return totals.Alarm; };
+    const Warning_t& getWarning() const final { return totals.Warning; };
+    bool getChargeEnabled() const final { return totals.ChargeDischargeManagementInfo.chargeEnable; };
+    bool getDischargeEnabled() const final { return totals.ChargeDischargeManagementInfo.dischargeEnable; };
+    bool getChargeImmediately() const final { return (totals.ChargeDischargeManagementInfo.chargeImmediately1 || totals.ChargeDischargeManagementInfo.chargeImmediately2 || totals.ChargeDischargeManagementInfo.fullChargeRequest); };
 //    float getVoltage() const final { return voltage; };
-    float getTemperature() const final { return averageCellTemperature; };
+    float getTemperature() const final { return totals.averageCellTemperature; };
 
-    float getRecommendedChargeVoltageLimit() const final { return ChargeDischargeManagementInfo.chargeVoltageLimit; };
-    float getRecommendedDischargeVoltageLimit() const final { return ChargeDischargeManagementInfo.dischargeVoltageLimit; };
-    float getRecommendedChargeCurrentLimit() const final { return ChargeDischargeManagementInfo.chargeCurrentLimit; };
-    float getRecommendedDischargeCurrentLimit() const final { return ChargeDischargeManagementInfo.dischargeCurrentLimit; };
-    float getMaximumChargeCurrentLimit() const final { return SystemParameters.chargeCurrentLimit; };
-    float getMaximumDischargeCurrentLimit() const final { return SystemParameters.dischargeCurrentLimit; };
+    float getRecommendedChargeVoltageLimit() const final { return totals.ChargeDischargeManagementInfo.chargeVoltageLimit; };
+    float getRecommendedDischargeVoltageLimit() const final { return totals.ChargeDischargeManagementInfo.dischargeVoltageLimit; };
+    float getRecommendedChargeCurrentLimit() const final { return totals.ChargeDischargeManagementInfo.chargeCurrentLimit; };
+    float getRecommendedDischargeCurrentLimit() const final { return totals.ChargeDischargeManagementInfo.dischargeCurrentLimit; };
+    float getMaximumChargeCurrentLimit() const final { return totals.SystemParameters.chargeCurrentLimit; };
+    float getMaximumDischargeCurrentLimit() const final { return totals.SystemParameters.dischargeCurrentLimit; };
 
     bool isChargeTemperatureValid() const final
     {
         const Battery_CONFIG_T& cBattery = Configuration.get().Battery;
-        return (minCellTemperature >= max(SystemParameters.chargeLowTemperatureLimit, static_cast<float>(cBattery.MinChargeTemperature)))
-            && (maxCellTemperature <= min(SystemParameters.chargeHighTemperatureLimit, static_cast<float>(cBattery.MaxChargeTemperature)));
+        return (totals.minCellTemperature >= max(totals.SystemParameters.chargeLowTemperatureLimit, static_cast<float>(cBattery.MinChargeTemperature)))
+            && (totals.maxCellTemperature <= min(totals.SystemParameters.chargeHighTemperatureLimit, static_cast<float>(cBattery.MaxChargeTemperature)));
     };
     bool isDischargeTemperatureValid() const final
     {
         const Battery_CONFIG_T& cBattery = Configuration.get().Battery;
-        return (minCellTemperature >= max(SystemParameters.dischargeLowTemperatureLimit, static_cast<float>(cBattery.MinDischargeTemperature)))
-            && (maxCellTemperature <= min(SystemParameters.dischargeHighTemperatureLimit, static_cast<float>(cBattery.MaxDischargeTemperature)));
+        return (totals.minCellTemperature >= max(totals.SystemParameters.dischargeLowTemperatureLimit, static_cast<float>(cBattery.MinDischargeTemperature)))
+            && (totals.maxCellTemperature <= min(totals.SystemParameters.dischargeHighTemperatureLimit, static_cast<float>(cBattery.MaxDischargeTemperature)));
     };
 
     void mqttPublish() /*const*/ final;
@@ -407,42 +354,82 @@ public:
 
 private:
     void setManufacturer(String&& m) { _manufacturer = std::move(m) + "tech"; }
-    void setDeviceName(String&& m) { _deviceName = std::move(m); }
     void setLastUpdate(uint32_t ts) { _lastUpdate = ts; }
 
+    uint8_t _number_of_packs = 0;
+
+    struct Totals_t {
+        float chargeVoltage;
+        float current;
+        float power;
+        float capacity;
+        float remainingCapacity;
+        float SoC;
+        float cellMinVoltage;
+        float cellMaxVoltage;
+        float cellDiffVoltage;
+        float averageBMSTemperature;
+        float averageCellTemperature;
+        float minCellTemperature;
+        float maxCellTemperature;
+        SystemParameters_t SystemParameters;
+        ChargeDischargeManagementInfo_t ChargeDischargeManagementInfo;
+        Alarm_t Alarm;
+        Warning_t Warning;
+    };
+
+    Totals_t totals;
+
+    struct Pack_t {
+        String deviceName = "";
+
+        String softwareVersion;
+        String manufacturerVersion;
+        String mainLineVersion;
+
+        float chargeVoltage;
+        float current;
+        float power;
+        float capacity;
+        float remainingCapacity;
+        float SoC;
+
+        uint16_t cycles;
+
+        uint8_t numberOfModule;
+        float cellMinVoltage;
+        float cellMaxVoltage;
+        float cellDiffVoltage;
+        uint8_t numberOfCells;
+        float* CellVoltages;
+        uint8_t numberOfTemperatures;
+        float averageBMSTemperature;
+        float* GroupedCellsTemperatures;
+        float averageCellTemperature;
+        float minCellTemperature;
+        float maxCellTemperature;
+
+        SystemParameters_t SystemParameters;
+        Alarm_t Alarm;
+        Warning_t Warning;
+
+        ChargeDischargeManagementInfo_t ChargeDischargeManagementInfo;
+        ModuleSerialNumber_t ModuleSerialNumber;
+    };
+
+    Pack_t Pack[2];
+/*
     String softwareVersion;
     String _manufacturerVersion;
     String _mainLineVersion;
-
-    float chargeVoltage;
+*/
+//    float chargeVoltage;
     // total current into (positive) or from (negative) the battery, i.e., the charging current
-    float current;
-
-    SystemParameters_t SystemParameters;
-    Alarm_t Alarm;
-    Warning_t Warning;
-
-    float power;
-    float totalPower;
-    float totalCapacity;
-    float remainingCapacity;
-    uint16_t cycles;
-
-    uint8_t numberOfModule;
-    float cellMinVoltage;
-    float cellMaxVoltage;
-    float cellDiffVoltage;
-    uint8_t numberOfCells;
-    float* CellVoltages;
-    uint8_t numberOfTemperatures;
-    float averageBMSTemperature;
-    float* GroupedCellsTemperatures;
-    float averageCellTemperature;
-    float minCellTemperature;
-    float maxCellTemperature;
+//    float current;
 
     struct {
         String softwareVersion;
+        String deviceName;
 
         float chargeVoltage;
         // float voltage; // total voltage of the battery pack
@@ -455,8 +442,8 @@ private:
         Warning_t Warning;
 
         float power;
-        float totalPower;
-        float totalCapacity;
+        float ower;
+        float capacity;
         float remainingCapacity;
         uint16_t cycles;
 
@@ -474,9 +461,8 @@ private:
         ChargeDischargeManagementInfo_t ChargeDischargeManagementInfo;
     } _last;
 
-    AlarmInfo_t AlarmInfo;
-    ChargeDischargeManagementInfo_t ChargeDischargeManagementInfo;
-    ModuleSerialNumber_t ModuleSerialNumber;
+//    ChargeDischargeManagementInfo_t ChargeDischargeManagementInfo;
+//    ModuleSerialNumber_t ModuleSerialNumber;
 
     bool _initialized = false;
 };
@@ -511,6 +497,7 @@ class DalyBmsBatteryStats : public BatteryStats {
 
     public:
         void getLiveViewData(JsonVariant& root) const final;
+        void generatePackCommonJsonResponse(JsonObject& packObject, const uint8_t m) const final;
 
         const Alarm_t& getAlarm() const final { return Alarm; };
         const Warning_t& getWarning() const final { return Warning; };

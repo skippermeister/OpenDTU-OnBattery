@@ -49,6 +49,13 @@ typedef union {
 #pragma pack(pop)
 
 class PylontechRS485Receiver : public BatteryProvider {
+    enum Function : uint8_t
+    {
+        REQUEST = 0,
+        REQUEST_AND_GET = 1,
+        GET = 2
+    };
+
     enum Command : uint8_t
     {
         None = 0,
@@ -91,20 +98,19 @@ public:
     std::shared_ptr<BatteryStats> getStats() const final { return _stats; }
 
 private:
-    void get_protocol_version(uint8_t devid = 2);
-    void get_manufacturer_info(uint8_t devid = 2);
-    void get_barcode(uint8_t devid = 2);
-    void get_pack_count(uint8_t devid = 2);
-    void get_version_info(uint8_t devid = 2);
-    void get_firmware_info(uint8_t devid = 2);
-    void get_analog_value(void);
-    void get_analog_value_multiple(void);
-    void get_system_parameters(void);
-    void get_alarm_info(void);
-    void get_charge_discharge_management_info();
-    void get_module_serial_number(uint8_t devid = 2);
-    void setting_charge_discharge_management_info(uint8_t devid = 2, const char* info = NULL);
-    void turn_off_module(uint8_t devid = 2);
+    void get_protocol_version(const PylontechRS485Receiver::Function function, uint8_t module = 2);
+    void get_manufacturer_info(const PylontechRS485Receiver::Function function, uint8_t module = 2);
+    void get_barcode(const PylontechRS485Receiver::Function function, uint8_t module = 2);
+    void get_pack_count(const PylontechRS485Receiver::Function function, uint8_t module = 2);
+    void get_version_info(const PylontechRS485Receiver::Function function, uint8_t module = 2);
+    void get_firmware_info(const PylontechRS485Receiver::Function function, uint8_t module = 2);
+    void get_analog_value(const PylontechRS485Receiver::Function function, uint8_t module = 2);
+    void get_system_parameters(const PylontechRS485Receiver::Function function, uint8_t module = 2);
+    void get_alarm_info(const PylontechRS485Receiver::Function function, uint8_t module = 2);
+    void get_charge_discharge_management_info(const PylontechRS485Receiver::Function function, uint8_t module = 2);
+    void get_module_serial_number(const PylontechRS485Receiver::Function function, uint8_t module = 2);
+    void setting_charge_discharge_management_info(const PylontechRS485Receiver::Function function, uint8_t module = 2, const char* info = NULL);
+    void turn_off_module(const PylontechRS485Receiver::Function function, uint8_t module = 2);
 
     uint16_t get_frame_checksum(char* frame);
     uint16_t get_info_length(const char* info);
@@ -121,41 +127,42 @@ private:
     float scaleValue(int16_t value, float factor) { return value * factor; }
     bool getBit(uint8_t value, uint8_t bit) { return (value & (1 << bit)) >> bit; }
 
-    uint32_t ToUint24(uint8_t* c)
+    uint32_t ToUint24(uint8_t*& c)
     {
         int24Struct_t rc;
         rc.u = 0;
         rc.hl = *c++;
         rc.lh = *c++;
-        rc.ll = *c;
+        rc.ll = *c++;
         return rc.u;
     }
-    uint16_t ToUint16(uint8_t* c)
+    uint16_t ToUint16(uint8_t*& c)
     {
         int16Struct_t rc;
         rc.h = *c++;
-        rc.l = *c;
+        rc.l = *c++;
         return rc.u;
     }
-    int16_t ToInt16(uint8_t* c)
+    int16_t ToInt16(uint8_t*& c)
     {
         int16Struct_t rc;
         rc.h = *c++;
-        rc.l = *c;
+        rc.l = *c++;
         return rc.i;
     }
-    float to_Celsius(uint8_t* c) { return static_cast<float>(ToInt16(c) - 2731) / 10.0; }
-    float to_Volt(uint8_t* c) { return static_cast<float>(ToUint16(c)) / 1000.0; }
-    float to_CellVolt(uint8_t* c) { return static_cast<float>(ToInt16(c)) / 1000.0; }
-    float to_Amp(uint8_t* c) { return static_cast<float>(ToInt16(c)) / 10.0; }
-    float DivideUint16By1000(uint8_t* c) { return static_cast<float>(ToUint16(c)) / 1000.0; }
-    float DivideUint24By1000(uint8_t* c) { return static_cast<float>(ToUint24(c)) / 1000.0; }
-
-    uint8_t _number_of_packs = 0;
+    float to_Celsius(uint8_t*& c) { return static_cast<float>(ToInt16(c) - 2731) / 10.0; }
+    float to_Volt(uint8_t*& c) { return static_cast<float>(ToUint16(c)) / 1000.0; }
+    float to_CellVolt(uint8_t*& c) { return static_cast<float>(ToInt16(c)) / 1000.0; }
+    float to_Amp(uint8_t*& c) { return static_cast<float>(ToInt16(c)) / 10.0; }
+    float DivideUint16By1000(uint8_t*& c) { return static_cast<float>(ToUint16(c)) / 1000.0; }
+    float DivideUint24By1000(uint8_t*& c) { return static_cast<float>(ToUint24(c)) / 1000.0; }
 
     char _received_frame[512];
 
     uint8_t _lastCmnd = 0xFF;
+
+    uint8_t _masterBatteryID = 0;
+    uint8_t _lastSlaveBatteryID = 0;
 
     bool _isInstalled = false;
     esp_err_t twaiLastResult;

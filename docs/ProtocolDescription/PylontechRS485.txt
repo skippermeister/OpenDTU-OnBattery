@@ -1,0 +1,57 @@
+/*
+typedef struct {
+    uint8_t NumberOfModules; // construct.Byte,
+    struct { // NumberOfModules
+        uint8_t NumberOfCells; // construct.Int8ub,
+        float *CellVoltages; // pointer to array NumberOfCells ToVolt(construct.Int16sb)),
+        uint8_t NumberOfTemperatures; // construct.Int8ub,
+        float AverageBMSTemperature; // ToCelsius(construct.Int16sb),
+        float *GroupedCellsTemperatures; // NumberOfTemperatures - 1, ToCelsius(construct.Int16sb)),
+        float Current; // ToAmp(construct.Int16sb),
+        float Voltage; // ToVolt(construct.Int16ub),
+        float Power; // construct.Computed(construct.this.Current * construct.this.Voltage),
+        float _RemainingCapacity1; // DivideBy1000(construct.Int16ub),
+        uint8_t _UserDefinedItems; // Int8ub,
+        float _TotalCapacity1; // DivideBy1000(Int16ub),
+        int16_t CycleNumber; // construct.Int16ub,
+        union {
+            struct {
+                // If(construct.this._UserDefinedItems > 2,
+                float RemainingCapacity2; // DivideBy1000(Int24ub),
+                float TotalCapacity2;  // DivideBy1000(Int24ub))),
+            } _OptionalFields_t;
+        };
+        float RemainingCapacity; // if _UserDefinedItems > 2 then _OptionalFields.RemainingCapacity2 else this._RemainingCapacity1
+        float TotalCapacity; // if _UserDefinedItems > 2_OptionalFields.TotalCapacity2 else this._TotalCapacity1
+    } Module_t;
+    float TotalPower; // Computed(lambda this: sum([x.Power for x in this.Module])),
+    float StateOfCharge; // Computed(lambda this: sum([x.RemainingCapacity for x in this.Module]) / sum([x.TotalCapacity for x in this.Module])),
+} Values_t;
+
+typedef struct{
+    uint8_t NumberOfModule; // Byte,
+    uint8_t NumberOfCells; // Int8ub,
+    float *CellVoltages; // pointer to Array( NumberOfCells, ToVolt(Int16sb)),
+    uint8_t NumberOfTemperatures; // Int8ub
+    float AverageBMSTemperature; // ToCelsius(Int16sb),
+    float *GroupedCellsTemperatures; // pointer to Array(NumberOfTemperatures - 1, ToCelsius(Int16sb)),
+    float Current; // ToAmp(Int16sb),
+    float Voltage; // ToVolt(Int16ub),
+    float Power; // compute Current * Voltage
+    float _RemainingCapacity1; // DivideBy1000(Int16ub),
+    uint8_t _UserDefinedItems; // Int8ub,
+    float _TotalCapacity1; // DivideBy1000(Int16ub),
+    int16_t CycleNumber; // Int16ub,
+    union {
+        // If(_UserDefinedItems > 2,
+        struct {
+            float RemainingCapacity2; // DivideBy1000(Int24ub),
+            float TotalCapacity2; // DivideBy1000(Int24ub))),
+        };
+    } _OptionalFields;
+    float RemainingCapacity; // if _UserDefinedItems > 2 then _OptionalFields.RemainingCapacity2 else _RemainingCapacity1
+    float TotalCapacity; // if _UserDefinedItems > 2 then _OptionalFields.TotalCapacity2 else _TotalCapacity1
+    float TotalPower; // Power
+    float StateOfCharge; // RemainingCapacity / TotalCapacity),
+} AnalogValue_t;
+*/

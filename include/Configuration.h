@@ -180,6 +180,7 @@ struct PowerLimiter_CONFIG_T {
 
 struct Battery_CONFIG_T {
     bool Enabled;
+    uint8_t numberOfBatteries;
     uint32_t PollInterval;
     uint8_t Provider;
 #ifdef USE_JKBMS_CONTROLLER

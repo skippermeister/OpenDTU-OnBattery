@@ -22,7 +22,7 @@ void WebApiDeviceClass::init(AsyncWebServer& server, Scheduler& scheduler)
 
 void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
 {
-    if (!WebApi.checkCredentials(request)) {
+    if (!WebApi.checkCredentialsReadonly(request)) {
         return;
     }
 
@@ -38,6 +38,7 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
     prechargePinObj["pre_charge"] = pin.pre_charge;
     prechargePinObj["full_power"] = pin.full_power;
 
+#if defined(USE_RADIO_NRF)
     auto nrfPinObj = curPin.createNestedObject("nrf24");
     if (PinMapping.isValidNrf24Config()) {
         nrfPinObj["clk"] = pin.nrf24_clk;
@@ -49,6 +50,7 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
     } else {
         nrfPinObj["Pins"] = "invalid";
     }
+#endif
 
 #if defined(USE_RADIO_CMT)
     auto cmtPinObj = curPin.createNestedObject("cmt");
@@ -108,9 +110,6 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
 #if defined(USE_LED_STRIP)
     ledPinObj["rgb"] = pin.led_rgb;
 #endif
-#endif
-
-#if defined(USE_LED_SINGLE) || defined(USE_LED_STRIP)
     auto leds = root.createNestedArray("led");
     for (uint8_t i = 0; i < LED_COUNT; i++) {
         JsonObject led = leds.createNestedObject();
@@ -136,17 +135,6 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
                                : pin.display_type == DisplayType_t::ST7567_GM12864I_59N ? "ST7567 (I2C)"
                                : pin.display_type == DisplayType_t::ePaper154           ? "ePaper154 (SW SPI)"
                                                                                         : "unknown";
-#else
-/*
-    display["rotation"] = 2;
-    display["power_safe"] = false;
-    display["screensaver"] = false;
-    display["contrast"] = 60;
-    display["language"] = 0;
-    display["diagramduration"] = 36000;
-    display["diagrammode"] = 1;
-    display["typedescription"] = "None";
-*/
 #endif
 
     auto victronPinObj = curPin.createNestedObject("victron");
@@ -163,7 +151,7 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
 #endif
 
     auto batteryPinObj = curPin.createNestedObject("battery");
-#if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER)
+#if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER) || defined(USE_JKBMS_CONTROLLER)
     if (pin.battery_rts >= -1) {
         batteryPinObj["rs485_rx"] = pin.battery_rx;
         batteryPinObj["rs485_tx"] = pin.battery_tx;
@@ -215,11 +203,11 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
     auto smlPinObj = curPin.createNestedObject("sml");
     smlPinObj["rs232_rx"] = pin.sml_rx;
 
-
+/*
         String output;
         serializeJsonPretty(root, output);
         Serial.println(output);
-
+*/
     response->setLength();
     request->send(response);
 }
@@ -264,7 +252,7 @@ void WebApiDeviceClass::onDeviceAdminPost(AsyncWebServerRequest* request)
     }
 
     if (!(root.containsKey("curPin")
-#if defined(USE_DISPLAY_GRAFIC)
+#if defined(USE_DISPLAY_GRAPHIC)
     || root.containsKey("display")
 #endif
         )) {

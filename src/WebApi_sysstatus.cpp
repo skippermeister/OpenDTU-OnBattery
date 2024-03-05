@@ -69,16 +69,15 @@ void WebApiSysstatusClass::onSystemStatus(AsyncWebServerRequest* request)
 
     root["uptime"] = esp_timer_get_time() / 1000000;
 
+#ifdef USE_RADIO_NRF
     root["nrf_configured"] = PinMapping.isValidNrf24Config();
     root["nrf_connected"] = Hoymiles.getRadioNrf()->isConnected();
     root["nrf_pvariant"] = Hoymiles.getRadioNrf()->isPVariant();
+#endif
 
 #ifdef USE_RADIO_CMT
     root["cmt_configured"] = PinMapping.isValidCmt2300Config();
     root["cmt_connected"] = Hoymiles.getRadioCmt()->isConnected();
-#else
-    root["cmt_configured"] = false;
-    root["cmt_connected"] = false;
 #endif
     response->setLength();
     request->send(response);

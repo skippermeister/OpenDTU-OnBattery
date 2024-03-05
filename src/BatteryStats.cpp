@@ -16,7 +16,27 @@ static void addLiveViewValue(JsonVariant& root, std::string const& name,
 }
 
 template <typename T>
+static void addLiveViewPackValue(JsonObject& root, std::string const& name,
+    T&& value, std::string const& unit, uint8_t precision)
+{
+    auto jsonValue = root["values"][name];
+    jsonValue["v"] = value;
+    jsonValue["u"] = unit;
+    jsonValue["d"] = precision;
+}
+
+template <typename T>
 static void addLiveViewParameter(JsonVariant& root, std::string const& name,
+    T&& value, std::string const& unit, uint8_t precision)
+{
+    auto jsonValue = root["parameters"][name];
+    jsonValue["v"] = value;
+    jsonValue["u"] = unit;
+    jsonValue["d"] = precision;
+}
+
+template <typename T>
+static void addLiveViewPackParameter(JsonObject& root, std::string const& name,
     T&& value, std::string const& unit, uint8_t precision)
 {
     auto jsonValue = root["parameters"][name];
@@ -60,7 +80,24 @@ static void addLiveViewCellVoltage(JsonVariant& root, uint8_t index, float value
     jsonValue["d"] = precision;
 }
 
+static void addLiveViewPackCellVoltage(JsonObject& root, uint8_t index, float value, uint8_t precision)
+{
+    auto jsonValue = root["cell"]["voltage"][index];
+    jsonValue["v"] = value;
+    jsonValue["u"] = "V";
+    jsonValue["d"] = precision;
+}
+
 static void addLiveViewCellBalance(JsonVariant& root, std::string const& name,
+    float value, std::string const& unit, uint8_t precision)
+{
+    auto jsonValue = root["cell"][name];
+    jsonValue["v"] = value;
+    jsonValue["u"] = unit;
+    jsonValue["d"] = precision;
+}
+
+static void addLiveViewPackCellBalance(JsonObject& root, std::string const& name,
     float value, std::string const& unit, uint8_t precision)
 {
     auto jsonValue = root["cell"][name];
@@ -77,10 +114,22 @@ static void addLiveViewTempSensor(JsonVariant& root, uint8_t index, float value,
     jsonValue["d"] = precision;
 }
 
+static void addLiveViewPackTempSensor(JsonObject& root, uint8_t index, float value, uint8_t precision)
+{
+    auto jsonValue = root["tempSensor"][index];
+    jsonValue["v"] = value;
+    jsonValue["u"] = "°C";
+    jsonValue["d"] = precision;
+}
+
+void BatteryStats::generatePackCommonJsonResponse(JsonObject& packObject, const uint8_t m) const
+{
+
+}
+
 void BatteryStats::getLiveViewData(JsonVariant& root) const
 {
     root["manufacturer"] = _manufacturer;
-    root["device_name"] = _deviceName;
     root["data_age"] = getAgeSeconds();
 
     addLiveViewValue(root, "SoC", _SoC, "%", _socPrecision);
@@ -88,6 +137,7 @@ void BatteryStats::getLiveViewData(JsonVariant& root) const
 }
 
 #define ISSUE(token, value) addLiveView##token(root, #value, token.value > 0);
+#define ISSUEtotals(token, value) addLiveView##token(root, #value, totals.token.value > 0);
 
 #ifdef USE_PYLONTECH_CAN_RECEIVER
 void PylontechCanBatteryStats::getLiveViewData(JsonVariant& root) const
@@ -132,78 +182,115 @@ void PylontechCanBatteryStats::getLiveViewData(JsonVariant& root) const
 #endif
 
 #ifdef USE_PYLONTECH_RS485_RECEIVER
+
+void PylontechRS485BatteryStats::generatePackCommonJsonResponse(JsonObject& packObject, const uint8_t module) const
+{
+//    uint8_t module = 0;
+
+    static uint8_t j=0;
+
+//    packObject["moduleNumber"] = 2+j;
+    packObject["moduleNumber"] = Pack[module].numberOfModule;
+    packObject["moduleName"] = _number_of_packs == 1 ? "Single": (module == 0?"Master":String("Slave-")+String(module));
+//    packObject["moduleName"] = _number_of_packs == 0 ? "Single": (module+j == 0?"Master":String("Slave-")+String(j));
+    if (++j>=2) j=0;
+
+    packObject["device_name"] = Pack[module].deviceName;
+    packObject["moduleSerialNumber"] = (char*)Pack[module].ModuleSerialNumber.moduleSerialNumber;
+    packObject["software_version"] = Pack[module].softwareVersion;
+
+    addLiveViewPackValue(packObject, "capacity", Pack[module].capacity, "Ah", 3);
+    addLiveViewPackValue(packObject, "remainingCapacity", Pack[module].remainingCapacity, "Ah", 3);
+    addLiveViewPackValue(packObject, "cycles", Pack[module].cycles, "", 0);
+    addLiveViewPackValue(packObject, "current", Pack[module].current, "A", 1);
+    addLiveViewPackValue(packObject, "power", Pack[module].power, "kW", 3);
+    addLiveViewPackValue(packObject, "BMSTemperature", Pack[module].averageBMSTemperature, "°C", 1);
+    addLiveViewPackValue(packObject, "CellTemperature", Pack[module].averageCellTemperature, "°C", 1);
+    addLiveViewPackValue(packObject, "chargeCurrentLimit", Pack[module].ChargeDischargeManagementInfo.chargeCurrentLimit, "A", 1);
+    addLiveViewPackValue(packObject, "dischargeCurrentLimit", Pack[module].ChargeDischargeManagementInfo.dischargeCurrentLimit, "A", 1);
+    addLiveViewPackValue(packObject, "maxChargeCurrentLimit", Pack[module].SystemParameters.chargeCurrentLimit, "A", 1);
+    addLiveViewPackValue(packObject, "maxDischargeCurrentLimit", Pack[module].SystemParameters.dischargeCurrentLimit, "A", 1);
+
+    addLiveViewPackParameter(packObject, "cellHighVoltageLimit", Pack[module].SystemParameters.cellHighVoltageLimit, "V", 3);
+    addLiveViewPackParameter(packObject, "cellLowVoltageLimit", Pack[module].SystemParameters.cellLowVoltageLimit, "V", 3);
+    addLiveViewPackParameter(packObject, "cellUnderVoltageLimit", Pack[module].SystemParameters.cellUnderVoltageLimit, "V", 3);
+    addLiveViewPackParameter(packObject, "chargeHighTemperatureLimit", Pack[module].SystemParameters.chargeHighTemperatureLimit, "°C", 1);
+    addLiveViewPackParameter(packObject, "chargeLowTemperatureLimit", Pack[module].SystemParameters.chargeLowTemperatureLimit, "°C", 1);
+    addLiveViewPackParameter(packObject, "dischargeHighTemperatureLimit", Pack[module].SystemParameters.dischargeHighTemperatureLimit, "°C", 1);
+    addLiveViewPackParameter(packObject, "dischargeLowTemperatureLimit", Pack[module].SystemParameters.dischargeLowTemperatureLimit, "°C", 1);
+
+    addLiveViewPackCellBalance(packObject, "cellMinVoltage", Pack[module].cellMinVoltage, "V", 3);
+    addLiveViewPackCellBalance(packObject, "cellMaxVoltage", Pack[module].cellMaxVoltage, "V", 3);
+    addLiveViewPackCellBalance(packObject, "cellDiffVoltage", Pack[module].cellDiffVoltage, "mV", 0);
+
+    // if (numberOfCells > 15) numberOfCells=15;
+    for (int i = 0; i < Pack[module].numberOfCells; i++) {
+        addLiveViewPackCellVoltage(packObject, i, Pack[module].CellVoltages[i], 3);
+    }
+    // if (numberOfTemperatures>5) numberOfTemperatures=5;
+    for (int i = 0; i < Pack[module].numberOfTemperatures - 1; i++) {
+        addLiveViewPackTempSensor(packObject, i, Pack[module].GroupedCellsTemperatures[i], 1);
+    }
+}
+
 void PylontechRS485BatteryStats::getLiveViewData(JsonVariant& root) const
 {
-    root["software_version"] = softwareVersion;
     BatteryStats::getLiveViewData(root);
 
     // values go into the "Status" card of the web application
-    addLiveViewValue(root, "totalCapacity", totalCapacity, "Ah", 3);
-    addLiveViewValue(root, "remainingCapacity", remainingCapacity, "Ah", 3);
+    addLiveViewValue(root, "capacity", totals.capacity, "Ah", 3);
+    addLiveViewValue(root, "remainingCapacity", totals.remainingCapacity, "Ah", 3);
     // angeforderte Ladespannung
-    addLiveViewValue(root, "chargeVoltage", chargeVoltage, "V", 3);
+    addLiveViewValue(root, "chargeVoltage", totals.chargeVoltage, "V", 3);
 
-    addLiveViewValue(root, "cycles", cycles, "", 0);
-    addLiveViewValue(root, "current", current, "A", 1);
-    addLiveViewValue(root, "power", power, "kW", 3);
-    addLiveViewValue(root, "BMSTemperature", averageBMSTemperature, "°C", 1);
-    addLiveViewValue(root, "CellTemperature", averageCellTemperature, "°C", 1);
+    addLiveViewValue(root, "current", totals.current, "A", 1);
+    addLiveViewValue(root, "power", totals.power, "kW", 3);
+    addLiveViewValue(root, "BMSTemperature", totals.averageBMSTemperature, "°C", 1);
+    addLiveViewValue(root, "CellTemperature", totals.averageCellTemperature, "°C", 1);
 
     // Empfohlene Lade-/Enladespannung
-    addLiveViewValue(root, "chargeVoltageLimit", ChargeDischargeManagementInfo.chargeVoltageLimit, "V", 3);
-    addLiveViewValue(root, "dischargeVoltageLimit", ChargeDischargeManagementInfo.dischargeVoltageLimit, "V", 3);
+    addLiveViewValue(root, "chargeVoltageLimit", totals.ChargeDischargeManagementInfo.chargeVoltageLimit, "V", 3);
+    addLiveViewValue(root, "dischargeVoltageLimit", totals.ChargeDischargeManagementInfo.dischargeVoltageLimit, "V", 3);
     // Empfohlene Lade-/Enladesstrom
-    addLiveViewValue(root, "chargeCurrentLimit", ChargeDischargeManagementInfo.chargeCurrentLimit, "A", 1);
-    addLiveViewValue(root, "dischargeCurrentLimit", ChargeDischargeManagementInfo.dischargeCurrentLimit, "A", 1);
+    addLiveViewValue(root, "chargeCurrentLimit", totals.ChargeDischargeManagementInfo.chargeCurrentLimit, "A", 1);
+    addLiveViewValue(root, "dischargeCurrentLimit", totals.ChargeDischargeManagementInfo.dischargeCurrentLimit, "A", 1);
 
     // maximale Lade-/Enladestrom (90A@15sec)
-    addLiveViewValue(root, "maxChargeCurrentLimit", SystemParameters.chargeCurrentLimit, "A", 1);
-    addLiveViewValue(root, "maxDischargeCurrentLimit", SystemParameters.dischargeCurrentLimit, "A", 1);
+    addLiveViewValue(root, "maxChargeCurrentLimit", totals.SystemParameters.chargeCurrentLimit, "A", 1);
+    addLiveViewValue(root, "maxDischargeCurrentLimit", totals.SystemParameters.dischargeCurrentLimit, "A", 1);
 
-    addLiveViewParameter(root, "cellHighVoltageLimit", SystemParameters.cellHighVoltageLimit, "V", 3);
-    addLiveViewParameter(root, "cellLowVoltageLimit", SystemParameters.cellLowVoltageLimit, "V", 3);
-    addLiveViewParameter(root, "cellUnderVoltageLimit", SystemParameters.cellUnderVoltageLimit, "V", 3);
-    addLiveViewParameter(root, "chargeHighTemperatureLimit", SystemParameters.chargeHighTemperatureLimit, "°C", 1);
-    addLiveViewParameter(root, "chargeLowTemperatureLimit", SystemParameters.chargeLowTemperatureLimit, "°C", 1);
-    addLiveViewParameter(root, "dischargeHighTemperatureLimit", SystemParameters.dischargeHighTemperatureLimit, "°C", 1);
-    addLiveViewParameter(root, "dischargeLowTemperatureLimit", SystemParameters.dischargeLowTemperatureLimit, "°C", 1);
-
-    addLiveViewText(root, "chargeEnabled", (ChargeDischargeManagementInfo.chargeEnable ? "yes" : "no"));
-    addLiveViewText(root, "dischargeEnabled", (ChargeDischargeManagementInfo.dischargeEnable ? "yes" : "no"));
-    addLiveViewText(root, "chargeImmediately1", (ChargeDischargeManagementInfo.chargeImmediately1 ? "yes" : "no"));
-    addLiveViewText(root, "chargeImmediately2", (ChargeDischargeManagementInfo.chargeImmediately2 ? "yes" : "no"));
-    addLiveViewText(root, "fullChargeRequest", (ChargeDischargeManagementInfo.fullChargeRequest ? "yes" : "no"));
+    addLiveViewText(root, "chargeEnabled", (totals.ChargeDischargeManagementInfo.chargeEnable ? "yes" : "no"));
+    addLiveViewText(root, "dischargeEnabled", (totals.ChargeDischargeManagementInfo.dischargeEnable ? "yes" : "no"));
+    addLiveViewText(root, "chargeImmediately1", (totals.ChargeDischargeManagementInfo.chargeImmediately1 ? "yes" : "no"));
+    addLiveViewText(root, "chargeImmediately2", (totals.ChargeDischargeManagementInfo.chargeImmediately2 ? "yes" : "no"));
+    addLiveViewText(root, "fullChargeRequest", (totals.ChargeDischargeManagementInfo.fullChargeRequest ? "yes" : "no"));
 
     // alarms and warnings go into the "Issues" card of the web application
-    ISSUE(Warning, highCurrentDischarge);
-    ISSUE(Alarm, overCurrentDischarge);
+    ISSUEtotals(Warning, highCurrentDischarge);
+    ISSUEtotals(Alarm, overCurrentDischarge);
 
-    ISSUE(Warning, highCurrentCharge);
-    ISSUE(Alarm, overCurrentCharge);
+    ISSUEtotals(Warning, highCurrentCharge);
+    ISSUEtotals(Alarm, overCurrentCharge);
 
-    ISSUE(Warning, lowTemperature);
-    ISSUE(Alarm, underTemperature);
+    ISSUEtotals(Warning, lowTemperature);
+    ISSUEtotals(Alarm, underTemperature);
 
-    ISSUE(Warning, highTemperature);
-    ISSUE(Alarm, overTemperature);
+    ISSUEtotals(Warning, highTemperature);
+    ISSUEtotals(Alarm, overTemperature);
 
-    ISSUE(Warning, lowVoltage);
-    ISSUE(Alarm, underVoltage);
+    ISSUEtotals(Warning, lowVoltage);
+    ISSUEtotals(Alarm, underVoltage);
 
-    ISSUE(Warning, highVoltage);
-    ISSUE(Alarm, overVoltage);
+    ISSUEtotals(Warning, highVoltage);
+    ISSUEtotals(Alarm, overVoltage);
 
-    addLiveViewCellBalance(root, "cellMinVoltage", cellMinVoltage, "V", 3);
-    addLiveViewCellBalance(root, "cellMaxVoltage", cellMaxVoltage, "V", 3);
-    addLiveViewCellBalance(root, "cellDiffVoltage", cellDiffVoltage, "mV", 0);
+    root["numberOfPacks"] = _number_of_packs;
 
-    // if (numberOfCells > 15) numberOfCells=15;
-    for (int i = 0; i < numberOfCells; i++) {
-        addLiveViewCellVoltage(root, i, CellVoltages[i], 3);
-    }
-    // if (numberOfTemperatures>5) numberOfTemperatures=5;
-    for (int i = 0; i < numberOfTemperatures - 1; i++) {
-        addLiveViewTempSensor(root, i, GroupedCellsTemperatures[i], 1);
+    // only show the consolidated values in the main status card if we have more than one battery pack
+    if (_number_of_packs > 1) {
+        addLiveViewValue(root, "cellMinVoltage", totals.cellMinVoltage, "V", 3);
+        addLiveViewValue(root, "cellMaxVoltage", totals.cellMaxVoltage, "V", 3);
+        addLiveViewValue(root, "cellDiffVoltage", totals.cellDiffVoltage, "mV", 0);
     }
 }
 #endif
@@ -293,6 +380,10 @@ void JkBmsBatteryStats::getLiveViewData(JsonVariant& root) const
 #endif
 
 #ifdef USE_DALYBMS_CONTROLLER
+void DalyBmsBatteryStats::generatePackCommonJsonResponse(JsonObject& packObject, const uint8_t m) const
+{
+}
+
 void DalyBmsBatteryStats::getLiveViewData(JsonVariant& root) const
 {
     root["software_version"] = String(_bmsSWversion);
@@ -300,7 +391,7 @@ void DalyBmsBatteryStats::getLiveViewData(JsonVariant& root) const
 
     addLiveViewValue(root, "BatteryLevel", batteryLevel, "%", 1);
 
-    addLiveViewValue(root, "totalCapacity", ratedCapacity, "Ah", 3);
+    addLiveViewValue(root, "capacity", ratedCapacity, "Ah", 3);
     addLiveViewValue(root, "remainingCapacity", remainingCapacity, "Ah", 3);
 
     addLiveViewValue(root, "cycles", batteryCycles, "", 0);
@@ -459,21 +550,48 @@ void BatteryStats::mqttPublish()  /* const */
 #define MQTTpublish(value, digits)                     \
     if (!cBattery.UpdatesOnly || value != _last.value) \
         MqttSettings.publish(subtopic + #value, String(_last.value = value, digits));
+#define MQTTpublishTotals(value, digits)                     \
+    if (!cBattery.UpdatesOnly || totals.value != _last.value) \
+        MqttSettings.publish(subtopic + #value, String(_last.value = totals.value, digits));
+#define MQTTpublishPack(module, value, digits)                     \
+    if (!cBattery.UpdatesOnly || Pack[module].value != _last.value) \
+        MqttSettings.publish(subtopic + #value, String(_last.value = Pack[module].value, digits));
 #define MQTTpublishStruct(str, value, digits)                  \
     if (!cBattery.UpdatesOnly || str.value != _last.str.value) \
         MqttSettings.publish(subtopic + #value, String(_last.str.value = str.value, digits));
+#define MQTTpublishTotalsStruct(str, value, digits)                  \
+    if (!cBattery.UpdatesOnly || totals.str.value != _last.str.value) \
+        MqttSettings.publish(subtopic + #value, String(_last.str.value = totals.str.value, digits));
+#define MQTTpublishPackStruct(module, str, value, digits)                  \
+    if (!cBattery.UpdatesOnly || Pack[module].str.value != _last.str.value) \
+        MqttSettings.publish(subtopic + #value, String(_last.str.value = Pack[module].str.value, digits));
 #define MQTTpublishInt(value)                          \
     if (!cBattery.UpdatesOnly || value != _last.value) \
         MqttSettings.publish(subtopic + #value, String(_last.value = value));
+#define MQTTpublishTotalsInt(value)                          \
+    if (!cBattery.UpdatesOnly || totals.value != _last.value) \
+        MqttSettings.publish(subtopic + #value, String(_last.value = totals.value));
+#define MQTTpublishPackInt(module, value)                          \
+    if (!cBattery.UpdatesOnly || Pack[module].value != _last.value) \
+        MqttSettings.publish(subtopic + #value, String(_last.value = Pack[module].value));
 #define MQTTpublishIntStruct(str, value)                       \
     if (!cBattery.UpdatesOnly || str.value != _last.str.value) \
         MqttSettings.publish(subtopic + #value, String(_last.str.value = str.value));
+#define MQTTpublishTotalsIntStruct(str, value)                       \
+    if (!cBattery.UpdatesOnly || totals.str.value != _last.str.value) \
+        MqttSettings.publish(subtopic + #value, String(_last.str.value = totals.str.value));
+#define MQTTpublishPackIntStruct(module, str, value)                       \
+    if (!cBattery.UpdatesOnly || Pack[module].str.value != _last.str.value) \
+        MqttSettings.publish(subtopic + #value, String(_last.str.value = Pack[module].str.value));
 #define MQTTpublishHex(value, str)                               \
     if (!cBattery.UpdatesOnly || str##value != _last.str##value) \
         MqttSettings.publish(subtopic + #value, String(_last.str##value = str##value, HEX));
 #define MQTTpublishString(value)                       \
     if (!cBattery.UpdatesOnly || value != _last.value) \
         MqttSettings.publish(subtopic + #value, _last.value = value);
+#define MQTTpublishPackString(module, value)                       \
+    if (!cBattery.UpdatesOnly || Pack[module].value != _last.value) \
+        MqttSettings.publish(subtopic + #value, _last.value = Pack[module].value);
 
 #ifdef USE_PYLONTECH_CAN_RECEIVER
 void PylontechCanBatteryStats::mqttPublish() const
@@ -526,82 +644,134 @@ void PylontechRS485BatteryStats::mqttPublish() /*const*/
 
     BatteryStats::mqttPublish();
 
-    String subtopic = "battery/settings/";
-    MQTTpublish(chargeVoltage, 2);
-    MQTTpublishStruct(ChargeDischargeManagementInfo, chargeCurrentLimit, 2)
-    MQTTpublishStruct(ChargeDischargeManagementInfo, dischargeCurrentLimit, 2);
+    const String topic = "battery/";
+    String subtopic = topic;
+    MQTTpublishTotals(current, 2);
+    MQTTpublishTotals(power, 3);
+    MQTTpublishTotals(remainingCapacity, 3);
+    MQTTpublishTotals(capacity, 3);
 
-    subtopic = "battery/";
-    MQTTpublishString(softwareVersion);
-    MQTTpublishInt(cycles);
-    MQTTpublish(current, 2);
-    MQTTpublish(power, 3);
-    MQTTpublish(remainingCapacity, 3);
-    MQTTpublish(totalCapacity, 3);
+    subtopic = topic + "settings/";
+    MQTTpublishTotals(chargeVoltage, 2);
+    MQTTpublishTotalsStruct(ChargeDischargeManagementInfo, chargeCurrentLimit, 2)
+    MQTTpublishTotalsStruct(ChargeDischargeManagementInfo, dischargeCurrentLimit, 2);
 
-    subtopic = "battery/parameters/";
-    MQTTpublishStruct(SystemParameters, chargeCurrentLimit, 2)
-    MQTTpublishStruct(SystemParameters, dischargeCurrentLimit, 2);
-    MQTTpublishStruct(SystemParameters, cellHighVoltageLimit, 2);
-    MQTTpublishStruct(SystemParameters, cellLowVoltageLimit, 2);
-    MQTTpublishStruct(SystemParameters, cellUnderVoltageLimit, 2);
-    MQTTpublishStruct(SystemParameters, chargeHighTemperatureLimit, 1);
-    MQTTpublishStruct(SystemParameters, chargeLowTemperatureLimit, 1);
-    MQTTpublishStruct(SystemParameters, dischargeHighTemperatureLimit, 1);
-    MQTTpublishStruct(SystemParameters, dischargeLowTemperatureLimit, 1);
+    subtopic = topic + "parameters/";
+    MQTTpublishTotalsStruct(SystemParameters, chargeCurrentLimit, 2)
+    MQTTpublishTotalsStruct(SystemParameters, dischargeCurrentLimit, 2);
+    MQTTpublishTotalsStruct(SystemParameters, chargeHighTemperatureLimit, 1);
+    MQTTpublishTotalsStruct(SystemParameters, chargeLowTemperatureLimit, 1);
+    MQTTpublishTotalsStruct(SystemParameters, dischargeHighTemperatureLimit, 1);
+    MQTTpublishTotalsStruct(SystemParameters, dischargeLowTemperatureLimit, 1);
 
-    subtopic = "battery/alarms/";
-    MQTTpublishIntStruct(Alarm, overCurrentDischarge);
-    MQTTpublishIntStruct(Alarm, overCurrentCharge);
-    MQTTpublishIntStruct(Alarm, underTemperature);
-    MQTTpublishIntStruct(Alarm, overTemperature);
-    MQTTpublishIntStruct(Alarm, underVoltage);
-    MQTTpublishIntStruct(Alarm, overVoltage);
-    MQTTpublishIntStruct(Alarm, bmsInternal);
+    subtopic = topic + "alarms/";
+    MQTTpublishTotalsIntStruct(Alarm, overCurrentDischarge);
+    MQTTpublishTotalsIntStruct(Alarm, overCurrentCharge);
+    MQTTpublishTotalsIntStruct(Alarm, underTemperature);
+    MQTTpublishTotalsIntStruct(Alarm, overTemperature);
+    MQTTpublishTotalsIntStruct(Alarm, underVoltage);
+    MQTTpublishTotalsIntStruct(Alarm, overVoltage);
+    MQTTpublishTotalsIntStruct(Alarm, bmsInternal);
+    subtopic = topic + "warnings/";
+    MQTTpublishTotalsIntStruct(Warning, highCurrentDischarge);
+    MQTTpublishTotalsIntStruct(Warning, highCurrentCharge);
+    MQTTpublishTotalsIntStruct(Warning, lowTemperature);
+    MQTTpublishTotalsIntStruct(Warning, highTemperature);
+    MQTTpublishTotalsIntStruct(Warning, lowVoltage);
+    MQTTpublishTotalsIntStruct(Warning, highVoltage);
+    MQTTpublishTotalsIntStruct(Warning, bmsInternal);
 
-    subtopic = "battery/warnings/";
-    MQTTpublishIntStruct(Warning, highCurrentDischarge);
-    MQTTpublishIntStruct(Warning, highCurrentCharge);
-    MQTTpublishIntStruct(Warning, lowTemperature);
-    MQTTpublishIntStruct(Warning, highTemperature);
-    MQTTpublishIntStruct(Warning, lowVoltage);
-    MQTTpublishIntStruct(Warning, highVoltage);
-    MQTTpublishIntStruct(Warning, bmsInternal);
+    subtopic = topic + "charging/";
+    MQTTpublishTotalsIntStruct(ChargeDischargeManagementInfo, chargeEnable);
+    MQTTpublishTotalsIntStruct(ChargeDischargeManagementInfo, dischargeEnable);
+    MQTTpublishTotalsIntStruct(ChargeDischargeManagementInfo, chargeImmediately1);
+    MQTTpublishTotalsIntStruct(ChargeDischargeManagementInfo, chargeImmediately2);
+    MQTTpublishTotalsIntStruct(ChargeDischargeManagementInfo, fullChargeRequest);
 
-    subtopic = "battery/charging/";
-    MQTTpublishIntStruct(ChargeDischargeManagementInfo, chargeEnable);
-    MQTTpublishIntStruct(ChargeDischargeManagementInfo, dischargeEnable);
-    MQTTpublishIntStruct(ChargeDischargeManagementInfo, chargeImmediately1);
-    MQTTpublishIntStruct(ChargeDischargeManagementInfo, chargeImmediately2);
-    MQTTpublishIntStruct(ChargeDischargeManagementInfo, fullChargeRequest);
+    subtopic = topic + "voltages/";
+    MQTTpublishTotals(cellMinVoltage, 3);
+    MQTTpublishTotals(cellMaxVoltage, 3);
+    MQTTpublishTotals(cellDiffVoltage, 0);
 
-    subtopic = "battery/voltages/";
-    MQTTpublish(cellMinVoltage, 3);
-    MQTTpublish(cellMaxVoltage, 3);
-    MQTTpublish(cellDiffVoltage, 0);
-    if (numberOfCells > 15)
-        numberOfCells = 15;
-    _last.CellVoltages = reinterpret_cast<float*>(realloc(_last.CellVoltages, numberOfCells * sizeof(float)));
-    for (int i = 0; i < numberOfCells; i++) {
-        if (!cBattery.UpdatesOnly || CellVoltages[i] != _last.CellVoltages[i]) {
-            MqttSettings.publish(subtopic + "cell" + String(i + 1), String(CellVoltages[i], 3));
-            _last.CellVoltages[i] = CellVoltages[i];
+    subtopic = topic + "temperatures/";
+    MQTTpublishTotals(averageBMSTemperature, 1);
+/*
+    for (uint8_t module=0; module < _number_of_packs; module++) {
+        const String moduleTopic = topic + String(module) + "/";
+        subtopic = moduleTopic;
+        MQTTpublishPackString(module, deviceName);
+        MQTTpublishPackString(module, softwareVersion);
+        MQTTpublishPackInt(module, cycles);
+
+        String subtopic = moduleTopic + "settings/";
+        MQTTpublishPack(module, chargeVoltage, 2);
+        MQTTpublishPackStruct(module, ChargeDischargeManagementInfo, chargeCurrentLimit, 2)
+        MQTTpublishPackStruct(module, ChargeDischargeManagementInfo, dischargeCurrentLimit, 2);
+
+        subtopic = moduleTopic + "charging/";
+        MQTTpublishPackIntStruct(module, ChargeDischargeManagementInfo, chargeEnable);
+        MQTTpublishPackIntStruct(module, ChargeDischargeManagementInfo, dischargeEnable);
+        MQTTpublishPackIntStruct(module, ChargeDischargeManagementInfo, chargeImmediately1);
+        MQTTpublishPackIntStruct(module, ChargeDischargeManagementInfo, chargeImmediately2);
+        MQTTpublishPackIntStruct(module, ChargeDischargeManagementInfo, fullChargeRequest);
+
+        subtopic = moduleTopic + "parameters/";
+        MQTTpublishPackStruct(module, SystemParameters, chargeCurrentLimit, 2)
+        MQTTpublishPackStruct(module, SystemParameters, dischargeCurrentLimit, 2);
+        MQTTpublishPackStruct(module, SystemParameters, cellHighVoltageLimit, 2);
+        MQTTpublishPackStruct(module, SystemParameters, cellLowVoltageLimit, 2);
+        MQTTpublishPackStruct(module, SystemParameters, cellUnderVoltageLimit, 2);
+        MQTTpublishPackStruct(module, SystemParameters, chargeHighTemperatureLimit, 1);
+        MQTTpublishPackStruct(module, SystemParameters, chargeLowTemperatureLimit, 1);
+        MQTTpublishPackStruct(module, SystemParameters, dischargeHighTemperatureLimit, 1);
+        MQTTpublishPackStruct(module, SystemParameters, dischargeLowTemperatureLimit, 1);
+
+        subtopic = moduleTopic + "alarms/";
+        MQTTpublishPackIntStruct(module, Alarm, overCurrentDischarge);
+        MQTTpublishPackIntStruct(module, Alarm, overCurrentCharge);
+        MQTTpublishPackIntStruct(module, Alarm, underTemperature);
+        MQTTpublishPackIntStruct(module, Alarm, overTemperature);
+        MQTTpublishPackIntStruct(module, Alarm, underVoltage);
+        MQTTpublishPackIntStruct(module, Alarm, overVoltage);
+        MQTTpublishPackIntStruct(module, Alarm, bmsInternal);
+
+        subtopic = moduleTopic + "warnings/";
+        MQTTpublishPackIntStruct(module, Warning, highCurrentDischarge);
+        MQTTpublishPackIntStruct(module, Warning, highCurrentCharge);
+        MQTTpublishPackIntStruct(module, Warning, lowTemperature);
+        MQTTpublishPackIntStruct(module, Warning, highTemperature);
+        MQTTpublishPackIntStruct(module, Warning, lowVoltage);
+        MQTTpublishPackIntStruct(module, Warning, highVoltage);
+        MQTTpublishPackIntStruct(module, Warning, bmsInternal);
+
+        subtopic = moduleTopic + "voltages/";
+        MQTTpublishPack(module, cellMinVoltage, 3);
+        MQTTpublishPack(module, cellMaxVoltage, 3);
+        MQTTpublishPack(module, cellDiffVoltage, 0);
+
+        if (Pack[module].numberOfCells > 15) Pack[module].numberOfCells = 15;
+        _last.CellVoltages = reinterpret_cast<float*>(realloc(_last.CellVoltages, Pack[module].numberOfCells * sizeof(float)));
+        for (int i = 0; i < Pack[module].numberOfCells; i++) {
+            if (!cBattery.UpdatesOnly || Pack[module].CellVoltages[i] != _last.CellVoltages[i]) {
+                MqttSettings.publish(subtopic + "cell" + String(i + 1), String(Pack[module].CellVoltages[i], 3));
+                _last.CellVoltages[i] = Pack[module].CellVoltages[i];
+            }
+        }
+
+        subtopic = moduleTopic + "temperatures/";
+        MQTTpublishPack(0, averageBMSTemperature, 1);
+
+        subtopic = moduleTopic + "temperatures/group";
+        if (Pack[module].numberOfTemperatures > 5) Pack[module].numberOfTemperatures = 5;
+        _last.GroupedCellsTemperatures = reinterpret_cast<float*>(realloc(_last.GroupedCellsTemperatures, (Pack[module].numberOfTemperatures - 1) * sizeof(float)));
+        for (int i = 0; i < Pack[module].numberOfTemperatures - 1; i++) {
+            if (!cBattery.UpdatesOnly || Pack[0].GroupedCellsTemperatures[i] != _last.GroupedCellsTemperatures[i]) {
+                MqttSettings.publish(subtopic + String(i + 1), String(Pack[module].GroupedCellsTemperatures[i], 1));
+                _last.GroupedCellsTemperatures[i] = Pack[module].GroupedCellsTemperatures[i];
+            }
         }
     }
-
-    subtopic = "battery/temperatures/";
-    MQTTpublish(averageBMSTemperature, 1);
-
-    subtopic = "battery/temperatures/group";
-    if (numberOfTemperatures > 5)
-        numberOfTemperatures = 5;
-    _last.GroupedCellsTemperatures = reinterpret_cast<float*>(realloc(_last.GroupedCellsTemperatures, (numberOfTemperatures - 1) * sizeof(float)));
-    for (int i = 0; i < numberOfTemperatures - 1; i++) {
-        if (!cBattery.UpdatesOnly || GroupedCellsTemperatures[i] != _last.GroupedCellsTemperatures[i]) {
-            MqttSettings.publish(subtopic + String(i + 1), String(GroupedCellsTemperatures[i], 1));
-            _last.GroupedCellsTemperatures[i] = GroupedCellsTemperatures[i];
-        }
-    }
+*/
 }
 #endif
 

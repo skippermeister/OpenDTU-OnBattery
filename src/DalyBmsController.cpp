@@ -408,10 +408,10 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer) {
                         break;
 
                     case Command::REQUEST_MIN_MAX_PACK_VOLTAGE:
-                        _stats->AlarmValues.maxPackVoltage = (float)ToUint16(&it[4]) / 10; // in V
-                        _stats->WarningValues.maxPackVoltage = (float)ToUint16(&it[6]) / 10; // in V
-                        _stats->AlarmValues.minPackVoltage = (float)ToUint16(&it[8]) / 10.0; // in V
-                        _stats->WarningValues.minPackVoltage = (float)ToUint16(&it[10]) / 10.0; // in V
+                        _stats->AlarmValues.maxPackVoltage = static_cast<float>(ToUint16(&it[4])) / 10.0f; // in V
+                        _stats->WarningValues.maxPackVoltage = static_cast<float>(ToUint16(&it[6])) / 10.0f; // in V
+                        _stats->AlarmValues.minPackVoltage = static_cast<float>(ToUint16(&it[8])) / 10.0f; // in V
+                        _stats->WarningValues.minPackVoltage = static_cast<float>(ToUint16(&it[10])) / 10.0f; // in V
                         if (Battery._verboseLogging) {
                             MessageOutput.printf("%s Alarm max pack voltage: %.1fV, min pack voltage: %.1fV\r\n", TAG,
                                 _stats->AlarmValues.maxPackVoltage, _stats->AlarmValues.minPackVoltage);
@@ -434,10 +434,10 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer) {
                         break;
 
                     case Command::REQUEST_MIN_MAX_SOC_LIMIT:
-                        _stats->WarningValues.maxSoc = (float)ToUint16(&it[4]) / 10.0; // in %
-                        _stats->AlarmValues.maxSoc = (float)ToUint16(&it[6]) / 10.0; // in %
-                        _stats->WarningValues.minSoc = (float)ToUint16(&it[8]) / 10.0; // in %
-                        _stats->AlarmValues.minSoc = (float)ToUint16(&it[10]) / 10.0; // in %
+                        _stats->WarningValues.maxSoc = static_cast<float>(ToUint16(&it[4])) / 10.0f; // in %
+                        _stats->AlarmValues.maxSoc = static_cast<float>(ToUint16(&it[6])) / 10.0f; // in %
+                        _stats->WarningValues.minSoc = static_cast<float>(ToUint16(&it[8])) / 10.0f; // in %
+                        _stats->AlarmValues.minSoc = static_cast<float>(ToUint16(&it[10])) / 10.0f; // in %
                         if (Battery._verboseLogging) {
                             MessageOutput.printf("%s Alarm max SoC: %.1f%%, min SoC: %.1f%%\r\n", TAG, _stats->AlarmValues.maxSoc, _stats->AlarmValues.minSoc);
                             MessageOutput.printf("%s Warning max SoC: %.1f%%, min SoC: %.1f%%\r\n", TAG, _stats->WarningValues.maxSoc, _stats->WarningValues.minSoc);
@@ -445,8 +445,8 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer) {
                         break;
 
                     case Command::REQUEST_VOLTAGE_TEMPERATURE_DIFFERENCE:
-                        _stats->WarningValues.cellVoltageDifference = (float)ToUint16(&it[4]); // in mV
-                        _stats->AlarmValues.cellVoltageDifference = (float)ToUint16(&it[6]); // in mV
+                        _stats->WarningValues.cellVoltageDifference = static_cast<float>(ToUint16(&it[4])); // in mV
+                        _stats->AlarmValues.cellVoltageDifference = static_cast<float>(ToUint16(&it[6])); // in mV
                         _stats->WarningValues.temperatureDifference = it[8]; // in in°C
                         _stats->AlarmValues.temperatureDifference = it[9]; // in °C
                         break;
@@ -506,13 +506,13 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer) {
                     case Command::REQUEST_MOS:
                           switch (it[4]) {
                             case 0:
-                                strcpy(_stats->_status, "Stationary");
+                                strncpy(_stats->_status, "Stationary", sizeof(_stats->_status));
                                 break;
                             case 1:
-                                strcpy(_stats->_status, "Charging");
+                                strncpy(_stats->_status, "Charging", sizeof(_stats->_status) );
                                 break;
                             case 2:
-                                strcpy(_stats->_status, "Discharging");
+                                strncpy(_stats->_status, "Discharging", sizeof(_stats->_status));
                                 break;
                             default:
                                 break;
@@ -520,7 +520,7 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer) {
                         _stats->chargingMosEnabled  = it[5];
                         _stats->dischargingMosEnabled = it[6];
                         _stats->_bmsCycles = it[7];
-                        _stats->remainingCapacity = (float) ToUint32(&it[8]) / 1000;
+                        _stats->remainingCapacity = static_cast<float>(ToUint32(&it[8])) / 1000.0f;
                         if (Battery._verboseLogging)  {
                             MessageOutput.printf("%s status: %s, bms cycles: %d\r\n", TAG, _stats->_status, _stats->_bmsCycles);
                             MessageOutput.printf("%s remaining capacity: %.3fAh\r\n", TAG, _stats->remainingCapacity);
@@ -680,7 +680,7 @@ void DalyBmsController::clearGet(void)
 {
 
     // data from 0x93
-    strcpy(_stats->_status, "offline"); // charge/discharge status (0 stationary ,1 charge ,2 discharge)
+    strncpy(_stats->_status, "offline", sizeof(_stats->_status)); // charge/discharge status (0 stationary ,1 charge ,2 discharge)
 
     _stats->_dIO = 0; // No information about this
     _stats->_bmsCycles = 0;                       // charge / discharge cycles

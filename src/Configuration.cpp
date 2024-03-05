@@ -221,6 +221,7 @@ bool ConfigurationClass::write()
     JsonObject battery = doc.createNestedObject("battery");
     battery["enabled"] = config.Battery.Enabled;
     battery["updatesonly"] = config.Battery.UpdatesOnly;
+    battery["numberOfBatteries"] = config.Battery.numberOfBatteries;
     battery["pollinterval"] = config.Battery.PollInterval;
     battery["provider"] = config.Battery.Provider;
 #ifdef USE_JKBMS_CONTROLLER
@@ -511,6 +512,7 @@ bool ConfigurationClass::read()
 
     JsonObject battery = doc["battery"];
     config.Battery.Enabled = battery["enabled"] | BATTERY_ENABLED;
+    config.Battery.numberOfBatteries = battery["numberOfBatteries"] | 1; // at minimum 1one battery
     config.Battery.UpdatesOnly = battery["updatesonly"] | BATTERY_UPDATESONLY;
     config.Battery.PollInterval = battery["pollinterval"] | BATTERY_POLLINTERVAL;
     config.Battery.Provider = battery["provider"] | BATTERY_PROVIDER;

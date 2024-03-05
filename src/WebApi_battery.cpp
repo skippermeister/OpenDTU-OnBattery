@@ -33,6 +33,7 @@ void WebApiBatteryClass::onStatus(AsyncWebServerRequest* request)
     const Battery_CONFIG_T& cBattery = Configuration.get().Battery;
 
     root["enabled"] = cBattery.Enabled;
+    root["numberOfBatteries"] = cBattery.numberOfBatteries;
     root["pollinterval"] = cBattery.PollInterval;
     root["provider"] = cBattery.Provider;
     root["can_controller_frequency"] = Configuration.get().MCP2515.Controller_Frequency;
