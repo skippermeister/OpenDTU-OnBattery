@@ -156,6 +156,7 @@
 #define POWERLIMITER_FULL_SOLAR_PASSTHROUGH_START_VOLTAGE 100
 #define POWERLIMITER_FULL_SOLAR_PASSTHROUGH_STOP_VOLTAGE 100
 
+#define MAX_BATTERIES   2   // currently only 2 Pylontech Batteries are supported (Master and one Slave)
 #define BATTERY_ENABLED false
 #define BATTERY_PROVIDER 0 // Pylontech RS485 receiver
 #define BATTERY_JKBMS_INTERFACE 0

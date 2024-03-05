@@ -12,6 +12,7 @@
 #include "PinMapping.h"
 #include <Arduino.h>
 #include <ctime>
+#include "defaults.h"
 
 static constexpr char TAG[] = "[Pylontech RS485]";
 
@@ -70,9 +71,10 @@ bool PylontechRS485Receiver::init()
     Battery._verboseLogging = true;
 
     _masterBatteryID = 2;   // Master battery starts with ID = 2
-    _lastSlaveBatteryID = _masterBatteryID + Configuration.get().Battery.numberOfBatteries;
 
     get_pack_count(REQUEST_AND_GET, _masterBatteryID);
+
+    _lastSlaveBatteryID = _masterBatteryID + _stats->_number_of_packs;
 
     for (uint8_t i=_masterBatteryID; i<_lastSlaveBatteryID; i++) {
         MessageOutput.printf("%s %s Battery Pack %d\r\n", TAG, i==2 ? "Master" : "Slave", i);
@@ -319,6 +321,8 @@ void PylontechRS485Receiver::get_pack_count(const PylontechRS485Receiver::Functi
     }
 
     _stats->_number_of_packs = f->info[0];
+    if (_stats->_number_of_packs > MAX_BATTERIES) _stats->_number_of_packs = MAX_BATTERIES; // currently limited to max 2 batteries (see default.h)
+    if (_stats->_number_of_packs > Configuration.get().Battery.numberOfBatteries) _stats->_number_of_packs = Configuration.get().Battery.numberOfBatteries;
 
     if (Battery._verboseLogging) MessageOutput.printf("%s::%s Number of Battery Packs %u\r\n", TAG, __FUNCTION__, _stats->_number_of_packs);
 }

@@ -8,6 +8,7 @@
 #include "JkBmsDataPoints.h"
 #include "VeDirectShuntController.h"
 #include "Configuration.h"
+#include "defaults.h"
 
 #pragma pack(push, 1)
 typedef union {
@@ -417,7 +418,7 @@ private:
         ModuleSerialNumber_t ModuleSerialNumber;
     };
 
-    Pack_t Pack[2];
+    Pack_t Pack[MAX_BATTERIES];
 /*
     String softwareVersion;
     String _manufacturerVersion;

@@ -57,7 +57,7 @@ void WebApiWsBatteryLiveClass::sendDataTaskCb()
     _lastUpdateCheck = millis();
 
     for (uint8_t i=0; i< Battery.getStats()->get_number_of_packs(); i++) {
-//    for (uint8_t i=0; i<2; i++) {
+//    for (uint8_t i=0; i<MAX_BATTERIES; i++) {
 
     try {
         std::lock_guard<std::mutex> lock(_mutex);
@@ -114,14 +114,14 @@ void WebApiWsBatteryLiveClass::onLivedataStatus(AsyncWebServerRequest* request)
 
     try {
         std::lock_guard<std::mutex> lock(_mutex);
-        AsyncJsonResponse* response = new AsyncJsonResponse(false, _responseSize*3);
+        AsyncJsonResponse* response = new AsyncJsonResponse(false, _responseSize + MAX_BATTERIES*_responseSize);
         auto& root = response->getRoot();
 
         generateJsonResponse(root);
 
         JsonArray packsArray = root.createNestedArray("packs");
         for (uint8_t i=0; i< Battery.getStats()->get_number_of_packs(); i++) {
-//        for (uint8_t i=0; i<2; i++) {
+//        for (uint8_t i=0; i<MAX_BATTERIES; i++) {
             JsonObject packObject = packsArray.createNestedObject();
             Battery.getStats()->generatePackCommonJsonResponse(packObject, i);
         }
