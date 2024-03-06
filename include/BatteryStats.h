@@ -223,7 +223,7 @@ typedef struct {
 
 typedef struct {
     uint8_t commandValue; // construct.Byte,
-    uint8_t moduleSerialNumber[17]; // JoinBytes(construct.Array(16, construct.Byte))
+    char moduleSerialNumber[17]; // JoinBytes(construct.Array(16, construct.Byte))
 } ModuleSerialNumber_t;
 
 #ifdef USE_PYLONTECH_CAN_RECEIVER

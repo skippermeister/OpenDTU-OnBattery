@@ -106,7 +106,7 @@ private:
     void get_protocol_version(const PylontechRS485Receiver::Function function, uint8_t module);
     void get_manufacturer_info(const PylontechRS485Receiver::Function function, uint8_t module);
     void get_barcode(const PylontechRS485Receiver::Function function, uint8_t module);
-    void get_pack_count(const PylontechRS485Receiver::Function function, uint8_t module, uint8_t InfoCommand = 1);
+    bool get_pack_count(const PylontechRS485Receiver::Function function, uint8_t module, uint8_t InfoCommand = 1);
     void get_version_info(const PylontechRS485Receiver::Function function, uint8_t module);
     void get_firmware_info(const PylontechRS485Receiver::Function function, uint8_t module);
     void get_analog_value(const PylontechRS485Receiver::Function function, uint8_t module, uint8_t InfoCommand = 1);
@@ -162,7 +162,7 @@ private:
     float DivideUint16By1000(uint8_t*& c) { return static_cast<float>(ToUint16(c)) / 1000.0; }
     float DivideUint24By1000(uint8_t*& c) { return static_cast<float>(ToUint24(c)) / 1000.0; }
 
-    char _received_frame[512];
+    char *_received_frame;
 
     uint8_t _lastCmnd = 0xFF;
 

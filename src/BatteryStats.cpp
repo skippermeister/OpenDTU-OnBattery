@@ -189,7 +189,7 @@ void PylontechRS485BatteryStats::generatePackCommonJsonResponse(JsonObject& pack
     packObject["moduleName"] = _number_of_packs == 1 ? "Single": (module == 0?"Master":String("Slave-")+String(module));
 
     packObject["device_name"] = Pack[module].deviceName;
-    packObject["moduleSerialNumber"] = (char*)Pack[module].ModuleSerialNumber.moduleSerialNumber;
+    packObject["moduleSerialNumber"] = Pack[module].ModuleSerialNumber.moduleSerialNumber;
     packObject["software_version"] = Pack[module].softwareVersion;
 
     addLiveViewPackValue(packObject, "capacity", Pack[module].capacity, "Ah", 3);
@@ -216,11 +216,9 @@ void PylontechRS485BatteryStats::generatePackCommonJsonResponse(JsonObject& pack
     addLiveViewPackCellBalance(packObject, "cellMaxVoltage", Pack[module].cellMaxVoltage, "V", 3);
     addLiveViewPackCellBalance(packObject, "cellDiffVoltage", Pack[module].cellDiffVoltage, "mV", 0);
 
-    // if (numberOfCells > 15) numberOfCells=15;
     for (int i = 0; i < Pack[module].numberOfCells; i++) {
         addLiveViewPackCellVoltage(packObject, i, Pack[module].CellVoltages[i], 3);
     }
-    // if (numberOfTemperatures>5) numberOfTemperatures=5;
     for (int i = 0; i < Pack[module].numberOfTemperatures - 1; i++) {
         addLiveViewPackTempSensor(packObject, i, Pack[module].GroupedCellsTemperatures[i], 1);
     }

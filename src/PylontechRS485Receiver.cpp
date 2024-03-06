@@ -60,6 +60,8 @@ bool PylontechRS485Receiver::init()
             vTaskDelay(1);
         }
 
+        _received_frame = reinterpret_cast<char*>(malloc(128)); // receiver buffer with initially 128 bytes, will be expanded on request up to 256
+
         MessageOutput.println("initialized successfully.");
 
         _stats->_initialized = true;
@@ -72,14 +74,16 @@ bool PylontechRS485Receiver::init()
 
     _masterBatteryID = 2;   // Master battery starts with ID = 2
 
-    get_pack_count(REQUEST_AND_GET, _masterBatteryID, 0xFF);
-    vTaskDelay(250);
-    get_pack_count(REQUEST_AND_GET, _masterBatteryID+1);
-    vTaskDelay(250);
-    get_pack_count(REQUEST_AND_GET, _masterBatteryID+2);
-    vTaskDelay(250);
-    get_pack_count(REQUEST_AND_GET, _masterBatteryID);
-    vTaskDelay(250);
+    // search the amount of connected batteries
+    uint8_t number_of_packs = 0;
+    for (uint8_t i=_masterBatteryID; i<_masterBatteryID+8; i++) {
+        if (get_pack_count(REQUEST_AND_GET, i) == false) {
+            break;
+        }
+        number_of_packs++;
+        vTaskDelay(500);
+    }
+    MessageOutput.printf("%s Found %d Battery Packs\r\n", TAG, number_of_packs);
 
     _stats->_number_of_packs = Configuration.get().Battery.numberOfBatteries;
 
@@ -88,34 +92,30 @@ bool PylontechRS485Receiver::init()
     for (uint8_t i=_masterBatteryID; i<_lastSlaveBatteryID; i++) {
         MessageOutput.printf("%s %s Battery Pack %d\r\n", TAG, i==2 ? "Master" : "Slave", i);
         get_protocol_version(REQUEST_AND_GET, i);
-        vTaskDelay(250);
+        vTaskDelay(500);
         get_manufacturer_info(REQUEST_AND_GET, i);
-        vTaskDelay(250);
+        vTaskDelay(500);
         get_module_serial_number(REQUEST_AND_GET, i);
-        vTaskDelay(250);
+        vTaskDelay(500);
         get_firmware_info(REQUEST_AND_GET, i);
-        vTaskDelay(250);
+        vTaskDelay(500);
 
         get_system_parameters(REQUEST_AND_GET, i);
-        vTaskDelay(250);
+        vTaskDelay(500);
 
 //        get_barcode(REQUEST_AND_GET, i);
-//          vTaskDelay(250);
+//          vTaskDelay(500);
 //        get_version_info(REQUEST_AND_GET, i);
-//          vTaskDelay(250);
+//          vTaskDelay(500);
 
         get_charge_discharge_management_info(REQUEST_AND_GET, i);
-        vTaskDelay(250);
+        vTaskDelay(500);
 
         get_analog_value(REQUEST_AND_GET, i);
-        vTaskDelay(250);
-        get_analog_value(REQUEST_AND_GET, i, 0xFF);
-        vTaskDelay(250);
+        vTaskDelay(500);
 
         get_alarm_info(REQUEST_AND_GET, i);
-        vTaskDelay(250);
-        get_alarm_info(REQUEST_AND_GET, i, 0xFF);
-        vTaskDelay(250);
+        vTaskDelay(500);
     }
     Battery._verboseLogging = temp;
 
@@ -322,7 +322,7 @@ void PylontechRS485Receiver::get_version_info(const PylontechRS485Receiver::Func
     }
 }
 
-void PylontechRS485Receiver::get_pack_count(const PylontechRS485Receiver::Function function, uint8_t module, uint8_t InfoCommand)
+bool PylontechRS485Receiver::get_pack_count(const PylontechRS485Receiver::Function function, uint8_t module, uint8_t InfoCommand)
 {
     if (Battery._verboseLogging) MessageOutput.printf("%s::%s %s Module %d InfoCommand %02X\r\n", TAG, __FUNCTION__,
         _Function_[function], module, InfoCommand==0?0:InfoCommand==1?module:0xFF);
@@ -331,7 +331,7 @@ void PylontechRS485Receiver::get_pack_count(const PylontechRS485Receiver::Functi
         send_cmd(module, Command::GetPackCount, InfoCommand);
         yield();
         if (function == PylontechRS485Receiver::Function::REQUEST)
-            return;
+            return true;
         else {
             vTaskDelay(100);
             // and fall through to get the data from the battery
@@ -341,7 +341,7 @@ void PylontechRS485Receiver::get_pack_count(const PylontechRS485Receiver::Functi
     format_t* f = read_frame();
     if (f == NULL) {
         errorBatteryNotResponding();
-        return;
+        return false;
     }
 
     _stats->_number_of_packs = f->info[0];
@@ -349,6 +349,8 @@ void PylontechRS485Receiver::get_pack_count(const PylontechRS485Receiver::Functi
     if (_stats->_number_of_packs > Configuration.get().Battery.numberOfBatteries) _stats->_number_of_packs = Configuration.get().Battery.numberOfBatteries;
 
     if (Battery._verboseLogging) MessageOutput.printf("%s::%s Number of Battery Packs %u\r\n", TAG, __FUNCTION__, _stats->_number_of_packs);
+
+    return true;
 }
 
 void PylontechRS485Receiver::get_manufacturer_info(const PylontechRS485Receiver::Function function, uint8_t module)
@@ -862,8 +864,8 @@ void PylontechRS485Receiver::get_module_serial_number(const PylontechRS485Receiv
 
     // INFO = DATAI
     uint8_t CommandValue = f->info[0];
-    memcpy(ModuleSerialNumber.moduleSerialNumber, &(f->info[1]), 16);
     ModuleSerialNumber.moduleSerialNumber[16] = 0;
+    strncpy(ModuleSerialNumber.moduleSerialNumber, (const char*)&(f->info[1]), sizeof(ModuleSerialNumber.moduleSerialNumber)-1);
 
     if (Battery._verboseLogging)
         MessageOutput.printf("%s CommandValue %02X, S/N '%s'\r\n", TAG, CommandValue, ModuleSerialNumber.moduleSerialNumber);
@@ -912,9 +914,7 @@ uint16_t PylontechRS485Receiver::get_frame_checksum(char* frame)
     sum = ~sum;
     sum %= 0x10000;
     sum += 1;
-#ifdef PYLONTECH_RS485_DEBUG_ENABLED
-    MessageOutput.printf("%s checksum=%04X\r\n", TAG, sum);
-#endif
+
     return sum;
 }
 
@@ -993,6 +993,14 @@ size_t PylontechRS485Receiver::readline(void)
 
             start = true;
 
+            static int _receivedFrameSize = 128;
+            if ( ((idx % 32) == 0) && (idx >= _receivedFrameSize) && (_receivedFrameSize < 256)) {
+                char *prev;
+                _received_frame = reinterpret_cast<char*>(realloc(prev=_received_frame, _receivedFrameSize+32));
+                _receivedFrameSize += 32;
+                MessageOutput.printf("%s %s realloc location: %p. Size: %d bytes.\r\n", TAG,
+                        prev != _received_frame?"New":"Old", (void*)_received_frame, _receivedFrameSize);
+            }
             _received_frame[idx++] = c;
 
             if (c == 0x0D) { // end of line ?
@@ -1000,7 +1008,7 @@ size_t PylontechRS485Receiver::readline(void)
                 break;
             }
 
-            if (idx > 511) {
+            if (idx > 255) {
                 MessageOutput.printf("%s RS485 buffer overflow\r\n", TAG);
                 break;
             }
@@ -1015,20 +1023,16 @@ uint32_t PylontechRS485Receiver::hex2binary(char* s, int len)
 {
     uint32_t b = 0;
 
-    if (len == 0)
-        return 0;
+    if (len == 0) return 0;
 
     do {
-        if (*s >= '0' && *s <= '9')
-            b |= *s - '0';
-        else if (*s >= 'A' && *s <= 'F')
-            b |= *s - 'A' + 10;
-        else if (*s >= 'a' && *s <= 'f')
-            b |= *s - 'a' + 10;
-        if (len > 1)
-            b <<= 4;
+        if (     *s >= '0' && *s <= '9') b |= *s - '0';
+        else if (*s >= 'A' && *s <= 'F') b |= *s - 'A' + 10;
+        else if (*s >= 'a' && *s <= 'f') b |= *s - 'a' + 10;
+        if (len > 1) b <<= 4;
         s++;
     } while (--len);
+
     return b;
 }
 
@@ -1037,29 +1041,25 @@ char* PylontechRS485Receiver::_decode_hw_frame(size_t length)
 #ifdef PYLONTECH_RS485_DEBUG_ENABLED
     MessageOutput.printf("%s _received_frame '%s' length=%d\r\n", TAG, _received_frame, length);
 #endif
-    if (length < 12)
-        return NULL;
+    if (length < 12) return NULL;
 
     char *frame_data = &_received_frame[1]; // remove SOI 0x7E
     _received_frame[length - 1] = 0; // remove EOI 0x0D
     length-=2;
-#ifdef PYLONTECH_RS485_DEBUG_ENABLED
-    MessageOutput.printf("%s frame_data '%s' length=%d\r\n", TAG, frame_data, length);
-#endif
 
-#ifdef PYLONTECH_RS485_DEBUG_ENABLED
-    uint16_t frame_chksum;
-    frame_chksum = strtol(&frame_data[length - 4], NULL, 16);
-    MessageOutput.printf("%s send frame_chksum=%04X\r\n", TAG, frame_chksum);
-#endif
-
+    uint16_t read_chksum = strtol(&frame_data[length - 4], NULL, 16);
     frame_data[length - 4] = 0; // remove frame checksum
     length-=4;
-#ifdef PYLONTECH_RS485_DEBUG_ENABLED
-    MessageOutput.printf("%s frame_data '%s' length=%d\r\n", TAG, frame_data, length);
-#endif
-    get_frame_checksum(frame_data);
-    //    assert(get_frame_checksum(frame_data) == frame_chksum);
+
+    uint16_t computed_chksum = get_frame_checksum(frame_data);
+
+    if (Battery._verboseLogging) {
+        MessageOutput.printf("%s frame_data '%s' length=%d\r\n", TAG, frame_data, length);
+        MessageOutput.printf("%s frame_chksum read=%04X, computed=%04X\r\n", TAG, read_chksum, computed_chksum);
+    }
+
+    // frame checksum not correct, discard complete frame
+    if (read_chksum != computed_chksum) return NULL;
 
     return frame_data;
 }
@@ -1077,7 +1077,6 @@ format_t* PylontechRS485Receiver::_decode_frame(char* frame)
     if (Battery._verboseLogging)
         MessageOutput.printf("%s ver: %02X, adr: %02X, cid1: %02X, cid2: %02X, infolength: %d info:\r\n", TAG, f->ver, f->adr, f->cid1, f->cid2, (f->infolength) & 0xFFF);
 
-    // f->info = (uint8_t*)realloc(f.info, f.infolength & 0xfff);
     for (int idx = 12, pos = 0; idx < length; idx += 2, pos++) {
         f->info[pos] = (uint8_t)hex2binary(&frame[idx], 2);
         if (Battery._verboseLogging) {
@@ -1086,8 +1085,7 @@ format_t* PylontechRS485Receiver::_decode_frame(char* frame)
                 MessageOutput.println();
         }
     }
-    if (Battery._verboseLogging)
-        MessageOutput.println();
+    if (Battery._verboseLogging) MessageOutput.println();
 
     return f;
 }
@@ -1096,15 +1094,12 @@ format_t* PylontechRS485Receiver::read_frame(void)
 {
     size_t length;
 
-    if (!(length=readline()))
-        return NULL; // nothing read, timeout
+    if (!(length=readline())) return NULL; // nothing read, timeout
 
     char* frame = _decode_hw_frame(length);
-    if (frame == NULL)
-        return NULL;
+    if (frame == NULL) return NULL;
 
-    format_t* parsed = _decode_frame(frame);
-    return parsed;
+    return _decode_frame(frame);
 }
 
 #endif
