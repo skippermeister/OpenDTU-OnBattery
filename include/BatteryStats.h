@@ -144,7 +144,7 @@ typedef struct {
     uint8_t cellVoltages[15];
     uint8_t numberOfTemperatures; // Int8ub
     uint8_t BMSTemperature;
-    uint8_t Temperatures[5];
+    uint8_t Temperatures[6];
     uint8_t chargeCurrent;
     uint8_t moduleVoltage;
     uint8_t dischargeCurrent;

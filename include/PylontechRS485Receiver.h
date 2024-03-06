@@ -64,6 +64,11 @@ class PylontechRS485Receiver : public BatteryProvider {
         GetSystemParameter = 0x47,
         GetProtocolVersion = 0x4F,
         GetManufacturerInfo = 0x51,
+        GetSystemBasicInformation = 0x60,    // Protocoll Document V3.5
+        GetSystemAnalogData = 0x61,          // Protocoll Document V3.5
+        GetSystemAlarmInfo = 0x62,           // Protocoll Document V3.5
+        GetSystemChargeDischargeManagementInfo = 0x63, // Protocoll Document V3.5
+        SystemShutdown = 0x64,  // Protocoll Document V3.5
         GetPackCount = 0x90,
         GetChargeDischargeManagementInfo = 0x92,
         GetSerialNumber = 0x93,
@@ -98,24 +103,24 @@ public:
     std::shared_ptr<BatteryStats> getStats() const final { return _stats; }
 
 private:
-    void get_protocol_version(const PylontechRS485Receiver::Function function, uint8_t module = 2);
-    void get_manufacturer_info(const PylontechRS485Receiver::Function function, uint8_t module = 2);
-    void get_barcode(const PylontechRS485Receiver::Function function, uint8_t module = 2);
-    void get_pack_count(const PylontechRS485Receiver::Function function, uint8_t module = 2);
-    void get_version_info(const PylontechRS485Receiver::Function function, uint8_t module = 2);
-    void get_firmware_info(const PylontechRS485Receiver::Function function, uint8_t module = 2);
-    void get_analog_value(const PylontechRS485Receiver::Function function, uint8_t module = 2);
-    void get_system_parameters(const PylontechRS485Receiver::Function function, uint8_t module = 2);
-    void get_alarm_info(const PylontechRS485Receiver::Function function, uint8_t module = 2);
-    void get_charge_discharge_management_info(const PylontechRS485Receiver::Function function, uint8_t module = 2);
-    void get_module_serial_number(const PylontechRS485Receiver::Function function, uint8_t module = 2);
+    void get_protocol_version(const PylontechRS485Receiver::Function function, uint8_t module);
+    void get_manufacturer_info(const PylontechRS485Receiver::Function function, uint8_t module);
+    void get_barcode(const PylontechRS485Receiver::Function function, uint8_t module);
+    void get_pack_count(const PylontechRS485Receiver::Function function, uint8_t module, uint8_t InfoCommand = 1);
+    void get_version_info(const PylontechRS485Receiver::Function function, uint8_t module);
+    void get_firmware_info(const PylontechRS485Receiver::Function function, uint8_t module);
+    void get_analog_value(const PylontechRS485Receiver::Function function, uint8_t module, uint8_t InfoCommand = 1);
+    void get_system_parameters(const PylontechRS485Receiver::Function function, uint8_t module);
+    void get_alarm_info(const PylontechRS485Receiver::Function function, uint8_t module, uint8_t InfoCommand = 1);
+    void get_charge_discharge_management_info(const PylontechRS485Receiver::Function function, uint8_t module);
+    void get_module_serial_number(const PylontechRS485Receiver::Function function, uint8_t module);
     void setting_charge_discharge_management_info(const PylontechRS485Receiver::Function function, uint8_t module = 2, const char* info = NULL);
-    void turn_off_module(const PylontechRS485Receiver::Function function, uint8_t module = 2);
+    void turn_off_module(const PylontechRS485Receiver::Function function, uint8_t module);
 
     uint16_t get_frame_checksum(char* frame);
     uint16_t get_info_length(const char* info);
     void _encode_cmd(char *frame, uint8_t address, uint8_t cid2, const char* info);
-    void send_cmd(uint8_t address, uint8_t cmd, boolean Pack = true);
+    void send_cmd(uint8_t address, uint8_t cmnd, uint8_t InfoCommand = 1);
     size_t readline(void);
     uint32_t hex2binary(char* s, int len);
     char* _decode_hw_frame(size_t length);

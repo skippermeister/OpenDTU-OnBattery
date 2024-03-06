@@ -185,15 +185,8 @@ void PylontechCanBatteryStats::getLiveViewData(JsonVariant& root) const
 
 void PylontechRS485BatteryStats::generatePackCommonJsonResponse(JsonObject& packObject, const uint8_t module) const
 {
-//    uint8_t module = 0;
-
-    static uint8_t j=0;
-
-//    packObject["moduleNumber"] = 2+j;
     packObject["moduleNumber"] = Pack[module].numberOfModule;
     packObject["moduleName"] = _number_of_packs == 1 ? "Single": (module == 0?"Master":String("Slave-")+String(module));
-//    packObject["moduleName"] = _number_of_packs == 0 ? "Single": (module+j == 0?"Master":String("Slave-")+String(j));
-    if (++j>=2) j=0;
 
     packObject["device_name"] = Pack[module].deviceName;
     packObject["moduleSerialNumber"] = (char*)Pack[module].ModuleSerialNumber.moduleSerialNumber;
@@ -749,7 +742,6 @@ void PylontechRS485BatteryStats::mqttPublish() /*const*/
         MQTTpublishPack(module, cellMaxVoltage, 3);
         MQTTpublishPack(module, cellDiffVoltage, 0);
 
-        if (Pack[module].numberOfCells > 15) Pack[module].numberOfCells = 15;
         _last.CellVoltages = reinterpret_cast<float*>(realloc(_last.CellVoltages, Pack[module].numberOfCells * sizeof(float)));
         for (int i = 0; i < Pack[module].numberOfCells; i++) {
             if (!cBattery.UpdatesOnly || Pack[module].CellVoltages[i] != _last.CellVoltages[i]) {
@@ -762,7 +754,6 @@ void PylontechRS485BatteryStats::mqttPublish() /*const*/
         MQTTpublishPack(0, averageBMSTemperature, 1);
 
         subtopic = moduleTopic + "temperatures/group";
-        if (Pack[module].numberOfTemperatures > 5) Pack[module].numberOfTemperatures = 5;
         _last.GroupedCellsTemperatures = reinterpret_cast<float*>(realloc(_last.GroupedCellsTemperatures, (Pack[module].numberOfTemperatures - 1) * sizeof(float)));
         for (int i = 0; i < Pack[module].numberOfTemperatures - 1; i++) {
             if (!cBattery.UpdatesOnly || Pack[0].GroupedCellsTemperatures[i] != _last.GroupedCellsTemperatures[i]) {
