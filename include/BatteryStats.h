@@ -366,6 +366,7 @@ private:
         float capacity;
         float remainingCapacity;
         float SoC;
+        uint16_t cycles;
         float cellMinVoltage;
         float cellMaxVoltage;
         float cellDiffVoltage;
@@ -383,7 +384,6 @@ private:
 
     struct Pack_t {
         String deviceName = "";
-
         String softwareVersion;
         String manufacturerVersion;
         String mainLineVersion;
@@ -429,38 +429,55 @@ private:
 //    float current;
 
     struct {
-        String softwareVersion;
-        String deviceName;
-
         float chargeVoltage;
-        // float voltage; // total voltage of the battery pack
-        // total current into (positive) or from (negative) the battery, i.e., the charging current
         float current;
-
-        SystemParameters_t SystemParameters;
-
-        Alarm_t Alarm;
-        Warning_t Warning;
-
         float power;
-        float ower;
         float capacity;
         float remainingCapacity;
         uint16_t cycles;
 
-        uint8_t numberOfModule;
         float cellMinVoltage;
         float cellMaxVoltage;
         float cellDiffVoltage;
-        uint8_t numberOfCells;
-        float* CellVoltages;
-        uint8_t numberOfTemperatures;
+
         float averageBMSTemperature;
-        float* GroupedCellsTemperatures;
         float averageCellTemperature;
+        float* CellVoltages;
+        float* GroupedCellsTemperatures;
 
         ChargeDischargeManagementInfo_t ChargeDischargeManagementInfo;
-    } _last;
+        SystemParameters_t SystemParameters;
+
+        Alarm_t Alarm;
+        Warning_t Warning;
+    } _lastTotals;
+
+    struct {
+        String softwareVersion;
+        String deviceName;
+
+        float chargeVoltage;
+        float current;
+        float power;
+        float capacity;
+        float remainingCapacity;
+        uint16_t cycles;
+
+        float cellMinVoltage;
+        float cellMaxVoltage;
+        float cellDiffVoltage;
+        float* CellVoltages;
+
+        float averageBMSTemperature;
+        float averageCellTemperature;
+        float* GroupedCellsTemperatures;
+
+        ChargeDischargeManagementInfo_t ChargeDischargeManagementInfo;
+        SystemParameters_t SystemParameters;
+
+        Alarm_t Alarm;
+        Warning_t Warning;
+    } _lastPack[MAX_BATTERIES];
 
 //    ChargeDischargeManagementInfo_t ChargeDischargeManagementInfo;
 //    ModuleSerialNumber_t ModuleSerialNumber;

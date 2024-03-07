@@ -47,7 +47,7 @@ bool PylontechRS485Receiver::init()
              * Type 2: if the GPIO is negativ (-1), we assume that we have a RS485 TTL Modul with a self controlled DE/RE circuit.
              *         In this case we only need a TX and RX pin.
              */
-            MessageOutput.printf(", rts = %d. ", pin.battery_rts);
+            MessageOutput.printf(", rts = %d", pin.battery_rts);
             RS485.setPins(pin.battery_rx, pin.battery_tx, UART_PIN_NO_CHANGE, pin.battery_rts);
         }
         ESP_ERROR_CHECK(uart_set_mode(2, UART_MODE_RS485_HALF_DUPLEX));
@@ -62,7 +62,7 @@ bool PylontechRS485Receiver::init()
 
         _received_frame = reinterpret_cast<char*>(malloc(128)); // receiver buffer with initially 128 bytes, will be expanded on request up to 256
 
-        MessageOutput.println("initialized successfully.");
+        MessageOutput.println(", initialized successfully.");
 
         _stats->_initialized = true;
     }
@@ -117,6 +117,8 @@ bool PylontechRS485Receiver::init()
         get_alarm_info(REQUEST_AND_GET, i);
         vTaskDelay(500);
     }
+    _lastCmnd = 0xFF;
+
     Battery._verboseLogging = temp;
 
     _isInstalled = true;
@@ -168,14 +170,38 @@ void PylontechRS485Receiver::loop()
             get_system_parameters(PylontechRS485Receiver::Function::GET, module);
             break;
         case 0xff:
-            while (RS485.available())
-                Serial.printf("%02X ", RS485.read());
-            break;
+            // Filtering out interference on the receiving line.
+            // This shouldn't happen in normal operation, but it seems like some RS485 adapters/chips are very sensitive or out of specification.
+            // In order not to block the scheduler too much, the filter will periodically read the input buffer for a maximum of 50ms per loop
+            static uint16_t spikes=0;
+            while (RS485.available() && (millis() - t_start) < 50) {
+                if (RS485.peek() != 0x7E) {
+                    // we consume all incomming bytes which are not 0x7E (start sequence of a frame)
+                    spikes++;
+                    RS485.read();
+                } else {
+                    // this should never happen.
+                    // It would mean that we had issued a command to the battery that was not recognized and processed in the parser above.
+                    bool temp = Battery._verboseLogging;
+                    Battery._verboseLogging = true; // switch on verbose logging, to see what happen
+                    read_frame();
+                    Battery._verboseLogging = temp; // switch verbose logging to previous setting.
+                    break;
+                }
+            }
+            //
+            if (spikes > 100) {
+                MessageOutput.printf("%s Warning found %d signal interferences\r\n", TAG, spikes);
+                spikes = 0;
+            }
         }
-        MessageOutput.printf("%s response time %lu ms, Cmnd: %02X\r\n", TAG, millis() - t_start, _lastCmnd);
-        _lastCmnd = 0xFF;
+        if (_lastCmnd != 0xFF) {
+            MessageOutput.printf("%s response time %lu ms, Cmnd: %02X\r\n", TAG, millis() - t_start, _lastCmnd);
 
-        _stats->setLastUpdate(millis());
+            // indicate that we have updated some battery values
+            _stats->setLastUpdate(millis());
+        }
+        _lastCmnd = 0xFF;
     }
 
     if (!_lastBatteryCheck.occured()) { return; }
@@ -519,6 +545,7 @@ void PylontechRS485Receiver::get_analog_value(const PylontechRS485Receiver::Func
     totals.maxCellTemperature = -10000.0;
     totals.cellMinVoltage = 10000.0;
     totals.cellMaxVoltage = -10000.0;
+    totals.cycles = 0;
 
     // build total values over the battery pack
     for (uint8_t i=0; i<_stats->_number_of_packs; i++) {
@@ -527,18 +554,18 @@ void PylontechRS485Receiver::get_analog_value(const PylontechRS485Receiver::Func
         totals.current += _stats->Pack[i].current;
         totals.capacity += _stats->Pack[i].capacity;
         totals.remainingCapacity += _stats->Pack[i].remainingCapacity;
+        totals.cycles = max(totals.cycles, _stats->Pack[i].cycles);
 
         totals.cellMinVoltage = min(totals.cellMinVoltage, _stats->Pack[i].cellMinVoltage);
         totals.cellMaxVoltage = max(totals.cellMaxVoltage, _stats->Pack[i].cellMaxVoltage);
 
-        totals.averageBMSTemperature += _stats->Pack[i].averageBMSTemperature;
-        totals.averageCellTemperature += _stats->Pack[i].averageCellTemperature;
+        totals.averageBMSTemperature = max(totals.averageBMSTemperature, _stats->Pack[i].averageBMSTemperature);
+        totals.averageCellTemperature = max(totals.averageCellTemperature, _stats->Pack[i].averageCellTemperature);
         totals.minCellTemperature = min(totals.minCellTemperature, _stats->Pack[i].minCellTemperature);
         totals.maxCellTemperature = max(totals.maxCellTemperature, _stats->Pack[i].maxCellTemperature);
     }
     _stats->setVoltage(totals.chargeVoltage, millis());
     totals.cellDiffVoltage = (totals.cellMaxVoltage - totals.cellMinVoltage) * 1000.0; // in mV
-    totals.averageCellTemperature /= _stats->_number_of_packs;
     totals.SoC = 100.0 * totals.remainingCapacity / totals.capacity;
 
     _stats->setSoC(static_cast<uint8_t>((totals.SoC) + 0.5), 1/*precision*/, millis());

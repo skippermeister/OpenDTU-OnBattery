@@ -231,13 +231,17 @@ void PylontechRS485BatteryStats::getLiveViewData(JsonVariant& root) const
     // values go into the "Status" card of the web application
     addLiveViewValue(root, "capacity", totals.capacity, "Ah", 3);
     addLiveViewValue(root, "remainingCapacity", totals.remainingCapacity, "Ah", 3);
+
+    addLiveViewValue(root, "cycles", totals.cycles, "", 0);
+
     // angeforderte Ladespannung
     addLiveViewValue(root, "chargeVoltage", totals.chargeVoltage, "V", 3);
 
     addLiveViewValue(root, "current", totals.current, "A", 1);
     addLiveViewValue(root, "power", totals.power, "kW", 3);
     addLiveViewValue(root, "BMSTemperature", totals.averageBMSTemperature, "°C", 1);
-    addLiveViewValue(root, "CellTemperature", totals.averageCellTemperature, "°C", 1);
+//    addLiveViewValue(root, "CellTemperature", totals.averageCellTemperature, "°C", 1);
+    addLiveViewValue(root, "CellTemperature", totals.maxCellTemperature, "°C", 1);
 
     // Empfohlene Lade-/Enladespannung
     addLiveViewValue(root, "chargeVoltageLimit", totals.ChargeDischargeManagementInfo.chargeVoltageLimit, "V", 3);
@@ -542,38 +546,38 @@ void BatteryStats::mqttPublish()  /* const */
     if (!cBattery.UpdatesOnly || value != _last.value) \
         MqttSettings.publish(subtopic + #value, String(_last.value = value, digits));
 #define MQTTpublishTotals(value, digits)                     \
-    if (!cBattery.UpdatesOnly || totals.value != _last.value) \
-        MqttSettings.publish(subtopic + #value, String(_last.value = totals.value, digits));
+    if (!cBattery.UpdatesOnly || totals.value != _lastTotals.value) \
+        MqttSettings.publish(subtopic + #value, String(_lastTotals.value = totals.value, digits));
 #define MQTTpublishPack(module, value, digits)                     \
-    if (!cBattery.UpdatesOnly || Pack[module].value != _last.value) \
-        MqttSettings.publish(subtopic + #value, String(_last.value = Pack[module].value, digits));
+    if (!cBattery.UpdatesOnly || Pack[module].value != _lastPack[module].value) \
+        MqttSettings.publish(subtopic + #value, String(_lastPack[module].value = Pack[module].value, digits));
 #define MQTTpublishStruct(str, value, digits)                  \
     if (!cBattery.UpdatesOnly || str.value != _last.str.value) \
         MqttSettings.publish(subtopic + #value, String(_last.str.value = str.value, digits));
 #define MQTTpublishTotalsStruct(str, value, digits)                  \
-    if (!cBattery.UpdatesOnly || totals.str.value != _last.str.value) \
-        MqttSettings.publish(subtopic + #value, String(_last.str.value = totals.str.value, digits));
+    if (!cBattery.UpdatesOnly || totals.str.value != _lastTotals.str.value) \
+        MqttSettings.publish(subtopic + #value, String(_lastTotals.str.value = totals.str.value, digits));
 #define MQTTpublishPackStruct(module, str, value, digits)                  \
-    if (!cBattery.UpdatesOnly || Pack[module].str.value != _last.str.value) \
-        MqttSettings.publish(subtopic + #value, String(_last.str.value = Pack[module].str.value, digits));
+    if (!cBattery.UpdatesOnly || Pack[module].str.value != _lastPack[module].str.value) \
+        MqttSettings.publish(subtopic + #value, String(_lastPack[module].str.value = Pack[module].str.value, digits));
 #define MQTTpublishInt(value)                          \
     if (!cBattery.UpdatesOnly || value != _last.value) \
         MqttSettings.publish(subtopic + #value, String(_last.value = value));
 #define MQTTpublishTotalsInt(value)                          \
-    if (!cBattery.UpdatesOnly || totals.value != _last.value) \
-        MqttSettings.publish(subtopic + #value, String(_last.value = totals.value));
+    if (!cBattery.UpdatesOnly || totals.value != _lastTotals.value) \
+        MqttSettings.publish(subtopic + #value, String(_lastTotals.value = totals.value));
 #define MQTTpublishPackInt(module, value)                          \
-    if (!cBattery.UpdatesOnly || Pack[module].value != _last.value) \
-        MqttSettings.publish(subtopic + #value, String(_last.value = Pack[module].value));
+    if (!cBattery.UpdatesOnly || Pack[module].value != _lastPack[module].value) \
+        MqttSettings.publish(subtopic + #value, String(_lastPack[module].value = Pack[module].value));
 #define MQTTpublishIntStruct(str, value)                       \
     if (!cBattery.UpdatesOnly || str.value != _last.str.value) \
         MqttSettings.publish(subtopic + #value, String(_last.str.value = str.value));
 #define MQTTpublishTotalsIntStruct(str, value)                       \
-    if (!cBattery.UpdatesOnly || totals.str.value != _last.str.value) \
-        MqttSettings.publish(subtopic + #value, String(_last.str.value = totals.str.value));
+    if (!cBattery.UpdatesOnly || totals.str.value != _lastTotals.str.value) \
+        MqttSettings.publish(subtopic + #value, String(_lastTotals.str.value = totals.str.value));
 #define MQTTpublishPackIntStruct(module, str, value)                       \
-    if (!cBattery.UpdatesOnly || Pack[module].str.value != _last.str.value) \
-        MqttSettings.publish(subtopic + #value, String(_last.str.value = Pack[module].str.value));
+    if (!cBattery.UpdatesOnly || Pack[module].str.value != _lastPack[module].str.value) \
+        MqttSettings.publish(subtopic + #value, String(_lastPack[module].str.value = Pack[module].str.value));
 #define MQTTpublishHex(value, str)                               \
     if (!cBattery.UpdatesOnly || str##value != _last.str##value) \
         MqttSettings.publish(subtopic + #value, String(_last.str##value = str##value, HEX));
@@ -581,8 +585,8 @@ void BatteryStats::mqttPublish()  /* const */
     if (!cBattery.UpdatesOnly || value != _last.value) \
         MqttSettings.publish(subtopic + #value, _last.value = value);
 #define MQTTpublishPackString(module, value)                       \
-    if (!cBattery.UpdatesOnly || Pack[module].value != _last.value) \
-        MqttSettings.publish(subtopic + #value, _last.value = Pack[module].value);
+    if (!cBattery.UpdatesOnly || Pack[module].value != _lastPack[module].value) \
+        MqttSettings.publish(subtopic + #value, _lastPack[module].value = Pack[module].value);
 
 #ifdef USE_PYLONTECH_CAN_RECEIVER
 void PylontechCanBatteryStats::mqttPublish() const
@@ -641,6 +645,7 @@ void PylontechRS485BatteryStats::mqttPublish() /*const*/
     MQTTpublishTotals(power, 3);
     MQTTpublishTotals(remainingCapacity, 3);
     MQTTpublishTotals(capacity, 3);
+    MQTTpublishTotalsInt(cycles);
 
     subtopic = topic + "settings/";
     MQTTpublishTotals(chargeVoltage, 2);
@@ -686,7 +691,7 @@ void PylontechRS485BatteryStats::mqttPublish() /*const*/
 
     subtopic = topic + "temperatures/";
     MQTTpublishTotals(averageBMSTemperature, 1);
-/*
+
     for (uint8_t module=0; module < _number_of_packs; module++) {
         const String moduleTopic = topic + String(module) + "/";
         subtopic = moduleTopic;
@@ -740,11 +745,11 @@ void PylontechRS485BatteryStats::mqttPublish() /*const*/
         MQTTpublishPack(module, cellMaxVoltage, 3);
         MQTTpublishPack(module, cellDiffVoltage, 0);
 
-        _last.CellVoltages = reinterpret_cast<float*>(realloc(_last.CellVoltages, Pack[module].numberOfCells * sizeof(float)));
+        _lastPack[module].CellVoltages = reinterpret_cast<float*>(realloc(_lastPack[module].CellVoltages, Pack[module].numberOfCells * sizeof(float)));
         for (int i = 0; i < Pack[module].numberOfCells; i++) {
-            if (!cBattery.UpdatesOnly || Pack[module].CellVoltages[i] != _last.CellVoltages[i]) {
+            if (!cBattery.UpdatesOnly || Pack[module].CellVoltages[i] != _lastPack[module].CellVoltages[i]) {
                 MqttSettings.publish(subtopic + "cell" + String(i + 1), String(Pack[module].CellVoltages[i], 3));
-                _last.CellVoltages[i] = Pack[module].CellVoltages[i];
+                _lastPack[module].CellVoltages[i] = Pack[module].CellVoltages[i];
             }
         }
 
@@ -752,15 +757,15 @@ void PylontechRS485BatteryStats::mqttPublish() /*const*/
         MQTTpublishPack(0, averageBMSTemperature, 1);
 
         subtopic = moduleTopic + "temperatures/group";
-        _last.GroupedCellsTemperatures = reinterpret_cast<float*>(realloc(_last.GroupedCellsTemperatures, (Pack[module].numberOfTemperatures - 1) * sizeof(float)));
+        _lastPack[module].GroupedCellsTemperatures = reinterpret_cast<float*>(realloc(_lastPack[module].GroupedCellsTemperatures, (Pack[module].numberOfTemperatures - 1) * sizeof(float)));
         for (int i = 0; i < Pack[module].numberOfTemperatures - 1; i++) {
-            if (!cBattery.UpdatesOnly || Pack[0].GroupedCellsTemperatures[i] != _last.GroupedCellsTemperatures[i]) {
+            if (!cBattery.UpdatesOnly || Pack[module].GroupedCellsTemperatures[i] != _lastPack[module].GroupedCellsTemperatures[i]) {
                 MqttSettings.publish(subtopic + String(i + 1), String(Pack[module].GroupedCellsTemperatures[i], 1));
-                _last.GroupedCellsTemperatures[i] = Pack[module].GroupedCellsTemperatures[i];
+                _lastPack[module].GroupedCellsTemperatures[i] = Pack[module].GroupedCellsTemperatures[i];
             }
         }
     }
-*/
+
 }
 #endif
 
