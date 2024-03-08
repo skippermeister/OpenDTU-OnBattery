@@ -479,7 +479,7 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer) {
                         _stats->current = -to_Amp_1(&it[8]); // in Amp 0.1
                         _stats->power = _stats->current * _stats->getVoltage() / 1000.0; // in kW
                         _stats->batteryLevel = ToFloat(&it[10]) / 10.0;
-                        _stats->setSoC(static_cast<uint8_t>((100.0 * _stats->remainingCapacity / _stats->ratedCapacity) + 0.5), 1/*precision*/, millis());
+                        _stats->setSoC((100.0 * _stats->remainingCapacity) / _stats->ratedCapacity, 1/*precision*/, millis());
                         _stats->chargeImmediately2 = _stats->batteryLevel < max(_stats->WarningValues.minSoc, static_cast<float>(9.0));
                         _stats->chargeImmediately1 = _stats->batteryLevel < max(_stats->AlarmValues.minSoc, static_cast<float>(5.0));
                         if (Battery._verboseLogging)  {

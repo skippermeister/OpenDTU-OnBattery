@@ -519,8 +519,8 @@ void PylontechRS485Receiver::get_analog_value(const PylontechRS485Receiver::Func
     }
     Pack.averageCellTemperature /= (Pack.numberOfTemperatures - 1);
     Pack.current = to_Amp(info);
-    Pack.chargeVoltage = to_Volt(info);
-    Pack.power = _stats->totals.current * Pack.chargeVoltage / 1000.0; // kW
+    Pack.moduleVoltage = to_Volt(info);
+    Pack.power = _stats->totals.current * Pack.moduleVoltage / 1000.0; // kW
     Pack.remainingCapacity = DivideUint16By1000(info); // DivideBy1000(Int16ub),
     uint8_t _UserDefinedItems = *info++;
     Pack.capacity = DivideUint16By1000(info);
@@ -529,12 +529,12 @@ void PylontechRS485Receiver::get_analog_value(const PylontechRS485Receiver::Func
         Pack.remainingCapacity = DivideUint24By1000(info);
         Pack.capacity = DivideUint24By1000(info);
     }
-    Pack.SoC = (100.0 * Pack.remainingCapacity / Pack.capacity) + 0.5;
+    Pack.SoC = (100.0 * Pack.remainingCapacity) / Pack.capacity;
 
     // point to battery totals structure of selected battery
     PylontechRS485BatteryStats::Totals_t &totals = _stats->totals;
 
-    totals.chargeVoltage = -99999.0;
+    totals.moduleVoltage = -99999.0;
     totals.power = 0.0f;
     totals.current = 0.0f;
     totals.capacity = 0.0f;
@@ -549,7 +549,7 @@ void PylontechRS485Receiver::get_analog_value(const PylontechRS485Receiver::Func
 
     // build total values over the battery pack
     for (uint8_t i=0; i<_stats->_number_of_packs; i++) {
-        totals.chargeVoltage = max(totals.chargeVoltage, _stats->Pack[i].chargeVoltage);
+        totals.moduleVoltage = max(totals.moduleVoltage, _stats->Pack[i].moduleVoltage);
         totals.power += _stats->Pack[i].power;
         totals.current += _stats->Pack[i].current;
         totals.capacity += _stats->Pack[i].capacity;
@@ -564,11 +564,11 @@ void PylontechRS485Receiver::get_analog_value(const PylontechRS485Receiver::Func
         totals.minCellTemperature = min(totals.minCellTemperature, _stats->Pack[i].minCellTemperature);
         totals.maxCellTemperature = max(totals.maxCellTemperature, _stats->Pack[i].maxCellTemperature);
     }
-    _stats->setVoltage(totals.chargeVoltage, millis());
+    _stats->setVoltage(totals.moduleVoltage, millis());
     totals.cellDiffVoltage = (totals.cellMaxVoltage - totals.cellMinVoltage) * 1000.0; // in mV
-    totals.SoC = 100.0 * totals.remainingCapacity / totals.capacity;
+    totals.SoC = (100.0 * totals.remainingCapacity) / totals.capacity;
 
-    _stats->setSoC(static_cast<uint8_t>((totals.SoC) + 0.5), 1/*precision*/, millis());
+    _stats->setSoC(totals.SoC, 1/*precision*/, millis());
 
     if (Battery._verboseLogging) {
         MessageOutput.printf("%s AverageBMSTemperature: %.1f\r\n", TAG, Pack.averageBMSTemperature);

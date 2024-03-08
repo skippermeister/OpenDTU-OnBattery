@@ -49,7 +49,7 @@ class BatteryStats {
         uint32_t getAgeSeconds() const { return (millis() - _lastUpdate) / 1000; }
         bool updateAvailable(uint32_t since) const { return _lastUpdate > since; }
 
-        uint8_t getSoC() const { return _SoC; }
+        float getSoC() const { return _SoC; }
         uint32_t getSoCAgeSeconds() const { return (millis() - _lastUpdateSoC) / 1000; }
 
         // convert stats to JSON for web application live view
@@ -110,7 +110,7 @@ class BatteryStats {
     private:
         uint32_t _lastMqttPublish = 0;
 
-        uint8_t _SoC = 0;
+        float _SoC = 0.0;
         uint8_t _socPrecision = 0; // decimal places
         uint32_t _lastUpdateSoC = 0;
         float _voltage = 0.0; // total battery pack voltage
@@ -360,7 +360,7 @@ private:
     uint8_t _number_of_packs = 0;
 
     struct Totals_t {
-        float chargeVoltage;
+        float moduleVoltage;
         float current;
         float power;
         float capacity;
@@ -388,7 +388,7 @@ private:
         String manufacturerVersion;
         String mainLineVersion;
 
-        float chargeVoltage;
+        float moduleVoltage;
         float current;
         float power;
         float capacity;
@@ -419,17 +419,9 @@ private:
     };
 
     Pack_t Pack[MAX_BATTERIES];
-/*
-    String softwareVersion;
-    String _manufacturerVersion;
-    String _mainLineVersion;
-*/
-//    float chargeVoltage;
-    // total current into (positive) or from (negative) the battery, i.e., the charging current
-//    float current;
 
     struct {
-        float chargeVoltage;
+        float moduleVoltage;
         float current;
         float power;
         float capacity;
@@ -456,7 +448,7 @@ private:
         String softwareVersion;
         String deviceName;
 
-        float chargeVoltage;
+        float moduleVoltage;
         float current;
         float power;
         float capacity;

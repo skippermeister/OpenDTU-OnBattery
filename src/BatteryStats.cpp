@@ -133,7 +133,7 @@ void BatteryStats::getLiveViewData(JsonVariant& root) const
     root["data_age"] = getAgeSeconds();
 
     addLiveViewValue(root, "SoC", _SoC, "%", _socPrecision);
-    addLiveViewValue(root, "voltage", _voltage, "V", 2);
+    addLiveViewValue(root, "voltage", _voltage, "V", 3);
 }
 
 #define ISSUE(token, value) addLiveView##token(root, #value, token.value > 0);
@@ -234,8 +234,8 @@ void PylontechRS485BatteryStats::getLiveViewData(JsonVariant& root) const
 
     addLiveViewValue(root, "cycles", totals.cycles, "", 0);
 
-    // angeforderte Ladespannung
-    addLiveViewValue(root, "chargeVoltage", totals.chargeVoltage, "V", 3);
+//    // angeforderte Ladespannung
+//    addLiveViewValue(root, "chargeVoltage", totals.chargeVoltage, "V", 3);
 
     addLiveViewValue(root, "current", totals.current, "A", 1);
     addLiveViewValue(root, "power", totals.power, "kW", 3);
@@ -648,7 +648,7 @@ void PylontechRS485BatteryStats::mqttPublish() /*const*/
     MQTTpublishTotalsInt(cycles);
 
     subtopic = topic + "settings/";
-    MQTTpublishTotals(chargeVoltage, 2);
+//    MQTTpublishTotals(chargeVoltage, 2);
     MQTTpublishTotalsStruct(ChargeDischargeManagementInfo, chargeCurrentLimit, 2)
     MQTTpublishTotalsStruct(ChargeDischargeManagementInfo, dischargeCurrentLimit, 2);
 
@@ -700,7 +700,7 @@ void PylontechRS485BatteryStats::mqttPublish() /*const*/
         MQTTpublishPackInt(module, cycles);
 
         String subtopic = moduleTopic + "settings/";
-        MQTTpublishPack(module, chargeVoltage, 2);
+//        MQTTpublishPack(module, chargeVoltage, 2);
         MQTTpublishPackStruct(module, ChargeDischargeManagementInfo, chargeCurrentLimit, 2)
         MQTTpublishPackStruct(module, ChargeDischargeManagementInfo, dischargeCurrentLimit, 2);
 
