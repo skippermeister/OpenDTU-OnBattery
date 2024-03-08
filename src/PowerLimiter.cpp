@@ -482,7 +482,7 @@ void PowerLimiterClass::loop()
     }
 
     if (_verbose_logging) {
-        MessageOutput.printf("%s%s: battery interface %s, SoC: %d %%, StartTH: %d %%, StopTH: %d %%, SoC age: %d s, ignore: %s\r\n", TAG, __FUNCTION__,
+        MessageOutput.printf("%s%s: battery interface %s, SoC: %.1f%%, StartTH: %d %%, StopTH: %d %%, SoC age: %d s, ignore: %s\r\n", TAG, __FUNCTION__,
             (Configuration.get().Battery.Enabled ? "enabled" : "disabled"),
             Battery.getStats()->getSoC(),
             cPL.BatterySocStartThreshold,
