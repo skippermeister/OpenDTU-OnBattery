@@ -198,7 +198,8 @@ void PylontechRS485BatteryStats::generatePackCommonJsonResponse(JsonObject& pack
     addLiveViewPackValue(packObject, "current", Pack[module].current, "A", 1);
     addLiveViewPackValue(packObject, "power", Pack[module].power, "kW", 3);
     addLiveViewPackValue(packObject, "BMSTemperature", Pack[module].averageBMSTemperature, "°C", 1);
-    addLiveViewPackValue(packObject, "CellTemperature", Pack[module].averageCellTemperature, "°C", 1);
+//    addLiveViewPackValue(packObject, "CellTemperature", Pack[module].averageCellTemperature, "°C", 1);
+    addLiveViewPackValue(packObject, "CellTemperature", Pack[module].maxCellTemperature, "°C", 1);
     addLiveViewPackValue(packObject, "chargeCurrentLimit", Pack[module].ChargeDischargeManagementInfo.chargeCurrentLimit, "A", 1);
     addLiveViewPackValue(packObject, "dischargeCurrentLimit", Pack[module].ChargeDischargeManagementInfo.dischargeCurrentLimit, "A", 1);
     addLiveViewPackValue(packObject, "maxChargeCurrentLimit", Pack[module].SystemParameters.chargeCurrentLimit, "A", 1);
