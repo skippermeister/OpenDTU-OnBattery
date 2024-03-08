@@ -847,7 +847,7 @@ void MeanWellCanClass::loop()
 
     if (_automaticCharge) {
         if (_verboseLogging)
-            MessageOutput.printf("%s automatic mode, it's %s, SOC: %d%%, %s%s%scharge%sabled, ChargeTemperatur is %svalid, %s is %sproducing, %s is %sproducing, Charger is %s", TAG,
+            MessageOutput.printf("%s automatic mode, it's %s, SOC: %.1f%%, %s%s%scharge%sabled, ChargeTemperatur is %svalid, %s is %sproducing, %s is %sproducing, Charger is %s", TAG,
                 SunPosition.isDayPeriod() ? "day" : "night",
                 Battery.getStats()->getSoC(),
                 Battery.getStats()->getAlarm().overVoltage ? "alarmOverVoltage, " : "",

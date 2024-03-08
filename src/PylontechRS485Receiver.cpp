@@ -578,7 +578,7 @@ void PylontechRS485Receiver::get_analog_value(const PylontechRS485Receiver::Func
         MessageOutput.printf("%s Current: %.1f, Voltage: %.3f\r\n", TAG, Pack.current, _stats->getVoltage());
         MessageOutput.printf("%s Capacity: %.3f, Remaining: %.3f\r\n", TAG, Pack.capacity, Pack.remainingCapacity);
         MessageOutput.printf("%s Power: %.3f kW\r\n", TAG, Pack.power);
-        MessageOutput.printf("%s State of Charge: %d%%, Cycles: %d\r\n", TAG, _stats->getSoC(), Pack.cycles);
+        MessageOutput.printf("%s State of Charge: %.1f%%, Cycles: %d\r\n", TAG, _stats->getSoC(), Pack.cycles);
     }
 }
 
