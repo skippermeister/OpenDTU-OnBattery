@@ -87,7 +87,6 @@ bool Utils::checkJsonAlloc(const DynamicJsonDocument& doc, const char* function,
     return true;
 }
 
-
 /// @brief Remove all files but the PINMAPPING_FILENAME
 void Utils::removeAllFiles()
 {

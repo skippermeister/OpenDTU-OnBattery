@@ -5,14 +5,14 @@
 #include "WebApi_ws_live.h"
 #include "Battery.h"
 #include "Datastore.h"
-#include "MessageOutput.h"
-#include "Utils.h"
-#include "WebApi.h"
 #include "Huawei_can.h"
 #include "MeanWell_can.h"
+#include "MessageOutput.h"
 #include "PowerMeter.h"
 #include "REFUsolRS485Receiver.h"
+#include "Utils.h"
 #include "VictronMppt.h"
+#include "WebApi.h"
 #include "defaults.h"
 #include <AsyncJson.h>
 
@@ -56,12 +56,113 @@ void WebApiWsLiveClass::wsCleanupTaskCb()
     }
 }
 
+void WebApiWsLiveClass::generateOnBatteryJsonResponse(JsonVariant& root, bool all)
+{
+    auto constexpr halfOfAllMillis = std::numeric_limits<uint32_t>::max() / 2;
+
+    if (all || (millis() - _lastPublishVictron) > VictronMppt.getDataAgeMillis()) {
+        JsonObject vedirectObj = root.createNestedObject("vedirect");
+        vedirectObj["enabled"] = Configuration.get().Vedirect.Enabled;
+        JsonObject totalVeObj = vedirectObj.createNestedObject("total");
+
+        addTotalField(totalVeObj, "Power", VictronMppt.getPanelPowerWatts(), "W", 1);
+        addTotalField(totalVeObj, "YieldDay", VictronMppt.getYieldDay() * 1000, "Wh", 0);
+        addTotalField(totalVeObj, "YieldTotal", VictronMppt.getYieldTotal(), "kWh", 2);
+
+        if (!all) {
+            _lastPublishVictron = millis();
+        }
+    }
+
+#ifdef CHARGER_HUAWEI
+    if (all || (Huawei.getLastUpdate() - _lastPublishCharger) < halfOfAllMillis) {
+        JsonObject huaweiObj = root.createNestedObject("huawei");
+        huaweiObj["enabled"] = Configuration.get().Huawei.Enabled;
+        const RectifierParameters_t* rp = HuaweiCan.get();
+        addTotalField(huaweiObj, "Power", rp->outputPower, "W", 2);
+#else
+    if (all || (MeanWellCan.getLastUpdate() - _lastPublishCharger) < halfOfAllMillis) {
+        JsonObject meanwellObj = root.createNestedObject("meanwell");
+        meanwellObj["enabled"] = Configuration.get().MeanWell.Enabled;
+        addTotalField(meanwellObj, "Power", MeanWellCan._rp.inputPower, "W", 2);
+#endif
+
+        if (!all) {
+            _lastPublishCharger = millis();
+        }
+    }
+
+    auto spStats = Battery.getStats();
+    if (all || spStats->updateAvailable(_lastPublishBattery)) {
+        JsonObject batteryObj = root.createNestedObject("battery");
+        batteryObj["enabled"] = Configuration.get().Battery.Enabled;
+        addTotalField(batteryObj, "soc", spStats->getSoC(), "%", 1);
+
+        if (!all) {
+            _lastPublishBattery = millis();
+        }
+    }
+
+    if (all || (PowerMeter.getLastPowerMeterUpdate() - _lastPublishPowerMeter) < halfOfAllMillis) {
+        JsonObject powerMeterObj = root.createNestedObject("power_meter");
+        powerMeterObj["enabled"] = Configuration.get().PowerMeter.Enabled;
+        addTotalField(powerMeterObj, "GridPower", PowerMeter.getPowerTotal(false), "W", 1);
+        addTotalField(powerMeterObj, "HousePower", PowerMeter.getHousePower(), "W", 1);
+
+        if (!all) {
+            _lastPublishPowerMeter = millis();
+        }
+    }
+
+    JsonObject refusolObj = root.createNestedObject("refusol");
+#if defined(USE_REFUsol_INVERTER)
+    refusolObj["enabled"] = Configuration.get().REFUsol.Enabled;
+    JsonObject totalREFUsolObj = refusolObj.createNestedObject("total");
+
+    addTotalField(totalREFUsolObj, "Power", REFUsol.Frame.acPower, "W", 1);
+    addTotalField(totalREFUsolObj, "YieldDay", REFUsol.Frame.YieldDay * 1000, "kWh", 3);
+    addTotalField(totalREFUsolObj, "YieldTotal", REFUsol.Frame.YieldTotal, "kWh", 3);
+
+#else
+    refusolObj["enabled"] = false;
+#endif
+
+    if (all || (millis() - _lastPublishHours) > 10 * 1000) { // update every 10 seconds
+        // Daten visualisieren #168
+        addHourPower(root, Datastore.getHourlyPowerData(), "Wh", Datastore.getTotalAcYieldTotalDigits());
+        _lastPublishHours = millis();
+    }
+}
+
+void WebApiWsLiveClass::sendOnBatteryStats()
+{
+    DynamicJsonDocument root(1536);
+    if (!Utils::checkJsonAlloc(root, __FUNCTION__, __LINE__)) {
+        return;
+    }
+
+    JsonVariant var = root;
+
+    bool all = (millis() - _lastPublishOnBatteryFull) > 10 * 1000;
+    if (all) {
+        _lastPublishOnBatteryFull = millis();
+    }
+    generateOnBatteryJsonResponse(var, all);
+
+    String buffer;
+    serializeJson(root, buffer);
+
+    _ws.textAll(buffer);
+}
+
 void WebApiWsLiveClass::sendDataTaskCb()
 {
     // do nothing if no WS client is connected
     if (_ws.count() == 0) {
         return;
     }
+
+    sendOnBatteryStats();
 
     // Loop all inverters
     for (uint8_t i = 0; i < Hoymiles.getNumInverters(); i++) {
@@ -79,7 +180,7 @@ void WebApiWsLiveClass::sendDataTaskCb()
 
         try {
             std::lock_guard<std::mutex> lock(_mutex);
-            DynamicJsonDocument root(4300);
+            DynamicJsonDocument root(4096 + 256);
             if (!Utils::checkJsonAlloc(root, __FUNCTION__, __LINE__)) {
                 continue;
             }
@@ -94,7 +195,7 @@ void WebApiWsLiveClass::sendDataTaskCb()
 
             String buffer;
             serializeJson(root, buffer);
-            //Serial.println(buffer);
+            // Serial.println(buffer);
             _ws.textAll(buffer);
 
         } catch (const std::bad_alloc& bad_alloc) {
@@ -112,9 +213,6 @@ void WebApiWsLiveClass::generateCommonJsonResponse(JsonVariant& root)
     addTotalField(totalObj, "YieldDay", Datastore.getTotalAcYieldDayEnabled(), "Wh", Datastore.getTotalAcYieldDayDigits());
     addTotalField(totalObj, "YieldTotal", Datastore.getTotalAcYieldTotalEnabled(), "kWh", Datastore.getTotalAcYieldTotalDigits());
 
-    // Daten visualisieren #168
-    addHourPower(root, Datastore.getHourlyPowerData(), "Wh", Datastore.getTotalAcYieldTotalDigits());
-
     JsonObject hintObj = root.createNestedObject("hints");
     struct tm timeinfo;
     hintObj["time_sync"] = !getLocalTime(&timeinfo, 5);
@@ -126,50 +224,6 @@ void WebApiWsLiveClass::generateCommonJsonResponse(JsonVariant& root)
         ;
 
     hintObj["default_password"] = strcmp(Configuration.get().Security.Password, ACCESS_POINT_PASSWORD) == 0;
-
-    JsonObject vedirectObj = root.createNestedObject("vedirect");
-    vedirectObj["enabled"] = Configuration.get().Vedirect.Enabled;
-    JsonObject totalVeObj = vedirectObj.createNestedObject("total");
-
-    addTotalField(totalVeObj, "Power", VictronMppt.getPanelPowerWatts(), "W", 1);
-    addTotalField(totalVeObj, "YieldDay", VictronMppt.getYieldDay() * 1000, "Wh", 0);
-    addTotalField(totalVeObj, "YieldTotal", VictronMppt.getYieldTotal(), "kWh", 2);
-
-    JsonObject refusolObj = root.createNestedObject("refusol");
-#ifdef USE_REFUsol_INVERTER
-    refusolObj["enabled"] = Configuration.get().REFUsol.Enabled;
-    JsonObject totalREFUsolObj = refusolObj.createNestedObject("total");
-
-    addTotalField(totalREFUsolObj, "Power", REFUsol.Frame.acPower, "W", 1);
-    addTotalField(totalREFUsolObj, "YieldDay", REFUsol.Frame.YieldDay * 1000, "kWh", 3);
-    addTotalField(totalREFUsolObj, "YieldTotal", REFUsol.Frame.YieldTotal, "kWh", 3);
-#else
-    refusolObj["enabled"] = false;
-    JsonObject totalREFUsolObj = refusolObj.createNestedObject("total");
-
-    addTotalField(totalREFUsolObj, "Power", 0, "W", 1);
-    addTotalField(totalREFUsolObj, "YieldDay", 0.0, "kWh", 3);
-    addTotalField(totalREFUsolObj, "YieldTotal", 0.0, "kWh", 3);
-#endif
-
-#ifdef CHARGER_HUAWEI
-    JsonObject huaweiObj = root.createNestedObject("huawei");
-    huaweiObj["enabled"] = Configuration.get().Huawei.Enabled;
-    const RectifierParameters_t* rp = HuaweiCan.get();
-    addTotalField(huaweiObj, "Power", rp->outputPower, "W", 2);
-#else
-    JsonObject meanwellObj = root.createNestedObject("meanwell");
-    meanwellObj["enabled"] = Configuration.get().MeanWell.Enabled;
-    addTotalField(meanwellObj, "Power", MeanWellCan._rp.inputPower, "W", 2);
-#endif
-    JsonObject batteryObj = root.createNestedObject("battery");
-    batteryObj["enabled"] = Configuration.get().Battery.Enabled;
-    addTotalField(batteryObj, "soc", Battery.getStats()->getSoC(), "%", 0);
-
-    JsonObject powerMeterObj = root.createNestedObject("power_meter");
-    powerMeterObj["enabled"] = Configuration.get().PowerMeter.Enabled;
-    addTotalField(powerMeterObj, "GridPower", PowerMeter.getPowerTotal(false), "W", 1);
-    addTotalField(powerMeterObj, "HousePower", PowerMeter.getHousePower(), "W", 1);
 }
 
 void WebApiWsLiveClass::generateInverterCommonJsonResponse(JsonObject& root, std::shared_ptr<InverterAbstract> inv)
@@ -328,6 +382,8 @@ void WebApiWsLiveClass::onLivedataStatus(AsyncWebServerRequest* request)
         }
 
         generateCommonJsonResponse(root);
+
+        generateOnBatteryJsonResponse(root, true);
 
         response->setLength();
         request->send(response);

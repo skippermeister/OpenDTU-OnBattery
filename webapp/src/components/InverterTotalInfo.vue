@@ -1,6 +1,6 @@
 <template>
     <div v-show="totalREFUsolData.enabled">
-        <div class="row row-cols-1 row-cols-md-3 g-3">
+        <div v-if="totalREFUsolData.total !== undefined" class="row row-cols-1 row-cols-md-3 g-3">
             <div class="col">
                 <CardElement centerContent textVariant="text-bg-success" :text="$t('invertertotalinfo.REFUsolTotalDeliveredTotal')">
                     <h2>

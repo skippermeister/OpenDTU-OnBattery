@@ -166,7 +166,7 @@ public:
     bool getVerboseLogging(void) { return _verboseLogging; };
     void setVerboseLogging(bool logging) { _verboseLogging = logging; };
 
-    bool updateAvailable(uint32_t since) const { return _lastUpdate > since; }
+    bool updateAvailable(uint32_t since) const;
 
 private:
     void loop();

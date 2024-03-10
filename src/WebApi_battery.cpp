@@ -3,16 +3,16 @@
  * Copyright (C) 2022-2024 Thomas Basler and others
  */
 
+#include "WebApi_battery.h"
 #include "ArduinoJson.h"
 #include "AsyncJson.h"
 #include "Battery.h"
 #include "Configuration.h"
 #include "MqttHandleBatteryHass.h"
 #include "WebApi.h"
-#include "WebApi_battery.h"
 #include "WebApi_errors.h"
-#include "helper.h"
 #include "defaults.h"
+#include "helper.h"
 
 void WebApiBatteryClass::init(AsyncWebServer& server, Scheduler& scheduler)
 {
@@ -149,7 +149,8 @@ void WebApiBatteryClass::onAdminPost(AsyncWebServerRequest* request)
     cBattery.MinDischargeTemperature = root["min_discharge_temp"].as<int8_t>();
     cBattery.MaxDischargeTemperature = root["max_discharge_temp"].as<int8_t>();
     cBattery.numberOfBatteries = root["numberOfBatteries"].as<int8_t>();
-    if (Configuration.get().Battery.numberOfBatteries > MAX_BATTERIES) Configuration.get().Battery.numberOfBatteries = MAX_BATTERIES;
+    if (Configuration.get().Battery.numberOfBatteries > MAX_BATTERIES)
+        Configuration.get().Battery.numberOfBatteries = MAX_BATTERIES;
 
 #ifdef USE_MQTT_BATTERY
     strlcpy(cBattery.Mqtt.SocTopic, root["mqtt_soc_topic"].as<String>().c_str(), sizeof(cBattery.Mqtt.SocTopic));

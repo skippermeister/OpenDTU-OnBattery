@@ -9,10 +9,10 @@
 #include "Datastore.h"
 #include "MessageOutput.h"
 #include "PinMapping.h"
+#include "PowerMeter.h"
 #include <NetworkSettings.h>
 #include <map>
 #include <time.h>
-#include "PowerMeter.h"
 
 std::map<DisplayType_t, std::function<U8G2*(uint8_t, uint8_t, uint8_t, uint8_t, uint8_t)>> display_types = {
     { DisplayType_t::PCD8544_HW_SPI, [](uint8_t reset, uint8_t clock, uint8_t data, uint8_t cs, uint8_t dc) { return new U8G2_PCD8544_84X48_F_4W_HW_SPI(U8G2_R0, cs, data, reset); } },

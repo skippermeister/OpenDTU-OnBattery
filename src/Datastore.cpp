@@ -94,7 +94,7 @@ void DatastoreClass::loop()
                 _totalAcYieldTotalDigits = max<unsigned int>(_totalAcYieldTotalDigits, inv->Statistics()->getChannelFieldDigits(TYPE_INV, c, FLD_YT));
                 _totalAcYieldDayDigits = max<unsigned int>(_totalAcYieldDayDigits, inv->Statistics()->getChannelFieldDigits(TYPE_INV, c, FLD_YD));
             }
-       }
+        }
 
         for (auto& c : inv->Statistics()->getChannelsByType(TYPE_AC)) {
             if (inv->getEnablePolling()) {
@@ -120,15 +120,17 @@ void DatastoreClass::loop()
     struct tm timeinfo;
 
     if (getLocalTime(&timeinfo, 50)) {
+        float previousSum = 0.0f;
+
         if (_currentDay != timeinfo.tm_mday && timeinfo.tm_sec > 10) {
             _currentDay = timeinfo.tm_mday;
             for (uint8_t i = 0; i < _hourlyPowerData.size(); i++) {
                 _hourlyPowerData[i] = 0.0f;
             }
+            previousSum = _totalAcYieldDayEnabled;
         }
 
         uint8_t currentHour = timeinfo.tm_hour;
-        float previousSum = 0.0f;
         for (uint8_t hour = 0; hour < currentHour; hour++) {
             previousSum += _hourlyPowerData[hour];
         }

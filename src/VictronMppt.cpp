@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include "VictronMppt.h"
 #include "Configuration.h"
-#include "PinMapping.h"
 #include "MessageOutput.h"
+#include "PinMapping.h"
 
 VictronMpptClass VictronMppt;
 
@@ -28,7 +28,9 @@ void VictronMpptClass::updateSettings()
 
     _controllers.clear();
 
-    if (!Configuration.get().Vedirect.Enabled) { return; }
+    if (!Configuration.get().Vedirect.Enabled) {
+        return;
+    }
 
     const PinMapping_t& pin = PinMapping.get();
     int8_t rx = pin.victron_rx;
@@ -60,7 +62,9 @@ bool VictronMpptClass::isDataValid() const
     std::lock_guard<std::mutex> lock(_mutex);
 
     for (auto const& upController : _controllers) {
-        if (!upController->isDataValid()) { return false; }
+        if (!upController->isDataValid()) {
+            return false;
+        }
     }
 
     return !_controllers.empty();
@@ -70,7 +74,9 @@ uint32_t VictronMpptClass::getDataAgeMillis() const
 {
     std::lock_guard<std::mutex> lock(_mutex);
 
-    if (_controllers.empty()) { return 0; }
+    if (_controllers.empty()) {
+        return 0;
+    }
 
     auto now = millis();
 
@@ -92,7 +98,7 @@ VeDirectMpptController::spData_t VictronMpptClass::getData(size_t idx) const
 
     if (_controllers.empty() || idx >= _controllers.size()) {
         MessageOutput.printf("%s ERROR: MPPT controller index %d is out of bounds (%d controllers)\r\n", TAG,
-                idx, _controllers.size());
+            idx, _controllers.size());
         return std::make_shared<VeDirectMpptController::veMpptStruct>();
     }
 
@@ -149,7 +155,9 @@ double VictronMpptClass::getOutputVoltage() const
 
     for (const auto& upController : _controllers) {
         double volts = upController->getData()->V;
-        if (min == -1) { min = volts; }
+        if (min == -1) {
+            min = volts;
+        }
         min = std::min(min, volts);
     }
 

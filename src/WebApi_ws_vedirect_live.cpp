@@ -28,7 +28,7 @@ void WebApiWsVedirectLiveClass::init(AsyncWebServer& server, Scheduler& schedule
     using std::placeholders::_5;
     using std::placeholders::_6;
 
-//    _server = &server;
+    //    _server = &server;
     server.on("/api/vedirectlivedata/status", HTTP_GET, std::bind(&WebApiWsVedirectLiveClass::onLivedataStatus, this, _1));
 
     server.addHandler(&_ws);

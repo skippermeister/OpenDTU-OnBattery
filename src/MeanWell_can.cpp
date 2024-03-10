@@ -658,6 +658,12 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
     }
 }
 
+bool MeanWellCanClass::updateAvailable(uint32_t since) const
+{
+    auto constexpr halfOfAllMillis = std::numeric_limits<uint32_t>::max() / 2;
+    return (_lastUpdate - since) < halfOfAllMillis;
+}
+
 void MeanWellCanClass::setupParameter()
 {
     const MeanWell_CONFIG_T& cMeanWell = Configuration.get().MeanWell;

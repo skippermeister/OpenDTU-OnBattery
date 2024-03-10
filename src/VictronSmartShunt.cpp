@@ -5,7 +5,6 @@
 #include "Configuration.h"
 #include "MessageOutput.h"
 #include "PinMapping.h"
-#include "MessageOutput.h"
 
 bool VictronSmartShunt::init()
 {
@@ -30,7 +29,9 @@ void VictronSmartShunt::loop()
 {
     VeDirectShunt.loop();
 
-    if (VeDirectShunt.getLastUpdate() <= _lastUpdate) { return; }
+    if (VeDirectShunt.getLastUpdate() <= _lastUpdate) {
+        return;
+    }
 
     _stats->updateFrom(VeDirectShunt.veFrame);
     _lastUpdate = VeDirectShunt.getLastUpdate();

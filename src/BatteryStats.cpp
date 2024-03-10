@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include "BatteryStats.h"
 #include "Configuration.h"
-#include "JkBmsDataPoints.h"
 #include "DalyBmsController.h"
+#include "JkBmsDataPoints.h"
 #include "MqttSettings.h"
 
 template <typename T>
@@ -54,21 +54,27 @@ static void addLiveViewText(JsonVariant& root, std::string const& name,
 static void addLiveViewWarning(JsonVariant& root, std::string const& name,
     bool warning)
 {
-    if (!warning) { return; }
+    if (!warning) {
+        return;
+    }
     root["issues"][name] = 1;
 }
 
 static void addLiveViewAlarm(JsonVariant& root, std::string const& name,
     bool alarm)
 {
-    if (!alarm) { return; }
+    if (!alarm) {
+        return;
+    }
     root["issues"][name] = 2;
 }
 
 static void addLiveViewFailureStatus(JsonVariant& root, std::string const& name,
     bool alarm)
 {
-    if (!alarm) { return; }
+    if (!alarm) {
+        return;
+    }
     root["issues"][name] = 2;
 }
 
@@ -124,7 +130,12 @@ static void addLiveViewPackTempSensor(JsonObject& root, uint8_t index, float val
 
 void BatteryStats::generatePackCommonJsonResponse(JsonObject& packObject, const uint8_t m) const
 {
+}
 
+bool BatteryStats::updateAvailable(uint32_t since) const
+{
+    auto constexpr halfOfAllMillis = std::numeric_limits<uint32_t>::max() / 2;
+    return (_lastUpdate - since) < halfOfAllMillis;
 }
 
 void BatteryStats::getLiveViewData(JsonVariant& root) const
@@ -186,7 +197,7 @@ void PylontechCanBatteryStats::getLiveViewData(JsonVariant& root) const
 void PylontechRS485BatteryStats::generatePackCommonJsonResponse(JsonObject& packObject, const uint8_t module) const
 {
     packObject["moduleNumber"] = Pack[module].numberOfModule;
-    packObject["moduleName"] = _number_of_packs == 1 ? "Single": (module == 0?"Master":String("Slave-")+String(module));
+    packObject["moduleName"] = _number_of_packs == 1 ? "Single" : (module == 0 ? "Master" : String("Slave-") + String(module));
 
     packObject["device_name"] = Pack[module].deviceName;
     packObject["moduleSerialNumber"] = Pack[module].ModuleSerialNumber.moduleSerialNumber;
@@ -198,7 +209,7 @@ void PylontechRS485BatteryStats::generatePackCommonJsonResponse(JsonObject& pack
     addLiveViewPackValue(packObject, "current", Pack[module].current, "A", 1);
     addLiveViewPackValue(packObject, "power", Pack[module].power, "kW", 3);
     addLiveViewPackValue(packObject, "BMSTemperature", Pack[module].averageBMSTemperature, "°C", 1);
-//    addLiveViewPackValue(packObject, "CellTemperature", Pack[module].averageCellTemperature, "°C", 1);
+    //    addLiveViewPackValue(packObject, "CellTemperature", Pack[module].averageCellTemperature, "°C", 1);
     addLiveViewPackValue(packObject, "CellTemperature", Pack[module].maxCellTemperature, "°C", 1);
     addLiveViewPackValue(packObject, "chargeCurrentLimit", Pack[module].ChargeDischargeManagementInfo.chargeCurrentLimit, "A", 1);
     addLiveViewPackValue(packObject, "dischargeCurrentLimit", Pack[module].ChargeDischargeManagementInfo.dischargeCurrentLimit, "A", 1);
@@ -235,13 +246,13 @@ void PylontechRS485BatteryStats::getLiveViewData(JsonVariant& root) const
 
     addLiveViewValue(root, "cycles", totals.cycles, "", 0);
 
-//    // angeforderte Ladespannung
-//    addLiveViewValue(root, "chargeVoltage", totals.chargeVoltage, "V", 3);
+    //    // angeforderte Ladespannung
+    //    addLiveViewValue(root, "chargeVoltage", totals.chargeVoltage, "V", 3);
 
     addLiveViewValue(root, "current", totals.current, "A", 1);
     addLiveViewValue(root, "power", totals.power, "kW", 3);
     addLiveViewValue(root, "BMSTemperature", totals.averageBMSTemperature, "°C", 1);
-//    addLiveViewValue(root, "CellTemperature", totals.averageCellTemperature, "°C", 1);
+    //    addLiveViewValue(root, "CellTemperature", totals.averageCellTemperature, "°C", 1);
     addLiveViewValue(root, "CellTemperature", totals.maxCellTemperature, "°C", 1);
 
     // Empfohlene Lade-/Enladespannung
@@ -450,42 +461,42 @@ void DalyBmsBatteryStats::getLiveViewData(JsonVariant& root) const
     ISSUE(Alarm, cellImbalance);
     ISSUE(Warning, cellImbalance);
 
-/*
-    ISSUE(FailureStatus, levelOneCellVoltageTooHigh);
-    ISSUE(FailureStatus, levelTwoCellVoltageTooHigh);
-    ISSUE(FailureStatus, levelOneCellVoltageTooLow);
-    ISSUE(FailureStatus, levelTwoCellVoltageTooLow);
-    ISSUE(FailureStatus, levelOnePackVoltageTooHigh);
-    ISSUE(FailureStatus, levelTwoPackVoltageTooHigh);
-    ISSUE(FailureStatus, levelOnePackVoltageTooLow);
-    ISSUE(FailureStatus, levelTwoPackVoltageTooLow);
+    /*
+        ISSUE(FailureStatus, levelOneCellVoltageTooHigh);
+        ISSUE(FailureStatus, levelTwoCellVoltageTooHigh);
+        ISSUE(FailureStatus, levelOneCellVoltageTooLow);
+        ISSUE(FailureStatus, levelTwoCellVoltageTooLow);
+        ISSUE(FailureStatus, levelOnePackVoltageTooHigh);
+        ISSUE(FailureStatus, levelTwoPackVoltageTooHigh);
+        ISSUE(FailureStatus, levelOnePackVoltageTooLow);
+        ISSUE(FailureStatus, levelTwoPackVoltageTooLow);
 
-    ISSUE(FailureStatus, levelOneChargeTempTooHigh);
-    ISSUE(FailureStatus, levelTwoChargeTempTooHigh);
-    ISSUE(FailureStatus, levelOneChargeTempTooLow);
-    ISSUE(FailureStatus, levelTwoChargeTempTooLow);
-    ISSUE(FailureStatus, levelOneDischargeTempTooHigh);
-    ISSUE(FailureStatus, levelTwoDischargeTempTooHigh);
-    ISSUE(FailureStatus, levelOneDischargeTempTooLow);
-    ISSUE(FailureStatus, levelTwoDischargeTempTooLow);
+        ISSUE(FailureStatus, levelOneChargeTempTooHigh);
+        ISSUE(FailureStatus, levelTwoChargeTempTooHigh);
+        ISSUE(FailureStatus, levelOneChargeTempTooLow);
+        ISSUE(FailureStatus, levelTwoChargeTempTooLow);
+        ISSUE(FailureStatus, levelOneDischargeTempTooHigh);
+        ISSUE(FailureStatus, levelTwoDischargeTempTooHigh);
+        ISSUE(FailureStatus, levelOneDischargeTempTooLow);
+        ISSUE(FailureStatus, levelTwoDischargeTempTooLow);
 
-    ISSUE(FailureStatus, levelOneChargeCurrentTooHigh);
-    ISSUE(FailureStatus, levelTwoChargeCurrentTooHigh);
-    ISSUE(FailureStatus, levelOneDischargeCurrentTooHigh);
-    ISSUE(FailureStatus, levelTwoDischargeCurrentTooHigh);
-    ISSUE(FailureStatus, levelOneStateOfChargeTooHigh);
-    ISSUE(FailureStatus, levelTwoStateOfChargeTooHigh);
-    ISSUE(FailureStatus, levelOneStateOfChargeTooLow);
-    ISSUE(FailureStatus, levelTwoStateOfChargeTooLow);
+        ISSUE(FailureStatus, levelOneChargeCurrentTooHigh);
+        ISSUE(FailureStatus, levelTwoChargeCurrentTooHigh);
+        ISSUE(FailureStatus, levelOneDischargeCurrentTooHigh);
+        ISSUE(FailureStatus, levelTwoDischargeCurrentTooHigh);
+        ISSUE(FailureStatus, levelOneStateOfChargeTooHigh);
+        ISSUE(FailureStatus, levelTwoStateOfChargeTooHigh);
+        ISSUE(FailureStatus, levelOneStateOfChargeTooLow);
+        ISSUE(FailureStatus, levelTwoStateOfChargeTooLow);
 
-    ISSUE(FailureStatus, levelOneCellVoltageDifferenceTooHigh);
-    ISSUE(FailureStatus, levelTwoCellVoltageDifferenceTooHigh);
-    ISSUE(FailureStatus, levelOneTempSensorDifferenceTooHigh);
-    ISSUE(FailureStatus, levelTwoTempSensorDifferenceTooHigh);
+        ISSUE(FailureStatus, levelOneCellVoltageDifferenceTooHigh);
+        ISSUE(FailureStatus, levelTwoCellVoltageDifferenceTooHigh);
+        ISSUE(FailureStatus, levelOneTempSensorDifferenceTooHigh);
+        ISSUE(FailureStatus, levelTwoTempSensorDifferenceTooHigh);
 
-    ISSUE(FailureStatus, chargeFETTemperatureTooHigh);
-    ISSUE(FailureStatus, dischargeFETTemperatureTooHigh);
-*/
+        ISSUE(FailureStatus, chargeFETTemperatureTooHigh);
+        ISSUE(FailureStatus, dischargeFETTemperatureTooHigh);
+    */
     ISSUE(FailureStatus, failureOfChargeFETTemperatureSensor);
     ISSUE(FailureStatus, failureOfDischargeFETTemperatureSensor);
     ISSUE(FailureStatus, failureOfChargeFETAdhesion);
@@ -514,7 +525,7 @@ void BatteryStats::mqttLoop()
     auto& config = Configuration.get();
 
     if (!MqttSettings.getConnected()
-            || (millis() - _lastMqttPublish) < (config.Mqtt.PublishInterval * 1000)) {
+        || (millis() - _lastMqttPublish) < (config.Mqtt.PublishInterval * 1000)) {
         return;
     }
 
@@ -534,7 +545,7 @@ uint32_t BatteryStats::getMqttFullPublishIntervalMs() const
     return config.Mqtt.PublishInterval * 1000;
 }
 
-void BatteryStats::mqttPublish()  /* const */
+void BatteryStats::mqttPublish() /* const */
 {
     String subtopic = "battery/";
     MqttSettings.publish(subtopic + "manufacturer", _manufacturer);
@@ -546,37 +557,37 @@ void BatteryStats::mqttPublish()  /* const */
 #define MQTTpublish(value, digits)                     \
     if (!cBattery.UpdatesOnly || value != _last.value) \
         MqttSettings.publish(subtopic + #value, String(_last.value = value, digits));
-#define MQTTpublishTotals(value, digits)                     \
+#define MQTTpublishTotals(value, digits)                            \
     if (!cBattery.UpdatesOnly || totals.value != _lastTotals.value) \
         MqttSettings.publish(subtopic + #value, String(_lastTotals.value = totals.value, digits));
-#define MQTTpublishPack(module, value, digits)                     \
+#define MQTTpublishPack(module, value, digits)                                  \
     if (!cBattery.UpdatesOnly || Pack[module].value != _lastPack[module].value) \
         MqttSettings.publish(subtopic + #value, String(_lastPack[module].value = Pack[module].value, digits));
 #define MQTTpublishStruct(str, value, digits)                  \
     if (!cBattery.UpdatesOnly || str.value != _last.str.value) \
         MqttSettings.publish(subtopic + #value, String(_last.str.value = str.value, digits));
-#define MQTTpublishTotalsStruct(str, value, digits)                  \
+#define MQTTpublishTotalsStruct(str, value, digits)                         \
     if (!cBattery.UpdatesOnly || totals.str.value != _lastTotals.str.value) \
         MqttSettings.publish(subtopic + #value, String(_lastTotals.str.value = totals.str.value, digits));
-#define MQTTpublishPackStruct(module, str, value, digits)                  \
+#define MQTTpublishPackStruct(module, str, value, digits)                               \
     if (!cBattery.UpdatesOnly || Pack[module].str.value != _lastPack[module].str.value) \
         MqttSettings.publish(subtopic + #value, String(_lastPack[module].str.value = Pack[module].str.value, digits));
 #define MQTTpublishInt(value)                          \
     if (!cBattery.UpdatesOnly || value != _last.value) \
         MqttSettings.publish(subtopic + #value, String(_last.value = value));
-#define MQTTpublishTotalsInt(value)                          \
+#define MQTTpublishTotalsInt(value)                                 \
     if (!cBattery.UpdatesOnly || totals.value != _lastTotals.value) \
         MqttSettings.publish(subtopic + #value, String(_lastTotals.value = totals.value));
-#define MQTTpublishPackInt(module, value)                          \
+#define MQTTpublishPackInt(module, value)                                       \
     if (!cBattery.UpdatesOnly || Pack[module].value != _lastPack[module].value) \
         MqttSettings.publish(subtopic + #value, String(_lastPack[module].value = Pack[module].value));
 #define MQTTpublishIntStruct(str, value)                       \
     if (!cBattery.UpdatesOnly || str.value != _last.str.value) \
         MqttSettings.publish(subtopic + #value, String(_last.str.value = str.value));
-#define MQTTpublishTotalsIntStruct(str, value)                       \
+#define MQTTpublishTotalsIntStruct(str, value)                              \
     if (!cBattery.UpdatesOnly || totals.str.value != _lastTotals.str.value) \
         MqttSettings.publish(subtopic + #value, String(_lastTotals.str.value = totals.str.value));
-#define MQTTpublishPackIntStruct(module, str, value)                       \
+#define MQTTpublishPackIntStruct(module, str, value)                                    \
     if (!cBattery.UpdatesOnly || Pack[module].str.value != _lastPack[module].str.value) \
         MqttSettings.publish(subtopic + #value, String(_lastPack[module].str.value = Pack[module].str.value));
 #define MQTTpublishHex(value, str)                               \
@@ -585,7 +596,7 @@ void BatteryStats::mqttPublish()  /* const */
 #define MQTTpublishString(value)                       \
     if (!cBattery.UpdatesOnly || value != _last.value) \
         MqttSettings.publish(subtopic + #value, _last.value = value);
-#define MQTTpublishPackString(module, value)                       \
+#define MQTTpublishPackString(module, value)                                    \
     if (!cBattery.UpdatesOnly || Pack[module].value != _lastPack[module].value) \
         MqttSettings.publish(subtopic + #value, _lastPack[module].value = Pack[module].value);
 
@@ -649,13 +660,13 @@ void PylontechRS485BatteryStats::mqttPublish() /*const*/
     MQTTpublishTotalsInt(cycles);
 
     subtopic = topic + "settings/";
-//    MQTTpublishTotals(chargeVoltage, 2);
+    //    MQTTpublishTotals(chargeVoltage, 2);
     MQTTpublishTotalsStruct(ChargeDischargeManagementInfo, chargeCurrentLimit, 2)
-    MQTTpublishTotalsStruct(ChargeDischargeManagementInfo, dischargeCurrentLimit, 2);
+        MQTTpublishTotalsStruct(ChargeDischargeManagementInfo, dischargeCurrentLimit, 2);
 
     subtopic = topic + "parameters/";
     MQTTpublishTotalsStruct(SystemParameters, chargeCurrentLimit, 2)
-    MQTTpublishTotalsStruct(SystemParameters, dischargeCurrentLimit, 2);
+        MQTTpublishTotalsStruct(SystemParameters, dischargeCurrentLimit, 2);
     MQTTpublishTotalsStruct(SystemParameters, chargeHighTemperatureLimit, 1);
     MQTTpublishTotalsStruct(SystemParameters, chargeLowTemperatureLimit, 1);
     MQTTpublishTotalsStruct(SystemParameters, dischargeHighTemperatureLimit, 1);
@@ -693,7 +704,7 @@ void PylontechRS485BatteryStats::mqttPublish() /*const*/
     subtopic = topic + "temperatures/";
     MQTTpublishTotals(averageBMSTemperature, 1);
 
-    for (uint8_t module=0; module < _number_of_packs; module++) {
+    for (uint8_t module = 0; module < _number_of_packs; module++) {
         const String moduleTopic = topic + String(module) + "/";
         subtopic = moduleTopic;
         MQTTpublishPackString(module, deviceName);
@@ -701,9 +712,9 @@ void PylontechRS485BatteryStats::mqttPublish() /*const*/
         MQTTpublishPackInt(module, cycles);
 
         String subtopic = moduleTopic + "settings/";
-//        MQTTpublishPack(module, chargeVoltage, 2);
+        //        MQTTpublishPack(module, chargeVoltage, 2);
         MQTTpublishPackStruct(module, ChargeDischargeManagementInfo, chargeCurrentLimit, 2)
-        MQTTpublishPackStruct(module, ChargeDischargeManagementInfo, dischargeCurrentLimit, 2);
+            MQTTpublishPackStruct(module, ChargeDischargeManagementInfo, dischargeCurrentLimit, 2);
 
         subtopic = moduleTopic + "charging/";
         MQTTpublishPackIntStruct(module, ChargeDischargeManagementInfo, chargeEnable);
@@ -714,7 +725,7 @@ void PylontechRS485BatteryStats::mqttPublish() /*const*/
 
         subtopic = moduleTopic + "parameters/";
         MQTTpublishPackStruct(module, SystemParameters, chargeCurrentLimit, 2)
-        MQTTpublishPackStruct(module, SystemParameters, dischargeCurrentLimit, 2);
+            MQTTpublishPackStruct(module, SystemParameters, dischargeCurrentLimit, 2);
         MQTTpublishPackStruct(module, SystemParameters, cellHighVoltageLimit, 2);
         MQTTpublishPackStruct(module, SystemParameters, cellLowVoltageLimit, 2);
         MQTTpublishPackStruct(module, SystemParameters, cellUnderVoltageLimit, 2);
@@ -766,7 +777,6 @@ void PylontechRS485BatteryStats::mqttPublish() /*const*/
             }
         }
     }
-
 }
 #endif
 
@@ -783,18 +793,18 @@ void DalyBmsBatteryStats::mqttPublish() /* const */
     MQTTpublish(power, 3);
     MQTTpublish(remainingCapacity, 3);
     MQTTpublish(ratedCapacity, 3);
-/*
-    subtopic = "battery/parameters/";
-    MQTTpublishStruct(SystemParameters, chargeCurrentLimit, 2)
-    MQTTpublishStruct(SystemParameters, dischargeCurrentLimit, 2);
-    MQTTpublishStruct(SystemParameters, cellHighVoltageLimit, 2);
-    MQTTpublishStruct(SystemParameters, cellLowVoltageLimit, 2);
-    MQTTpublishStruct(SystemParameters, cellUnderVoltageLimit, 2);
-    MQTTpublishStruct(SystemParameters, chargeHighTemperatureLimit, 1);
-    MQTTpublishStruct(SystemParameters, chargeLowTemperatureLimit, 1);
-    MQTTpublishStruct(SystemParameters, dischargeHighTemperatureLimit, 1);
-    MQTTpublishStruct(SystemParameters, dischargeLowTemperatureLimit, 1);
-*/
+    /*
+        subtopic = "battery/parameters/";
+        MQTTpublishStruct(SystemParameters, chargeCurrentLimit, 2)
+        MQTTpublishStruct(SystemParameters, dischargeCurrentLimit, 2);
+        MQTTpublishStruct(SystemParameters, cellHighVoltageLimit, 2);
+        MQTTpublishStruct(SystemParameters, cellLowVoltageLimit, 2);
+        MQTTpublishStruct(SystemParameters, cellUnderVoltageLimit, 2);
+        MQTTpublishStruct(SystemParameters, chargeHighTemperatureLimit, 1);
+        MQTTpublishStruct(SystemParameters, chargeLowTemperatureLimit, 1);
+        MQTTpublishStruct(SystemParameters, dischargeHighTemperatureLimit, 1);
+        MQTTpublishStruct(SystemParameters, dischargeLowTemperatureLimit, 1);
+    */
     subtopic = "battery/alarms/";
     MQTTpublishIntStruct(Alarm, overCurrentDischarge);
     MQTTpublishIntStruct(Alarm, overCurrentCharge);
@@ -824,7 +834,8 @@ void DalyBmsBatteryStats::mqttPublish() /* const */
     MQTTpublish(minCellVoltage, 3);
     MQTTpublish(maxCellVoltage, 3);
     MQTTpublish(cellDiffVoltage, 0);
-    if (_cellsNumber > 15) _cellsNumber = 15;
+    if (_cellsNumber > 15)
+        _cellsNumber = 15;
     _last._cellVoltage = reinterpret_cast<float*>(realloc(_last._cellVoltage, _cellsNumber * sizeof(float)));
     for (int i = 0; i < _cellsNumber; i++) {
         if (!cBattery.UpdatesOnly || _cellVoltage[i] != _last._cellVoltage[i]) {
@@ -850,7 +861,7 @@ void DalyBmsBatteryStats::mqttPublish() /* const */
 #endif
 
 #ifdef USE_JKBMS_CONTROLLER
-void JkBmsBatteryStats::mqttPublish()  /* const */
+void JkBmsBatteryStats::mqttPublish() /* const */
 {
     BatteryStats::mqttPublish();
 
@@ -871,10 +882,14 @@ void JkBmsBatteryStats::mqttPublish()  /* const */
 
     for (auto iter = _dataPoints.cbegin(); iter != _dataPoints.cend(); ++iter) {
         // skip data points that did not change since last published
-        if (!fullPublish && iter->second.getTimestamp() < _lastMqttPublish) { continue; }
+        if (!fullPublish && iter->second.getTimestamp() < _lastMqttPublish) {
+            continue;
+        }
 
         auto skipMatch = std::find(mqttSkip.begin(), mqttSkip.end(), iter->first);
-        if (skipMatch != mqttSkip.end()) { continue; }
+        if (skipMatch != mqttSkip.end()) {
+            continue;
+        }
 
         String topic((std::string("battery/") + iter->second.getLabelText()).c_str());
         MqttSettings.publish(topic, iter->second.getValueText().c_str());
@@ -903,7 +918,7 @@ void JkBmsBatteryStats::mqttPublish()  /* const */
     if (oAlarms.has_value()) {
         for (auto iter = JkBms::AlarmBitTexts.begin(); iter != JkBms::AlarmBitTexts.end(); ++iter) {
             auto bit = iter->first;
-            String value = (*oAlarms & static_cast<uint16_t>(bit))?"1":"0";
+            String value = (*oAlarms & static_cast<uint16_t>(bit)) ? "1" : "0";
             MqttSettings.publish(String("battery/alarms/") + iter->second.data(), value);
         }
     }
@@ -912,13 +927,15 @@ void JkBmsBatteryStats::mqttPublish()  /* const */
     if (oStatus.has_value()) {
         for (auto iter = JkBms::StatusBitTexts.begin(); iter != JkBms::StatusBitTexts.end(); ++iter) {
             auto bit = iter->first;
-            String value = (*oStatus & static_cast<uint16_t>(bit))?"1":"0";
+            String value = (*oStatus & static_cast<uint16_t>(bit)) ? "1" : "0";
             MqttSettings.publish(String("battery/status/") + iter->second.data(), value);
         }
     }
 
     _lastMqttPublish = millis();
-    if (fullPublish) { _lastFullMqttPublish = _lastMqttPublish; }
+    if (fullPublish) {
+        _lastFullMqttPublish = _lastMqttPublish;
+    }
 }
 
 void JkBmsBatteryStats::updateFrom(JkBms::DataPointContainer const& dp)
@@ -938,15 +955,15 @@ void JkBmsBatteryStats::updateFrom(JkBms::DataPointContainer const& dp)
     auto oSoCValue = dp.get<Label::BatterySoCPercent>();
     if (oSoCValue.has_value()) {
         auto oSoCDataPoint = dp.getDataPointFor<Label::BatterySoCPercent>();
-        BatteryStats::setSoC(*oSoCValue, 0/*precision*/,
-                oSoCDataPoint->getTimestamp());
+        BatteryStats::setSoC(*oSoCValue, 0 /*precision*/,
+            oSoCDataPoint->getTimestamp());
     }
 
     auto oVoltage = dp.get<Label::BatteryVoltageMilliVolt>();
     if (oVoltage.has_value()) {
         auto oVoltageDataPoint = dp.getDataPointFor<Label::BatteryVoltageMilliVolt>();
         BatteryStats::setVoltage(static_cast<float>(*oVoltage) / 1000,
-                oVoltageDataPoint->getTimestamp());
+            oVoltageDataPoint->getTimestamp());
     }
 
     _dataPoints.updateFrom(dp);
@@ -973,7 +990,7 @@ void JkBmsBatteryStats::updateFrom(JkBms::DataPointContainer const& dp)
 void VictronSmartShuntStats::updateFrom(VeDirectShuntController::veShuntStruct const& shuntData)
 {
     BatteryStats::setVoltage(shuntData.V, millis());
-    BatteryStats::setSoC(static_cast<float>(shuntData.SOC) / 10, 1/*precision*/, millis());
+    BatteryStats::setSoC(static_cast<float>(shuntData.SOC) / 10, 1 /*precision*/, millis());
 
     _current = shuntData.I;
     _modelName = shuntData.getPidAsString().data();

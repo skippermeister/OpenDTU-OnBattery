@@ -29,7 +29,7 @@ void WebApiWsMeanWellLiveClass::init(AsyncWebServer& server, Scheduler& schedule
     using std::placeholders::_5;
     using std::placeholders::_6;
 
-//    _server = &server;
+    //    _server = &server;
     server.on("/api/meanwelllivedata/status", HTTP_GET, std::bind(&WebApiWsMeanWellLiveClass::onLivedataStatus, this, _1));
 
     server.addHandler(&_ws);

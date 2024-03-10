@@ -483,14 +483,17 @@ export default defineComponent({
                 console.log(event);
                 if (event.data != "{}") {
                     const newData = JSON.parse(event.data);
+                    if (typeof newData.power_meter !== 'undefined') { Object.assign(this.liveData.power_meter, newData.power_meter); }
+                    if (typeof newData.battery !== 'undefined') { Object.assign(this.liveData.battery, newData.battery); }
+                    if (typeof newData.vedirect !== 'undefined') { Object.assign(this.liveData.vedirect, newData.vedirect); }
+                    if (typeof newData.refusol !== 'undefined') { Object.assign(this.liveData.refusol, newData.refusol); }
+                    if (typeof newData.meanwell !== 'undefined') { Object.assign(this.liveData.meanwell, newData.meanwell); }
+                    if (typeof newData.hours !== 'undefined') { Object.assign(this.liveData.hours, newData.hours); }
+
+                    if (typeof newData.total === 'undefined') { return; }
+
                     Object.assign(this.liveData.total, newData.total);
                     Object.assign(this.liveData.hints, newData.hints);
-                    Object.assign(this.liveData.hours, newData.hours);
-                    Object.assign(this.liveData.power_meter, newData.power_meter);
-                    Object.assign(this.liveData.battery, newData.battery);
-                    Object.assign(this.liveData.vedirect, newData.vedirect);
-                    Object.assign(this.liveData.refusol, newData.refusol);
-                    Object.assign(this.liveData.meanwell, newData.meanwell);
 
                     const foundIdx = this.liveData.inverters.findIndex((element) => element.serial == newData.inverters[0].serial);
                     if (foundIdx == -1) {
