@@ -75,6 +75,7 @@ class PylontechRS485Receiver : public BatteryProvider {
         SetChargeDischargeManagementInfo = 0x94,
         TurnOffModule = 0x95,
         GetFirmwareInfo = 0x96,
+        ControlCommand = 0x99, // INFO=0x0C Buzzer off, INFO=0x0D Buzzer on
         GetRemainingCapacity = 0xA6,
         BMSTime = 0xB1,
         GetVersionInfo = 0xC1,

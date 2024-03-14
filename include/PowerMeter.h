@@ -10,6 +10,7 @@
 #include <espMqttClient.h>
 #include <list>
 #include <map>
+#include <mutex>
 
 #ifndef SDM_RX_PIN
 #define SDM_RX_PIN 13
@@ -33,13 +34,11 @@ typedef struct {
     float Power1;
     float Power2;
     float Power3;
-    /*
-        float Voltage1;
-        float Voltage2;
-        float Voltage3;
-        float Import;
-        float Export;
-    */
+    float Voltage1;
+    float Voltage2;
+    float Voltage3;
+    float Import;
+    float Export;
     float PowerTotal;
     float HousePower;
 
@@ -59,7 +58,7 @@ public:
     float getPowerTotal(bool forceUpdate = true);
     void setHousePower(float value);
     float getHousePower(void);
-    uint32_t getLastPowerMeterUpdate(void) { return _lastPowerMeterUpdate; }
+    uint32_t getLastPowerMeterUpdate(void);
 
     bool getVerboseLogging(void) { return _verboseLogging; };
     void setVerboseLogging(bool logging) { _verboseLogging = logging; };
@@ -76,10 +75,12 @@ private:
     // Used in Power limiter for safety check
     uint32_t _lastPowerMeterUpdate;
 
-    PowerMeter_t _powerMeter = { 0.0, 0.0, 0.0, 0.0, 0.0 }; //, 0.0, 0.0, 0.0, 0.0, 0.0};
-    PowerMeter_t _lastPowerMeter = { 0.0, 0.0, 0.0, 0.0, 0.0 }; //, 0.0, 0.0, 0.0, 0.0, 0.0};
+    PowerMeter_t _powerMeter = { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+    PowerMeter_t _lastPowerMeter = { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 
     std::map<String, float*> _mqttSubscriptions;
+
+    mutable std::mutex _mutex;
 
     void readPowerMeter();
 

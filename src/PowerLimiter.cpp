@@ -902,7 +902,7 @@ bool PowerLimiterClass::manageBatteryDCpowerSwitch()
     {
         switch (_preChargePowerState) {
         case 0:
-            if ((millis() - _lastPreCharge > _preChargeDelay) && (Battery.getStats()->getSoC() >= cPL.BatterySocStartThreshold || (Battery.getStats()->getSoC() > cPL.BatterySocStopThreshold /*&& _lastDCState == false*/))) {
+            if ((millis() - _lastPreCharge > _preChargeDelay) && (Battery.getStats()->getSoC() >= cPL.BatterySocStartThreshold /*|| (Battery.getStats()->getSoC() > cPL.BatterySocStopThreshold && _lastDCState == false)*/ )) {
                 MessageOutput.printf("%s%s: switch DC power of inverter id %d at channel %d OFF\r\n", TAG, __FUNCTION__, cPL.InverterId, cPL.InverterChannelId);
                 digitalWrite(PinMapping.get().pre_charge, HIGH); // MOSfet gate off
                 digitalWrite(PinMapping.get().full_power, HIGH); // MOSfet gate off
@@ -934,13 +934,14 @@ bool PowerLimiterClass::manageBatteryDCpowerSwitch()
                 digitalWrite(PinMapping.get().pre_charge, HIGH); // MOSfet gate off
                 _inverter->setConnected(true);
 
-                if (!isStopThresholdReached() && !isStartThresholdReached() /*&& cPL.Enabled != _lastDCState*/) {
+/*
+                if (!isStopThresholdReached() && !isStartThresholdReached() && cPL.Enabled != _lastDCState) {
                     if (_verbose_logging)
                         MessageOutput.printf("%s%s: initial condition (discharging allowed)\r\n", TAG, __FUNCTION__);
                     _batteryDischargeEnabled = true;
                     //                    _lastDCState = true;
                 }
-
+*/
                 _lastPreCharge = millis();
                 _preChargeDelay = 60 * 1000; // give 60 seconds to start Inverter
                 _preChargePowerState = 3;
