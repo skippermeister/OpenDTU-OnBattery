@@ -75,9 +75,9 @@ void sdm_debug(const char* s, uint8_t* frame, uint8_t len)
     Serial.println();
 }
 
-float SDM::readVal(uint16_t reg, uint8_t node)
+float SDM::readVal(uint16_t reg, uint8_t node, boolean verbose)
 {
-    uint32_t t_start = millis();
+    unsigned long t_start = millis();
 
     uint16_t temp;
     unsigned long req_end;
@@ -105,7 +105,7 @@ float SDM::readVal(uint16_t reg, uint8_t node)
 
     flush(); // read serial if any old data is available
 
-    //  sdm_debug("Write", sdmarr, FRAMESIZE - 1);
+    if (verbose) sdm_debug("Write", sdmarr, FRAMESIZE - 1);
 
     sdmSer.write(sdmarr, FRAMESIZE - 1); // send 8 bytes
 
@@ -137,12 +137,7 @@ float SDM::readVal(uint16_t reg, uint8_t node)
                     res.b[2] = sdmarr[4];
                     res.b[1] = sdmarr[5];
                     res.b[0] = sdmarr[6];
-                    /*
-                              Serial.printf("%02d %02d %02d %02d | %02d %02d %02d %02d Res: %f, size of res %d\r\n", res.b[3], res.b[2], res.b[1], res.b[0],
-                                sdmarr[6], sdmarr[5], sdmarr[4], sdmarr[3],
-                                res.value,
-                                sizeof(res));
-                    */
+                    if (verbose) Serial.printf("%02d %02d %02d %02d Res: %f\r\n", sdmarr[3], sdmarr[4], sdmarr[5], sdmarr[6], res.value);
                 } else {
                     readErr = SDM_ERR_CRC_ERROR; // err debug (1)
                 }
@@ -155,7 +150,7 @@ float SDM::readVal(uint16_t reg, uint8_t node)
             readErr = SDM_ERR_NOT_ENOUGHT_BYTES; // err debug (3)
         }
 
-        //    sdm_debug("Read", sdmarr, FRAMESIZE);
+        if (verbose) sdm_debug("Read", sdmarr, FRAMESIZE);
     }
 
     flush(mstimeout); // read serial if any old data is available and wait for RESPONSE_TIMEOUT (in ms)
@@ -175,7 +170,7 @@ float SDM::readVal(uint16_t reg, uint8_t node)
     sdmSer.stopListening(); // disable softserial rx interrupt
 #endif
 
-    Serial.printf("SDM timing: write: %u, delay: %u, read:%u\r\n", req_end-t_start, resp_start-req_end, millis()-resp_start);
+    if (verbose) Serial.printf("SDM timing: write: %lu, delay: %lu, read:%lu\r\n", req_end-t_start, resp_start-req_end, millis()-resp_start);
 
     return (res.value);
 }

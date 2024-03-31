@@ -207,7 +207,7 @@ class SDM {
     virtual ~SDM();
 
     void begin(void);
-    float readVal(uint16_t reg, uint8_t node = SDM_B_01);                       //  read value from register = reg and from deviceId = node
+    float readVal(uint16_t reg, uint8_t node = SDM_B_01, boolean verbose = false);      //  read value from register = reg and from deviceId = node
     uint16_t getErrCode(bool _clear = false);                                   //  return last errorcode (optional clear this value, default flase)
     uint32_t getErrCount(bool _clear = false);                                  //  return total errors count (optional clear this value, default flase)
     uint32_t getSuccCount(bool _clear = false);                                 //  return total success count (optional clear this value, default false)

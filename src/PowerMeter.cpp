@@ -317,7 +317,7 @@ void PowerMeterClass::readPowerMeter()
 
         // this takes a "very long" time as each readVal() is a synchronous
         // exchange of serial messages. cache the values and write later.
-        auto phase1Power   = _upSdm->readVal(SDM_PHASE_1_POWER, _address);
+        auto phase1Power   = _upSdm->readVal(SDM_PHASE_1_POWER, _address, _verboseLogging);
 
         /*
          * other interesting values
@@ -334,7 +334,7 @@ void PowerMeterClass::readPowerMeter()
         switch (state) {
             case 0:
                 {
-                auto phase1Voltage = _upSdm->readVal(SDM_PHASE_1_VOLTAGE, _address);
+                auto phase1Voltage = _upSdm->readVal(SDM_PHASE_1_VOLTAGE, _address, _verboseLogging);
                 std::lock_guard<std::mutex> l(_mutex);
                 _powerMeter.Voltage1 = static_cast<float>(phase1Voltage);
                 _powerMeter.Voltage2 = 0;
@@ -344,7 +344,7 @@ void PowerMeterClass::readPowerMeter()
                 break;
             case 1:
                 {
-                auto energyImport  = _upSdm->readVal(SDM_IMPORT_ACTIVE_ENERGY, _address);
+                auto energyImport  = _upSdm->readVal(SDM_IMPORT_ACTIVE_ENERGY, _address, _verboseLogging);
                 std::lock_guard<std::mutex> l(_mutex);
                 _powerMeter.Import   = static_cast<float>(energyImport);
                 state++;
@@ -353,7 +353,7 @@ void PowerMeterClass::readPowerMeter()
             case 2:
             default:
                 {
-                auto energyExport  = _upSdm->readVal(SDM_EXPORT_ACTIVE_ENERGY, _address);
+                auto energyExport  = _upSdm->readVal(SDM_EXPORT_ACTIVE_ENERGY, _address, _verboseLogging);
                 std::lock_guard<std::mutex> l(_mutex);
                 _powerMeter.Export   = static_cast<float>(energyExport);
                 state = 0;
@@ -372,9 +372,9 @@ void PowerMeterClass::readPowerMeter()
 
         // this takes a "very long" time as each readVal() is a synchronous
         // exchange of serial messages. cache the values and write later.
-        auto phase1Power   = _upSdm->readVal(SDM_PHASE_1_POWER, _address);
-        auto phase2Power   = _upSdm->readVal(SDM_PHASE_2_POWER, _address);
-        auto phase3Power   = _upSdm->readVal(SDM_PHASE_3_POWER, _address);
+        auto phase1Power   = _upSdm->readVal(SDM_PHASE_1_POWER, _address, _verboseLogging);
+        auto phase2Power   = _upSdm->readVal(SDM_PHASE_2_POWER, _address, _verboseLogging);
+        auto phase3Power   = _upSdm->readVal(SDM_PHASE_3_POWER, _address, _verboseLogging);
 
         /*
          * other interesting vales
@@ -393,7 +393,7 @@ void PowerMeterClass::readPowerMeter()
         switch (state) {
             case 0:
                 {
-                auto phase1Voltage = _upSdm->readVal(SDM_PHASE_1_VOLTAGE, _address);
+                auto phase1Voltage = _upSdm->readVal(SDM_PHASE_1_VOLTAGE, _address, _verboseLogging);
                 std::lock_guard<std::mutex> l(_mutex);
                 _powerMeter.Voltage1 = static_cast<float>(phase1Voltage);
                 state++;
@@ -401,7 +401,7 @@ void PowerMeterClass::readPowerMeter()
                 break;
             case 1:
                 {
-                auto phase2Voltage = _upSdm->readVal(SDM_PHASE_2_VOLTAGE, _address);
+                auto phase2Voltage = _upSdm->readVal(SDM_PHASE_2_VOLTAGE, _address, _verboseLogging);
                 std::lock_guard<std::mutex> l(_mutex);
                 _powerMeter.Voltage2 = static_cast<float>(phase2Voltage);
                 state++;
@@ -409,7 +409,7 @@ void PowerMeterClass::readPowerMeter()
                 break;
             case 2:
                 {
-                auto phase3Voltage = _upSdm->readVal(SDM_PHASE_3_VOLTAGE, _address);
+                auto phase3Voltage = _upSdm->readVal(SDM_PHASE_3_VOLTAGE, _address, _verboseLogging);
                 std::lock_guard<std::mutex> l(_mutex);
                 _powerMeter.Voltage3 = static_cast<float>(phase3Voltage);
                 state++;
@@ -417,7 +417,7 @@ void PowerMeterClass::readPowerMeter()
                 break;
             case 3:
                 {
-                auto energyImport  = _upSdm->readVal(SDM_IMPORT_ACTIVE_ENERGY, _address);
+                auto energyImport  = _upSdm->readVal(SDM_IMPORT_ACTIVE_ENERGY, _address, _verboseLogging);
                 std::lock_guard<std::mutex> l(_mutex);
                 _powerMeter.Import   = static_cast<float>(energyImport);
                 state++;
@@ -426,7 +426,7 @@ void PowerMeterClass::readPowerMeter()
             case 4:
             default:;
                 {
-                auto energyExport  = _upSdm->readVal(SDM_EXPORT_ACTIVE_ENERGY, _address);
+                auto energyExport  = _upSdm->readVal(SDM_EXPORT_ACTIVE_ENERGY, _address, _verboseLogging);
                 std::lock_guard<std::mutex> l(_mutex);
                 _powerMeter.Export   = static_cast<float>(energyExport);
                 state=0;
