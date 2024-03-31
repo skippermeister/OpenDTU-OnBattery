@@ -56,7 +56,6 @@ private:
 
     uint16_t _totalMaxPower = 0;
     uint8_t _invID = 0;
-    uint8_t _invIDmask;
 
     float _actual_I;
     float _last_I;

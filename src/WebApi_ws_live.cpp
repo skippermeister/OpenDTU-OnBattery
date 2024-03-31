@@ -149,6 +149,8 @@ void WebApiWsLiveClass::sendOnBatteryStats()
     }
     generateOnBatteryJsonResponse(var, all);
 
+    if (Utils::checkJsonOverflow(root, __FUNCTION__, __LINE__)) { return; }
+
     String buffer;
     serializeJson(root, buffer);
 

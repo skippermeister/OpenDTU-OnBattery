@@ -124,7 +124,7 @@ void WebApiREFUsolClass::onREFUsolAdminPost(AsyncWebServerRequest* request)
     response->setLength();
     request->send(response);
 
-    REFUsol.init();
+    REFUsol.updateSettings();
 }
 
 #endif

@@ -18,14 +18,18 @@ static constexpr char TAG[] = "[Pylontech RS485]";
 
 bool PylontechRS485Receiver::init()
 {
+    MessageOutput.printf("Initialize Pylontech battery interface... ");
+
     _lastBatteryCheck.set(Configuration.get().Battery.PollInterval * 1000);
 
+/*
     if (!Configuration.get().Battery.Enabled) {
+        MessageOutput.println("not enabled");
         return false;
     }
+*/
 
     const PinMapping_t& pin = PinMapping.get();
-    MessageOutput.printf("Initialize Pylontech battery interface... ");
 
     if (pin.battery_rx < 0 || pin.battery_tx < 0
         || pin.battery_rx == pin.battery_tx

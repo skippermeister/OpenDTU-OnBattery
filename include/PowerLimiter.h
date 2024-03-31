@@ -49,11 +49,12 @@ public:
         InverterPowerCmdPending,
         InverterDevInfoPending,
         InverterStatsPending,
+        CalculatedLimitBelowMinLimit,
         UnconditionalSolarPassthrough,
         NoVeDirect,
-        Settling,
+        NoEnergy,
+        MeanWellPsu,
         Stable,
-        LowerLimitUndercut,
         TemperatureRange,
         BatteryNotInitialized,
         DisconnectFromBattery
@@ -63,7 +64,7 @@ public:
     PowerLimiterClass();
     void init(Scheduler& scheduler);
     uint8_t getPowerLimiterState();
-    int32_t getLastRequestedPowerLimit();
+    int32_t getLastRequestedPowerLimit() { return _lastRequestedPowerLimit; }
 
     enum class Mode : unsigned {
         Normal = 0,
@@ -75,8 +76,8 @@ public:
     Mode getMode() const { return _mode; }
     void calcNextInverterRestart();
 
-    bool getVerboseLogging(void) { return _verbose_logging; };
-    void setVerboseLogging(bool logging) { _verbose_logging = logging; };
+    bool getVerboseLogging(void) { return _verboseLogging; };
+    void setVerboseLogging(bool logging) { _verboseLogging = logging; };
 
 private:
     void loop();
@@ -84,9 +85,10 @@ private:
     Task _loopTask;
 
     int32_t _lastRequestedPowerLimit = 0;
-    uint32_t _lastPowerLimitMillis = 0;
-    uint32_t _shutdownTimeout = 0;
-    bool _shutdownInProgress;
+    bool _shutdownPending = false;
+    std::optional<uint32_t> _oUpdateStartMillis = std::nullopt;
+    std::optional<int32_t> _oTargetPowerLimitWatts = std::nullopt;
+    std::optional<bool> _oTargetPowerState = std::nullopt;
     Status _lastStatus = Status::Initializing;
     TimeoutHelper _lastStatusPrinted;
     uint32_t _lastCalculation = 0;
@@ -101,16 +103,17 @@ private:
 
     frozen::string const& getStatusText(Status status);
     void announceStatus(Status status);
+    void switchMosFeetsOff();
     bool shutdown(Status status);
     bool shutdown() { return shutdown(_lastStatus); }
     float getBatteryVoltage(bool log = false);
     int32_t inverterPowerDcToAc(std::shared_ptr<InverterAbstract> inverter, int32_t dcPower);
     void unconditionalSolarPassthrough(std::shared_ptr<InverterAbstract> inverter);
-    bool canUseDirectSolarPower();
-    int32_t calcPowerLimit(std::shared_ptr<InverterAbstract> inverter, bool solarPowerEnabled, bool batteryDischargeEnabled);
-    void commitPowerLimit(std::shared_ptr<InverterAbstract> inverter, int32_t limit, bool enablePowerProduction);
+    bool calcPowerLimit(std::shared_ptr<InverterAbstract> inverter, int32_t solarPower, bool batteryPower);
     bool setNewPowerLimit(std::shared_ptr<InverterAbstract> inverter, int32_t newPowerLimit);
-    int32_t getSolarChargePower();
+    bool updateInverter();
+    int32_t scalePowerLimit(std::shared_ptr<InverterAbstract> inverter, int32_t newLimit, int32_t currentLimitWatts);
+    int32_t getSolarPower();
     float getLoadCorrectedVoltage();
     bool testThreshold(float socThreshold, float voltThreshold,
         std::function<bool(float, float)> compare);
@@ -125,7 +128,7 @@ private:
     int8_t _preChargePowerState;
     uint32_t _preChargeDelay = 0;
     uint32_t _lastPreCharge = 0;
-    bool _verbose_logging = false;
+    bool _verboseLogging = false;
 };
 
 extern PowerLimiterClass PowerLimiter;

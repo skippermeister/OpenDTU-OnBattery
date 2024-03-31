@@ -6,23 +6,11 @@
 #include "sml.h"
 #include <Arduino.h>
 #include <TaskSchedulerDeclarations.h>
-#include <TimeoutHelper.h>
 #include <espMqttClient.h>
 #include <list>
 #include <map>
 #include <mutex>
-
-#ifndef SDM_RX_PIN
-#define SDM_RX_PIN 13
-#endif
-
-#ifndef SDM_TX_PIN
-#define SDM_TX_PIN 32
-#endif
-
-#ifndef SML_RX_PIN
-#define SML_RX_PIN 35
-#endif
+#include <SoftwareSerial.h>
 
 typedef struct {
     const unsigned char OBIS[6];
@@ -34,11 +22,14 @@ typedef struct {
     float Power1;
     float Power2;
     float Power3;
+
     float Voltage1;
     float Voltage2;
     float Voltage3;
+
     float Import;
     float Export;
+
     float PowerTotal;
     float HousePower;
 
@@ -46,12 +37,15 @@ typedef struct {
 
 class PowerMeterClass {
 public:
-    enum SOURCE {
-        SOURCE_MQTT = 0,
-        SOURCE_SDM1PH = 1,
-        SOURCE_SDM3PH = 2,
-        SOURCE_HTTP = 3,
-        SOURCE_SML = 4
+    enum class Source : unsigned {
+        MQTT = 0,
+        SDM1PH = 1,
+        SDM3PH = 2,
+        HTTP = 3,
+        SML = 4
+#if defined (USE_SMA_HM)
+        , SMAHM2 = 5
+#endif
     };
     PowerMeterClass();
     void init(Scheduler& scheduler);
@@ -68,12 +62,15 @@ private:
 
     Task _loopTask;
 
+    void* PowerMeter_task_handle = NULL;
+    static void PowerMeter_task(void* arg);
+
     void mqtt();
     void onMqttMessage(const espMqttClientTypes::MessageProperties& properties, const char* topic, const uint8_t* payload, size_t len, size_t index, size_t total);
 
-    TimeoutHelper _lastPowerMeterCheck;
+    volatile int8_t _powerMeterValuesUpdated;
     // Used in Power limiter for safety check
-    uint32_t _lastPowerMeterUpdate;
+    volatile uint32_t _lastPowerMeterUpdate;
 
     PowerMeter_t _powerMeter = { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
     PowerMeter_t _lastPowerMeter = { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
@@ -81,6 +78,9 @@ private:
     std::map<String, float*> _mqttSubscriptions;
 
     mutable std::mutex _mutex;
+
+    std::unique_ptr<SDM> _upSdm = nullptr;
+    std::unique_ptr<SoftwareSerial> _upSmlSerial = nullptr;
 
     void readPowerMeter();
 

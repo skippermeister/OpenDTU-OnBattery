@@ -18,6 +18,16 @@
                     <InputElement :label="$t('acchargeradmin.VerboseLogging')"
                               v-model="acChargerConfigList.verbose_logging"
                               type="checkbox" wide4_1/>
+
+                    <div class="row mb-3">
+                        <label class="col-sm-4 col-form-label">
+                                {{ $t('acchargeradmin.EEPROMwrites') }}
+                        </label>
+                        <label class="col-sm-4">
+                            {{ $n(acChargerConfigList.EEPROMwrites, 'decimal') }}
+                        </label>
+                    </div>
+
                 </div>
             </CardElement>
 
@@ -25,6 +35,10 @@
                          :text="$t('acchargeradmin.ChargerParameter')"
                          textVariant="text-bg-primary"
                          add-space>
+                <InputElement :label="$t('acchargeradmin.mustInverterProduce')"
+                              v-model="acChargerConfigList.mustInverterProduce"
+                              type="checkbox" wide4_1/>
+
                 <InputElement :label="$t('acchargeradmin.PollInterval')"
                               v-model="acChargerConfigList.pollinterval"
                               type="number" min="1" max="300" placeholder="5" wide3_2

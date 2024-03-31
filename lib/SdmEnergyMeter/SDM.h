@@ -9,60 +9,26 @@
 //------------------------------------------------------------------------------
 #include <Arduino.h>
 #include <SDM_Config_User.h>
-#if defined ( USE_HARDWARESERIAL )
+#if defined ( USE_POWERMETER_SERIAL2 )
   #include <HardwareSerial.h>
+  #include <driver/uart.h>
 #else
   #include <SoftwareSerial.h>
 #endif
 //------------------------------------------------------------------------------
 //DEFAULT CONFIG (DO NOT CHANGE ANYTHING!!! for changes use SDM_Config_User.h):
 //------------------------------------------------------------------------------
+
 #if !defined ( SDM_UART_BAUD )
-  #define SDM_UART_BAUD                               4800                      //  default baudrate
+  #define SDM_UART_BAUD                               9600                      //  default baudrate
 #endif
 
-#if !defined ( DERE_PIN )
-  #define DERE_PIN                                    NOT_A_PIN                 //  default digital pin for control MAX485 DE/RE lines (connect DE & /RE together to this pin)
-#endif
-
-#if defined ( USE_HARDWARESERIAL )
-
-  #if !defined ( SDM_UART_CONFIG )
-    #define SDM_UART_CONFIG                           SERIAL_8N1                //  default hardware uart config
-  #endif
-
-  #if defined ( ESP8266 ) && !defined ( SWAPHWSERIAL )
-    #define SWAPHWSERIAL                              0                         //  (only esp8266) when hwserial used, then swap uart pins from 3/1 to 13/15 (default not swap)
-  #endif
-
-  #if defined ( ESP32 )
-    #if !defined ( SDM_RX_PIN )
-      #define SDM_RX_PIN                              -1                        //  use default rx pin for selected port
+#if !defined ( SDM_UART_CONFIG )
+    #if defined ( USE_POWERMETER_SERIAL2 )
+        #define SDM_UART_CONFIG                       SERIAL_8N1                //  default hardware uart config
+    #else
+        #define SDM_UART_CONFIG                       SWSERIAL_8N1              //  default softwareware uart config for esp8266/esp32
     #endif
-    #if !defined ( SDM_TX_PIN )
-      #define SDM_TX_PIN                              -1                        //  use default tx pin for selected port
-    #endif
-  #endif
-
-#else
-
-  #if defined ( ESP8266 ) || defined ( ESP32 )
-    #if !defined ( SDM_UART_CONFIG )
-      #define SDM_UART_CONFIG                         SWSERIAL_8N1              //  default softwareware uart config for esp8266/esp32
-    #endif
-  #endif
-
-//  #if !defined ( SDM_RX_PIN ) || !defined ( SDM_TX_PIN )
-//    #error "SDM_RX_PIN and SDM_TX_PIN must be defined in SDM_Config_User.h for Software Serial option)"
-//  #endif
-
-  #if !defined ( SDM_RX_PIN )
-    #define SDM_RX_PIN                                -1
-  #endif
-  #if !defined ( SDM_TX_PIN )
-    #define SDM_TX_PIN                                -1
-  #endif
-
 #endif
 
 #if !defined ( WAITING_TURNAROUND_DELAY )
@@ -105,7 +71,7 @@
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //      REGISTER NAME                                 REGISTER ADDRESS              UNIT        | SDM630  | SDM230  | SDM220  | SDM120CT| SDM120  | SDM72D  | SDM72 V2|
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------
-#define SDM_PHASE_1_VOLTAGE                           0x0000                    //  V           |    1    |    1    |    1    |    1    |    1    |         |    1    |         
+#define SDM_PHASE_1_VOLTAGE                           0x0000                    //  V           |    1    |    1    |    1    |    1    |    1    |         |    1    |
 #define SDM_PHASE_2_VOLTAGE                           0x0002                    //  V           |    1    |         |         |         |         |         |    1    |
 #define SDM_PHASE_3_VOLTAGE                           0x0004                    //  V           |    1    |         |         |         |         |         |    1    |
 #define SDM_PHASE_1_CURRENT                           0x0006                    //  A           |    1    |    1    |    1    |    1    |    1    |         |    1    |
@@ -233,20 +199,10 @@
 
 class SDM {
   public:
-#if defined ( USE_HARDWARESERIAL )                                              //  hardware serial
-  #if defined ( ESP8266 )                                                       //  on esp8266
-    SDM(HardwareSerial& serial, long baud = SDM_UART_BAUD, int dere_pin = DERE_PIN, int config = SDM_UART_CONFIG, bool swapuart = SWAPHWSERIAL);
-  #elif defined ( ESP32 )                                                       //  on esp32
-    SDM(HardwareSerial& serial, long baud = SDM_UART_BAUD, int dere_pin = DERE_PIN, int config = SDM_UART_CONFIG, int8_t rx_pin = SDM_RX_PIN, int8_t tx_pin = SDM_TX_PIN);
-  #else                                                                         //  on avr
-    SDM(HardwareSerial& serial, long baud = SDM_UART_BAUD, int dere_pin = DERE_PIN, int config = SDM_UART_CONFIG);
-  #endif
+#if defined ( USE_POWERMETER_SERIAL2 )                                          //  hardware serial
+    SDM(HardwareSerial& serial, long baud, int dere_pin, int config, int8_t rx_pin, int8_t tx_pin);
 #else                                                                           //  software serial
-  #if defined ( ESP8266 ) || defined ( ESP32 )                                  //  on esp8266/esp32
-    SDM(SoftwareSerial& serial, long baud = SDM_UART_BAUD, int dere_pin = DERE_PIN, int config = SDM_UART_CONFIG, int8_t rx_pin = SDM_RX_PIN, int8_t tx_pin = SDM_TX_PIN);
-  #else                                                                         //  on avr
-    SDM(SoftwareSerial& serial, long baud = SDM_UART_BAUD, int dere_pin = DERE_PIN);
-  #endif
+    SDM(SoftwareSerial& serial, long baud, int dere_pin, int config, int8_t rx_pin, int8_t tx_pin);
 #endif
     virtual ~SDM();
 
@@ -264,29 +220,17 @@ class SDM {
     uint16_t getMsTimeout();                                                    //  get current value of RESPONSE_TIMEOUT (ms)
 
   private:
-#if defined ( USE_HARDWARESERIAL )
+#if defined ( USE_POWERMETER_SERIAL2 )
     HardwareSerial& sdmSer;
 #else
     SoftwareSerial& sdmSer;
 #endif
 
-#if defined ( USE_HARDWARESERIAL )
     int _config = SDM_UART_CONFIG;
-  #if defined ( ESP8266 )
-    bool _swapuart = SWAPHWSERIAL;
-  #elif defined ( ESP32 )
     int8_t _rx_pin = -1;
     int8_t _tx_pin = -1;
-  #endif
-#else
-  #if defined ( ESP8266 ) || defined ( ESP32 )
-    int _config = SDM_UART_CONFIG;
-  #endif
-    int8_t _rx_pin = -1;
-    int8_t _tx_pin = -1; 
-#endif
+    int _dere_pin = -1;
     long _baud = SDM_UART_BAUD;
-    int _dere_pin = DERE_PIN;
     uint16_t readingerrcode = SDM_ERR_NO_ERROR;                                 //  4 = timeout; 3 = not enough bytes; 2 = number of bytes OK but bytes b0,b1 or b2 wrong, 1 = crc error
     uint16_t msturnaround = WAITING_TURNAROUND_DELAY;
     uint16_t mstimeout = RESPONSE_TIMEOUT;
@@ -294,6 +238,5 @@ class SDM {
     uint32_t readingsuccesscount = 0;                                           //  total success counter
     uint16_t calculateCRC(uint8_t *array, uint8_t len);
     void flush(unsigned long _flushtime = 0);                                   //  read serial if any old data is available or for a given time in ms
-    void dereSet(bool _state = LOW);                                            //  for control MAX485 DE/RE pins, LOW receive from SDM, HIGH transmit to SDM
 };
 #endif // SDM_h

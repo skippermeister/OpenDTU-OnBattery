@@ -9,7 +9,7 @@
 #include "MqttSettings.h"
 #include "NetworkSettings.h"
 #include "MessageOutput.h"
-#include "VictronMppt.h" 
+#include "VictronMppt.h"
 #include "Utils.h"
 
 MqttHandleVedirectHassClass MqttHandleVedirectHass;
@@ -72,7 +72,7 @@ void MqttHandleVedirectHassClass::publishConfig()
     publishSensor("Battery current", NULL, "I", "current", "measurement", "A");
     publishSensor("Battery power (calculated)", NULL, "P", "power", "measurement", "W");
     publishSensor("Battery efficiency (calculated)", NULL, "E", NULL, "measurement", "%");
-    
+
     // panel info
     publishSensor("Panel voltage", NULL, "VPV", "voltage", "measurement", "V");
     publishSensor("Panel current (calculated)", NULL, "IPV", "current", "measurement", "A");
@@ -131,6 +131,8 @@ void MqttHandleVedirectHassClass::publishSensor(const char* caption, const char*
         root["stat_cla"] = stateClass;
     }
 
+    if (Utils::checkJsonOverflow(root, __FUNCTION__, __LINE__)) { return; }
+
     String buffer;
     serializeJson(root, buffer);
     String configTopic = "sensor/dtu_victron_" + serial + "/" + sensorId + "/config";
@@ -169,6 +171,8 @@ void MqttHandleVedirectHassClass::publishBinarySensor(const char* caption, const
 
     JsonObject deviceObj = root.createNestedObject("dev");
     createDeviceInfo(deviceObj);
+
+    if (Utils::checkJsonOverflow(root, __FUNCTION__, __LINE__)) { return; }
 
     String buffer;
     serializeJson(root, buffer);

@@ -34,8 +34,6 @@ void WebApiWsVedirectLiveClass::init(AsyncWebServer& server, Scheduler& schedule
     server.addHandler(&_ws);
     _ws.onEvent(std::bind(&WebApiWsVedirectLiveClass::onWebsocketEvent, this, _1, _2, _3, _4, _5, _6));
 
-    _lastWsPublish.set(10 * 1000);
-
     scheduler.addTask(_wsCleanupTask);
     _wsCleanupTask.enable();
 
@@ -49,54 +47,74 @@ void WebApiWsVedirectLiveClass::wsCleanupTaskCb()
     _ws.cleanupClients();
 }
 
+bool WebApiWsVedirectLiveClass::hasUpdate(size_t idx)
+{
+    auto dataAgeMillis = VictronMppt.getDataAgeMillis(idx);
+    if (dataAgeMillis == 0) { return false; }
+    auto publishAgeMillis = millis() - _lastPublish;
+    return dataAgeMillis < publishAgeMillis;
+}
+
+uint16_t WebApiWsVedirectLiveClass::responseSize() const
+{
+    // estimated with ArduinoJson assistant
+    return VictronMppt.controllerAmount() * (1024 + 512) + 128/*DPL status and structure*/;
+}
+
 void WebApiWsVedirectLiveClass::sendDataTaskCb()
 {
     // do nothing if no WS client is connected
-    if (_ws.count() == 0) {
-        return;
-    }
-
-    // we assume this loop to be running at least twice for every
-    // update from a VE.Direct MPPT data producer, so _dataAgeMillis
-    // acutally grows in between updates.
-    auto lastDataAgeMillis = _dataAgeMillis;
-    _dataAgeMillis = VictronMppt.getDataAgeMillis();
+    if (_ws.count() == 0) { return; }
 
     // Update on ve.direct change or at least after 10 seconds
-    if (!_lastWsPublish.occured() && (lastDataAgeMillis <= _dataAgeMillis)) {
-        return;
+    bool fullUpdate = (millis() - _lastFullPublish > (10 * 1000));
+    bool updateAvailable = false;
+    if (!fullUpdate) {
+        for (size_t idx = 0; idx < VictronMppt.controllerAmount(); ++idx) {
+            if (hasUpdate(idx)) {
+                updateAvailable = true;
+                break;
+            }
+        }
     }
 
-    try {
-        std::lock_guard<std::mutex> lock(_mutex);
-        DynamicJsonDocument root(_responseSize);
-        if (Utils::checkJsonAlloc(root, __FUNCTION__, __LINE__)) {
-            JsonVariant var = root;
-            generateJsonResponse(var);
+    if (fullUpdate || updateAvailable) {
+        try {
+            std::lock_guard<std::mutex> lock(_mutex);
+            DynamicJsonDocument root(responseSize());
+            if (Utils::checkJsonAlloc(root, __FUNCTION__, __LINE__)) {
+                JsonVariant var = root;
+                generateJsonResponse(var, fullUpdate);
 
-            String buffer;
-            serializeJson(root, buffer);
+                if (Utils::checkJsonOverflow(root, __FUNCTION__, __LINE__)) { return; }
 
-            if (Configuration.get().Security.AllowReadonly) {
-                _ws.setAuthentication("", "");
-            } else {
-                _ws.setAuthentication(AUTH_USERNAME, Configuration.get().Security.Password);
+                String buffer;
+                serializeJson(root, buffer);
+
+                if (Configuration.get().Security.AllowReadonly) {
+                    _ws.setAuthentication("", "");
+                } else {
+                    _ws.setAuthentication(AUTH_USERNAME, Configuration.get().Security.Password);
+                }
+
+                _ws.textAll(buffer);
             }
 
-            _ws.textAll(buffer);
+        } catch (std::bad_alloc& bad_alloc) {
+            MessageOutput.printf("Calling /api/vedirectlivedata/status has temporarily run out of resources. Reason: \"%s\".\r\n", bad_alloc.what());
+        } catch (const std::exception& exc) {
+            MessageOutput.printf("Unknown exception in /api/vedirectlivedata/status. Reason: \"%s\".\r\n", exc.what());
         }
 
-    } catch (std::bad_alloc& bad_alloc) {
-        MessageOutput.printf("Calling /api/vedirectlivedata/status has temporarily run out of resources. Reason: \"%s\".\r\n", bad_alloc.what());
-    } catch (const std::exception& exc) {
-        MessageOutput.printf("Unknown exception in /api/vedirectlivedata/status. Reason: \"%s\".\r\n", exc.what());
     }
 
-    _lastWsPublish.reset();
+    if (fullUpdate) {
+        _lastFullPublish = millis();
+    }
 }
 
 template <typename T>
-void addOutputValue(JsonVariant& root, std::string const& name,
+void addOutputValue(const JsonObject& root, std::string const& name,
     T&& value, std::string const& unit, uint8_t precision)
 {
     auto jsonValue = root["output"][name];
@@ -106,7 +124,7 @@ void addOutputValue(JsonVariant& root, std::string const& name,
 }
 
 template <typename T>
-void addInputValue(JsonVariant& root, std::string const& name,
+void addInputValue(const JsonObject& root, std::string const& name,
     T&& value, std::string const& unit, uint8_t precision)
 {
     auto jsonValue = root["input"][name];
@@ -115,17 +133,42 @@ void addInputValue(JsonVariant& root, std::string const& name,
     jsonValue["d"] = precision;
 }
 
-void WebApiWsVedirectLiveClass::generateJsonResponse(JsonVariant& root)
+void WebApiWsVedirectLiveClass::generateJsonResponse(JsonVariant& root, bool fullUpdate)
 {
-    auto spMpptData = VictronMppt.getData();
+    const JsonObject &array = root["vedirect"].createNestedObject("instances");
+    root["vedirect"]["full_update"] = fullUpdate;
 
+    for (size_t idx = 0; idx < VictronMppt.controllerAmount(); ++idx) {
+        std::optional<VeDirectMpptController::spData_t> spOptMpptData = VictronMppt.getData(idx);
+        if (!spOptMpptData.has_value()) {
+            continue;
+        }
+
+        if (!fullUpdate && !hasUpdate(idx)) { continue; }
+
+        VeDirectMpptController::spData_t &spMpptData = spOptMpptData.value();
+
+        String serial(spMpptData->SER);
+        if (serial.isEmpty()) { continue; } // serial required as index
+
+        const JsonObject &nested = array.createNestedObject(serial);
+        nested["data_age_ms"] = VictronMppt.getDataAgeMillis(idx);
+        populateJson(nested, spMpptData);
+    }
+
+    _lastPublish = millis();
+
+    // power limiter state
+    root["dpl"]["PLSTATE"] = (Configuration.get().PowerLimiter.Enabled) ? PowerLimiter.getPowerLimiterState() : -1;
+    root["dpl"]["PLLIMIT"] = PowerLimiter.getLastRequestedPowerLimit();
+}
+
+void WebApiWsVedirectLiveClass::populateJson(const JsonObject &root, const VeDirectMpptController::spData_t &spMpptData) {
     // device info
-    root["device"]["data_age"] = VictronMppt.getDataAgeMillis() / 1000;
-    root["device"]["age_critical"] = !VictronMppt.isDataValid();
     root["device"]["PID"] = spMpptData->getPidAsString();
     root["device"]["SER"] = spMpptData->SER;
     root["device"]["FW"] = spMpptData->FW;
-    root["device"]["LOAD"] = spMpptData->LOAD == true ? "ON" : "OFF";
+    root["device"]["LOAD"] = spMpptData->LOAD ? "ON" : "OFF";
     root["device"]["CS"] = spMpptData->getCsAsString();
     root["device"]["ERR"] = spMpptData->getErrAsString();
     root["device"]["OR"] = spMpptData->getOrAsString();
@@ -148,10 +191,6 @@ void WebApiWsVedirectLiveClass::generateJsonResponse(JsonVariant& root)
     addInputValue(root, "YieldTotal", spMpptData->H19, "kWh", 3);
     addInputValue(root, "MaximumPowerToday", spMpptData->H21, "W", 0);
     addInputValue(root, "MaximumPowerYesterday", spMpptData->H23, "W", 0);
-
-    // power limiter state
-    root["dpl"]["PLSTATE"] = Configuration.get().PowerLimiter.Enabled ? PowerLimiter.getPowerLimiterState() : -1;
-    root["dpl"]["PLLIMIT"] = PowerLimiter.getLastRequestedPowerLimit();
 }
 
 void WebApiWsVedirectLiveClass::onWebsocketEvent(AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType type, void* arg, uint8_t* data, size_t len)
@@ -169,10 +208,13 @@ void WebApiWsVedirectLiveClass::onLivedataStatus(AsyncWebServerRequest* request)
         return;
     }
     try {
-        AsyncJsonResponse* response = new AsyncJsonResponse(false, _responseSize);
+        std::lock_guard<std::mutex> lock(_mutex);
+        AsyncJsonResponse* response = new AsyncJsonResponse(false, responseSize());
         auto& root = response->getRoot();
 
-        generateJsonResponse(root);
+        generateJsonResponse(root, true/*fullUpdate*/);
+
+        if (Utils::checkJsonOverflow(root, __FUNCTION__, __LINE__)) { return; }
 
         response->setLength();
         request->send(response);

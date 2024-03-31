@@ -15,6 +15,7 @@ typedef struct {
 } devInfo_t;
 
 const devInfo_t devInfo[] = {
+#ifdef USE_RADIO_NRF
     { { 0x10, 0x10, 0x10, ALL }, 300, "HM-300-1T" },
     { { 0x10, 0x10, 0x20, ALL }, 350, "HM-350-1T" },
     { { 0x10, 0x10, 0x30, ALL }, 400, "HM-400-1T" },
@@ -28,6 +29,7 @@ const devInfo_t devInfo[] = {
     { { 0x10, 0x12, 0x30, ALL }, 1500, "HM-1500-4T" },
     { { 0x10, 0x10, 0x10, 0x15 }, static_cast<uint16_t>(300 * 0.7), "HM-300-1T" }, // HM-300 factory limitted to 70%
     { { 0x10, 0x20, 0x11, ALL }, 300, "HMS-300-1T" } // 00
+#endif
 #ifdef USE_RADIO_CMT
     ,
     { { 0x10, 0x20, 0x11, ALL }, 300, "HMS-300-1T" }, // 00
@@ -55,6 +57,12 @@ const devInfo_t devInfo[] = {
 
     { { 0x10, 0x33, 0x11, ALL }, 1800, "HMT-1800-6T" }, // 01
     { { 0x10, 0x33, 0x31, ALL }, 2250, "HMT-2250-6T" } // 01
+#endif
+#ifdef USE_RADIO_NRF
+    ,
+    { { 0xF1, 0x01, 0x14, ALL }, 800, "HERF-800" }, // 00
+    { { 0xF1, 0x01, 0x24, ALL }, 1600, "HERF-1600" }, // 00
+    { { 0xF1, 0x01, 0x22, ALL }, 1800, "HERF-1800" }, // 00
 #endif
 };
 
@@ -203,7 +211,7 @@ bool DevInfoParser::containsValidData() const
     struct tm info;
     localtime_r(&t, &info);
 
-    return info.tm_year > (2016 - 1900);
+    return info.tm_year > (2016 - 1900) && getHwPartNumber() != 124097;
 }
 
 uint8_t DevInfoParser::getDevIdx() const

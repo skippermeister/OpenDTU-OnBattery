@@ -29,6 +29,7 @@
 #include "MqttHandleMeanWell.h"
 #endif
 #include "MqttHandlePowerLimiter.h"
+#include "MqttHandlePowerLimiterHass.h"
 #include "MqttHandleZeroExport.h"
 #include "MqttSettings.h"
 #include "NetworkSettings.h"
@@ -61,6 +62,7 @@ void setup()
     while (!Serial)
         yield();
 #endif
+
     MessageOutput.init(scheduler);
     MessageOutput.println("\r\nStarting OpenDTU-onBattery");
 
@@ -129,6 +131,9 @@ void setup()
     MqttHandleMeanWell.init(scheduler);
 #endif
     MqttHandlePowerLimiter.init(scheduler);
+#ifdef USE_HASS
+    MqttHandlePowerLimiterHass.init(scheduler);
+#endif
     MqttHandleZeroExport.init(scheduler);
     MessageOutput.println("done");
 

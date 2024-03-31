@@ -14,6 +14,7 @@
 #include "WebApi_errors.h"
 #include <AsyncJson.h>
 #include <Hoymiles.h>
+#include "Utils.h"
 
 void WebApiMeanWellClass::init(AsyncWebServer& server, Scheduler& scheduler)
 {
@@ -40,6 +41,8 @@ void WebApiMeanWellClass::onStatus(AsyncWebServerRequest* request)
     auto& root = response->getRoot();
     MeanWellCan.generateJsonResponse(root);
 
+    if (Utils::checkJsonOverflow(root, __FUNCTION__, __LINE__)) { return; }
+
     response->setLength();
     request->send(response);
 }
@@ -63,6 +66,8 @@ void WebApiMeanWellClass::onAdminGet(AsyncWebServerRequest* request)
     root["max_current"] = cMeanWell.MaxCurrent;
     root["hysteresis"] = cMeanWell.Hysteresis;
     root["verbose_logging"] = MeanWellCan.getVerboseLogging();
+    root["EEPROMwrites"] = cMeanWell.EEPROMwrites;
+    root["mustInverterProduce"] = cMeanWell.mustInverterProduce;
 
     response->setLength();
     request->send(response);
@@ -143,6 +148,7 @@ void WebApiMeanWellClass::onAdminPost(AsyncWebServerRequest* request)
     cMeanWell.MinCurrent = root["min_current"].as<float>();
     cMeanWell.MaxCurrent = root["max_current"].as<float>();
     cMeanWell.Hysteresis = root["hysteresis"].as<float>();
+    cMeanWell.mustInverterProduce = root["mustInverterProduce"].as<bool>();
     MeanWellCan.setVerboseLogging(root["verbose_logging"].as<bool>());
 
     WebApi.writeConfig(retMsg);
@@ -150,7 +156,7 @@ void WebApiMeanWellClass::onAdminPost(AsyncWebServerRequest* request)
     response->setLength();
     request->send(response);
 
-    MeanWellCan.init(scheduler);
+    MeanWellCan.updateSettings();
 }
 
 void WebApiMeanWellClass::onLimitGet(AsyncWebServerRequest* request)

@@ -120,7 +120,7 @@ void WebApiPowerMeterClass::onAdminPost(AsyncWebServerRequest* request)
         return;
     }
 
-    if (root["source"].as<uint8_t>() == PowerMeter.SOURCE_HTTP) {
+    if (static_cast<PowerMeterClass::Source>(root["source"].as<uint8_t>()) == PowerMeterClass::Source::HTTP) {
         JsonArray http_phases = root["http_phases"];
         for (uint8_t i = 0; i < http_phases.size(); i++) {
             JsonObject phase = http_phases[i].as<JsonObject>();
@@ -182,6 +182,9 @@ void WebApiPowerMeterClass::onAdminPost(AsyncWebServerRequest* request)
 
     cPM.Enabled = root["enabled"].as<bool>();
     PowerMeter.setVerboseLogging(root["verbose_logging"].as<bool>());
+#if defined (USE_SMA_HM)
+    SMA_HM.setVerboseLogging(root["verbose_logging"].as<bool>());
+#endif
     cPM.Source = root["source"].as<uint8_t>();
     cPM.PollInterval = root["pollinterval"].as<uint32_t>();
     cPM.UpdatesOnly = root["updatesonly"].as<uint32_t>();

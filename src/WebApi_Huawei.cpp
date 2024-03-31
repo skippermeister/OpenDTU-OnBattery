@@ -13,6 +13,7 @@
 #include "WebApi_errors.h"
 #include <AsyncJson.h>
 #include <Hoymiles.h>
+#include "Utils.h"
 
 void WebApiHuaweiClass::init(AsyncWebServer& server, Scheduler& scheduler)
 {
@@ -60,6 +61,8 @@ void WebApiHuaweiClass::onStatus(AsyncWebServerRequest* request)
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& root = response->getRoot();
     getJsonData(root);
+
+    if (Utils::checkJsonOverflow(root, __FUNCTION__, __LINE__)) { return; }
 
     response->setLength();
     request->send(response);

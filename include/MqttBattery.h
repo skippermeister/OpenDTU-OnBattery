@@ -14,6 +14,7 @@ class MqttBattery : public BatteryProvider {
         void deinit() final;
         void loop() final { return; } // this class is event-driven
         std::shared_ptr<BatteryStats> getStats() const final { return _stats; }
+        bool usesHwPort2() const final { return false; }
 
     private:
         bool _verboseLogging = false;

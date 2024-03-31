@@ -5,6 +5,7 @@
 #include "WebApi_device.h"
 #include "Configuration.h"
 #include "Display_Graphic.h"
+#include "PowerMeter.h"
 #include "PinMapping.h"
 #include "Utils.h"
 #include "WebApi.h"
@@ -140,6 +141,10 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
     auto victronPinObj = curPin.createNestedObject("victron");
     victronPinObj["rs232_rx"] = pin.victron_rx;
     victronPinObj["rs232_tx"] = pin.victron_tx;
+    if (pin.victron_rx2 > 0 && pin.victron_tx2 >= 0) {
+        victronPinObj["rs232_rx2"] = pin.victron_rx2;
+        victronPinObj["rs232_tx2"] = pin.victron_tx2;
+    }
 
 #if defined(USE_REFUsol_INVERTER)
     auto refusolPinObj = curPin.createNestedObject("refusol");
@@ -163,7 +168,7 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
         batteryPinObj["rs232_tx"] = pin.battery_tx;
     }
 #if defined(USE_DALYBMS_CONTROLLER)
-    batteryPinObj["daly_wakeup"] = pin.battery_daly_wakeup;
+    if (pin.battery_bms_wakeup >= 0) batteryPinObj["bms_wakeup"] = pin.battery_bms_wakeup;
 #endif
 #else
     batteryPinObj["can0_rx"] = pin.battery_rx;
@@ -193,16 +198,21 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
     chargerPinObj["mcp2515_cs"] = pin.mcp2515_cs;
 #endif
 
-    auto sdmPinObj = curPin.createNestedObject("sdm");
-    sdmPinObj["rs485_rx"] = pin.sdm_rx;
-    sdmPinObj["rs485_tx"] = pin.sdm_tx;
-    if (pin.sdm_rts >= 0) {
-        sdmPinObj["rs485_rts"] = pin.sdm_rts;
+    if (static_cast<PowerMeterClass::Source>(config.PowerMeter.Source) == PowerMeterClass::Source::SML)
+    {
+        auto smlPinObj = curPin.createNestedObject("powermeter");
+        smlPinObj["sml_rs232_rx"] = pin.powermeter_rx;
+        if (pin.powermeter_tx >= 0) smlPinObj["sml_rs232_tx"] = pin.powermeter_tx;
+    } else if (   static_cast<PowerMeterClass::Source>(config.PowerMeter.Source) == PowerMeterClass::Source::SDM1PH
+               || static_cast<PowerMeterClass::Source>(config.PowerMeter.Source) == PowerMeterClass::Source::SDM3PH)
+    {
+        auto sdmPinObj = curPin.createNestedObject("powermeter");
+        sdmPinObj["sdm_rs485_rx"] = pin.powermeter_rx;
+        sdmPinObj["sdm_rs485_tx"] = pin.powermeter_tx;
+        if (pin.powermeter_rts >= 0) {
+            sdmPinObj["sdm_rs485_rts"] = pin.powermeter_rts;
+        }
     }
-
-    auto smlPinObj = curPin.createNestedObject("sml");
-    smlPinObj["rs232_rx"] = pin.sml_rx;
-
 /*
         String output;
         serializeJsonPretty(root, output);

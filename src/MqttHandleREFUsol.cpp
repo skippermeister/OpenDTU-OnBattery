@@ -25,7 +25,7 @@ void MqttHandleREFUsolClass::init(Scheduler& scheduler)
 }
 
 #define MQTTpublish(value)                                                \
-    if (!configREFUsol.UpdatesOnly || _last.value != REFUsol.Frame.value) \
+    if (!config.REFUsol.UpdatesOnly || _last.value != REFUsol.Frame.value) \
         MqttSettings.publish(subtopic + #value, String(_last.value = REFUsol.Frame.value));
 
 void MqttHandleREFUsolClass::loop()
@@ -55,9 +55,9 @@ void MqttHandleREFUsolClass::loop()
     subtopic.concat(REFUsol.Frame.serNo);
     subtopic.concat("/");
 
-    if (!configREFUsol.UpdatesOnly || strcmp(REFUsol.Frame.serNo, _last.serNo) != 0)
+    if (!config.REFUsol.UpdatesOnly || strcmp(REFUsol.Frame.serNo, _last.serNo) != 0)
         MqttSettings.publish(subtopic + "serNo", REFUsol.Frame.serNo);
-    if (!configREFUsol.UpdatesOnly || strcmp(REFUsol.Frame.firmware, _last.firmware) != 0)
+    if (!config.REFUsol.UpdatesOnly || strcmp(REFUsol.Frame.firmware, _last.firmware) != 0)
         MqttSettings.publish(subtopic + "firmware", REFUsol.Frame.firmware);
     MQTTpublish(currentStateOfOperation);
     MQTTpublish(error);

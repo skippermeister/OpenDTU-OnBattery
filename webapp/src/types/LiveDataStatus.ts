@@ -35,7 +35,7 @@ export interface InverterStatistics {
 }
 
 export interface Inverter {
-    serial: number;
+    serial: string;
     name: string;
     order: number;
     data_age: number;

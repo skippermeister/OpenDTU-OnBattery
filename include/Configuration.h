@@ -30,6 +30,8 @@
 
 #define DEV_MAX_MAPPING_NAME_STRLEN 63
 
+#define VICTRON_MAX_COUNT 2
+
 #define POWERMETER_MAX_PHASES 3
 #define POWERMETER_MAX_HTTP_URL_STRLEN 256 // 1024
 #define POWERMETER_MAX_USERNAME_STRLEN 64
@@ -156,11 +158,12 @@ struct PowerLimiter_CONFIG_T {
     bool Enabled;
     bool SolarPassThroughEnabled;
     uint8_t SolarPassThroughLosses;
-    uint8_t BatteryDrainStategy;
+    bool BatteryAlwaysUseAtNight;
     bool UpdatesOnly;
     uint32_t PollInterval;
     bool IsInverterBehindPowerMeter;
-    uint8_t InverterId;
+    bool IsInverterSolarPowered;
+    uint64_t InverterId;
     uint8_t InverterChannelId;
     int32_t TargetPowerConsumption;
     int32_t TargetPowerConsumptionHysteresis;
@@ -254,6 +257,8 @@ struct MeanWell_CONFIG_T {
     float MinCurrent;
     float MaxCurrent;
     float Hysteresis;
+    bool mustInverterProduce;
+    uint32_t EEPROMwrites;
 };
 
 struct Vedirect_CONFIG_T {
@@ -270,7 +275,8 @@ struct REFUsol_CONFIG_T {
 struct ZeroExport_CONFIG_T {
     bool Enabled;
     bool UpdatesOnly;
-    uint16_t InverterId;
+    uint16_t InverterId; // mask
+    uint64_t serials[INV_MAX_COUNT];
     uint16_t MaxGrid;
     uint16_t PowerHysteresis;
     uint16_t MinimumLimit;
@@ -318,7 +324,7 @@ struct CONFIG_T {
     Mqtt_CONFIG_T Mqtt;
     Vedirect_CONFIG_T Vedirect;
 
-#ifdef REFUsol_IMPLEMENTED
+#ifdef USE_REFUsol_INVERTER
     REFUsol_CONFIG_T REFUsol;
 #endif
 
@@ -363,6 +369,7 @@ public:
 
     INVERTER_CONFIG_T* getFreeInverterSlot();
     INVERTER_CONFIG_T* getInverterConfig(uint64_t serial);
+    void deleteInverterById(const uint8_t id);
 };
 
 extern ConfigurationClass Configuration;

@@ -78,7 +78,6 @@ void ZeroExportClass::init(Scheduler& scheduler)
 
     _totalMaxPower = 0;
     _invID = 0;
-    _invIDmask = 0;
 
     _last_timeStamp = millis();
 
@@ -102,26 +101,26 @@ void ZeroExportClass::loop()
         return;
     }
 
+    // find sequentially a valid inverter serial no
     while (1) {
-        static bool _found = false;
-        if (cZeroExport.InverterId & (1 << _invID)) {
-            _found = true;
-            break;
-        }
-        _invID++; // find next selected inverter
-        if (_invID > INV_MAX_COUNT) {
-            _invID = 0;
-            if (!_found) {
+        if (_invID >= INV_MAX_COUNT) _invID = 0;    // switch back to first inverter serial no in list
+        if (cZeroExport.serials[_invID] == 0) {
+            if (_invID == 0) {
+                // list is empty, no inverters are selected
                 announceStatus(Status::InverterInvalid, true);
                 return;
             }
+            _invID = 0; // we are at end of entries in the list, switch back to first inverter in list
+        } else {
+            // found a valid inverter serial no
+            break;
         }
     }
-    _inverter = Hoymiles.getInverterByPos(_invID);
+    _inverter = Hoymiles.getInverterBySerial(cZeroExport.serials[_invID]);
 
     if (_inverter == nullptr) {
         announceStatus(Status::InverterInvalid, true);
-        _invID++; // switch to next slected inverter
+        _invID++; // switch to next selected inverter
         return;
     }
 
@@ -169,11 +168,15 @@ void ZeroExportClass::loop()
         return;
     }
 
+    // calculate the maximum possible power of all selected inverters
+    // each bid in the _invIDmask represents one inverter
+    // if a bid is set, the related inverter max power value has been added to _totalMaxPower
+    static uint16_t _invIDmask = 0;
     if (!(_invIDmask & (1 << _invID))) {
         _totalMaxPower += _inverter->DevInfo()->getMaxPower();
         _invIDmask |= (1 << _invID);
-        MessageOutput.printf("%s Inverter ID%d MaxPower = %d, TotalMaxPower = %d Watt\r\n", TAG,
-            _invID, _inverter->DevInfo()->getMaxPower(), _totalMaxPower);
+        MessageOutput.printf("%s Inverter ID %" PRIx64 " MaxPower = %d, TotalMaxPower = %d Watt\r\n", TAG,
+            _inverter->serial(), _inverter->DevInfo()->getMaxPower(), _totalMaxPower);
     }
 
     if (!cZeroExport.Enabled) {

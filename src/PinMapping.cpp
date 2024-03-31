@@ -4,12 +4,17 @@
  */
 #include "PinMapping.h"
 #include "MessageOutput.h"
+#include "Configuration.h"
+#include "PowerMeter.h"
 #include "Display_Graphic.h"
 #include <ArduinoJson.h>
 #include <LittleFS.h>
 #include <string.h>
 
-#define JSON_BUFFER_SIZE 6144
+#ifdef JSON_BUFFER_SIZE
+#undef JSON_BUFFER_SIZE
+#endif
+#define JSON_BUFFER_SIZE 8*1024
 
 #ifndef DISPLAY_TYPE
 #define DISPLAY_TYPE 0  // DisplayType_t::SSD1309  entspricht 5
@@ -119,8 +124,8 @@
 #define SERIAL2_PIN_RTS 4
 #endif
 
-#ifndef PIN_DALY_WAKEUP
-#define PIN_DALY_WAKEUP 0
+#ifndef PIN_BMS_WAKEUP
+#define PIN_BMS_WAKEUP -1
 #endif
 
 #ifdef CHARGER_USE_CAN0
@@ -158,6 +163,18 @@
     #define MCP2515_PIN_CS 15
     #endif
 
+#endif
+
+#ifndef POWERMETER_PIN_RX
+#define POWERMETER_PIN_RX -1
+#endif
+
+#ifndef POWERMETER_PIN_TX
+#define POWERMETER_PIN_TX -1
+#endif
+
+#ifndef POWERMETER_PIN_RTS
+#define POWERMETER_PIN_RTS -1
 #endif
 
 PinMappingClass PinMapping;
@@ -212,10 +229,13 @@ PinMappingClass::PinMappingClass()
     _pinMapping.victron_tx = SERIAL1_PIN_TX;
     _pinMapping.victron_rx = SERIAL1_PIN_RX;
 
+    _pinMapping.victron_tx2 = -1;
+    _pinMapping.victron_rx2 = -1;
+
 #if defined(USE_REFUsol_INVERTER)
-    _pinMapping.REFUsol_rx = SERIAL2_PIN_RX;
-    _pinMapping.REFUsol_tx = SERIAL2_PIN_TX;
-    _pinMapping.REFUsol_rts = SERIAL2_PIN_RTS;
+    _pinMapping.REFUsol_rx = SERIAL1_PIN_RX;
+    _pinMapping.REFUsol_tx = SERIAL1_PIN_TX;
+    _pinMapping.REFUsol_rts = SERIAL1_PIN_RTS;
 #endif
 
 #if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER) || defined(USE_JKBMS_CONTROLLER)
@@ -223,7 +243,7 @@ PinMappingClass::PinMappingClass()
     _pinMapping.battery_tx = SERIAL2_PIN_TX;
     _pinMapping.battery_rts = SERIAL2_PIN_RTS;
 #if defined(USE_DALYBMS_CONTROLLER)
-    _pinMapping.battery_daly_wakeup = PIN_DALY_WAKEUP;
+    _pinMapping.battery_bms_wakeup = PIN_BMS_WAKEUP;
 #endif
 #else
     _pinMapping.battery_rx = CAN0_PIN_RX;
@@ -247,11 +267,9 @@ PinMappingClass::PinMappingClass()
     _pinMapping.pre_charge = PRE_CHARGE_PIN;
     _pinMapping.full_power = FULL_POWER_PIN;
 
-    _pinMapping.sdm_tx = SDM_TX_PIN;
-    _pinMapping.sdm_rx = SDM_RX_PIN;
-    _pinMapping.sdm_rts = DERE_PIN;
-
-    _pinMapping.sml_rx = SML_RX_PIN;
+    _pinMapping.powermeter_tx = POWERMETER_PIN_TX;
+    _pinMapping.powermeter_rx = POWERMETER_PIN_RX;
+    _pinMapping.powermeter_rts = POWERMETER_PIN_RTS;
 }
 
 PinMapping_t& PinMappingClass::get()
@@ -329,11 +347,14 @@ void PinMappingClass::init(const String& deviceMapping)
                 _pinMapping.victron_rx = doc[i]["victron"]["rs323_rx"] | SERIAL1_PIN_RX;
                 _pinMapping.victron_tx = doc[i]["victron"]["rs323_tx"] | SERIAL1_PIN_TX;
 
+                _pinMapping.victron_rx2 = doc[i]["victron"]["rs323_rx2"] | -1;
+                _pinMapping.victron_tx2 = doc[i]["victron"]["rs323_tx2"] | -1;
+
 #if defined(USE_REFUsol_INVERTER)
-                _pinMapping.REFUsol_rx = doc[i]["refusol"]["rs485_rx"] | SERIAL2_PIN_RX;
-                _pinMapping.REFUsol_tx = doc[i]["refusol"]["rs485_tx"] | SERIAL2_PIN_TX;
+                _pinMapping.REFUsol_rx = doc[i]["refusol"]["rs485_rx"] | SERIAL1_PIN_RX;
+                _pinMapping.REFUsol_tx = doc[i]["refusol"]["rs485_tx"] | SERIAL1_PIN_TX;
                 if (doc[i]["refusol"].containsKey("rs485_rts")) {
-                    _pinMapping.REFUsol_rts = doc[i]["refusol"]["rs485_rts"] | SERIAL2_PIN_RTS;
+                    _pinMapping.REFUsol_rts = doc[i]["refusol"]["rs485_rts"] | SERIAL1_PIN_RTS;
                 } else {
                     _pinMapping.REFUsol_rts = -1;
                 }
@@ -369,7 +390,7 @@ void PinMappingClass::init(const String& deviceMapping)
                     _pinMapping.battery_rts = SERIAL2_PIN_RTS;
                 }
 #if defined(USE_DALYBMS_CONTROLLER)
-                _pinMapping.battery_daly_wakeup = doc[i]["battery"]["daly_wakeup"] | PIN_DALY_WAKEUP;
+                _pinMapping.battery_bms_wakeup = doc[i]["battery"]["bms_wakeup"] | PIN_BMS_WAKEUP;
 #endif
 
 #if defined(CHARGER_HUAWEI)
@@ -401,15 +422,23 @@ void PinMappingClass::init(const String& deviceMapping)
                 _pinMapping.pre_charge = doc[i]["batteryConnectedInverter"]["pre_charge"] | PRE_CHARGE_PIN;
                 _pinMapping.full_power = doc[i]["batteryConnectedInverter"]["full_power"] | FULL_POWER_PIN;
 
-                _pinMapping.sdm_tx = doc[i]["sdm"]["rs485_tx"] | SDM_TX_PIN;
-                _pinMapping.sdm_rx = doc[i]["sdm"]["rs485_rx"] | SDM_RX_PIN;
-                if (doc[i]["sdm"].containsKey("rs485_rts")) {
-                    _pinMapping.sdm_rts = doc[i]["sdm"]["rs485_rts"] | DERE_PIN;
+                if (doc[i]["powermeter"].containsKey("sml_rs232_rx")) { // SML Interface
+                    _pinMapping.powermeter_rx = doc[i]["powermeter"]["sml_rs232_rx"] | POWERMETER_PIN_RX;
+                    _pinMapping.powermeter_tx = doc[i]["powermeter"]["sml_rs232_tx"] | POWERMETER_PIN_TX;
+                    _pinMapping.powermeter_rts = -1;
+                } else if (doc[i]["powermeter"].containsKey("sdm_rs485_rx")) {  // SDM Interface
+                    _pinMapping.powermeter_rx = doc[i]["powermeter"]["sdm_rs485_rx"] | POWERMETER_PIN_RX;
+                    _pinMapping.powermeter_tx = doc[i]["powermeter"]["sdm_rs485_tx"] | POWERMETER_PIN_TX;
+                    if (doc[i]["powermeter"].containsKey("sdm_rs485_rts")) {
+                        _pinMapping.powermeter_rts = doc[i]["powermeter"]["sdm_rs485_rts"] | POWERMETER_PIN_RTS;    // Type 1 RS485 adapter
+                    } else {
+                        _pinMapping.powermeter_rts = -1;    // Type 2 RS485 adapter
+                    }
                 } else {
-                    _pinMapping.sdm_rts = -1;
+                    _pinMapping.powermeter_rx = POWERMETER_PIN_RX;
+                    _pinMapping.powermeter_tx = POWERMETER_PIN_TX;
+                    _pinMapping.powermeter_rts = POWERMETER_PIN_RTS;
                 }
-
-                _pinMapping.sml_rx = doc[i]["sml"]["rs232_rx"] | SML_RX_PIN;
 
 //    createPinMappingJson();
 
@@ -453,29 +482,20 @@ bool PinMappingClass::isValidEthConfig() const
 }
 #endif
 
-#if defined(USE_REFUsol_INVERTER)
-bool PinMappingClass::isValidREFUsolConfig() const
-{
-    return _pinMapping.REFUsol_rx > 0
-        && _pinMapping.REFUsol_tx >= 0
-        && _pinMapping.REFUsol_rts >= -1;
-}
-#endif
-
 bool PinMappingClass::isValidBatteryConfig() const
 {
-#if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER) || defined(USE_JKBMS_CONTROLLER)
-    return _pinMapping.battery_rx > 0
-        && _pinMapping.battery_tx >= 0
-#if defined(USE_DALYBMS_CONTROLLER)
-        && _pinMapping.battery_daly_wakeup >= 0
+    return    _pinMapping.battery_rx > 0
+           && _pinMapping.battery_tx >= 0
+           && (_pinMapping.battery_rx != _pinMapping.battery_tx)
+           && (_pinMapping.battery_rts != _pinMapping.battery_rx)
+           && (_pinMapping.battery_rts != _pinMapping.battery_tx)
+#if defined (USE_DALYBMS_CONTROLLER)
+           && (_pinMapping.battery_bms_wakeup != _pinMapping.battery_rx)
+           && (_pinMapping.battery_bms_wakeup != _pinMapping.battery_tx)
 #endif
-        ;
-#else
-    return _pinMapping.battery_rx > 0
-        && _pinMapping.battery_tx >= 0;
-#endif
+           ;
 }
+
 #if defined(CHARGER_HUAWEI)
 bool PinMappingClass::isValidHuaweiConfig() const
 {
@@ -572,12 +592,14 @@ void PinMappingClass::createPinMappingJson() const
     JsonObject victron = doc.createNestedObject("victron");
     victron["rs232_rx"] = _pinMapping.victron_rx;
     victron["rs232_tx"] = _pinMapping.victron_tx;
+    victron["rs232_rx2"] = _pinMapping.victron_rx2;
+    victron["rs232_tx2"] = _pinMapping.victron_tx2;
 
 #if defined(USE_REFUsol_INVERTER)
     JsonObject refusol = doc.createNestedObject("refusol");
     refusol["rs485_rx"] = _pinMapping.REFUsol_rx;
     refusol["rs485_tx"] = _pinMapping.REFUsol_tx;
-    if (_pinMapping.refusul_rts >= 0) refusol["rs485_rts"] = _pinMapping.REFUsol_rts;
+    if (_pinMapping.REFUsol_rts >= 0) refusol["rs485_rts"] = _pinMapping.REFUsol_rts;
 #endif
 
     JsonObject battery = doc.createNestedObject("battery");
@@ -591,7 +613,7 @@ void PinMappingClass::createPinMappingJson() const
         battery["rs232_tx"]  = _pinMapping.battery_tx;
     }
 #if defined(USE_DALYBMS_CONTROLLER)
-    battery["daly_wakeup"] = _pinMapping.battery_daly_wakeup;
+    battery["bms_wakeup"] = _pinMapping.battery_bms_wakeup;
 #endif
 #else
     battery["can0_rx"] = _pinMapping.battery_rx;
@@ -631,13 +653,19 @@ void PinMappingClass::createPinMappingJson() const
     battery_connected_inverter["pre_charge"] = _pinMapping.pre_charge;
     battery_connected_inverter["full_power"] = _pinMapping.full_power;
 
-    JsonObject sdm = doc.createNestedObject("sdm");
-    sdm["rs485_tx"] = _pinMapping.sdm_tx;
-    sdm["rs485_rx"] = _pinMapping.sdm_rx;
-    if (_pinMapping.sdm_rts >= 0) sdm["rs485_rts"] = _pinMapping.sdm_rts;
-
-    JsonObject sml = doc.createNestedObject("sml");
-    sml["rs232_rx"] = _pinMapping.sml_rx;
+    PowerMeterClass::Source source = static_cast<PowerMeterClass::Source>(Configuration.get().PowerMeter.Source);
+    JsonObject powermeter = doc.createNestedObject("powermeter");
+    if (source == PowerMeterClass::Source::SML)
+    {
+        powermeter["sml_rs232_rx"] = _pinMapping.powermeter_rx;
+        if (_pinMapping.powermeter_tx >= 0) powermeter["sml_rs232_tx"] = _pinMapping.powermeter_tx;
+    } else if (   source == PowerMeterClass::Source::SDM1PH
+               || source == PowerMeterClass::Source::SDM3PH)
+    {
+        powermeter["sdm_rs485_rx"] = _pinMapping.powermeter_rx;
+        powermeter["sdm_rs485_tx"] = _pinMapping.powermeter_tx;
+        if (_pinMapping.powermeter_rts >= 0) powermeter["sdm_rs485_rts"] = _pinMapping.powermeter_rts;
+    }
 
     String buffer;
     serializeJsonPretty(array, buffer);

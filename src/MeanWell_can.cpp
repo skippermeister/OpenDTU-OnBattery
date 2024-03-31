@@ -64,23 +64,40 @@ bool MeanWellCanClass::enable(void)
 
 void MeanWellCanClass::init(Scheduler& scheduler)
 {
+    MessageOutput.print("Initialize MeanWell AC charger interface... ");
+
     _previousMillis = millis();
 
     if (xSemaphore == NULL)
         xSemaphore = xSemaphoreCreateMutex();
 
-    const MeanWell_CONFIG_T& cMeanWell = Configuration.get().MeanWell;
-    if (!cMeanWell.Enabled)
-        return;
+    scheduler.addTask(_loopTask);
 
-    MessageOutput.print("Initialize MeanWell AC charger interface... ");
-
-    if (!PinMapping.isValidMeanWellConfig()) {
-        MessageOutput.println("Invalid pin config");
+    if (!Configuration.get().MeanWell.Enabled) {
+        MessageOutput.println("not enabled");
         return;
     }
 
+    updateSettings();
+
+    MessageOutput.println("done");
+}
+
+void MeanWellCanClass::updateSettings()
+{
+    if (!Configuration.get().MeanWell.Enabled) {
+        _loopTask.disable();
+        return;
+    }
+
+    _loopTask.enable();
+
     if (!_initialized) {
+        if (!PinMapping.isValidMeanWellConfig()) {
+            MessageOutput.println("Invalid pin config");
+            return;
+        }
+
         const PinMapping_t& pin = PinMapping.get();
 #ifdef CHARGER_USE_CAN0
         auto tx = static_cast<gpio_num_t>(pin.can0_tx);
@@ -119,16 +136,10 @@ void MeanWellCanClass::init(Scheduler& scheduler)
 	    // Change to normal mode to allow messages to be transmitted
     	CAN->setMode(MCP_NORMAL);
 #endif
-
-        scheduler.addTask(_loopTask);
-        _loopTask.enable();
+        _initialized = true;
 
         MessageOutput.print("Initialized Successfully! ");
-
-        _initialized = true;
     }
-
-    MessageOutput.println("done");
 }
 
 bool MeanWellCanClass::getCanCharger(void)
@@ -551,7 +562,7 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
         _rp.curveTC = scaleValue(readUnsignedInt16(frame + 2), 0.01f);
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging)
-            MessageOutput.printf("%s CurveTC: %.2f\r\n", TAG, _rp.curveTC);
+            MessageOutput.printf("%s CurveTC: %.2fA\r\n", TAG, _rp.curveTC);
 #endif
         _lastUpdate = millis();
         break;
@@ -613,11 +624,18 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
         _lastUpdate = millis();
         break;
 
+    case 0x00B9: // CHG_RST_VBAT 2 bytes The voltage Rest to art the charging after the battery is fully
+        {
+            uint16_t ChgRstVbat = readUnsignedInt16(frame + 2);
+            if (_verboseLogging) MessageOutput.printf("%s CHG_RST_VBAT: %d\r\n", TAG, ChgRstVbat);
+        }
+        break;
+
     case 0x00C0: // SCALING_FACTOR 2 bytes Scaling ratio
         _rp.scalingFactor = readUnsignedInt16(frame + 2);
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging)
-            MessageOutput.printf("%s ScalingFactor: %f\r\n", TAG, _rp.scalingFactor);
+            MessageOutput.printf("%s ScalingFactor: %d, %04X\r\n", TAG, _rp.scalingFactor, _rp.scalingFactor);
 #endif
         _lastUpdate = millis();
         break;
@@ -645,9 +663,10 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
                 "Power on with the last setting",
                 "No used"
             };
-            MessageOutput.printf("%s SYSTEM_CONFIG : %s : Inital operational behavior: %s\r\n", TAG,
+            MessageOutput.printf("%s SYSTEM_CONFIG : %s : Inital operational behavior: %s, EEPROM write disable: %d\r\n", TAG,
                 Word2BinaryString(_rp.SystemConfig),
-                OperationInit[_rp.SYSTEM_CONFIG.OPERATION_INIT]);
+                OperationInit[_rp.SYSTEM_CONFIG.OPERATION_INIT],
+                _rp.SYSTEM_CONFIG.EEP_OFF);
         }
 #endif
         _lastUpdate = millis();
@@ -668,8 +687,11 @@ void MeanWellCanClass::setupParameter()
 {
     const MeanWell_CONFIG_T& cMeanWell = Configuration.get().MeanWell;
 
-    if (_verboseLogging)
-        MessageOutput.printf("%s read parameter\r\n", TAG);
+    bool temp = _verboseLogging;
+    _verboseLogging = true;
+
+    if (_verboseLogging) MessageOutput.printf("%s read parameter\r\n", TAG);
+
     // Switch Charger off
     _rp.operation = 0; // Operation OFF
     sendCmd(ChargerID, 0x0000, &_rp.operation, 1);
@@ -707,7 +729,7 @@ void MeanWellCanClass::setupParameter()
     yield();
 
     sendCmd(ChargerID, 0x00B0, Float2Uint(cMeanWell.MaxCurrent / 0.01f), 2); // set Curve_CC
-    vTaskDelay(100); // delay 200 tick
+    vTaskDelay(100); // delay 100 tick
     yield();
     getCanCharger();
     yield();
@@ -734,10 +756,17 @@ void MeanWellCanClass::setupParameter()
     readCmd(ChargerID, 0x00B7); // read CURVE_FV_TIMEOUT
     yield();
 
+    readCmd(ChargerID, 0x00B9); // read CHG_RST_VBAT
+    yield();
+
     readCmd(ChargerID, 0x00C0); // read Scaling Factor
     yield();
 
-    _rp.SystemConfig = 0b0000000000000000; // Initial operation with power on 00: Power Supply is OFF
+    readCmd(ChargerID, 0x00C2); // read SYSTEM_CONFIG
+    yield();
+    _rp.SystemConfig = 0b0000000000000001; // Initial operation with power on 00: Power Supply is OFF
+    _rp.SYSTEM_CONFIG.EEP_OFF = 1;  // disable realtime writing to EEPROM
+    MessageOutput.printf("%s SystemConfig: %s\r\n", TAG,  Word2BinaryString(_rp.SystemConfig));
     sendCmd(ChargerID, 0x00C2, reinterpret_cast<uint8_t*>(&_rp.SystemConfig), 2); // read SYSTEM_CONFIG
     vTaskDelay(100); // delay 200 tick
     yield();
@@ -757,8 +786,12 @@ void MeanWellCanClass::setupParameter()
     readCmd(ChargerID, 0x00B4); // read CURVE_CONFIG
     yield();
 
-    if (_verboseLogging)
-        MessageOutput.printf("%s done\r\n", TAG);
+    readCmd(ChargerID, 0x0040); // read Fault Status
+    yield();
+
+    if (_verboseLogging) MessageOutput.printf("%s done\r\n", TAG);
+
+    _verboseLogging = temp;
 
     _setupParameter = false;
 }
@@ -823,7 +856,7 @@ void MeanWellCanClass::loop()
     for (uint8_t i = 0; i < Hoymiles.getNumInverters(); i++) {
         auto inv = Hoymiles.getInverterByPos(i);
         if (inv != NULL) {
-            if (i != Configuration.get().PowerLimiter.InverterId) {
+            if (inv->serial() != Configuration.get().PowerLimiter.InverterId) {
                 InverterPower += inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_PAC);
                 if (first) {
                     isProducing = inv->isProducing();
@@ -873,14 +906,16 @@ void MeanWellCanClass::loop()
             || !SunPosition.isDayPeriod()
             || batteryConnected_isProducing
             || !Battery.getStats()->getChargeEnabled()
-            || !isProducing) {
+            || (!isProducing && Configuration.get().MeanWell.mustInverterProduce) ) {
             switchChargerOff("");
 
             // check if battery request immediate charging or SoC is less than 100%
             // and inverter is producing and reachable and day
             // than switch on charger
         } else if (Battery.getStats()->getSoC() < 100
-                   && isProducing && isReachable
+                   && (    (isProducing && isReachable && Configuration.get().MeanWell.mustInverterProduce)
+                        || (!Configuration.get().MeanWell.mustInverterProduce)
+                      )
                    && SunPosition.isDayPeriod()
                    /*&& Battery.chargeEnabled*/
                   )
@@ -1221,6 +1256,8 @@ bool MeanWellCanClass::_sendCmd(uint8_t id, uint16_t cmd, uint8_t* data, int len
         if (_verboseLogging)
             MessageOutput.printf("%s Message queued for transmission cmnd %04X with %d data bytes\r\n", TAG, cmd, len + 2);
 #endif
+        if (len>0) Configuration.get().MeanWell.EEPROMwrites++;
+
     } else {
         yield();
         MessageOutput.printf("%s Failed to queue message for transmission\r\n", TAG);
@@ -1311,6 +1348,7 @@ void MeanWellCanClass::generateJsonResponse(JsonVariant& root)
     root["operation"] = _rp.operation ? true : false;
     root["stgs"] = _rp.CURVE_CONFIG.STGS ? true : false;
     root["cuve"] = _rp.CURVE_CONFIG.CUVE ? true : false;
+    addInputValue(root, "EEPROMwrites", Configuration.get().MeanWell.EEPROMwrites, "", 0);
     addOutputValue(root, "outputVoltage", _rp.outputVoltage, "V", 2);
     addOutputValue(root, "outputCurrent", _rp.outputCurrent, "A", 2);
     addOutputValue(root, "outputPower", _rp.outputPower, "W", 1);

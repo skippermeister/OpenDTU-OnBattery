@@ -22,6 +22,7 @@ class Controller : public BatteryProvider {
         void deinit() final;
         void loop() final;
         std::shared_ptr<BatteryStats> getStats() const final { return _stats; }
+        bool usesHwPort2() const final { return true; }
 
     private:
         enum class Status : unsigned {
@@ -63,7 +64,7 @@ class Controller : public BatteryProvider {
             _readState = state;
         }
 
-        bool _verboseLogging = true;
+//        bool _verboseLogging = true;
         Status _lastStatus = Status::Initializing;
         TimeoutHelper _lastStatusPrinted;
         uint32_t _lastRequest = 0;

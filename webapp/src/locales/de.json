@@ -648,6 +648,7 @@
         "typeSDM3ph": "SDM 3 phase (SDM72/630)",
         "typeHTTP": "HTTP(S) + JSON",
         "typeSML": "SML (OBIS 16.7.0)",
+        "typeSMAHM2": "SMA Homemanager 2.0",
         "MqttTopicPowerMeter1": "MQTT topic - Stromzähler #1",
         "MqttTopicPowerMeter2": "MQTT topic - Stromzähler #2 (Optional)",
         "MqttTopicPowerMeter3": "MQTT topic - Stromzähler #3 (Optional)",
@@ -680,6 +681,10 @@
         "ConfigHintsIntro": "Folgende Hinweise zur Konfiguration des Dynamic Power Limiter (DPL) sollen beachtet werden:",
         "ConfigHintPowerMeterDisabled": "Zum Betrieb des DPL muss der Power Meter konfiguriert sein und Daten liefern.",
         "ConfigHintNoInverter": "Vor dem Festlegen von Einstellungen des DPL muss mindestens ein Inverter koonfiguriert sein.",
+        "ConfigHintInverterCommunication": "Das Abrufen von Daten und Senden von Kommandos muss für den zu regelnden Wechselrichter aktiviert sein.",
+        "ConfigHintNoChargeController": "Die Solar-Passthrough Funktion kann nur mit aktivierter VE.Direct Schnittstelle genutzt werden.",
+        "ConfigHintNoCharger": "Es sollte ein Ladegerät aktiviert sein.",
+        "ConfigHintNoBatteryInterface": "SoC-basierte Schwellwerte können nur mit konfigurierter Batteriekommunikationsschnittstelle genutzt werden.",
         "General": "Allgemein",
         "Enable": "Aktiviere Power Limiter",
         "VerboseLogging": "@:base.VerboseLogging",
@@ -715,10 +720,12 @@
         "VoltageLoadCorrectionFactor": "Lastkorrekturfaktor",
         "BatterySocInfo": "<b>Hinweis:</b> Die Akku SoC (State of Charge) Werte werden nur benutzt, wenn die Batterie-Kommunikationsschnittstelle innerhalb der letzten Minute gültige Werte geschickt hat. Andernfalls werden als Fallback-Option die Spannungseinstellungen verwendet.",
         "InverterIsBehindPowerMeter": "Welchselrichter ist hinter Leistungsmesser",
+        "InverterIsSolarPowered": "Wechselrichter wird von Solarmodulen gespeist",
         "VoltageThresholds": "Batterie Spannungs-Schwellwerte ",
         "VoltageLoadCorrectionInfo": "<b>Hinweis:</b> Wenn Leistung von der Batterie abgegeben wird, bricht ihre Spannung etwas ein. Der Spannungseinbruch skaliert mit dem Entladestrom. Damit nicht vorzeitig der Wechselrichter ausgeschaltet wird sobald der Stop-Schwellenwert unterschritten wurde, wird der hier angegebene Korrekturfaktor mit einberechnet um die Spannung zu errechnen die der Akku in Ruhe hätte. Korrigierte Spannung = DC Spannung + (Aktuelle Leistung (W) * Korrekturfaktor).",
         "InverterRestart": "Wechselrichter Neustart",
         "InverterRestartHour": "Stunde für Neustart",
+        "InverterRestartDisabled": "Keinen automatischen Neustart planen",
         "InverterRestartHint": "Neustart des Wechselrichter einmal täglich um die \"Tagesertrag\" Werte wieder auf Null zu setzen."
     },
     "batteryadmin": {
@@ -903,8 +910,15 @@
         "Name": "@:inverteradmin.Name",
         "ValueSelected": "Ausgewählt",
         "ValueActive": "Aktiv"
-      },
-      "meanwell": {
+    },
+    "inputserial": {
+        "format_hoymiles": "Hoymiles Seriennummerformat",
+        "format_converted": "Bereits konvertierte Seriennummer",
+        "format_herf_valid": "E-Star HERF Format (wird konvertiert gespeichert): {serial}",
+        "format_herf_invalid": "E-Star HERF Format: Ungültige Prüfsumme",
+        "format_unknown": "Unbekanntes Format"
+    },
+    "meanwell": {
         "DataAge": "@:home.DataAge",
         "Seconds": "@:home.Seconds",
         "ACcharger": "AC-Ladegerät",
@@ -955,9 +969,10 @@
         "charger_mode": "Ladegerät",
         "power_supply_mode": "Netzteil",
         "two_stage_charge": "CC/CV Ladung",
-        "three_stage_charge": "CC/CV/FV Ladung"
-      },
-      "acchargeradmin": {
+        "three_stage_charge": "CC/CV/FV Ladung",
+        "EEPROMwrites": "EEPROM Schreibzyklen"
+    },
+    "acchargeradmin": {
         "ChargerSettings": "AC-Ladegerät Einstellungen",
         "ChargerConfiguration": "AC-Ladegerät Konfiguration",
         "ChargerParameter": "MeanWell Parameter",
@@ -973,9 +988,11 @@
         "Volts": "Volt",
         "Amps": "Ampere",
         "Watts": "Watt",
-        "Seconds": "@:dtuadmin.Seconds"
-      },
-      "battery": {
+        "Seconds": "@:dtuadmin.Seconds",
+        "EEPROMwrites": "@:meanwell.EEPROMwrites",
+        "mustInverterProduce": "Prüfe ob Inverter erzeugt solare Energie"
+    },
+    "battery": {
         "battery": "Batterie",
         "DataAge": "@:home.DataAge",
         "Seconds": "@:home.Seconds",

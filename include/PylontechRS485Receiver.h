@@ -102,6 +102,7 @@ public:
     void deinit() final;
     void loop() final;
     std::shared_ptr<BatteryStats> getStats() const final { return _stats; }
+    bool usesHwPort2() const final { return true; }
 
 private:
     void get_protocol_version(const PylontechRS485Receiver::Function function, uint8_t module);

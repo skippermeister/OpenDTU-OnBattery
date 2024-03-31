@@ -26,7 +26,7 @@
   "battery":{
     "rs232_rx":16,
     "rs232_tx":17,
-    "daly_wakeup":4
+    "bms_wakeup":4
   },
   "charger":{
     "can0_rx":26,
@@ -43,12 +43,9 @@
     "pre_charge":32,
     "full_power":33
   },
-  "sdm":{
-    "rs485_tx":4,
-    "rs485_rx":39
-  },
-  "sml":{
-      "rs232_rx":36
+  "powermeter":{
+    "sdm_rs485_tx":4,
+    "sdm_rs485_rx":39
   }
 },
 {
@@ -93,12 +90,9 @@
     "pre_charge":32,
     "full_power":33
   },
-  "sdm":{
-    "rs485_tx":0,
-    "rs485_rx":39
-  },
-  "sml":{
-      "rs232_rx":36
+  "powermeter":{
+    "sdm_rs485_tx":0,
+    "sdm_rs485_rx":39
   }
 },
 {
@@ -142,12 +136,55 @@
     "pre_charge":32,
     "full_power":33
   },
-  "sdm":{
-    "rs485_tx":0,
-    "rs485_rx":39
+  "powermeter":{
+    "sdm_rs485_tx":0,
+    "sdm_rs485_rx":39
+  }
+},
+{
+  "name":"my_very_special_board Pylontech via RS485 Type2 and SML",
+  "nrf24":{
+    "clk":18,
+    "cs":5,
+    "en":2,
+    "irq":34,
+    "miso":19,
+    "mosi":23
   },
-  "sml":{
-      "rs232_rx":36
+  "cmt":{},
+  "display":{
+    "type":0,
+    "data":-1,
+    "clk":-1,
+    "reset":-1
+  },
+  "led":{},
+  "victron":{
+    "rs232_rx":22,
+    "rs232_tx":21
+  },
+  "battery":{
+    "rs485_rx":16,
+    "rs485_tx":17
+  },
+  "charger":{
+    "can0_rx":26,
+    "can0_tx":27
+  },
+  "mcp2515":{
+    "miso":12,
+    "mosi":13,
+    "clk":14,
+    "irq":35,
+    "cs":15
+  },
+  "batteryConnectedInverter":{
+    "pre_charge":32,
+    "full_power":33
+  },
+  "powermeter":{
+    "sml_rs232_tx":0,
+    "sml_rs232_rx":39
   }
 }
 ]

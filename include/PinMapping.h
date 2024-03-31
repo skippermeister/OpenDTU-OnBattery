@@ -61,7 +61,10 @@ struct PinMapping_t {
     int8_t victron_tx;
     int8_t victron_rx;
 
-#if defined(REFUsol_IMPLEMENTED)
+    int8_t victron_tx2;
+    int8_t victron_rx2;
+
+#if defined(USE_REFUsol_INVERTER)
     int8_t REFUsol_rx;
     int8_t REFUsol_tx;
     //    int8_t REFUsol_cts;
@@ -73,7 +76,7 @@ struct PinMapping_t {
 #if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER) || defined(USE_JKMS_CONTROLLER)
     int8_t battery_rts;
 #if defined(USE_DALYBMS_CONTROLLER)
-    int8_t battery_daly_wakeup;
+    int8_t battery_bms_wakeup;
 #endif
 #endif
 
@@ -93,11 +96,9 @@ struct PinMapping_t {
     int8_t pre_charge;
     int8_t full_power;
 
-    int8_t sdm_tx;
-    int8_t sdm_rx;
-    int8_t sdm_rts;
-
-    int8_t sml_rx;
+    int8_t powermeter_tx;
+    int8_t powermeter_rx;
+    int8_t powermeter_rts; // DERE
 };
 
 class PinMappingClass {
@@ -114,9 +115,6 @@ public:
 #endif
 #if defined(OPENDTU_ETHERNET)
     bool isValidEthConfig() const;
-#endif
-#if defined(REFUsol_IMPLEMENTED)
-    bool isValidREFUsolConfig() const;
 #endif
     bool isValidBatteryConfig() const;
 #if defined(CHARGER_HUAWEI)

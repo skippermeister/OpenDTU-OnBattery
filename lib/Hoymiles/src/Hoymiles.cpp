@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright (C) 2022-2023 Thomas Basler and others
+ * Copyright (C) 2022-2024 Thomas Basler and others
  */
 #include "Hoymiles.h"
 #include "Utils.h"
+#include "inverters/HERF_2CH.h"
+#include "inverters/HERF_4CH.h"
 #ifdef USE_RADIO_CMT
 #include "inverters/HMS_1CH.h"
 #include "inverters/HMS_1CHv2.h"
@@ -63,8 +65,8 @@ void HoymilesClass::loop()
         }
 
 // FIXME : add polling and commands
-        if (iv != nullptr 
-            && iv->getRadio()->isInitialized() 
+        if (iv != nullptr
+            && iv->getRadio()->isInitialized()
             && iv->getRadio()->isQueueEmpty())
         {
             if (iv->getZeroValuesIfUnreachable() && !iv->isReachable()) {
@@ -186,6 +188,10 @@ std::shared_ptr<InverterAbstract> HoymilesClass::addInverter(const char* name, c
         i = std::make_shared<HM_2CH>(_radioNrf.get(), serial);
     } else if (HM_1CH::isValidSerial(serial)) {
         i = std::make_shared<HM_1CH>(_radioNrf.get(), serial);
+    } else if (HERF_2CH::isValidSerial(serial)) {
+        i = std::make_shared<HERF_2CH>(_radioNrf.get(), serial);
+    } else if (HERF_4CH::isValidSerial(serial)) {
+        i = std::make_shared<HERF_4CH>(_radioNrf.get(), serial);
     }
 
     if (i) {

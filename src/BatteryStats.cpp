@@ -69,15 +69,7 @@ static void addLiveViewAlarm(JsonVariant& root, std::string const& name,
     root["issues"][name] = 2;
 }
 
-static void addLiveViewFailureStatus(JsonVariant& root, std::string const& name,
-    bool alarm)
-{
-    if (!alarm) {
-        return;
-    }
-    root["issues"][name] = 2;
-}
-
+/*
 static void addLiveViewCellVoltage(JsonVariant& root, uint8_t index, float value, uint8_t precision)
 {
     auto jsonValue = root["cell"]["voltage"][index];
@@ -85,7 +77,7 @@ static void addLiveViewCellVoltage(JsonVariant& root, uint8_t index, float value
     jsonValue["u"] = "V";
     jsonValue["d"] = precision;
 }
-
+*/
 static void addLiveViewPackCellVoltage(JsonObject& root, uint8_t index, float value, uint8_t precision)
 {
     auto jsonValue = root["cell"]["voltage"][index];
@@ -93,7 +85,7 @@ static void addLiveViewPackCellVoltage(JsonObject& root, uint8_t index, float va
     jsonValue["u"] = "V";
     jsonValue["d"] = precision;
 }
-
+/*
 static void addLiveViewCellBalance(JsonVariant& root, std::string const& name,
     float value, std::string const& unit, uint8_t precision)
 {
@@ -102,7 +94,7 @@ static void addLiveViewCellBalance(JsonVariant& root, std::string const& name,
     jsonValue["u"] = unit;
     jsonValue["d"] = precision;
 }
-
+*/
 static void addLiveViewPackCellBalance(JsonObject& root, std::string const& name,
     float value, std::string const& unit, uint8_t precision)
 {
@@ -111,7 +103,7 @@ static void addLiveViewPackCellBalance(JsonObject& root, std::string const& name
     jsonValue["u"] = unit;
     jsonValue["d"] = precision;
 }
-
+/*
 static void addLiveViewTempSensor(JsonVariant& root, uint8_t index, float value, uint8_t precision)
 {
     auto jsonValue = root["tempSensor"][index];
@@ -119,7 +111,7 @@ static void addLiveViewTempSensor(JsonVariant& root, uint8_t index, float value,
     jsonValue["u"] = "°C";
     jsonValue["d"] = precision;
 }
-
+*/
 static void addLiveViewPackTempSensor(JsonObject& root, uint8_t index, float value, uint8_t precision)
 {
     auto jsonValue = root["tempSensor"][index];
@@ -134,6 +126,8 @@ void BatteryStats::generatePackCommonJsonResponse(JsonObject& packObject, const 
 
 bool BatteryStats::updateAvailable(uint32_t since) const
 {
+    if (_lastUpdate == 0) { return false; } // no data at all processed yet
+
     auto constexpr halfOfAllMillis = std::numeric_limits<uint32_t>::max() / 2;
     return (_lastUpdate - since) < halfOfAllMillis;
 }
@@ -303,6 +297,80 @@ void PylontechRS485BatteryStats::getLiveViewData(JsonVariant& root) const
 #endif
 
 #ifdef USE_JKBMS_CONTROLLER
+void JkBmsBatteryStats::generatePackCommonJsonResponse(JsonObject& packObject, const uint8_t module) const
+{
+    using Label = JkBms::DataPointLabel;
+
+    packObject["moduleNumber"] = 1;
+    packObject["moduleName"] = "";
+
+    packObject["device_name"] = "";
+
+    auto oBmsSoftwareVersion = _dataPoints.get<Label::BmsSoftwareVersion>();
+    if (oBmsSoftwareVersion.has_value()) packObject["software_version"] = *oBmsSoftwareVersion;
+    else packObject["software_version"] = "";
+
+    auto oProductId = _dataPoints.get<Label::ProductId>();
+    if (oProductId.has_value()) packObject["moduleSerialNumber"] = *oProductId;
+    else packObject["moduleSerialNumber"] = "";
+
+    auto oTemperatureOne = _dataPoints.get<Label::BatteryTempOneCelsius>();
+    if (oTemperatureOne.has_value()) {
+        //addLiveViewInSection(root, "cells", "batOneTemp", *oTemperatureOne, "°C", 0);
+//        addLiveViewPackValue(packObject, "batOneTemp", *oTemperatureOne, "°C", 0);
+        addLiveViewPackTempSensor(packObject, 0, *oTemperatureOne, 0);
+    }
+
+    auto oTemperatureTwo = _dataPoints.get<Label::BatteryTempTwoCelsius>();
+    if (oTemperatureTwo.has_value()) {
+        //addLiveViewInSection(root, "cells", "batTwoTemp", *oTemperatureTwo, "°C", 0);
+//        addLiveViewPackValue(packObject, "batTwoTemp", *oTemperatureTwo, "°C", 0);
+        addLiveViewPackTempSensor(packObject, 1, *oTemperatureTwo, 0);
+    }
+
+    if (_cellVoltageTimestamp > 0) {
+        //addLiveViewInSection(root, "cells", "cellMinVoltage", static_cast<float>(_cellMinMilliVolt) / 1000, "V", 3);
+        //addLiveViewInSection(root, "cells", "cellAvgVoltage", static_cast<float>(_cellAvgMilliVolt) / 1000, "V", 3);
+        //addLiveViewInSection(root, "cells", "cellMaxVoltage", static_cast<float>(_cellMaxMilliVolt) / 1000, "V", 3);
+        //addLiveViewInSection(root, "cells", "cellDiffVoltage", (_cellMaxMilliVolt - _cellMinMilliVolt), "mV", 0);
+
+        //addLiveViewPackValue(packObject, "cellMinVoltage", static_cast<float>(_cellMinMilliVolt) / 1000, "V", 3);
+        //addLiveViewPackValue(packObject, "cellMaxVoltage", static_cast<float>(_cellMaxMilliVolt) / 1000, "V", 3);
+        //addLiveViewPackValue(packObject, "cellDiffVoltage", (_cellMaxMilliVolt - _cellMinMilliVolt), "mV", 0);
+
+        addLiveViewPackCellBalance(packObject, "cellMinVoltage", static_cast<float>(_cellMinMilliVolt) / 1000, "V", 3);
+        addLiveViewPackCellBalance(packObject, "cellMaxVoltage", static_cast<float>(_cellMaxMilliVolt) / 1000, "V", 3);
+        addLiveViewPackCellBalance(packObject, "cellDiffVoltage", (_cellMaxMilliVolt - _cellMinMilliVolt), "mV", 0);
+
+        auto oCellsMilliVolt = _dataPoints.get<Label::CellsMilliVolt>();
+        if (oCellsMilliVolt.has_value()) {
+            JkBms::tCells voltages = *oCellsMilliVolt;
+            for (int8_t i=0; i<voltages.size(); i++) {
+                addLiveViewPackCellVoltage(packObject, i, static_cast<float>(voltages[i+1]) / 1000, 3);
+            }
+        }
+    }
+
+    auto oCellOvervoltageThresholdMilliVolt = _dataPoints.get<Label::CellOvervoltageThresholdMilliVolt>();
+    auto oCellUndervoltageThresholdMilliVolt = _dataPoints.get<Label::CellUndervoltageThresholdMilliVolt>();
+    auto oChargeHighTempThresholdCelsius = _dataPoints.get<Label::ChargeHighTempThresholdCelsius>();
+    auto oChargeLowTempThresholdCelsius = _dataPoints.get<Label::ChargeLowTempThresholdCelsius>();
+    auto oDischargeHighTempThresholdCelsius = _dataPoints.get<Label::DischargeHighTempThresholdCelsius>();
+    auto oDischargeLowTempThresholdCelsius = _dataPoints.get<Label::DischargeLowTempThresholdCelsius>();
+    if (oCellOvervoltageThresholdMilliVolt.has_value())
+        addLiveViewPackParameter(packObject, "cellHighVoltageLimit", static_cast<float>(*oCellOvervoltageThresholdMilliVolt) / 1000, "V", 3);
+    if (oCellUndervoltageThresholdMilliVolt.has_value())
+        addLiveViewPackParameter(packObject, "cellUnderVoltageLimit", static_cast<float>(*oCellUndervoltageThresholdMilliVolt) / 1000, "V", 3);
+    if (oChargeHighTempThresholdCelsius.has_value())
+        addLiveViewPackParameter(packObject, "chargeHighTemperatureLimit", *oChargeHighTempThresholdCelsius, "°C", 0);
+    if (oChargeLowTempThresholdCelsius.has_value())
+        addLiveViewPackParameter(packObject, "chargeLowTemperatureLimit", *oChargeLowTempThresholdCelsius, "°C", 0);
+    if (oDischargeHighTempThresholdCelsius.has_value())
+        addLiveViewPackParameter(packObject, "dischargeHighTemperatureLimit",*oDischargeHighTempThresholdCelsius, "°C", 0);
+    if (oDischargeLowTempThresholdCelsius.has_value())
+        addLiveViewPackParameter(packObject, "dischargeLowTemperatureLimit", *oDischargeLowTempThresholdCelsius, "°C", 0);
+}
+
 void JkBmsBatteryStats::getLiveViewData(JsonVariant& root) const
 {
     BatteryStats::getLiveViewData(root);
@@ -314,15 +382,39 @@ void JkBmsBatteryStats::getLiveViewData(JsonVariant& root) const
         addLiveViewValue(root, "current", static_cast<float>(*oCurrent) / 1000, "A", 2);
     }
 
+    auto oVoltage = _dataPoints.get<Label::BatteryVoltageMilliVolt>();
     if (oVoltage.has_value() && oCurrent.has_value()) {
         auto current = static_cast<float>(*oCurrent) / 1000;
         auto voltage = static_cast<float>(*oVoltage) / 1000;
         addLiveViewValue(root, "power", current * voltage, "W", 2);
     }
 
+    auto oActualBatteryCapacityAmpHours = _dataPoints.get<Label::ActualBatteryCapacityAmpHours>();
+    if (oActualBatteryCapacityAmpHours.has_value()) {
+        addLiveViewValue(root, "remainingCapacity", *oActualBatteryCapacityAmpHours, "Ah", 0);
+    }
+
+    auto oBatteryCapacitySettingAmpHours = _dataPoints.get<Label::BatteryCapacitySettingAmpHours>();
+    if (oBatteryCapacitySettingAmpHours.has_value()) {
+        addLiveViewValue(root, "capacity", *oBatteryCapacitySettingAmpHours, "Ah", 0);
+    }
+    auto oBatteryCycleCapacity = _dataPoints.get<Label::BatteryCycleCapacity>();
+    if (oBatteryCycleCapacity.has_value()) {
+        addLiveViewValue(root, "cycleCapacity", *oBatteryCycleCapacity, "Ah", 0);
+    }
+
     auto oTemperatureBms = _dataPoints.get<Label::BmsTempCelsius>();
     if (oTemperatureBms.has_value()) {
-        addLiveViewValue(root, "bmsTemp", *oTemperatureBms, "°C", 0);
+        addLiveViewValue(root, "BMSTemperature", *oTemperatureBms, "°C", 0);
+    }
+
+    auto oBatteryCellAmount = _dataPoints.get<Label::BatteryCellAmount>();
+    if (oBatteryCellAmount.has_value()) {
+        addLiveViewValue(root, "numberOfCells", static_cast<float>(*oBatteryCellAmount), "", 0);
+    }
+    auto oBatteryCycles = _dataPoints.get<Label::BatteryCycles>();
+    if (oBatteryCycles.has_value()) {
+        addLiveViewValue(root, "cycles", static_cast<float>(*oBatteryCycles), "", 0);
     }
 
     // labels BatteryChargeEnabled, BatteryDischargeEnabled, and
@@ -333,67 +425,86 @@ void JkBmsBatteryStats::getLiveViewData(JsonVariant& root) const
     if (oStatus.has_value()) {
         using Bits = JkBms::StatusBits;
         auto chargeEnabled = *oStatus & static_cast<uint16_t>(Bits::ChargingActive);
-        addLiveViewTextValue(root, "chargeEnabled", (chargeEnabled ? "yes" : "no"));
+        addLiveViewText(root, "chargeEnabled", (chargeEnabled ? "yes" : "no"));
         auto dischargeEnabled = *oStatus & static_cast<uint16_t>(Bits::DischargingActive);
-        addLiveViewTextValue(root, "dischargeEnabled", (dischargeEnabled ? "yes" : "no"));
-    }
+        addLiveViewText(root, "dischargeEnabled", (dischargeEnabled ? "yes" : "no"));
 
-    auto oTemperatureOne = _dataPoints.get<Label::BatteryTempOneCelsius>();
-    if (oTemperatureOne.has_value()) {
-        addLiveViewInSection(root, "cells", "batOneTemp", *oTemperatureOne, "°C", 0);
-    }
-
-    auto oTemperatureTwo = _dataPoints.get<Label::BatteryTempTwoCelsius>();
-    if (oTemperatureTwo.has_value()) {
-        addLiveViewInSection(root, "cells", "batTwoTemp", *oTemperatureTwo, "°C", 0);
-    }
-
-    if (_cellVoltageTimestamp > 0) {
-        addLiveViewInSection(root, "cells", "cellMinVoltage", static_cast<float>(_cellMinMilliVolt) / 1000, "V", 3);
-        addLiveViewInSection(root, "cells", "cellAvgVoltage", static_cast<float>(_cellAvgMilliVolt) / 1000, "V", 3);
-        addLiveViewInSection(root, "cells", "cellMaxVoltage", static_cast<float>(_cellMaxMilliVolt) / 1000, "V", 3);
-        addLiveViewInSection(root, "cells", "cellDiffVoltage", (_cellMaxMilliVolt - _cellMinMilliVolt), "mV", 0);
-    }
-
-    if (oStatus.has_value()) {
-        using Bits = JkBms::StatusBits;
         auto balancingActive = *oStatus & static_cast<uint16_t>(Bits::BalancingActive);
-        addLiveViewTextInSection(root, "cells", "balancingActive", (balancingActive ? "yes" : "no"));
+        //addLiveViewTextInSection(root, "cells", "balancingActive", (balancingActive ? "yes" : "no"));
+        addLiveViewText(root, "balancingActive", (balancingActive ? "yes" : "no"));
+
     }
+    addLiveViewText(root, "chargeImmediately1", (ChargeDischargeManagementInfo.chargeImmediately1 ? "yes" : "no"));
+
+//ChargeOvercurrentThresholdAmps
+//DischargeOvercurrentThresholdAmperes
 
     auto oAlarms = _dataPoints.get<Label::AlarmsBitmask>();
     if (oAlarms.has_value()) {
-#define ISSUE(t, x)                                                 \
+#define ISSUE_JKBMS(t, x)                                           \
     auto x = *oAlarms & static_cast<uint16_t>(JkBms::AlarmBits::x); \
     addLiveView##t(root, "JkBmsIssue" #x, x > 0);
 
-        ISSUE(Warning, LowCapacity);
-        ISSUE(Alarm, BmsOvertemperature);
-        ISSUE(Alarm, ChargingOvervoltage);
-        ISSUE(Alarm, DischargeUndervoltage);
-        ISSUE(Alarm, BatteryOvertemperature);
-        ISSUE(Alarm, ChargingOvercurrent);
-        ISSUE(Alarm, DischargeOvercurrent);
-        ISSUE(Alarm, CellVoltageDifference);
-        ISSUE(Alarm, BatteryBoxOvertemperature);
-        ISSUE(Alarm, BatteryUndertemperature);
-        ISSUE(Alarm, CellOvervoltage);
-        ISSUE(Alarm, CellUndervoltage);
-        ISSUE(Alarm, AProtect);
-        ISSUE(Alarm, BProtect);
-#undef ISSUE
+        ISSUE_JKBMS(Warning, LowCapacity);
+        ISSUE_JKBMS(Alarm, BmsOvertemperature);
+        ISSUE_JKBMS(Alarm, ChargingOvervoltage);
+        ISSUE_JKBMS(Alarm, DischargeUndervoltage);
+        ISSUE_JKBMS(Alarm, BatteryOvertemperature);
+        ISSUE_JKBMS(Alarm, ChargingOvercurrent);
+        ISSUE_JKBMS(Alarm, DischargeOvercurrent);
+        ISSUE_JKBMS(Alarm, CellVoltageDifference);
+        ISSUE_JKBMS(Alarm, BatteryBoxOvertemperature);
+        ISSUE_JKBMS(Alarm, BatteryUndertemperature);
+        ISSUE_JKBMS(Alarm, CellOvervoltage);
+        ISSUE_JKBMS(Alarm, CellUndervoltage);
+        ISSUE_JKBMS(Alarm, AProtect);
+        ISSUE_JKBMS(Alarm, BProtect);
+#undef ISSUE_JKBMS
     }
+
+    root["numberOfPacks"] = 1;
 }
 #endif
 
 #ifdef USE_DALYBMS_CONTROLLER
+static void addLiveViewFailureStatus(JsonVariant& root, std::string const& name,
+    bool alarm)
+{
+    if (!alarm) {
+        return;
+    }
+    root["issues"][name] = 2;
+}
+
 void DalyBmsBatteryStats::generatePackCommonJsonResponse(JsonObject& packObject, const uint8_t m) const
 {
+    packObject["moduleNumber"] = 1;
+    packObject["moduleName"] = "";
+
+    packObject["device_name"] = "";
+
+    packObject["software_version"] = String(_bmsSWversion);
+
+    packObject["moduleSerialNumber"] = "";
+
+    addLiveViewPackCellBalance(packObject, "cellMinVoltage", minCellVoltage, "V", 3);
+    addLiveViewPackCellBalance(packObject, "cellMaxVoltage", maxCellVoltage, "V", 3);
+    addLiveViewPackCellBalance(packObject, "cellDiffVoltage", cellDiffVoltage, "mV", 0);
+
+    for (int i = 0; i < min(_cellsNumber, static_cast<uint8_t>(DALY_MAX_NUMBER_CELLS)); i++) {
+        addLiveViewPackCellVoltage(packObject, i, _cellVoltage[i], 3);
+    }
+    for (int i = 0; i < min(_tempsNumber, static_cast<uint8_t>(DALY_MAX_NUMBER_TEMP_SENSORS)); i++) {
+        addLiveViewPackTempSensor(packObject, i, _temperature[i], 1);
+    }
+
+    addLiveViewPackParameter(packObject, "cellHighVoltageLimit", AlarmValues.maxCellVoltage, "V", 3);
+    addLiveViewPackParameter(packObject, "cellLowVoltageLimit", WarningValues.minCellVoltage, "V", 3);
+    addLiveViewPackParameter(packObject, "cellUnderVoltageLimit", AlarmValues.minCellVoltage, "V", 3);
 }
 
 void DalyBmsBatteryStats::getLiveViewData(JsonVariant& root) const
 {
-    root["software_version"] = String(_bmsSWversion);
     BatteryStats::getLiveViewData(root);
 
     addLiveViewValue(root, "BatteryLevel", batteryLevel, "%", 1);
@@ -407,19 +518,11 @@ void DalyBmsBatteryStats::getLiveViewData(JsonVariant& root) const
     addLiveViewValue(root, "power", power, "kW", 3);
     addLiveViewValue(root, "currentSamplingResistance", currentSamplingResistance, "mΩ", 0);
 
-    addLiveViewParameter(root, "cellHighVoltageLimit", AlarmValues.maxCellVoltage, "V", 3);
-    addLiveViewParameter(root, "cellLowVoltageLimit", WarningValues.minCellVoltage, "V", 3);
-    addLiveViewParameter(root, "cellUnderVoltageLimit", AlarmValues.minCellVoltage, "V", 3);
-
     addLiveViewText(root, "chargeEnabled", (chargingMosEnabled ? "yes" : "no"));
     addLiveViewText(root, "dischargeEnabled", (dischargingMosEnabled ? "yes" : "no"));
     addLiveViewText(root, "chargeImmediately1", chargeImmediately1 ? "yes" : "no");
     addLiveViewText(root, "chargeImmediately2", chargeImmediately2 ? "yes" : "no");
     addLiveViewText(root, "cellBalanceActive", cellBalanceActive ? "yes" : "no");
-
-    addLiveViewCellBalance(root, "cellMinVoltage", minCellVoltage, "V", 3);
-    addLiveViewCellBalance(root, "cellMaxVoltage", maxCellVoltage, "V", 3);
-    addLiveViewCellBalance(root, "cellDiffVoltage", cellDiffVoltage, "mV", 0);
 
     // Empfohlene Lade-/Enladespannung
     addLiveViewValue(root, "chargeVoltageLimit", WarningValues.maxPackVoltage, "V", 3);
@@ -431,13 +534,6 @@ void DalyBmsBatteryStats::getLiveViewData(JsonVariant& root) const
     // maximale Lade-/Enladestrom (90A@15sec)
     addLiveViewValue(root, "maxChargeCurrentLimit", AlarmValues.maxPackChargeCurrent, "A", 1);
     addLiveViewValue(root, "maxDischargeCurrentLimit", AlarmValues.maxPackDischargeCurrent, "A", 1);
-
-    for (int i = 0; i < min(_cellsNumber, static_cast<uint8_t>(DALY_MAX_NUMBER_CELLS)); i++) {
-        addLiveViewCellVoltage(root, i, _cellVoltage[i], 3);
-    }
-    for (int i = 0; i < min(_tempsNumber, static_cast<uint8_t>(DALY_MAX_NUMBER_TEMP_SENSORS)); i++) {
-        addLiveViewTempSensor(root, i, _temperature[i], 1);
-    }
 
     ISSUE(Warning, highCurrentDischarge);
     ISSUE(Alarm, overCurrentDischarge);
@@ -517,6 +613,8 @@ void DalyBmsBatteryStats::getLiveViewData(JsonVariant& root) const
     ISSUE(FailureStatus, failureOfMainVoltageSensorModule);
     ISSUE(FailureStatus, failureOfShortCircuitProtection);
     ISSUE(FailureStatus, failureOfLowVoltageNoCharging);
+
+    root["numberOfPacks"] = 1;
 }
 #endif
 
@@ -865,6 +963,8 @@ void JkBmsBatteryStats::mqttPublish() /* const */
 {
     BatteryStats::mqttPublish();
 
+    using Label = JkBms::DataPointLabel;
+
     static std::vector<Label> mqttSkip = {
         Label::CellsMilliVolt, // complex data format
         Label::ModificationPassword, // sensitive data
@@ -981,6 +1081,53 @@ void JkBmsBatteryStats::updateFrom(JkBms::DataPointContainer const& dp)
         }
         _cellVoltageTimestamp = millis();
     }
+
+    auto oCurrent = _dataPoints.get<Label::BatteryCurrentMilliAmps>();
+    if (oCurrent.has_value()) {
+        current = static_cast<float>(*oCurrent) / 1000;
+    }
+
+    auto oAlarms = _dataPoints.get<Label::AlarmsBitmask>();
+    if (oAlarms.has_value()) {
+        using Bits = JkBms::AlarmBits;
+        Alarm.overVoltage = *oAlarms & static_cast<uint16_t>(Bits::ChargingOvervoltage);
+        Alarm.underTemperature = *oAlarms & static_cast<uint16_t>(Bits::BatteryUndertemperature);
+        Alarm.overTemperature = *oAlarms & static_cast<uint16_t>(Bits::BatteryOvertemperature);
+        Warning.highCurrentCharge = *oAlarms & static_cast<uint16_t>(Bits::ChargingOvercurrent);
+        Alarm.overCurrentCharge = *oAlarms & static_cast<uint16_t>(Bits::ChargingOvercurrent);
+        ChargeDischargeManagementInfo.chargeImmediately1 = *oAlarms & static_cast<uint16_t>(Bits::LowCapacity);
+    }
+
+    auto oStatus = _dataPoints.get<Label::StatusBitmask>();
+    if (oStatus.has_value()) {
+        using Bits = JkBms::StatusBits;
+        ChargeDischargeManagementInfo.chargeEnable = *oStatus & static_cast<uint16_t>(Bits::ChargingActive);
+        ChargeDischargeManagementInfo.dischargeEnable = *oStatus & static_cast<uint16_t>(Bits::DischargingActive);
+    }
+
+    auto oTemperatureBms = _dataPoints.get<Label::BmsTempCelsius>();
+    auto oTemperatureOne = _dataPoints.get<Label::BatteryTempOneCelsius>();
+    auto oTemperatureTwo = _dataPoints.get<Label::BatteryTempTwoCelsius>();
+    if (oTemperatureBms.has_value() || oTemperatureOne.has_value() || oTemperatureTwo.has_value()) {
+        _minTemperature = 100;
+        _maxTemperature = -100;
+    }
+    if (oTemperatureBms.has_value()) {
+        _minTemperature = min(*oTemperatureBms, _minTemperature);
+        _maxTemperature = max(*oTemperatureBms, _maxTemperature);
+    }
+    if (oTemperatureOne.has_value()) {
+        _minTemperature = min(*oTemperatureOne, _minTemperature);
+        _maxTemperature = max(*oTemperatureOne, _maxTemperature);
+    }
+    if (oTemperatureTwo.has_value()) {
+        _minTemperature = min(*oTemperatureTwo, _minTemperature);
+        _maxTemperature = max(*oTemperatureTwo, _maxTemperature);
+    }
+
+//TotalOvervoltageThresholdMilliVolt;
+//TotalUndervoltageThresholdMilliVolt;
+//ChargeOvercurrentThresholdAmps;
 
     _lastUpdate = millis();
 }

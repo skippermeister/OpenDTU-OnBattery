@@ -142,7 +142,10 @@ void WebApiDtuClass::onDtuAdminPost(AsyncWebServerRequest* request)
         return;
     }
 
-    if (root["serial"].as<uint64_t>() == 0) {
+    // Interpret the string as a hex value and convert it to uint64_t
+    const uint64_t serial = strtoll(root["serial"].as<String>().c_str(), NULL, 16);
+
+    if (serial == 0) {
         retMsg["message"] = "Serial cannot be zero!";
         retMsg["code"] = WebApiError::DtuSerialZero;
         response->setLength();
@@ -200,8 +203,7 @@ void WebApiDtuClass::onDtuAdminPost(AsyncWebServerRequest* request)
 
     Dtu_CONFIG_T& cDtu = Configuration.get().Dtu;
 
-    // Interpret the string as a hex value and convert it to uint64_t
-    cDtu.Serial = strtoll(root["serial"].as<String>().c_str(), NULL, 16);
+    cDtu.Serial = serial;
     cDtu.PollInterval = root["pollinterval"].as<uint32_t>();
     cDtu.Nrf.PaLevel = root["nrf_palevel"].as<uint8_t>();
 #ifdef USE_RADIO_CMT

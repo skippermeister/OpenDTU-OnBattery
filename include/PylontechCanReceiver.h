@@ -24,6 +24,7 @@ public:
     void deinit() final;
     void loop() final;
     std::shared_ptr<BatteryStats> getStats() const final { return _stats; }
+    bool usesHwPort2() const final { return false; }
 
 private:
     uint16_t readUnsignedInt16(uint8_t* data) { return ((*(data + 1)) << 8) + *data; };

@@ -36,7 +36,7 @@ typedef struct {
     union {
         uint16_t FaultStatus;
         struct {
-            unsigned dummy1 : 1;
+            unsigned dummyFS1 : 1;
             unsigned OTP : 1; // Over temperature protection, 1 = Internal temperature abnormal
             unsigned OVP : 1; // Output over voltage protection, 1 = Output voltage protected, over xxx Volt
             unsigned OCP : 1; // Output over current protection, 1 = Output current protected
@@ -44,6 +44,7 @@ typedef struct {
             unsigned AC_Fail : 1; // AC abnormal flag, 1 = AC abnormal protection, input under 80V
             unsigned OP_OFF : 1; // Output status, 0 = Output turned on, 1 = Output turned off
             unsigned HI_TEMP : 1; // Internal high temperature protection, 1 = Internal temperature abnormal
+            unsigned dummyFS2:8;
         } FAULT_STATUS;
     };
 
@@ -82,7 +83,7 @@ typedef struct {
                               // 01 = -3mV/°C/cell(default)
                               // 10 = -4mV/°C/cell
                               // 11 = -5mV/°C/cell
-            unsigned dummy2 : 2;
+            unsigned dummyCC1 : 2;
             unsigned STGS : 1; // 2/3 stage charge setting
                                // 0 = 3 stage charge(dfault, CURVE_CV and CURVE_FV)
                                // 1 = 2 stage charge(only CURVE_CV)
@@ -92,6 +93,7 @@ typedef struct {
             unsigned CCTOE : 1; // Constant current stage timeout indication enable, 0 = Disabled(default), 1 = Enabled
             unsigned CVTOE : 1; // Constant voltage stage timeout indication enable, 0 = Disabled(default), 1 = Enabled
             unsigned FVTOE : 1; // Float stage timeout indication enable, 0 = Disabled(default), 1 = Enabled
+            unsigned dummyCC2:5;
         } CURVE_CONFIG;
     };
 
@@ -102,46 +104,49 @@ typedef struct {
             unsigned CCM : 1; // Constant current mode status, 1 = The charger in constant current mode
             unsigned CVM : 1; // Constant voltage mode status, 1 = The charger in constant voltage mode
             unsigned FVM : 1; // Float mode status, 1 = The charger in float mode
-            unsigned dummy3 : 2;
+            unsigned dummyCS1 : 2;
             unsigned WAKEUP_STOP : 1; // Wake up finished, 1ï¼Wake up unfinished
-            unsigned dummy4 : 1;
-            unsigned dummy5 : 2;
+            unsigned dummyCS2 : 1;
+            unsigned dummyCS3 : 2;
             unsigned NTCER : 1; // Temperature compensation status, 1=The circuitry of temperature compensation has short-circuited
             unsigned BTNC : 1; // Battery detection, 1=No battery detected
-            unsigned dummy6 : 1;
+            unsigned dummyCS4 : 1;
             unsigned CCTOF : 1; // Timeout flag of constant current mode, 1=Constant current mode time out
             unsigned CVTOF : 1; // Timeout flag of constant voltage mode, 1=Constant voltage mode time out
             unsigned FVTOF : 1; // Timeout flag of float mode, 1=Float mode time out
         } CHG_STATUS;
     };
 
-    float scalingFactor; // Scaling ratio
+    uint16_t scalingFactor; // Scaling ratio
 
     union {
         uint16_t SystemStatus;
         struct {
-            unsigned dummy7 : 1;
+            unsigned dummySS1 : 1;
             unsigned DC_OK : 1; // The DC output status, 0 = DC output at a normal range, 1 = DC output too low
-            unsigned dummy8 : 3;
+            unsigned dummySS2 : 3;
             unsigned INITIAL_STATE : 1; // Initial stage indication, 0 = The unit NOT in an initial state, 1 = The unit in an initial state
             unsigned EEPER : 1; // EEPROM access Error, 0 = EEPROM accessing normally, 1 = EEPROM access error
                                 // NOTE: EEPER:When EEPROM access error the supply stops working and the
                                 // LED indicator turns off. The supply need to re-power on to recover after
                                 // the error condition is removed.
-            unsigned dummy9 : 1;
+            unsigned dummySS3 : 1;
         } SYSTEM_STATUS;
     };
 
     union {
         uint16_t SystemConfig; // System configuration, default 0x0002
         struct {
-            unsigned dummy10 : 1;
+            unsigned CAN_CTRL : 1;
             unsigned OPERATION_INIT : 2; // Initial operational behavior
                                          // 00 = Power on with 00h: OFF
                                          // 01 = Power on with 01h: ON, default
                                          // 10 = Power on with the last setting
                                          // 11 = No used
-            unsigned dummy11 : 13;
+            unsigned dummySC2 : 5;
+            unsigned EEP_CONFIG : 2;
+            unsigned EEP_OFF : 1;
+            unsigned dummySC3 : 5;
         } SYSTEM_CONFIG;
     };
 } RectifierParameters_t;
@@ -150,12 +155,13 @@ class MeanWellCanClass {
 public:
     MeanWellCanClass();
     void init(Scheduler& scheduler);
+    void updateSettings();
     void setAutomaticChargeMode(bool mode) { _automaticCharge = mode; };
     void setValue(float in, uint8_t parameterType);
     void setPower(bool power);
 
     uint32_t getLastUpdate() { return _lastUpdate; };
-    bool getAutoPowerStatus() { return _autoPowerActive; };
+    bool getAutoPowerStatus() { return _automaticCharge ? (_rp.operation?true:false):false; };
 
     RectifierParameters_t _rp {};
 
@@ -218,7 +224,6 @@ private:
     bool _initialized = false;
     bool _automaticCharge = true;
     bool _lastPowerCommandSuccess;
-    bool _autoPowerActive = false;
     bool _setupParameter = true;
 
     bool _verboseLogging = false;

@@ -19,7 +19,7 @@ static constexpr char TAG[] = "[REFUsol]";
 #include <HardwareSerial.h>
 #include <driver/uart.h>
 
-HardwareSerial REFUsolSerial(2);
+HardwareSerial REFUsolSerial(1);    // HW Serial 1, Victron not usable !!!
 
 REFUsolRS485ReceiverClass REFUsol;
 
@@ -31,30 +31,70 @@ REFUsolRS485ReceiverClass::REFUsolRS485ReceiverClass()
 
 void REFUsolRS485ReceiverClass::init(Scheduler& scheduler)
 {
-    if (!Configuration.get().REFUsol.Enabled)
+    MessageOutput.print("Initialize REFUsol Inverter... ");
+
+    scheduler.addTask(_loopTask);
+
+    updateSettings();
+
+    if (!Configuration.get().REFUsol.Enabled) {
+        MessageOutput.println("not enabled");
         return;
+    }
+
+    MessageOutput.println("done");
+}
+
+void REFUsolRS485ReceiverClass::updateSettings(void)
+{
+    if (!Configuration.get().REFUsol.Enabled) {
+        deinit();
+        _loopTask.disable();
+        return;
+    }
+
+    _loopTask.enable();
 
     const PinMapping_t& pin = PinMapping.get();
-    MessageOutput.printf("Initialize REFUsol RS485 interface RS485 port rx = %d, tx = %d rts = %d. ", pin.REFUsol_rx, pin.REFUsol_tx, pin.REFUsol_rts);
 
-    if (!PinMapping.isValidREFUsolConfig()) {
-        MessageOutput.println("Invalid pin config");
+    if (pin.REFUsol_rx < 0 || pin.REFUsol_tx < 0
+        || pin.REFUsol_rx == pin.REFUsol_tx
+        || (pin.REFUsol_rts >= 0
+            && (pin.REFUsol_rts == pin.REFUsol_rx || pin.REFUsol_rts == pin.REFUsol_tx))) {
+        MessageOutput.println("Invalid TX/RX/RTS pin config");
         return;
     }
 
     if (!_initialized) {
         RS485BaudRate = 57600;
-
         REFUsolSerial.begin(RS485BaudRate, SERIAL_8N1, pin.REFUsol_rx, pin.REFUsol_tx);
-        REFUsolSerial.flush();
-        REFUsolSerial.setPins(pin.REFUsol_rx, pin.REFUsol_tx, UART_PIN_NO_CHANGE, pin.REFUsol_rts);
-        ESP_ERROR_CHECK(uart_set_mode(2, UART_MODE_RS485_HALF_DUPLEX));
+        MessageOutput.printf("RS485 (Type %d) port rx = %d, tx = %d", pin.REFUsol_rts >= 0 ? 1 : 2, pin.REFUsol_rx, pin.REFUsol_tx);
+        if (pin.REFUsol_rts >= 0) {
+            /*
+             * REFUsol inverter is connected via a RS485 module. Two different types of modules are supported.
+             * Type 1: if a GPIO pin greater or equal 0 is given, we have a MAX3485 or SP3485 modul with external driven DE/RE pins
+             *         Both pins are connected together and will be driven by the HWSerial driver.
+             * Type 2: if the GPIO is negativ (-1), we assume that we have a RS485 TTL Modul with a self controlled DE/RE circuit.
+             *         In this case we only need a TX and RX pin.
+             */
+            MessageOutput.printf(", rts = %d", pin.REFUsol_rts);
+            REFUsolSerial.setPins(pin.REFUsol_rx, pin.REFUsol_tx, UART_PIN_NO_CHANGE, pin.REFUsol_rts);
+        }
+        ESP_ERROR_CHECK(uart_set_mode(1, UART_MODE_RS485_HALF_DUPLEX));
 
         // Set read timeout of UART TOUT feature
-        ESP_ERROR_CHECK(uart_set_rx_timeout(2, ECHO_READ_TOUT));
+        ESP_ERROR_CHECK(uart_set_rx_timeout(1, ECHO_READ_TOUT));
 
-        MessageOutput.print("initialized successfully. ");
+        REFUsolSerial.flush();
+
+        while (REFUsolSerial.available()) { // clear RS485 read buffer
+            REFUsolSerial.read();
+            vTaskDelay(1);
+        }
+
         _initialized = true;
+
+        MessageOutput.println(" initialized successfully.");
     }
 
     MessageOutput.print("Read basic infos and parameters. ");
@@ -103,45 +143,41 @@ void REFUsolRS485ReceiverClass::init(Scheduler& scheduler)
         break;
     default:;
     }
-    if (Frame.optionCosPhi >= 0)
-        MessageOutput.printf("%s Effektiver Cos Phi : %.2f°\r\n", TAG, Frame.effectivCosPhi);
-
-    scheduler.addTask(_loopTask);
-    _loopTask.enable();
-
-    _isInstalled = true;
-
-    MessageOutput.println("done");
+    if (Frame.optionCosPhi >= 0) MessageOutput.printf("%s Effektiver Cos Phi : %.2f°\r\n", TAG, Frame.effectivCosPhi);
 }
 
 void REFUsolRS485ReceiverClass::deinit(void)
 {
-    if (!_isInstalled) {
+    if (!_initialized) {
         return;
     }
 
     MessageOutput.printf("%s RS485 driver uninstalled\r\n", TAG);
-    _isInstalled = false;
+    _initialized = false;
 }
 
 void REFUsolRS485ReceiverClass::loop()
 {
     REFUsol_CONFIG_T& cREFUsol = Configuration.get().REFUsol;
 
-    if (!cREFUsol.Enabled
-        || (millis() - getLastUpdate()) < cREFUsol.PollInterval * 1000) {
-        if (!cREFUsol.Enabled)
-            deinit();
+    if (!cREFUsol.Enabled) {
+        deinit();
         return;
     }
 
-    if (!_isInstalled) {
-        init();
+    if (!_initialized) {
+        updateSettings();
         return;
     }
+
+    uint32_t t_start = millis();
 
     if (REFUsolSerial.available()) {
         parse();
+    }
+
+    if ((millis() - getLastUpdate()) < cREFUsol.PollInterval * 1000) {
+        return;
     }
 
     static int state = 0;
@@ -235,11 +271,13 @@ void REFUsolRS485ReceiverClass::loop()
         getTemperatursensor(adr, 4);
         parse();
 
-        state++;
+        state=0;
         break;
     }
 
     setLastUpdate();
+
+    MessageOutput.printf("%s Round trip %lu ms\r\n", TAG, millis() - t_start);
 }
 
 void REFUsolRS485ReceiverClass::debugRawTelegram(TELEGRAM_t* t, uint8_t len)
@@ -300,19 +338,19 @@ void REFUsolRS485ReceiverClass::compute(uint8_t adr, bool mirror, uint16_t TaskI
     lge += 2;
 
     switch (TaskID) {
-    case 0b0000:
-    case 0b0001:
-    case 0b0010:
-    case 0b0110:
-    case 0b0111:
-    case 0b1001:
-    case 0b1100:
-    case 0b1110:
+    case 0b0000:    // No task
+    case 0b0001:    // Request PWE
+    case 0b0010:    // Change PWE (word)
+    case 0b0110:    // Request PWE (array) 1)
+    case 0b0111:    // Change PWE (array word) 1)
+    case 0b1001:    // Request the number of array elements
+    case 0b1100:    // Change PWE (array word), and store in the EEPROM 1), 2)
+    case 0b1110:    // Change PWE (word), and store in the EEPROM 2)
         if (PKW_ANZ > 3) {
             sTelegram.buffer[++lge] = 0;
             sTelegram.buffer[++lge] = 0;
         }
-        if ((TaskID == 0b0001) || (TaskID == 0b0001) || (TaskID == 0b0110) || (TaskID == 0b1001)) {
+        if ((TaskID == 0b0000) || (TaskID == 0b0001) || (TaskID == 0b0110) || (TaskID == 0b1001)) {
             sTelegram.buffer[++lge] = 0;
             sTelegram.buffer[++lge] = 0;
         } else {
@@ -321,16 +359,17 @@ void REFUsolRS485ReceiverClass::compute(uint8_t adr, bool mirror, uint16_t TaskI
         }
         break;
 
-    case 0b0011:
-    case 0b1000: // ChangePWEarray
-    case 0b1101:
+    case 0b0011:    // Change PWE (double word)
+    case 0b1000:    // ChangePWEarray
+    case 0b1101:    // Change PWE (double word), and store in EEPROM 2)
         sTelegram.buffer[++lge] = (*(reinterpret_cast<uint32_t*>(PWE))) >> 24;
         sTelegram.buffer[++lge] = (*(reinterpret_cast<uint32_t*>(PWE))) >> 16;
         sTelegram.buffer[++lge] = (*(reinterpret_cast<uint32_t*>(PWE))) >> 8;
         sTelegram.buffer[++lge] = (*(reinterpret_cast<uint32_t*>(PWE))) & 0xFF;
         break;
 
-    case 0b100001111: {
+    case 0b100001111:   // Change text
+        {
         bool flag = false;
         uint8_t* s =  reinterpret_cast<uint8_t*>(PWE);
         for (int i = 0; i < 16; i++) {
@@ -342,7 +381,7 @@ void REFUsolRS485ReceiverClass::compute(uint8_t adr, bool mirror, uint16_t TaskI
                 sTelegram.buffer[++lge] = 0x20;
         }
     } break;
-    case 0b000001111:
+    case 0b000001111:   // Request text
         sTelegram.buffer[++lge] = 0;
         sTelegram.buffer[++lge] = 0;
         if (PKW_ANZ == 4) {

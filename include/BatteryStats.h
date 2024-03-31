@@ -96,12 +96,12 @@ class BatteryStats {
         void setSoC(float soc, uint8_t precision, uint32_t timestamp) {
             _SoC = soc;
             _socPrecision = precision;
-            _lastUpdateSoC = timestamp;
+            _lastUpdateSoC = _lastUpdate = timestamp;;
         }
 
         void setVoltage(float voltage, uint32_t timestamp) {
             _voltage = voltage;
-            _lastUpdateVoltage = timestamp;
+            _lastUpdateVoltage = _lastUpdate = timestamp;
         }
 
         String _manufacturer = "unknown";
@@ -238,7 +238,6 @@ public:
     bool getChargeEnabled() const final { return chargeEnabled; };
     bool getDischargeEnabled() const final { return dischargeEnabled; };
     bool getChargeImmediately() const final { return chargeImmediately; };
-//    float getVoltage() const final { return voltage; };
     bool isChargeTemperatureValid() const final { return true; }; // FIXME: to be done
     bool isDischargeTemperatureValid() const final { return true; }; // FIXME: to be done
 
@@ -317,14 +316,11 @@ public:
     void getLiveViewData(JsonVariant& root) const final;
     void generatePackCommonJsonResponse(JsonObject& packObject, const uint8_t m) const final;
 
-    uint8_t get_number_of_packs() const final { return _number_of_packs; };
-
     const Alarm_t& getAlarm() const final { return totals.Alarm; };
     const Warning_t& getWarning() const final { return totals.Warning; };
     bool getChargeEnabled() const final { return totals.ChargeDischargeManagementInfo.chargeEnable; };
     bool getDischargeEnabled() const final { return totals.ChargeDischargeManagementInfo.dischargeEnable; };
     bool getChargeImmediately() const final { return (totals.ChargeDischargeManagementInfo.chargeImmediately1 || totals.ChargeDischargeManagementInfo.chargeImmediately2 || totals.ChargeDischargeManagementInfo.fullChargeRequest); };
-//    float getVoltage() const final { return voltage; };
     float getTemperature() const final { return totals.averageCellTemperature; };
 
     float getRecommendedChargeVoltageLimit() const final { return totals.ChargeDischargeManagementInfo.chargeVoltageLimit; };
@@ -471,20 +467,41 @@ private:
         Warning_t Warning;
     } _lastPack[MAX_BATTERIES];
 
-//    ChargeDischargeManagementInfo_t ChargeDischargeManagementInfo;
-//    ModuleSerialNumber_t ModuleSerialNumber;
-
     bool _initialized = false;
 };
 #endif
 
 #ifdef USE_JKBMS_CONTROLLER
 class JkBmsBatteryStats : public BatteryStats {
+    friend class Controller;
+
 public:
     void getLiveViewData(JsonVariant& root) const final;
+    void generatePackCommonJsonResponse(JsonObject& packObject, const uint8_t m) const final;
 
-    bool isChargeTemperatureValid() const final { return true; }; // FIXME: to be done
-    bool isDischargeTemperatureValid() const final { return true; }; // FIXME: to be done
+    uint8_t get_number_of_packs() const final { return 1; };
+
+    const Alarm_t& getAlarm() const final { return Alarm; };
+    const Warning_t& getWarning() const final { return Warning; };
+
+    bool getChargeEnabled() const final { return ChargeDischargeManagementInfo.chargeEnable; };
+    bool getDischargeEnabled() const final { return ChargeDischargeManagementInfo.dischargeEnable; };
+    bool getChargeImmediately() const final { return ChargeDischargeManagementInfo.chargeImmediately1; };
+
+    float getRecommendedChargeVoltageLimit() const final { return ChargeDischargeManagementInfo.chargeVoltageLimit; };
+    float getRecommendedDischargeVoltageLimit() const final { return ChargeDischargeManagementInfo.dischargeVoltageLimit; };
+    float getRecommendedChargeCurrentLimit() const final { return ChargeDischargeManagementInfo.chargeCurrentLimit; };
+
+    bool isChargeTemperatureValid() const final
+    {
+        const Battery_CONFIG_T& cBattery = Configuration.get().Battery;
+        return (_minTemperature >= cBattery.MinChargeTemperature) && (_maxTemperature <= cBattery.MaxChargeTemperature);
+    };
+    bool isDischargeTemperatureValid() const final
+    {
+        const Battery_CONFIG_T& cBattery = Configuration.get().Battery;
+        return (_minTemperature >= cBattery.MinDischargeTemperature) && (_maxTemperature <= cBattery.MaxDischargeTemperature);
+    };
 
     void mqttPublish() /*const*/ final;
 
@@ -492,13 +509,27 @@ public:
 
     bool initialized() const final { return _initialized; };
 
+    bool _initialized = false;
+
 private:
     JkBms::DataPointContainer _dataPoints;
+
+    float current;
+    short _minTemperature = 100;
+    short _maxTemperature = -100;
+    Alarm_t Alarm;
+    Warning_t Warning;
+    ChargeDischargeManagementInfo_t ChargeDischargeManagementInfo;
+
     mutable uint32_t _lastMqttPublish = 0;
     mutable uint32_t _lastFullMqttPublish = 0;
 
-    bool _initialized = false;
+    uint16_t _cellMinMilliVolt = 0;
+    uint16_t _cellAvgMilliVolt = 0;
+    uint16_t _cellMaxMilliVolt = 0;
+    uint32_t _cellVoltageTimestamp = 0;
 };
+
 #endif
 
 #ifdef USE_DALYBMS_CONTROLLER
@@ -514,7 +545,6 @@ class DalyBmsBatteryStats : public BatteryStats {
         bool getChargeEnabled() const final { return chargingMosEnabled; };
         bool getDischargeEnabled() const final { return dischargingMosEnabled; };
         bool getChargeImmediately() const final { return chargeImmediately1 || chargeImmediately2; };
-//        float getVoltage() const final { return voltage; };
         float getTemperature() const final { return (_maxTemperature + _minTemperature) / 2.0; };
 
         float getRecommendedChargeVoltageLimit() const final { return WarningValues.maxPackVoltage * 0.99; };  // 1% below warning level

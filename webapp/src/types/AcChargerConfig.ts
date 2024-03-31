@@ -9,4 +9,6 @@ export interface AcChargerConfig {
   max_current: number;
   hysteresis: number;
   verbose_logging: boolean;
+  EEPROMwrites: number;
+  mustInverterProduce: boolean;
 }

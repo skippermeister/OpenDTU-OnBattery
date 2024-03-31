@@ -1,4 +1,4 @@
-// #ifdef USE_DALYBMS_CONTROLLER
+#ifdef USE_DALYBMS_CONTROLLER
 
 #include "DalyBmsController.h"
 #include "Battery.h"
@@ -14,13 +14,17 @@ static constexpr char TAG[] = "[Daly BMS]";
 
 bool DalyBmsController::init()
 {
+    MessageOutput.printf("Initialize Daly BMS Controller... ");
+
     _lastStatusPrinted.set(10 * 1000);
 
-    if (!Configuration.get().Battery.Enabled)
+/*
+    if (!Configuration.get().Battery.Enabled) {
+        MessageOutput.println("not enabled");
         return false;
-
+    }
+*/
     const PinMapping_t& pin = PinMapping.get();
-    MessageOutput.printf("Initialize Daly BMS Controller... ");
 
     if (pin.battery_rx < 0 || pin.battery_tx < 0 || (pin.battery_rx == pin.battery_tx) || (pin.battery_rts >= 0 && (pin.battery_rts == pin.battery_rx || pin.battery_rts == pin.battery_tx))) {
         MessageOutput.println("Invalid TX/RX pin config");
@@ -63,10 +67,12 @@ bool DalyBmsController::init()
         memset(_txBuffer, 0x00, XFER_BUFFER_LENGTH);
         clearGet();
 
-        pinMode(PinMapping.get().battery_daly_wakeup, OUTPUT);
-        digitalWrite(PinMapping.get().battery_daly_wakeup, HIGH);
-        vTaskDelay(500);
-        digitalWrite(PinMapping.get().battery_daly_wakeup, LOW);
+        if (PinMapping.get().battery_bms_wakeup >= 0) {
+            pinMode(PinMapping.get().battery_bms_wakeup, OUTPUT);
+            digitalWrite(PinMapping.get().battery_bms_wakeup, HIGH);
+            vTaskDelay(500);
+            digitalWrite(PinMapping.get().battery_bms_wakeup, LOW);
+        }
 
         MessageOutput.print(" initialized successfully.");
 
@@ -164,10 +170,12 @@ void DalyBmsController::sendRequest(uint8_t pollInterval)
 
     if (_nextRequest == 0) {
         if ((millis() - _lastRequest) < pollInterval * 1000) {
-            if ((millis() - _lastRequest) > 50 && (millis() - _lastRequest) < 600) { // 500ms High Impuls
-                digitalWrite(PinMapping.get().battery_daly_wakeup, HIGH);
-            } else {
-                digitalWrite(PinMapping.get().battery_daly_wakeup, LOW);
+            if (PinMapping.get().battery_bms_wakeup >= 0) {
+                if ((millis() - _lastRequest) > 50 && (millis() - _lastRequest) < 600) { // 500ms High Impuls
+                    digitalWrite(PinMapping.get().battery_bms_wakeup, HIGH);
+                } else {
+                    digitalWrite(PinMapping.get().battery_bms_wakeup, LOW);
+                }
             }
             return announceStatus(Status::WaitingForPollInterval);
         }
@@ -695,4 +703,4 @@ void DalyBmsController::clearGet(void)
     // _stats->cellBalanceActive = false;                                 // bool is cell balance active
 }
 
-// #endif
+#endif

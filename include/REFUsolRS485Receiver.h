@@ -14,6 +14,7 @@
 
 #include <Arduino.h>
 #include <AsyncJson.h>
+#include <TaskSchedulerDeclarations.h>
 
 // Timeout threshold for UART = number of symbols (~10 tics) with unchanged state on receive pin
 #define ECHO_READ_TOUT (3) // 3.5T * 8 = 28 ticks, TOUT=3 -> ~24..33 ticks
@@ -145,6 +146,7 @@ public:
     REFUsolRS485ReceiverClass();
     void init(Scheduler& scheduler); // initialize HardewareSerial
     void deinit(void);
+    void updateSettings();
     uint32_t getLastUpdate(); // timestamp of last successful frame read
     bool isDataValid(void); // return true if data valid and not outdated
 
@@ -221,7 +223,6 @@ private:
 
     uint8_t adr = 1;
 
-    bool _isInstalled = false;
     bool _initialized = false;
 
     bool _verbose_logging = false;

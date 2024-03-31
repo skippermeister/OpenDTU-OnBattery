@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include "Battery.h"
+#include "MessageOutput.h"
 #include "DalyBmsController.h"
 #include "JkBmsController.h"
-#include "MessageOutput.h"
-#include "MqttBattery.h"
 #include "PylontechCanReceiver.h"
 #include "PylontechRS485Receiver.h"
 #include "VictronSmartShunt.h"
+#include "MqttBattery.h"
+#include "SerialPortManager.h"
 
 BatteryClass Battery;
 
@@ -43,10 +44,12 @@ void BatteryClass::updateSettings()
         _upProvider->deinit();
         _upProvider = nullptr;
     }
+    SerialPortManager.invalidateBatteryPort();
 
     Battery_CONFIG_T& cBattery = Configuration.get().Battery;
 
     if (!cBattery.Enabled) {
+        MessageOutput.println("Battery provider not enabled");
         return;
     }
 
@@ -63,46 +66,44 @@ void BatteryClass::updateSettings()
     case 1: // Initialize Pylontech Battery / CAN0 bus
     case 2: // Initialize Pylontech Battery / MCP2515 bus
         _upProvider = std::make_unique<PylontechCanReceiver>();
-        if (!_upProvider->init()) {
-            _upProvider = nullptr;
-        }
         break;
 #endif
 #ifdef USE_JKBMS_CONTROLLER
     case 3:
         _upProvider = std::make_unique<JkBms::Controller>();
-        if (!_upProvider->init()) {
-            _upProvider = nullptr;
-        }
         break;
 #endif
 #ifdef USE_VICTRON_SMART_SHUNT
     case 4:
         _upProvider = std::make_unique<VictronSmartShunt>();
-        if (!_upProvider->init()) {
-            _upProvider = nullptr;
-        }
         break;
 #endif
 #ifdef USE_DALYBMS_CONTROLLER
     case 5:
         _upProvider = std::make_unique<DalyBmsController>();
-        if (!_upProvider->init()) {
-            _upProvider = nullptr;
-        }
         break;
 #endif
 #ifdef USE_MQTT_BATTERY
     case 6:
         _upProvider = std::make_unique<MqttBattery>();
-        if (!_upProvider->init()) {
-            _upProvider = nullptr;
-        }
         break;
 #endif
     default:
         MessageOutput.printf("Unknown battery provider: %d\r\n", cBattery.Provider);
         break;
+    }
+
+    if(_upProvider->usesHwPort2()) {
+        if (!SerialPortManager.allocateBatteryPort(2)) {
+            MessageOutput.printf("[Battery] Serial port %d already in use. Initialization aborted!\r\n", 2);
+            _upProvider = nullptr;
+            return;
+        }
+    }
+
+    if (!_upProvider->init()) {
+        SerialPortManager.invalidateBatteryPort();
+        _upProvider = nullptr;
     }
 }
 

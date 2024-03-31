@@ -21,6 +21,9 @@ class DummySerial {
         void begin(uint32_t, uint32_t, int8_t, int8_t) {
             MessageOutput.println("JK BMS Dummy Serial: begin()");
         }
+        void setPins(int8_t rx, int8_t tx, int8_t flag, int8_t rts) {
+            MessageOutput.printf("JK BMS Dummy Serial: setPins(%d, %d, %d, %d)\r\n", rx, tx, flag, rts);
+        };
         void end() { MessageOutput.println("JK BMS Dummy Serial: end()"); }
         void flush() { }
         bool availableForWrite() const { return true; }
@@ -210,13 +213,13 @@ namespace JkBms {
 
 bool Controller::init()
 {
-    _verboseLogging = Battery._verbose_logging;
+    _stats->_initialized = false;
 
     _lastStatusPrinted.set(10 * 1000);
 
     std::string ifcType = "transceiver";
     if (Interface::Transceiver != getInterface()) { ifcType = "TTL-UART"; }
-    MessageOutput.printf("[JK BMS] Initialize %s interface...\r\n", ifcType.c_str());
+    MessageOutput.printf("%s Initialize %s interface... ", TAG, ifcType.c_str());
 
     const PinMapping_t& pin = PinMapping.get();
     MessageOutput.printf("%s rx = %d, tx = %d, rts = %d\r\n", TAG, pin.battery_rx, pin.battery_tx, pin.battery_rts);
@@ -229,7 +232,10 @@ bool Controller::init()
     HwSerial.begin(115200, SERIAL_8N1, pin.battery_rx, pin.battery_tx);
     HwSerial.flush();
 
-    if (Interface::Transceiver != getInterface()) { return true; }
+    if (Interface::Transceiver != getInterface()) {
+        _stats->_initialized = true;
+        return true;
+    }
 
     if (pin.battery_rts < 0) {
         MessageOutput.printf("%s Invalid transceiver pin config\r\n", TAG);
@@ -237,7 +243,11 @@ bool Controller::init()
     }
 
     HwSerial.setPins(pin.battery_rx, pin.battery_tx, UART_PIN_NO_CHANGE, pin.battery_rts);
+#ifndef JKBMS_DUMMY_SERIAL
     ESP_ERROR_CHECK(uart_set_mode(2, UART_MODE_RS485_HALF_DUPLEX));
+#endif
+
+    _stats->_initialized = true;
 
     return true;
 }
@@ -376,7 +386,7 @@ void Controller::frameComplete()
 {
     announceStatus(Status::FrameCompleted);
 
-    if (_verboseLogging) {
+    if (Battery._verboseLogging) {
         MessageOutput.printf("%s raw data (%d Bytes):", TAG, _buffer.size());
         for (size_t ctr = 0; ctr < _buffer.size(); ++ctr) {
             if (ctr % 16 == 0) {
@@ -404,7 +414,7 @@ void Controller::processDataPoints(DataPointContainer const& dataPoints)
     auto oProtocolVersion = dataPoints.get<Label::ProtocolVersion>();
     if (oProtocolVersion.has_value()) { _protocolVersion = *oProtocolVersion; }
 
-    if (!_verboseLogging) { return; }
+    if (!Battery._verboseLogging) { return; }
 
     auto iter = dataPoints.cbegin();
     while ( iter != dataPoints.cend() ) {

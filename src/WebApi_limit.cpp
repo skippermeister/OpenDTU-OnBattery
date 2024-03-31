@@ -106,7 +106,10 @@ void WebApiLimitClass::onLimitPost(AsyncWebServerRequest* request)
         return;
     }
 
-    if (root["serial"].as<uint64_t>() == 0) {
+    // Interpret the string as a hex value and convert it to uint64_t
+    const uint64_t serial = strtoll(root["serial"].as<String>().c_str(), NULL, 16);
+
+    if (serial == 0) {
         retMsg["message"] = SerialMustBeGreaterZero;
         retMsg["code"] = WebApiError::LimitSerialZero;
         response->setLength();
@@ -135,7 +138,6 @@ void WebApiLimitClass::onLimitPost(AsyncWebServerRequest* request)
         return;
     }
 
-    uint64_t serial = strtoll(root["serial"].as<String>().c_str(), NULL, 16);
     uint16_t limit = root["limit_value"].as<uint16_t>();
     PowerLimitControlType type = root["limit_type"].as<PowerLimitControlType>();
 

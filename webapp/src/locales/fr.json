@@ -748,6 +748,7 @@
         "typeSDM3ph": "SDM 3 phase (SDM72/630)",
         "typeHTTP": "HTTP(s) + JSON",
         "typeSML": "SML (OBIS 16.7.0)",
+        "typeSMAHM2": "SMA Homemanager 2.0",
         "MqttTopicPowerMeter1": "MQTT topic - Power meter #1",
         "MqttTopicPowerMeter2": "MQTT topic - Power meter #2",
         "MqttTopicPowerMeter3": "MQTT topic - Power meter #3",
@@ -781,6 +782,10 @@
       "ConfigHintsIntro": "Les notes suivantes concernant la configuration du limiteur de puissance dynamique (DPL) doivent être prises en compte :",
       "ConfigHintPowerMeterDisabled": "Le fonctionnement du DPL nécessite que le Power Meter soit configuré et fournisse des données.",
       "ConfigHintNoInverter": "Au moins un onduleur doit être configuré avant de configurer le DPL.",
+      "ConfigHintInverterCommunication": "Polling data from and sending commands to the target inverter must be enabled.",
+      "ConfigHintNoChargeController": "The solar-passthrough feature can only be used if the VE.Direct interface is configured.",
+      "ConfigHintNoCharger": "An AC charger should be configured and activated.",
+      "ConfigHintNoBatteryInterface": "SoC-based thresholds can only be used if a battery communication interface is configured.",
       "PollIntervall": "@:dtuadmin.PollInterval",
       "Seconds": "@:dtuadmin.Seconds",
       "UpdatesOnly": "@:base.UpdatesOnly",
@@ -815,9 +820,14 @@
       "VoltageLoadCorrectionFactor": "Facteur de correction de charge",
       "BatterySocInfo": "<b>Hint:</b> Les valeurs SoC (état de charge) de la batterie ne sont utilisées que si l'interface de communication de la batterie a signalé des mises à jour du SoC au cours de la dernière minute. Dans le cas contraire, les seuils de tension seront utilisés comme solution de repli.",
       "InverterIsBehindPowerMeter": "L'onduleur est derrière le wattmètre",
+      "InverterIsSolarPowered": "L'onduleur est alimenté par des modules solaires",
       "VoltageThresholds": "Seuils de tension de batterie",
-      "VoltageLoadCorrectionInfo": "<b>Hint:</b> Lorsque la batterie est déchargée, sa tension chute. La chute de tension évolue avec le courant de décharge. Afin de ne pas arrêter l'onduleur trop tôt (seuil d'arrêt), ce facteur de correction de charge peut être spécifié pour calculer la tension de la batterie si elle était au repos. Tension corrigée = Tension CC + (Puissance actuelle * facteur de correction)."
-    },
+      "VoltageLoadCorrectionInfo": "<b>Hint:</b> Lorsque la batterie est déchargée, sa tension chute. La chute de tension évolue avec le courant de décharge. Afin de ne pas arrêter l'onduleur trop tôt (seuil d'arrêt), ce facteur de correction de charge peut être spécifié pour calculer la tension de la batterie si elle était au repos. Tension corrigée = Tension CC + (Puissance actuelle * facteur de correction).",
+      "InverterRestart": "Inverter Restart",
+      "InverterRestartHour": "Restart Hour",
+      "InverterRestartDisabled": "Do not execute automatic restart",
+      "InverterRestartHint": "Restart the Inverter once a day to reset the \"YieldDay\" values."
+  },
     "login": {
         "Login": "Connexion",
         "SystemLogin": "Connexion au système",
@@ -901,6 +911,13 @@
         "ValueSelected": "Sélectionné",
         "ValueActive": "Activé"
     },
+    "inputserial": {
+        "format_hoymiles": "Hoymiles serial number format",
+        "format_converted": "Already converted serial number",
+        "format_herf_valid": "E-Star HERF format (will be saved converted): {serial}",
+        "format_herf_invalid": "E-Star HERF format: Invalid checksum",
+        "format_unknown": "Unknown format"
+    },
     "meanwell": {
         "DataAge": "@:home.DataAge",
         "Seconds": "@:home.Seconds",
@@ -948,7 +965,8 @@
         "charger_mode": "Chargeur",
         "power_supply_mode": "Adaptateur secteur",
         "two_stage_charge": "CC/CV Charge",
-        "three_stage_charge": "CC/CV/FV Charge"
+        "three_stage_charge": "CC/CV/FV Charge",
+        "EEPROMwrites": "EEPROM écrit"
       },
       "acchargeradmin": {
         "ChargerSettings": "Paramètres du chargeur secteur",
@@ -966,7 +984,9 @@
         "Volts": "Volts",
         "Amps": "Ampères",
         "Watts": "Watts",
-        "Seconds": "@:dtuadmin.Seconds"
+        "Seconds": "@:dtuadmin.Seconds",
+        "EEPROMwrites": "@:meanwell.EEPROMwrites",
+        "mustInverterProduce": "Vérifiez si l'onduleur produit de l'énergie solaire"
       },
       "battery": {
         "battery": "Batterie",

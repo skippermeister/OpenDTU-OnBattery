@@ -39,7 +39,7 @@ class VeDirectMpptController : public VeDirectFrameHandler {
 public:
     VeDirectMpptController() = default;
 
-    void init(int8_t rx, int8_t tx, Print* msgOut, bool verboseLogging);
+    void init(int8_t rx, int8_t tx, Print* msgOut, bool verboseLogging, uint16_t hwSerialPort);
     bool isDataValid() const;                        // return true if data valid and not outdated
 
     struct veMpptStruct : veStruct {

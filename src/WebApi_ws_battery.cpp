@@ -73,6 +73,8 @@ void WebApiWsBatteryLiveClass::sendDataTaskCb()
                 JsonObject packObject = packsArray.createNestedObject();
                 Battery.getStats()->generatePackCommonJsonResponse(packObject, i);
 
+                if (Utils::checkJsonOverflow(root, __FUNCTION__, __LINE__)) { return; }
+
                 String buffer;
                 serializeJson(root, buffer);
                 //            Serial.println(buffer);
@@ -126,6 +128,9 @@ void WebApiWsBatteryLiveClass::onLivedataStatus(AsyncWebServerRequest* request)
             JsonObject packObject = packsArray.createNestedObject();
             Battery.getStats()->generatePackCommonJsonResponse(packObject, i);
         }
+
+        if (Utils::checkJsonOverflow(root, __FUNCTION__, __LINE__)) { return; }
+
         /*
                 String buffer;
                 serializeJsonPretty(root, buffer);

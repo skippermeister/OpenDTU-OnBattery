@@ -8,6 +8,7 @@
 #include <Arduino.h>
 #include <TaskSchedulerDeclarations.h>
 #include <TimeoutHelper.h>
+#include <mutex>
 
 #ifndef REFUsol_PIN_RX
 #define REFUsol_PIN_RX 22

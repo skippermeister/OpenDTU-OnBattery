@@ -12,6 +12,8 @@
 
 CONFIG_T config;
 
+static constexpr char TAG[] = "[Configuration]";
+
 void ConfigurationClass::init()
 {
     memset(&config, 0x0, sizeof(config));
@@ -199,8 +201,9 @@ bool ConfigurationClass::write()
     powerlimiter["pollinterval"] = config.PowerLimiter.PollInterval;
     powerlimiter["solar_passthrough_enabled"] = config.PowerLimiter.SolarPassThroughEnabled;
     powerlimiter["solar_passtrough_losses"] = config.PowerLimiter.SolarPassThroughLosses;
-    powerlimiter["battery_drain_strategy"] = config.PowerLimiter.BatteryDrainStategy;
+    powerlimiter["battery_always_use_at_night"] = config.PowerLimiter.BatteryAlwaysUseAtNight;
     powerlimiter["is_inverter_behind_powermeter"] = config.PowerLimiter.IsInverterBehindPowerMeter;
+    powerlimiter["is_inverter_solar_powered"] = config.PowerLimiter.IsInverterSolarPowered;
     powerlimiter["inverter_id"] = config.PowerLimiter.InverterId;
     powerlimiter["inverter_channel_id"] = config.PowerLimiter.InverterChannelId;
     powerlimiter["target_power_consumption"] = config.PowerLimiter.TargetPowerConsumption;
@@ -255,17 +258,32 @@ bool ConfigurationClass::write()
     meanwell["min_current"] = config.MeanWell.MinCurrent;
     meanwell["max_current"] = config.MeanWell.MaxCurrent;
     meanwell["hysteresis"] = config.MeanWell.Hysteresis;
+    meanwell["EEPROMwrites"] = config.MeanWell.EEPROMwrites;
+    meanwell["mustInverterProduce"] = config.MeanWell.mustInverterProduce;
 #endif
 
     JsonObject zeroExport = doc.createNestedObject("zeroExport");
     zeroExport["enabled"] = config.ZeroExport.Enabled;
     zeroExport["updatesonly"] = config.ZeroExport.UpdatesOnly;
     zeroExport["InverterId"] = config.ZeroExport.InverterId;
+    JsonArray serials = zeroExport.createNestedArray("serials");
+    for (uint8_t i = 0; i < INV_MAX_COUNT; i++) {
+        if (config.ZeroExport.serials[i] != 0) {
+            serials[i] = config.ZeroExport.serials[i];
+        }
+    }
     zeroExport["PowerHysteresis"] = config.ZeroExport.PowerHysteresis;
     zeroExport["MaxGrid"] = config.ZeroExport.MaxGrid;
     zeroExport["MinimumLimit"] = config.ZeroExport.MinimumLimit;
     zeroExport["Tn"] = config.ZeroExport.Tn;
 
+/*
+    {
+        String buffer;
+        serializeJsonPretty(doc, buffer);
+        Serial.println(buffer);
+    }
+*/
     // Serialize JSON to file
     if (serializeJson(doc, f) == 0) {
         MessageOutput.println("Failed to write file");
@@ -452,7 +470,7 @@ bool ConfigurationClass::read()
 
 #ifdef USE_REFUsol_INVERTER
     JsonObject refusol = doc["refusol"];
-    config.REFUsol.Enabled = refusol["enabled"] | REFUsol_ENABLED;
+    config.REFUsol.Enabled = true; //refusol["enabled"] | REFUsol_ENABLED;
     config.REFUsol.UpdatesOnly = refusol["updatesonly"] | REFUsol_UPDATESONLY;
     config.REFUsol.PollInterval = refusol["pollinterval"] | REFUsol_POLLINTERVAL;
 #endif
@@ -489,11 +507,20 @@ bool ConfigurationClass::read()
     config.PowerLimiter.Enabled = powerlimiter["enabled"] | POWERLIMITER_ENABLED;
     config.PowerLimiter.SolarPassThroughEnabled = powerlimiter["solar_passthrough_enabled"] | POWERLIMITER_SOLAR_PASSTHROUGH_ENABLED;
     config.PowerLimiter.SolarPassThroughLosses = powerlimiter["solar_passthrough_losses"] | POWERLIMITER_SOLAR_PASSTHROUGH_LOSSES;
-    config.PowerLimiter.BatteryDrainStategy = powerlimiter["battery_drain_strategy"] | POWERLIMITER_BATTERY_DRAIN_STRATEGY;
+    config.PowerLimiter.BatteryAlwaysUseAtNight = powerlimiter["battery_always_use_at_night"] | POWERLIMITER_BATTERY_ALWAYS_USE_AT_NIGHT;
+    if (powerlimiter["battery_drain_strategy"].as<uint8_t>() == 1) { config.PowerLimiter.BatteryAlwaysUseAtNight = true; } // convert legacy setting
     config.PowerLimiter.PollInterval = powerlimiter["pollinterval"] | POWERLIMITER_POLLINTERVAL;
     config.PowerLimiter.UpdatesOnly = powerlimiter["updatesonly"] | POWERLIMITER_UPDATESONLY;
     config.PowerLimiter.IsInverterBehindPowerMeter = powerlimiter["is_inverter_behind_powermeter"] | POWERLIMITER_IS_INVERTER_BEHIND_POWER_METER;
-    config.PowerLimiter.InverterId = powerlimiter["inverter_id"] | POWERLIMITER_INVERTER_ID;
+    config.PowerLimiter.IsInverterSolarPowered = powerlimiter["is_inverter_solar_powered"] | POWERLIMITER_IS_INVERTER_SOLAR_POWERED;
+    config.PowerLimiter.InverterId = powerlimiter["inverter_id"].as<uint64_t>() | POWERLIMITER_INVERTER_ID;
+    if (config.PowerLimiter.InverterId < INV_MAX_COUNT) {
+        uint8_t id;
+        config.PowerLimiter.InverterId = config.Inverter[id = config.PowerLimiter.InverterId].Serial;
+        MessageOutput.printf("%s%s migrate PowerLimiter Inverter ID:%02d to Serial No: %" PRIx64 "\r\n", TAG, __FUNCTION__, id, config.PowerLimiter.InverterId);
+    } else {
+        MessageOutput.printf("%s%s: PowerLimiter Inverter ID: %" PRIx64 "\r\n", TAG, __FUNCTION__, config.PowerLimiter.InverterId);
+    }
     config.PowerLimiter.InverterChannelId = powerlimiter["inverter_channel_id"] | POWERLIMITER_INVERTER_CHANNEL_ID;
     config.PowerLimiter.TargetPowerConsumption = powerlimiter["target_power_consumption"] | POWERLIMITER_TARGET_POWER_CONSUMPTION;
     config.PowerLimiter.TargetPowerConsumptionHysteresis = powerlimiter["target_power_consumption_hysteresis"] | POWERLIMITER_TARGET_POWER_CONSUMPTION_HYSTERESIS;
@@ -548,12 +575,36 @@ bool ConfigurationClass::read()
     config.MeanWell.MinCurrent = meanwell["min_current"] | MEANWELL_MINCURRENT;
     config.MeanWell.MaxCurrent = meanwell["max_current"] | MEANWELL_MAXCURRENT;
     config.MeanWell.Hysteresis = meanwell["hystersis"] | MEANWELL_HYSTERESIS;
+    config.MeanWell.EEPROMwrites = meanwell["EEPROMwrites"] | 0;
+    config.MeanWell.mustInverterProduce = meanwell["mustInverterProduce"] | true;
 #endif
 
     JsonObject zeroExport = doc["zeroExport"];
     config.ZeroExport.Enabled = zeroExport["enabled"] | ZERO_EXPORT_ENABLED;
     config.ZeroExport.UpdatesOnly = zeroExport["updatesonly"] | ZERO_EXPORT_UPDATESONLY;
     config.ZeroExport.InverterId = zeroExport["InverterId"] | ZERO_EXPORT_INVERTER_ID;
+    if (zeroExport.containsKey("serials")) {
+        JsonArray serials = zeroExport["serials"].as<JsonArray>();
+        if (serials.size() > 0 && serials.size() <= INV_MAX_COUNT) {
+            for (uint8_t i=0; i< INV_MAX_COUNT; i++) { config.ZeroExport.serials[i] = 0; }
+            uint8_t serialCount = 0;
+            for (JsonVariant serial : serials) {
+                config.ZeroExport.serials[serialCount] = serial.as<uint64_t>();
+                MessageOutput.printf("%s%s: Serial No: %" PRIx64 "\r\n", TAG, __FUNCTION__, config.ZeroExport.serials[serialCount]);
+                serialCount++;
+            }
+        }
+    } else { // migrate from old bid mask version
+        for (uint8_t i=0; i< INV_MAX_COUNT; i++) { config.ZeroExport.serials[i] = 0; }
+        uint8_t serialCount = 0;
+        for (uint8_t i=0; i<INV_MAX_COUNT; i++) {
+            if (config.ZeroExport.InverterId & (1<<i)) {
+                config.ZeroExport.serials[serialCount] = config.Inverter[i].Serial;
+                MessageOutput.printf("%s%s: migrate ID%02d to Serial No: %" PRIx64 "\r\n", TAG, __FUNCTION__, i, config.ZeroExport.serials[serialCount]);
+                serialCount++;
+            }
+        }
+    }
     config.ZeroExport.PowerHysteresis = zeroExport["PowerHysteresis"] | ZERO_EXPORT_POWER_HYSTERESIS;
     config.ZeroExport.MaxGrid = zeroExport["MaxGrid"] | ZERO_EXPORT_MAX_GRID;
     config.ZeroExport.MinimumLimit = zeroExport["MinimumLimit"] | ZERO_EXPORT_MINIMUM_LIMIT;
@@ -652,6 +703,28 @@ INVERTER_CONFIG_T* ConfigurationClass::getInverterConfig(uint64_t serial)
     }
 
     return NULL;
+}
+
+void ConfigurationClass::deleteInverterById(const uint8_t id)
+{
+    config.Inverter[id].Serial = 0ULL;
+    strlcpy(config.Inverter[id].Name, "", sizeof(config.Inverter[id].Name));
+    config.Inverter[id].Order = 0;
+
+    config.Inverter[id].Poll_Enable_Day = true;
+    config.Inverter[id].Poll_Enable_Night = true;
+    config.Inverter[id].Command_Enable_Day = true;
+    config.Inverter[id].Command_Enable_Night = true;
+    config.Inverter[id].ReachableThreshold = REACHABLE_THRESHOLD;
+    config.Inverter[id].ZeroRuntimeDataIfUnrechable = false;
+    config.Inverter[id].ZeroYieldDayOnMidnight = false;
+    config.Inverter[id].YieldDayCorrection = false;
+
+    for (uint8_t c = 0; c < INV_MAX_CHAN_COUNT; c++) {
+        config.Inverter[id].channel[c].MaxChannelPower = 0;
+        config.Inverter[id].channel[c].YieldTotalOffset = 0.0f;
+        strlcpy(config.Inverter[id].channel[c].Name, "", sizeof(config.Inverter[id].channel[c].Name));
+    }
 }
 
 ConfigurationClass Configuration;

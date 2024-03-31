@@ -29,12 +29,32 @@
                         {{ $t('zeroexportadmin.InverterId') }}:
                         <BIconInfoCircle v-tooltip :title="$t('zeroexportadmin.InverterIdHint')" />
                     </label>
-                    <div class="col-sm-2">
-                        <select class="form-select" v-model="zeroExportConfigList.InverterId">
-                            <option v-for="inverter in inverterList" :key="inverter.key" :value="inverter.key">
-                                {{ inverter.value }}
-                            </option>
-                        </select>
+                    <div class="col-sm-8">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Auswahl</th>
+                                    <th>ID</th>
+                                    <th>{{ $t('inverteradmin.Name') }}</th>
+                                    <th>{{ $t('inverteradmin.Type') }}</th>
+                                    <th>{{ $t('inverteradmin.Serial') }}</th>
+                                </tr>
+                            </thead>
+
+                            <tbody ref="invList">
+                                <tr v-for="(inv, serial) in zeroExportMetaData.inverters" :key="serial" :value="serial">
+                                    <td>
+                                        <input type="checkbox" id=serial :value="serial" name="serial" v-model="inv.selected" />
+                                    </td>
+                                    <td>
+                                        <label :for="inv.name">{{ inv.pos }}</label>
+                                    </td>
+                                    <td>{{ inv.name }}</td>
+                                    <td>{{ inv.type }}</td>
+                                    <td>{{ Number(serial).toString(16) }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
@@ -71,7 +91,7 @@ import BootstrapAlert from "@/components/BootstrapAlert.vue";
 import FormFooter from '@/components/FormFooter.vue';
 import CardElement from '@/components/CardElement.vue';
 import InputElement from '@/components/InputElement.vue';
-import type { ZeroExportConfig } from "@/types/ZeroExportConfig";
+import type { ZeroExportConfig, ZeroExportMetaData } from "@/types/ZeroExportConfig";
 import { authHeader, handleResponse } from '@/utils/authentication';
 import { defineComponent } from 'vue';
 
@@ -87,31 +107,10 @@ export default defineComponent({
         return {
             dataLoading: true,
             zeroExportConfigList: {} as ZeroExportConfig,
+            zeroExportMetaData: {} as ZeroExportMetaData,
             alertMessage: "",
             alertType: "info",
             showAlert: false,
-            inverterList: [
-                { key: 1, value: "ID 00" },
-                { key: 2, value: "ID 01" },
-                { key: 4, value: "ID 02" },
-                { key: 1+2, value: "ID 00 + ID 01" },
-                { key: 1+4, value: "ID 00 + ID 02" },
-                { key: 2+4, value: "ID 01 + ID 02" },
-//              { key: 1+2+4+0, value: "ID 00 + ID 01 + ID 02" },
-//              { key: 1+2+0+8, value: "ID 00 + ID 01 + ID 03" },
-//              { key: 1+0+4+8, value: "ID 00 + ID 02 + ID 03" },
-//              { key: 0+2+4+8, value: "ID 01 + ID 02 + ID 03" },
-//              { key: 0+2+0+8, value: "ID 01 + ID 03" },
-//              { key: 0+0+4+8, value: "ID 02 + ID 03" },
-//              { key: 0+2+4+0+16, value: "ID 01 + ID 02 + ID 04" },
-//              { key: 8, value: "ID 03" },
-//              { key: 16, value: "ID 04" },
-//              { key: 32, value: "ID 05" },
-//              { key: 64, value: "ID 06" },
-//              { key: 128, value: "ID 07" },
-//              { key: 256, value: "ID 08" },
-//              { key: 512, value: "ID 09" },
-            ],
         };
     },
     created() {
@@ -120,15 +119,31 @@ export default defineComponent({
     methods: {
         getZeroExportConfig() {
             this.dataLoading = true;
-            fetch("/api/zeroexport/config", { headers: authHeader() })
+            fetch("/api/zeroexport/metadata", { headers: authHeader() })
                 .then((response) => handleResponse(response, this.$emitter, this.$router))
                 .then((data) => {
-                    this.zeroExportConfigList = data;
-                    this.dataLoading = false;
+                    this.zeroExportMetaData = data;
+                    fetch("/api/zeroexport/config", { headers: authHeader() })
+                        .then((response) => handleResponse(response, this.$emitter, this.$router))
+                        .then((data) => {
+                            this.zeroExportConfigList = data;
+                            this.dataLoading = false;
+                        });
                 });
         },
         saveZeroExportConfig(e: Event) {
             e.preventDefault();
+
+            var cfg = this.zeroExportConfigList;
+            var meta = this.zeroExportMetaData;
+            var idx=0;
+
+            cfg.serials = [];
+            for (const [serial, inverter] of Object.entries(meta.inverters)) {
+                if (inverter.selected == true) {
+                    cfg.serials[idx++] = serial;
+                }
+            }
 
             const formData = new FormData();
             formData.append("data", JSON.stringify(this.zeroExportConfigList));

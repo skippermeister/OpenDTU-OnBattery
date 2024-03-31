@@ -3,19 +3,17 @@
  * Copyright (C) 2022-2024 Thomas Basler and others
  */
 #include "WebApi_powerlimiter.h"
+#include "VeDirectFrameHandler.h"
 #include "ArduinoJson.h"
 #include "AsyncJson.h"
 #include "Configuration.h"
 #include "ErrorMessages.h"
-#include "MqttHandleHass.h"
+#include "MqttHandlePowerLimiterHass.h"
 #include "MqttHandleVedirectHass.h"
-#include "MqttSettings.h"
 #include "PowerLimiter.h"
-#include "PowerMeter.h"
-#include "VeDirectFrameHandler.h"
 #include "WebApi.h"
-#include "WebApi_errors.h"
 #include "helper.h"
+#include "WebApi_errors.h"
 
 void WebApiPowerLimiterClass::init(AsyncWebServer& server, Scheduler& scheduler)
 {
@@ -24,17 +22,15 @@ void WebApiPowerLimiterClass::init(AsyncWebServer& server, Scheduler& scheduler)
     server.on("/api/powerlimiter/status", HTTP_GET, std::bind(&WebApiPowerLimiterClass::onStatus, this, _1));
     server.on("/api/powerlimiter/config", HTTP_GET, std::bind(&WebApiPowerLimiterClass::onAdminGet, this, _1));
     server.on("/api/powerlimiter/config", HTTP_POST, std::bind(&WebApiPowerLimiterClass::onAdminPost, this, _1));
+    server.on("/api/powerlimiter/metadata", HTTP_GET, std::bind(&WebApiPowerLimiterClass::onMetaData, this, _1));
 }
 
 void WebApiPowerLimiterClass::onStatus(AsyncWebServerRequest* request)
 {
-    if (!WebApi.checkCredentialsReadonly(request)) {
-        return;
-    }
+    auto const& config = Configuration.get();
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& root = response->getRoot();
-    const CONFIG_T& config = Configuration.get();
 
     root["enabled"] = config.PowerLimiter.Enabled;
     root["pollinterval"] = config.PowerLimiter.PollInterval;
@@ -42,10 +38,11 @@ void WebApiPowerLimiterClass::onStatus(AsyncWebServerRequest* request)
     root["verbose_logging"] = PowerLimiter.getVerboseLogging();
     root["solar_passthrough_enabled"] = config.PowerLimiter.SolarPassThroughEnabled;
     root["solar_passthrough_losses"] = config.PowerLimiter.SolarPassThroughLosses;
-    root["battery_drain_strategy"] = config.PowerLimiter.BatteryDrainStategy;
+    root["battery_always_use_at_night"] = config.PowerLimiter.BatteryAlwaysUseAtNight;
     root["is_inverter_behind_powermeter"] = config.PowerLimiter.IsInverterBehindPowerMeter;
-    root["inverter_id"] = config.PowerLimiter.InverterId;
-    root["inverter_serial"] = config.Inverter[config.PowerLimiter.InverterId].Serial;
+    root["is_inverter_solar_powered"] = config.PowerLimiter.IsInverterSolarPowered;
+//    root["inverter_id"] = config.PowerLimiter.InverterId;
+    root["inverter_serial"] = String(config.PowerLimiter.InverterId); //config.Inverter[config.PowerLimiter.InverterId].Serial;
     root["inverter_channel_id"] = config.PowerLimiter.InverterChannelId;
     root["target_power_consumption"] = config.PowerLimiter.TargetPowerConsumption;
     root["target_power_consumption_hysteresis"] = config.PowerLimiter.TargetPowerConsumptionHysteresis;
@@ -63,27 +60,53 @@ void WebApiPowerLimiterClass::onStatus(AsyncWebServerRequest* request)
     root["full_solar_passthrough_start_voltage"] = static_cast<int>(config.PowerLimiter.FullSolarPassThroughStartVoltage * 100 + 0.5) / 100.0;
     root["full_solar_passthrough_stop_voltage"] = static_cast<int>(config.PowerLimiter.FullSolarPassThroughStopVoltage * 100 + 0.5) / 100.0;
 
+    response->setLength();
+    request->send(response);
+}
+
+void WebApiPowerLimiterClass::onMetaData(AsyncWebServerRequest* request)
+{
+    if (!WebApi.checkCredentials(request)) { return; }
+
+    auto const& config = Configuration.get();
+
+    size_t invAmount = 0;
+    for (uint8_t i = 0; i < INV_MAX_COUNT; i++) {
+        if (config.Inverter[i].Serial != 0) { ++invAmount; }
+    }
+
+    AsyncJsonResponse* response = new AsyncJsonResponse(false, 256 + 256 * invAmount);
+    auto& root = response->getRoot();
+
     root["power_meter_enabled"] = config.PowerMeter.Enabled;
     root["battery_enabled"] = config.Battery.Enabled;
-    root["solar_charge_controller_enabled"] = config.Vedirect.Enabled;
-    root["charge_controller_enabled"] = config.MeanWell.Enabled;
+    root["charge_controller_enabled"] = config.Vedirect.Enabled;
+    root["charger_enabled"] = config.MeanWell.Enabled;
 
-    JsonArray inverters = root.createNestedArray("inverters");
+    JsonObject inverters = root.createNestedObject("inverters");
     for (uint8_t i = 0; i < INV_MAX_COUNT; i++) {
         if (config.Inverter[i].Serial == 0) { continue; }
 
-        JsonObject obj = inverters.createNestedObject();
-        obj["id"] = i;
+        // we use the integer (base 10) representation of the inverter serial,
+        // rather than the hex represenation as used when handling the inverter
+        // serial elsewhere in the web application, because in this case, the
+        // serial is actually not displayed but only used as a value/index.
+        JsonObject obj = inverters.createNestedObject(String(config.Inverter[i].Serial));
+        obj["pos"] = i;
         obj["name"] = String(config.Inverter[i].Name);
-        obj["serial"] = config.Inverter[i].Serial;
-        obj["poll_enable_night"] = config.Inverter[i].Poll_Enable_Day;
+        obj["poll_enable_day"] = config.Inverter[i].Poll_Enable_Day;
         obj["poll_enable_night"] = config.Inverter[i].Poll_Enable_Night;
         obj["command_enable_day"] = config.Inverter[i].Command_Enable_Day;
         obj["command_enable_night"] = config.Inverter[i].Command_Enable_Night;
 
         obj["type"] = "Unknown";
+        obj["channels"] = 1;
         auto inv = Hoymiles.getInverterBySerial(config.Inverter[i].Serial);
-        if (inv != nullptr) { obj["type"] = inv->typeName(); }
+        if (inv != nullptr) {
+            obj["type"] = inv->typeName();
+            auto channels = inv->Statistics()->getChannelsByType(TYPE_DC);
+            obj["channels"] = channels.size();
+        }
     }
 
     response->setLength();
@@ -92,6 +115,10 @@ void WebApiPowerLimiterClass::onStatus(AsyncWebServerRequest* request)
 
 void WebApiPowerLimiterClass::onAdminGet(AsyncWebServerRequest* request)
 {
+    if (!WebApi.checkCredentials(request)) {
+        return;
+    }
+
     this->onStatus(request);
 }
 
@@ -131,16 +158,14 @@ void WebApiPowerLimiterClass::onAdminPost(AsyncWebServerRequest* request)
         return;
     }
 
-    if (!(root.containsKey("enabled")
-            && root.containsKey("updatesonly")
-            && root.containsKey("pollinterval")
-            && root.containsKey("verbose_logging")
-            && root.containsKey("lower_power_limit")
-            && root.containsKey("inverter_id")
-            && root["inverter_id"].as<String>() != "invalid"
-            && root.containsKey("inverter_channel_id")
-            && root.containsKey("target_power_consumption")
-            && root.containsKey("target_power_consumption_hysteresis"))) {
+    // we were not actually checking for all the keys we (unconditionally)
+    // access below for a long time, and it is technically not needed if users
+    // use the web application to submit settings. the web app will always
+    // submit all keys. users who send HTTP requests manually need to beware
+    // anyways to always include the keys accessed below. if we wanted to
+    // support a simpler API, like only sending the "enabled" key which only
+    // changes that key, we need to refactor all of the code below.
+    if (!root.containsKey("enabled")) {
         retMsg["message"] = ValuesAreMissing;
         retMsg["code"] = WebApiError::GenericValueMissing;
         response->setLength();
@@ -152,19 +177,21 @@ void WebApiPowerLimiterClass::onAdminPost(AsyncWebServerRequest* request)
     config.PowerLimiter.Enabled = root["enabled"].as<bool>();
     config.PowerLimiter.PollInterval = root["pollinterval"].as<uint16_t>();
     config.PowerLimiter.UpdatesOnly = root["updatesonly"].as<bool>();
-    PowerLimiter.setVerboseLogging(root["verbose_logging"].as<bool>());
     PowerLimiter.setMode(PowerLimiterClass::Mode::Normal); // User input sets PL to normal operation
+    PowerLimiter.setVerboseLogging(root["verbose_logging"].as<bool>());
 
     if (config.Vedirect.Enabled) {
         config.PowerLimiter.SolarPassThroughEnabled = root["solar_passthrough_enabled"].as<bool>();
         config.PowerLimiter.SolarPassThroughLosses = root["solar_passthrough_losses"].as<uint8_t>();
-        config.PowerLimiter.BatteryDrainStategy = root["battery_drain_strategy"].as<uint8_t>();
+        config.PowerLimiter.BatteryAlwaysUseAtNight= root["battery_always_use_at_night"].as<bool>();
         config.PowerLimiter.FullSolarPassThroughStartVoltage = static_cast<int>(root["full_solar_passthrough_start_voltage"].as<float>() * 100) / 100.0;
         config.PowerLimiter.FullSolarPassThroughStopVoltage = static_cast<int>(root["full_solar_passthrough_stop_voltage"].as<float>() * 100) / 100.0;
     }
 
     config.PowerLimiter.IsInverterBehindPowerMeter = root["is_inverter_behind_powermeter"].as<bool>();
-    config.PowerLimiter.InverterId = root["inverter_id"].as<uint8_t>();
+    config.PowerLimiter.IsInverterSolarPowered = root["is_inverter_solar_powered"].as<bool>();
+    //config.PowerLimiter.InverterId = root["inverter_id"].as<uint64_t>();
+    config.PowerLimiter.InverterId = root["inverter_serial"].as<uint64_t>();
     config.PowerLimiter.InverterChannelId = root["inverter_channel_id"].as<uint8_t>();
     config.PowerLimiter.TargetPowerConsumption = root["target_power_consumption"].as<int32_t>();
     config.PowerLimiter.TargetPowerConsumptionHysteresis = root["target_power_consumption_hysteresis"].as<int32_t>();
@@ -187,8 +214,13 @@ void WebApiPowerLimiterClass::onAdminPost(AsyncWebServerRequest* request)
 
     WebApi.writeConfig(retMsg);
 
-    PowerLimiter.calcNextInverterRestart();
-
     response->setLength();
     request->send(response);
+
+    PowerLimiter.calcNextInverterRestart();
+
+#ifdef USE_HASS
+    // potentially make thresholds auto-discoverable
+    MqttHandlePowerLimiterHass.forceUpdate();
+#endif
 }
