@@ -1134,8 +1134,7 @@ void JkBmsBatteryStats::updateFrom(JkBms::DataPointContainer const& dp)
 #endif
 
 #ifdef USE_VICTRON_SMART_SHUNT
-void VictronSmartShuntStats::updateFrom(VeDirectShuntController::veShuntStruct const& shuntData)
-{
+void VictronSmartShuntStats::updateFrom(VeDirectShuntController::data_t const& shuntData) {
     BatteryStats::setVoltage(shuntData.V, millis());
     BatteryStats::setSoC(static_cast<float>(shuntData.SOC) / 10, 1 /*precision*/, millis());
 

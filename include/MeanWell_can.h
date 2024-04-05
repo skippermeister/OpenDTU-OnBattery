@@ -174,6 +174,9 @@ public:
 
     bool updateAvailable(uint32_t since) const;
 
+    void updateEEPROMwrites2NVS();
+    uint32_t getEEPROMwrites() { return EEPROMwrites;}
+
 private:
     void loop();
 
@@ -229,6 +232,7 @@ private:
     bool _verboseLogging = false;
 
     const uint8_t ChargerID = 0x03;
+    uint32_t EEPROMwrites;
 };
 
 extern MeanWellCanClass MeanWellCan;

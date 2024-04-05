@@ -15,7 +15,7 @@ public:
 
 private:
     void loop();
-    std::map<std::string, VeDirectMpptController::veMpptStruct> _kvFrames;
+    std::map<std::string, VeDirectMpptController::data_t> _kvFrames;
 
     Task _loopTask;
 
@@ -27,8 +27,8 @@ private:
 
     bool _PublishFull;
 
-    void publish_mppt_data(const VeDirectMpptController::spData_t &spMpptData,
-                           VeDirectMpptController::veMpptStruct &frame) const;
+    void publish_mppt_data(const VeDirectMpptController::data_t &currentData,
+                           const VeDirectMpptController::data_t &frame) const;
 };
 
 extern MqttHandleVedirectClass MqttHandleVedirect;

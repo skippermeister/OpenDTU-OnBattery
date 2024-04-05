@@ -37,6 +37,7 @@ void PowerMeterClass::init(Scheduler& scheduler)
     _loopTask.enable();
 
     _powerMeterValuesUpdated = 0;
+    _powerMeterTimeUpdated = 0;
     _lastPowerMeterUpdate = 0;
 
     for (auto const& s : _mqttSubscriptions) { MqttSettings.unsubscribe(s.first); }
@@ -205,7 +206,7 @@ void PowerMeterClass::onMqttMessage(const espMqttClientTypes::MessageProperties&
             MessageOutput.printf("%s Updated from '%s', TotalPower: %5.2f\r\n", TAG, topic, getPowerTotal(false));
         }
 
-        _lastPowerMeterUpdate = millis();
+        _powerMeterTimeUpdated = millis();
         _powerMeterValuesUpdated++;
     }
 }
@@ -283,24 +284,22 @@ void PowerMeterClass::loop()
     if (static_cast<Source>(cPM.Source) == Source::SML &&
             nullptr != _upSmlSerial) {
         if (!smlReadLoop()) { return; }
-        _lastPowerMeterUpdate = millis();
-        _powerMeterValuesUpdated++;
     }
 
     if (static_cast<Source>(cPM.Source) == Source::HTTP && !NetworkSettings.isConnected()) { return; }
 
+    // wait till PowerMeter Task, or onMqttMessage or SML reader indicate that the values has been updated
     if (!_powerMeterValuesUpdated) { return; }
     _powerMeterValuesUpdated--;
 
-    MessageOutput.printf("%s got new values, delay: %lu ms\r\n", TAG, millis()-_lastPowerMeterUpdate);
+    _lastPowerMeterUpdate = millis();
 
-//    readPowerMeter();
+    MessageOutput.printf("%s got new values, Tasks sync delay: %lu ms\r\n", TAG, millis()-_powerMeterTimeUpdated);
 
     float PowerTotal = getPowerTotal(false);
     PowerMeter.setHousePower(PowerTotal + Datastore.getTotalAcPowerEnabled());
 
-    if (_verboseLogging)
-        MessageOutput.printf("%s TotalPower: %5.1fW, HousePower: %5.1fW\r\n", TAG, PowerTotal, getHousePower());
+    if (_verboseLogging) MessageOutput.printf("%s TotalPower: %5.1fW, HousePower: %5.1fW\r\n", TAG, PowerTotal, getHousePower());
 
     mqtt();
 }
@@ -364,8 +363,8 @@ void PowerMeterClass::readPowerMeter()
         _powerMeter.Power2 = 0;
         _powerMeter.Power3 = 0;
 
-        _lastPowerMeterUpdate = millis();
-        _powerMeterValuesUpdated++;
+        _powerMeterTimeUpdated = millis();  // timestamp of update
+        _powerMeterValuesUpdated++; // indicate we updated
 
     } else if (configuredSource == Source::SDM3PH) {
         if (!_upSdm) { return; }
@@ -437,8 +436,8 @@ void PowerMeterClass::readPowerMeter()
         _powerMeter.Power2   = static_cast<float>(phase2Power);
         _powerMeter.Power3   = static_cast<float>(phase3Power);
 
-        _lastPowerMeterUpdate = millis();
-        _powerMeterValuesUpdated++;
+        _powerMeterTimeUpdated = millis();  // timestamp of update
+        _powerMeterValuesUpdated++; // indicate we updated
 
     } else if (configuredSource == Source::HTTP) {
         if (HttpPowerMeter.updateValues()) {
@@ -447,8 +446,8 @@ void PowerMeterClass::readPowerMeter()
             _powerMeter.Power2 = HttpPowerMeter.getPower(2);
             _powerMeter.Power3 = HttpPowerMeter.getPower(3);
 
-            _lastPowerMeterUpdate = millis();
-            _powerMeterValuesUpdated++;
+            _powerMeterTimeUpdated = millis();  // timestamp of update
+            _powerMeterValuesUpdated++; // indicate we updated
         }
     }
 #ifdef USE_SMA_HM
@@ -458,8 +457,8 @@ void PowerMeterClass::readPowerMeter()
         _powerMeter.Power2 = SMA_HM.getPowerL2();
         _powerMeter.Power3 = SMA_HM.getPowerL3();
 
-        _lastPowerMeterUpdate = millis();
-        _powerMeterValuesUpdated++;
+        _powerMeterTimeUpdated = millis();  // timestamp of update
+        _powerMeterValuesUpdated++; // indicate we updated
     }
 #endif
 }
@@ -478,6 +477,8 @@ bool PowerMeterClass::smlReadLoop()
                 }
             }
         } else if (smlCurrentState == SML_FINAL) {
+            _powerMeterTimeUpdated = millis();  // timestamp of update
+            _powerMeterValuesUpdated++; // indicate we updated
             return true;
         }
     }

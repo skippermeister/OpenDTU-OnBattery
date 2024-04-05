@@ -38,6 +38,8 @@ void PowerLimiterClass::init(Scheduler& scheduler)
 
     _lastStatusPrinted.set(10 * 1000);
 
+    _switchMosFeetOffTimer=0;
+
     const PowerLimiter_CONFIG_T& cPL = Configuration.get().PowerLimiter;
 
     // switch PowerMOSFETs for inverter DC power off (battery powered Hoymiles inverter)
@@ -140,6 +142,8 @@ void PowerLimiterClass::switchMosFeetsOff()
         _lastPreCharge = millis();
         _preChargeDelay = 0;
     }
+
+    _switchMosFeetOffTimer = 0;
 }
 
 bool PowerLimiterClass::shutdown(PowerLimiterClass::Status status)
@@ -156,6 +160,8 @@ bool PowerLimiterClass::shutdown(PowerLimiterClass::Status status)
           Status::CalculatedLimitBelowMinLimit == status)
         && config.PowerLimiter.IsInverterSolarPowered) {
       _oTargetPowerState = true;
+    } else {
+        _switchMosFeetOffTimer = millis();
     }
 
     _oTargetPowerLimitWatts = config.PowerLimiter.LowerPowerLimit;
@@ -179,7 +185,14 @@ void PowerLimiterClass::loop()
     if (updateInverter()) { return; }
 
     if (_shutdownPending) {
-        switchMosFeetsOff();
+        if (_switchMosFeetOffTimer) {
+            // wait till timer elapsed
+            if (millis() - _switchMosFeetOffTimer > 30*1000 ) {
+                switchMosFeetsOff();
+            } else {
+                return;
+            }
+        }
         _shutdownPending = false;
         _inverter = nullptr;
     }
@@ -277,13 +290,18 @@ void PowerLimiterClass::loop()
     }
 
     // after 30 seconds no power meter values we warn,
-    // after 1 minute no power meter values we shutdown the inverter
+    // after 2 minute no power meter values we shutdown the inverter
     // it seems to be that shelly3EM sometimes logs off from WLAN and reports for more than 30 seconds no values
-    if (millis() - PowerMeter.getLastPowerMeterUpdate() > (30 * 1000)) {
-        return announceStatus(Status::PowerMeterTimeoutWarning);
-    } else if (millis() - PowerMeter.getLastPowerMeterUpdate() > (60 * 1000)) {
+    long delta_t = millis() - PowerMeter.getLastPowerMeterUpdate();
+    if ( delta_t > (120 * 1000)) {
         shutdown(Status::PowerMeterTimeout);
         return;
+    } else if (delta_t > (90 * 1000)) {
+        return announceStatus(Status::PowerMeterTimeoutWarning);
+    } else if (delta_t > (60 * 1000)) {
+        return announceStatus(Status::PowerMeterTimeoutWarning);
+    } else if (delta_t > (30 * 1000)) {
+        return announceStatus(Status::PowerMeterTimeoutWarning);
     }
 
     // concerns both power limits and start/stop/restart commands and is

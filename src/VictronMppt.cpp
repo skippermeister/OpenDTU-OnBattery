@@ -129,15 +129,17 @@ uint32_t VictronMpptClass::getDataAgeMillis(size_t idx) const
     return millis() - _controllers[idx]->getLastUpdate();
 }
 
-std::optional<VeDirectMpptController::spData_t> VictronMpptClass::getData(size_t idx) const
+std::optional<VeDirectMpptController::data_t> VictronMpptClass::getData(size_t idx) const
 {
     std::lock_guard<std::mutex> lock(_mutex);
 
     if (_controllers.empty() || idx >= _controllers.size()) {
         MessageOutput.printf("%s ERROR: MPPT controller index %d is out of bounds (%d controllers)\r\n", TAG,
             idx, _controllers.size());
-        return std::make_shared<VeDirectMpptController::veMpptStruct>();
+        return std::nullopt;
     }
+
+    if (!_controllers[idx]->isDataValid()) { return std::nullopt; }
 
     return _controllers[idx]->getData();
 }
@@ -148,7 +150,18 @@ int32_t VictronMpptClass::getPowerOutputWatts() const
 
     for (const auto& upController : _controllers) {
         if (!upController->isDataValid()) { continue; }
-        sum += upController->getData()->P;
+
+        // if any charge controller is part of a VE.Smart network, and if the
+        // charge controller is connected in a way that allows to send
+        // requests, we should have the "network total DC input power"
+        // available. if so, to estimate the output power, we multiply by
+        // the calculated efficiency of the connected charge controller.
+        auto networkPower = upController->getData().NetworkTotalDcInputPowerMilliWatts;
+        if (networkPower.first > 0) {
+            return static_cast<int32_t>(networkPower.second / 1000.0 * upController->getData().E / 100);
+        }
+
+        sum += upController->getData().P;
     }
 
     return sum;
@@ -160,43 +173,52 @@ int32_t VictronMpptClass::getPanelPowerWatts() const
 
     for (const auto& upController : _controllers) {
         if (!upController->isDataValid()) { continue; }
-        sum += upController->getData()->PPV;
+
+        // if any charge controller is part of a VE.Smart network, and if the
+        // charge controller is connected in a way that allows to send
+        // requests, we should have the "network total DC input power" available.
+        auto networkPower = upController->getData().NetworkTotalDcInputPowerMilliWatts;
+        if (networkPower.first > 0) {
+            return static_cast<int32_t>(networkPower.second / 1000.0);
+        }
+
+        sum += upController->getData().PPV;
     }
 
     return sum;
 }
 
-double VictronMpptClass::getYieldTotal() const
+float VictronMpptClass::getYieldTotal() const
 {
-    double sum = 0;
+    float sum = 0;
 
     for (const auto& upController : _controllers) {
         if (!upController->isDataValid()) { continue; }
-        sum += upController->getData()->H19;
+        sum += upController->getData().H19;
     }
 
     return sum;
 }
 
-double VictronMpptClass::getYieldDay() const
+float VictronMpptClass::getYieldDay() const
 {
-    double sum = 0;
+    float sum = 0;
 
     for (const auto& upController : _controllers) {
         if (!upController->isDataValid()) { continue; }
-        sum += upController->getData()->H20;
+        sum += upController->getData().H20;
     }
 
     return sum;
 }
 
-double VictronMpptClass::getOutputVoltage() const
+float VictronMpptClass::getOutputVoltage() const
 {
-    double min = -1;
+    float min = -1;
 
     for (const auto& upController : _controllers) {
         if (!upController->isDataValid()) { continue; }
-        double volts = upController->getData()->V;
+        float volts = upController->getData().V;
         if (min == -1) { min = volts; }
         min = std::min(min, volts);
     }

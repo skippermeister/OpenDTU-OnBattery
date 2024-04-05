@@ -29,7 +29,6 @@ void WebApiWsMeanWellLiveClass::init(AsyncWebServer& server, Scheduler& schedule
     using std::placeholders::_5;
     using std::placeholders::_6;
 
-    //    _server = &server;
     server.on("/api/meanwelllivedata/status", HTTP_GET, std::bind(&WebApiWsMeanWellLiveClass::onLivedataStatus, this, _1));
 
     server.addHandler(&_ws);
@@ -51,13 +50,9 @@ void WebApiWsMeanWellLiveClass::wsCleanupTaskCb()
 void WebApiWsMeanWellLiveClass::sendDataTaskCb()
 {
     // do nothing if no WS client is connected
-    if (_ws.count() == 0) {
-        return;
-    }
+    if (_ws.count() == 0) { return; }
 
-    if (!MeanWellCan.updateAvailable(_lastUpdateCheck)) {
-        return;
-    }
+    if (!MeanWellCan.updateAvailable(_lastUpdateCheck)) { return; }
 
     try {
         std::lock_guard<std::mutex> lock(_mutex);
@@ -65,6 +60,8 @@ void WebApiWsMeanWellLiveClass::sendDataTaskCb()
         if (Utils::checkJsonAlloc(root, __FUNCTION__, __LINE__)) {
             JsonVariant var = root;
             MeanWellCan.generateJsonResponse(var);
+
+            if (Utils::checkJsonOverflow(root, __FUNCTION__, __LINE__)) { return; }
 
             String buffer;
             serializeJson(root, buffer);
@@ -106,6 +103,8 @@ void WebApiWsMeanWellLiveClass::onLivedataStatus(AsyncWebServerRequest* request)
         AsyncJsonResponse* response = new AsyncJsonResponse(false, 3 * 1024U);
         auto& root = response->getRoot();
         MeanWellCan.generateJsonResponse(root);
+
+        if (Utils::checkJsonOverflow(root, __FUNCTION__, __LINE__)) { return; }
 
         response->setLength();
         request->send(response);

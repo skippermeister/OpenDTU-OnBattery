@@ -125,6 +125,7 @@ private:
     bool manageBatteryDCpowerSwitch();
 //    bool _lastDCState = false;
 
+    uint32_t _switchMosFeetOffTimer;
     int8_t _preChargePowerState;
     uint32_t _preChargeDelay = 0;
     uint32_t _lastPreCharge = 0;

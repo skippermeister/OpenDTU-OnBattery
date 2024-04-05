@@ -66,7 +66,7 @@ void WebApiMeanWellClass::onAdminGet(AsyncWebServerRequest* request)
     root["max_current"] = cMeanWell.MaxCurrent;
     root["hysteresis"] = cMeanWell.Hysteresis;
     root["verbose_logging"] = MeanWellCan.getVerboseLogging();
-    root["EEPROMwrites"] = cMeanWell.EEPROMwrites;
+    root["EEPROMwrites"] = MeanWellCan.getEEPROMwrites();
     root["mustInverterProduce"] = cMeanWell.mustInverterProduce;
 
     response->setLength();

@@ -68,9 +68,11 @@ private:
     void mqtt();
     void onMqttMessage(const espMqttClientTypes::MessageProperties& properties, const char* topic, const uint8_t* payload, size_t len, size_t index, size_t total);
 
+    // to synchronize PoweMeter Task and loop
     volatile int8_t _powerMeterValuesUpdated;
-    // Used in Power limiter for safety check
-    volatile uint32_t _lastPowerMeterUpdate;
+    volatile uint32_t _powerMeterTimeUpdated;
+
+    uint32_t _lastPowerMeterUpdate;
 
     PowerMeter_t _powerMeter = { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
     PowerMeter_t _lastPowerMeter = { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};

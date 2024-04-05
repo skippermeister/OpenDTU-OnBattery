@@ -258,7 +258,6 @@ bool ConfigurationClass::write()
     meanwell["min_current"] = config.MeanWell.MinCurrent;
     meanwell["max_current"] = config.MeanWell.MaxCurrent;
     meanwell["hysteresis"] = config.MeanWell.Hysteresis;
-    meanwell["EEPROMwrites"] = config.MeanWell.EEPROMwrites;
     meanwell["mustInverterProduce"] = config.MeanWell.mustInverterProduce;
 #endif
 
@@ -575,7 +574,6 @@ bool ConfigurationClass::read()
     config.MeanWell.MinCurrent = meanwell["min_current"] | MEANWELL_MINCURRENT;
     config.MeanWell.MaxCurrent = meanwell["max_current"] | MEANWELL_MAXCURRENT;
     config.MeanWell.Hysteresis = meanwell["hystersis"] | MEANWELL_HYSTERESIS;
-    config.MeanWell.EEPROMwrites = meanwell["EEPROMwrites"] | 0;
     config.MeanWell.mustInverterProduce = meanwell["mustInverterProduce"] | true;
 #endif
 
@@ -635,28 +633,27 @@ void ConfigurationClass::migrate()
         return;
     }
     /*
-        if (config.Cfg.Version < 0x00011700) {
-            JsonArray inverters = doc["inverters"];
-            for (uint8_t i = 0; i < INV_MAX_COUNT; i++) {
-                JsonObject inv = inverters[i].as<JsonObject>();
-                JsonArray channels = inv["channels"];
-                for (uint8_t c = 0; c < INV_MAX_CHAN_COUNT; c++) {
-                    config.Inverter[i].channel[c].MaxChannelPower = channels[c];
-                    strlcpy(config.Inverter[i].channel[c].Name, "", sizeof(config.Inverter[i].channel[c].Name));
-                }
+    if (config.Cfg.Version < 0x00011700) {
+        JsonArray inverters = doc["inverters"];
+        for (uint8_t i = 0; i < INV_MAX_COUNT; i++) {
+            JsonObject inv = inverters[i].as<JsonObject>();
+            JsonArray channels = inv["channels"];
+            for (uint8_t c = 0; c < INV_MAX_CHAN_COUNT; c++) {
+                config.Inverter[i].channel[c].MaxChannelPower = channels[c];
+                strlcpy(config.Inverter[i].channel[c].Name, "", sizeof(config.Inverter[i].channel[c].Name));
             }
         }
+    }
 
-        if (config.Cfg.Version < 0x00011800) {
-            JsonObject mqtt = doc["mqtt"];
-            config.Mqtt.PublishInterval = mqtt["publish_invterval"];
-        }
+    if (config.Cfg.Version < 0x00011800) {
+        JsonObject mqtt = doc["mqtt"];
+        config.Mqtt.PublishInterval = mqtt["publish_invterval"];
+    }
 
-        if  (config.Cfg.Version < 0x00011900) {
-            JsonObject dtu = doc["dtu"];
-            config.Dtu.Nrf.PaLevel = dtu["pa_level"];
-        }
-    */
+    if  (config.Cfg.Version < 0x00011900) {
+        JsonObject dtu = doc["dtu"];
+        config.Dtu.Nrf.PaLevel = dtu["pa_level"];
+    }
 
     if (config.Cfg.Version < 0x00011a00) {
         // This migration fixes this issue: https://github.com/espressif/arduino-esp32/issues/8828
@@ -665,6 +662,13 @@ void ConfigurationClass::migrate()
         nvs_flash_erase();
         nvs_flash_init();
     }
+
+    if (config.Cfg.Version < 0x00011c00) {
+        if (!strcmp(config.Ntp.Server, NTP_SERVER_OLD)) {
+            strlcpy(config.Ntp.Server, NTP_SERVER, sizeof(config.Ntp.Server));
+        }
+    }
+    */
 
     f.close();
 

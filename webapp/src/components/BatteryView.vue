@@ -9,11 +9,18 @@
         <div class="row gy-3">
             <div class="col-sm-3 col-md-2" :style="[packData.length == 1 ? { 'display': 'none' } : {}]">
                 <div class="nav nav-pills row-cols-sm-1" id="v-pills-tab-pack" role="tablist" aria-orientation="vertical">
-                    <button v-for="pack in packData" :key="pack.moduleNumber" class="nav-link"
+                    <button v-for="pack in packData" :key="pack.moduleNumber" class="nav-link border border-primary text-break"
                         :id="'v-pills-' + pack.moduleNumber + '-tab'" data-bs-toggle="pill"
                         :data-bs-target="'#v-pills-' + pack.moduleNumber" type="button" role="tab"
                         aria-controls="'v-pills-' + pack.moduleNumber" aria-selected="true">
-                        {{ pack.device_name }} {{ pack.moduleName }}
+                        <div class="row">
+                            <div class="col-auto col-sm-6">
+                                {{ pack.device_name }}
+                            </div>
+                            <div class="col-sm-5">
+                                {{ pack.moduleName }}
+                            </div>
+                        </div>
                     </button>
                 </div>
             </div>

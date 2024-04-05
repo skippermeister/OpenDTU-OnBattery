@@ -6,16 +6,16 @@
 #include "AsyncJson.h"
 #include "Configuration.h"
 #include "MessageOutput.h"
-#include "PowerLimiter.h"
 #include "Utils.h"
-#include "VictronMppt.h"
 #include "WebApi.h"
 #include "defaults.h"
+#include "PowerLimiter.h"
+#include "VictronMppt.h"
 
 WebApiWsVedirectLiveClass::WebApiWsVedirectLiveClass()
     : _ws("/vedirectlivedata")
     , _wsCleanupTask(1 * TASK_SECOND, TASK_FOREVER, std::bind(&WebApiWsVedirectLiveClass::wsCleanupTaskCb, this))
-    , _sendDataTask(500 * TASK_MILLISECOND, TASK_FOREVER, std::bind(&WebApiWsVedirectLiveClass::sendDataTaskCb, this))
+    , _sendDataTask(1000 * TASK_MILLISECOND, TASK_FOREVER, std::bind(&WebApiWsVedirectLiveClass::sendDataTaskCb, this))
 {
 }
 
@@ -28,7 +28,6 @@ void WebApiWsVedirectLiveClass::init(AsyncWebServer& server, Scheduler& schedule
     using std::placeholders::_5;
     using std::placeholders::_6;
 
-    //    _server = &server;
     server.on("/api/vedirectlivedata/status", HTTP_GET, std::bind(&WebApiWsVedirectLiveClass::onLivedataStatus, this, _1));
 
     server.addHandler(&_ws);
@@ -58,7 +57,7 @@ bool WebApiWsVedirectLiveClass::hasUpdate(size_t idx)
 uint16_t WebApiWsVedirectLiveClass::responseSize() const
 {
     // estimated with ArduinoJson assistant
-    return VictronMppt.controllerAmount() * (1024 + 512) + 128/*DPL status and structure*/;
+    return VictronMppt.controllerAmount() * (1024 + 1024 + 512) + 128/*DPL status and structure*/;
 }
 
 void WebApiWsVedirectLiveClass::sendDataTaskCb()
@@ -133,27 +132,33 @@ void addInputValue(const JsonObject& root, std::string const& name,
     jsonValue["d"] = precision;
 }
 
+template <typename T>
+void addDeviceValue(const JsonObject& root, std::string const& name,
+    T&& value, std::string const& unit, uint8_t precision)
+{
+    auto jsonValue = root["device"][name];
+    jsonValue["v"] = value;
+    jsonValue["u"] = unit;
+    jsonValue["d"] = precision;
+}
+
 void WebApiWsVedirectLiveClass::generateJsonResponse(JsonVariant& root, bool fullUpdate)
 {
     const JsonObject &array = root["vedirect"].createNestedObject("instances");
     root["vedirect"]["full_update"] = fullUpdate;
 
     for (size_t idx = 0; idx < VictronMppt.controllerAmount(); ++idx) {
-        std::optional<VeDirectMpptController::spData_t> spOptMpptData = VictronMppt.getData(idx);
-        if (!spOptMpptData.has_value()) {
-            continue;
-        }
+        auto optMpptData = VictronMppt.getData(idx);
+        if (!optMpptData.has_value()) { continue; }
 
         if (!fullUpdate && !hasUpdate(idx)) { continue; }
 
-        VeDirectMpptController::spData_t &spMpptData = spOptMpptData.value();
-
-        String serial(spMpptData->SER);
+        String serial(optMpptData->SER);
         if (serial.isEmpty()) { continue; } // serial required as index
 
         const JsonObject &nested = array.createNestedObject(serial);
         nested["data_age_ms"] = VictronMppt.getDataAgeMillis(idx);
-        populateJson(nested, spMpptData);
+        populateJson(nested, *optMpptData);
     }
 
     _lastPublish = millis();
@@ -163,34 +168,67 @@ void WebApiWsVedirectLiveClass::generateJsonResponse(JsonVariant& root, bool ful
     root["dpl"]["PLLIMIT"] = PowerLimiter.getLastRequestedPowerLimit();
 }
 
-void WebApiWsVedirectLiveClass::populateJson(const JsonObject &root, const VeDirectMpptController::spData_t &spMpptData) {
+void WebApiWsVedirectLiveClass::populateJson(const JsonObject &root, const VeDirectMpptController::data_t &mpptData) {
     // device info
-    root["device"]["PID"] = spMpptData->getPidAsString();
-    root["device"]["SER"] = spMpptData->SER;
-    root["device"]["FW"] = spMpptData->FW;
-    root["device"]["LOAD"] = spMpptData->LOAD ? "ON" : "OFF";
-    root["device"]["CS"] = spMpptData->getCsAsString();
-    root["device"]["ERR"] = spMpptData->getErrAsString();
-    root["device"]["OR"] = spMpptData->getOrAsString();
-    root["device"]["MPPT"] = spMpptData->getMpptAsString();
-    root["device"]["HSDS"]["v"] = spMpptData->HSDS;
-    root["device"]["HSDS"]["u"] = "Days";
+    root["product_id"] = mpptData.getPidAsString();
+    root["firmware_version"] = String(mpptData.FW);
+
+    const JsonObject &values = root.createNestedObject("values");
+
+    const JsonObject &device = values.createNestedObject("device");
+    if (mpptData.Capabilities.second & (1<<0)) {  // Load output present ?
+        device["LOAD"] = mpptData.LOAD ? "ON" : "OFF";
+        if (mpptData.Capabilities.second & (1<<12) ) // Load current IL in Text protocol
+            addDeviceValue(values, "IL", mpptData.IL, "A", 2);
+        else if (mpptData.LoadCurrent.first > 0)
+            addDeviceValue(values, "IL", mpptData.LoadCurrent.second / 1000.0, "A", 2);
+        if (mpptData.LoadOutputVoltage.first > 0)
+            addDeviceValue(values, "LoadOutputVoltage", mpptData.LoadOutputVoltage.second / 1000.0, "V", 2);
+    }
+    device["CS"]   = mpptData.getCsAsString();
+    device["MPPT"] = mpptData.getMpptAsString();
+    device["OR"]   = mpptData.getOrAsString();
+    device["ERR"]  = mpptData.getErrAsString();
+    addDeviceValue(root, "HSDS", mpptData.HSDS, "d", 0);
+    if (mpptData.ChargerMaximumCurrent.first > 0)
+        addDeviceValue(values, "ChargerMaxCurrent", mpptData.ChargerMaximumCurrent.second / 1000.0, "A", 1);
+    if (mpptData.VoltageSettingsRange.first > 0) {
+        device["VoltageSettingsRange"] = String(mpptData.VoltageSettingsRange.second & 0xFF)
+                + " - "
+                + String(mpptData.VoltageSettingsRange.second >> 8) + String(" V");
+//        addDeviceValue(values, "VoltageSettingsMin", mpptData.VoltageSettingsRange.second & 0xFF, "V", 0);
+//        addDeviceValue(values, "VoltageSettingsMax", mpptData.VoltageSettingsRange.second >> 8, "V", 0);
+    }
+    if (mpptData.MpptTemperatureMilliCelsius.first > 0)
+        addDeviceValue(values, "MpptTemperature", mpptData.MpptTemperatureMilliCelsius.second / 1000.0, "°C", 1);
 
     // battery info
-    addOutputValue(root, "P", spMpptData->P, "W", 0);
-    addOutputValue(root, "V", spMpptData->V, "V", 2);
-    addOutputValue(root, "I", spMpptData->I, "A", 2);
-    addOutputValue(root, "E", spMpptData->E, "%", 1);
+    addOutputValue(values, "P", mpptData.P, "W", 0);
+    addOutputValue(values, "V", mpptData.V, "V", 2);
+    addOutputValue(values, "I", mpptData.I, "A", 2);
+    addOutputValue(values, "E", mpptData.E, "%", 1);
+    if (mpptData.BatteryType.first > 0)
+        values["output"]["BatteryType"]   = mpptData.getBatteryTypeAsString();
+    if (mpptData.BatteryAbsorptionVoltage.first > 0)
+        addOutputValue(values, "BatteryAbsorptionVoltage", mpptData.BatteryAbsorptionVoltage.second / 1000.0, "V", 2);
+    if (mpptData.BatteryAbsorptionVoltage.first > 0)
+        addOutputValue(values, "BatteryFloatVoltage", mpptData.BatteryFloatVoltage.second / 1000.0, "V", 2);
+    if (mpptData.BatteryFloatVoltage.first > 0)
+        addOutputValue(values, "BatteryMaxCurrent", mpptData.BatteryMaximumCurrent.second / 1000.0, "A", 1);
+    if (mpptData.SmartBatterySenseTemperatureMilliCelsius.first > 0)
+        addOutputValue(values, "BatteryTemperature", mpptData.SmartBatterySenseTemperatureMilliCelsius.second / 1000.0, "°C", 1);
 
     // panel info
-    addInputValue(root, "PPV", spMpptData->PPV, "W", 0);
-    addInputValue(root, "VPV", spMpptData->VPV, "V", 2);
-    addInputValue(root, "IPV", spMpptData->IPV, "A", 2);
-    addInputValue(root, "YieldToday", spMpptData->H20, "kWh", 3);
-    addInputValue(root, "YieldYesterday", spMpptData->H22, "kWh", 3);
-    addInputValue(root, "YieldTotal", spMpptData->H19, "kWh", 3);
-    addInputValue(root, "MaximumPowerToday", spMpptData->H21, "W", 0);
-    addInputValue(root, "MaximumPowerYesterday", spMpptData->H23, "W", 0);
+    if (mpptData.NetworkTotalDcInputPowerMilliWatts.first > 0)
+        addInputValue(values, "NetworkPower", mpptData.NetworkTotalDcInputPowerMilliWatts.second / 1000.0, "W", 0);
+    addInputValue(values, "PPV", mpptData.PPV, "W", 0);
+    addInputValue(values, "VPV", mpptData.VPV, "V", 2);
+    addInputValue(values, "IPV", mpptData.IPV, "A", 2);
+    addInputValue(values, "YieldToday", mpptData.H20, "kWh", 3);
+    addInputValue(values, "YieldYesterday", mpptData.H22, "kWh", 3);
+    addInputValue(values, "YieldTotal", mpptData.H19, "kWh", 3);
+    addInputValue(values, "MaximumPowerToday", mpptData.H21, "W", 0);
+    addInputValue(values, "MaximumPowerYesterday", mpptData.H23, "W", 0);
 }
 
 void WebApiWsVedirectLiveClass::onWebsocketEvent(AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType type, void* arg, uint8_t* data, size_t len)

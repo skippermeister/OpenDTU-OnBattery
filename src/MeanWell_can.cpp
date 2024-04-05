@@ -25,6 +25,9 @@
 #include <math.h>
 #include <AsyncJson.h>
 
+#include <Preferences.h>
+Preferences preferences;
+
 static constexpr char TAG[] = "[MEANWELL]";
 
 MeanWellCanClass MeanWellCan;
@@ -62,11 +65,21 @@ bool MeanWellCanClass::enable(void)
 }
 #endif
 
+static constexpr char sEEPROMwrites[] = "EEPROMwrites";
+
 void MeanWellCanClass::init(Scheduler& scheduler)
 {
     MessageOutput.print("Initialize MeanWell AC charger interface... ");
 
     _previousMillis = millis();
+
+    preferences.begin("OpenDTU", false);
+    if (!preferences.isKey(sEEPROMwrites)) {
+        MessageOutput.printf("create ");
+        preferences.putULong(sEEPROMwrites, 0);
+    }
+    EEPROMwrites = preferences.getULong(sEEPROMwrites);
+    MessageOutput.printf("%s = %u, ", sEEPROMwrites, EEPROMwrites);
 
     if (xSemaphore == NULL)
         xSemaphore = xSemaphoreCreateMutex();
@@ -85,6 +98,8 @@ void MeanWellCanClass::init(Scheduler& scheduler)
 
 void MeanWellCanClass::updateSettings()
 {
+    preferences.putULong(sEEPROMwrites, EEPROMwrites);
+
     if (!Configuration.get().MeanWell.Enabled) {
         _loopTask.disable();
         return;
@@ -796,6 +811,20 @@ void MeanWellCanClass::setupParameter()
     _setupParameter = false;
 }
 
+void MeanWellCanClass::updateEEPROMwrites2NVS() {
+
+    static uint32_t lastupdated=millis();
+
+    // test and update every 60 Minutes
+    if (millis() - lastupdated > 60*1000*60) {
+        if (EEPROMwrites != preferences.getULong(sEEPROMwrites)) {
+            MessageOutput.printf("%s update EEPROMwrites=%u in NVS storage\r\n", TAG, EEPROMwrites);
+            preferences.putULong(sEEPROMwrites, EEPROMwrites);
+        }
+        lastupdated = millis();
+    }
+}
+
 void MeanWellCanClass::loop()
 {
     const MeanWell_CONFIG_T& cMeanWell = Configuration.get().MeanWell;
@@ -810,6 +839,9 @@ void MeanWellCanClass::loop()
     uint32_t t_start = millis();
 
     parseCanPackets();
+
+
+    updateEEPROMwrites2NVS();
 
     if (t_start - _previousMillis < cMeanWell.PollInterval * 1000) { return; }
     _previousMillis = t_start;
@@ -964,7 +996,6 @@ void MeanWellCanClass::loop()
                 if (GridPower - _rp.outputPower < -(pCharger + cMeanWell.Hysteresis)) { // 25 Watt Hysteresic
                     if (_verboseLogging) MessageOutput.printf(", increment");
                     // Solar Inverter produces enough power, we export to the Grid
-                    //	if (_rp.OutputCurrent < _rp.CurveCC || _rp.OutputCurrent < _rp.OutputCurrentSetting) {
                     if (_rp.outputCurrent >= cMeanWell.MaxCurrent) {
                         // do nothing, _OutputCurrentSetting && CurveCC is higher than actual OutputCurrent, the charger is regulating
                         if (_verboseLogging) MessageOutput.print(" not");
@@ -1067,55 +1098,76 @@ void MeanWellCanClass::setValue(float in, uint8_t parameterType)
         in = min(in, Battery.getStats()->getRecommendedChargeVoltageLimit()); // Pylontech US3000C max voltage limit
         in = max(in, Battery.getStats()->getRecommendedDischargeVoltageLimit()); // Pylontech US3000C min voltage limit
 
-        sendCmd(ChargerID, 0x0020, Float2Uint(in / 0.01f), 2); // set Output Voltage
-        vTaskDelay(100); // delay 100 tick
-        getCanCharger();
         readCmd(ChargerID, 0x0020); // read UOUT_SET
+        if (fabs(_rp.outputVoltageSet - in) > 0.01) {
+            sendCmd(ChargerID, 0x0020, Float2Uint(in / 0.01f), 2); // set Output Voltage
+            vTaskDelay(100); // delay 100 tick
+            getCanCharger();
+            readCmd(ChargerID, 0x0020); // read UOUT_SET
+        }
         break;
 
     case MEANWELL_SET_CURVE_CV:
         in = min(in, Battery.getStats()->getRecommendedChargeVoltageLimit()); // Pylontech US3000C max voltage limit
         in = max(in, Battery.getStats()->getRecommendedDischargeVoltageLimit()); // Pylontech US3000C min voltage limit
-        sendCmd(ChargerID, 0x00B1, Float2Uint(in / 0.01f), 2); // set Curve_CV
-        getCanCharger();
+
         readCmd(ChargerID, 0x00B1); // read Curve_CV
+        if (fabs(_rp.curveCV - in) > 0.01) {
+            sendCmd(ChargerID, 0x00B1, Float2Uint(in / 0.01f), 2); // set Curve_CV
+            getCanCharger();
+            readCmd(ChargerID, 0x00B1); // read Curve_CV
+        }
         break;
 
     case MEANWELL_SET_CURVE_FV:
         in = min(in, Battery.getStats()->getRecommendedChargeVoltageLimit()); // Pylontech US3000C max voltage limit
         in = min(in, _rp.curveCV); // Pylontech US3000C max voltage limit, must be below or equal constant voltage curveCV
         in = max(in, Battery.getStats()->getRecommendedDischargeVoltageLimit()); // Pylontech US3000C min voltage limit
-        sendCmd(ChargerID, 0x00B2, Float2Uint(in / 0.01f), 2); // set Curve_FV
-        getCanCharger();
+
         readCmd(ChargerID, 0x00B2); // read Curve_FV
+        if (fabs(_rp.curveFV - in) > 0.01) {
+            sendCmd(ChargerID, 0x00B2, Float2Uint(in / 0.01f), 2); // set Curve_FV
+            getCanCharger();
+            readCmd(ChargerID, 0x00B2); // read Curve_FV
+        }
         break;
 
     case MEANWELL_SET_CURRENT:
         in = min(in, cMeanWell.MaxCurrent); // Meanwell NPB-xxxx-xx OutputCurrent max limit
         in = max(in, cMeanWell.MinCurrent); // Meanwell NPB-xxxx-xx OutputCurrent min limit
 
-        sendCmd(ChargerID, 0x0030, Float2Uint(in / 0.01f), 2); // set Output Current
-        vTaskDelay(100); // delay 100 tick
-        getCanCharger();
         readCmd(ChargerID, 0x0030); // read IOUT_SET
+        if (fabs(_rp.outputCurrentSet - in) > 0.01) {
+            sendCmd(ChargerID, 0x0030, Float2Uint(in / 0.01f), 2); // set Output Current
+            vTaskDelay(100); // delay 100 tick
+            getCanCharger();
+            readCmd(ChargerID, 0x0030); // read IOUT_SET
+        }
         break;
 
     case MEANWELL_SET_CURVE_CC:
         in = min(in, cMeanWell.MaxCurrent); // Meanwell NPB-xxxx-xx OutputCurrent max limit
         in = max(in, cMeanWell.MinCurrent); // Meanwell NPB-xxxx-xx OutputCurrent min limit
 
-        sendCmd(ChargerID, 0x00B0, Float2Uint(in / 0.01f), 2); // set Curve_CC
-        vTaskDelay(100); // delay 100 tick
-        getCanCharger();
         readCmd(ChargerID, 0x00B0); // read Curve_CC
+        if (fabs(_rp.curveCC -in) > 0.01) {
+            sendCmd(ChargerID, 0x00B0, Float2Uint(in / 0.01f), 2); // set Curve_CC
+            vTaskDelay(100); // delay 100 tick
+            getCanCharger();
+            readCmd(ChargerID, 0x00B0); // read Curve_CC
+        }
         break;
 
     case MEANWELL_SET_CURVE_TC:
         in = min(in, cMeanWell.MaxCurrent / 3.333333333f); // 3.3% Meanwell NPB-xxxx-xx OutputCurrent max limit
         in = max(in, cMeanWell.MinCurrent / 10.0f); // 10% of Meanwell NPB-xxxx-xx OutputCurrent min limit
-        sendCmd(ChargerID, 0x00B3, Float2Uint(in / 0.01f), 2); // set Curve_TC
-        getCanCharger();
+
         readCmd(ChargerID, 0x00B3); // read Curve_TC
+        if (fabs(_rp.curveTC) > 0.01) {
+            sendCmd(ChargerID, 0x00B3, Float2Uint(in / 0.01f), 2); // set Curve_TC
+            getCanCharger();
+            readCmd(ChargerID, 0x00B3); // read Curve_TC
+        }
         break;
     default:;
         return;
@@ -1256,7 +1308,7 @@ bool MeanWellCanClass::_sendCmd(uint8_t id, uint16_t cmd, uint8_t* data, int len
         if (_verboseLogging)
             MessageOutput.printf("%s Message queued for transmission cmnd %04X with %d data bytes\r\n", TAG, cmd, len + 2);
 #endif
-        if (len>0) Configuration.get().MeanWell.EEPROMwrites++;
+        if (len>0) EEPROMwrites++;
 
     } else {
         yield();
@@ -1348,7 +1400,7 @@ void MeanWellCanClass::generateJsonResponse(JsonVariant& root)
     root["operation"] = _rp.operation ? true : false;
     root["stgs"] = _rp.CURVE_CONFIG.STGS ? true : false;
     root["cuve"] = _rp.CURVE_CONFIG.CUVE ? true : false;
-    addInputValue(root, "EEPROMwrites", Configuration.get().MeanWell.EEPROMwrites, "", 0);
+    addInputValue(root, sEEPROMwrites, EEPROMwrites, "", 0);
     addOutputValue(root, "outputVoltage", _rp.outputVoltage, "V", 2);
     addOutputValue(root, "outputCurrent", _rp.outputCurrent, "A", 2);
     addOutputValue(root, "outputPower", _rp.outputPower, "W", 1);
