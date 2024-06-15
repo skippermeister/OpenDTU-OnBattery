@@ -27,17 +27,13 @@ bool ConfigurationClass::write()
     }
     config.Cfg.SaveCount++;
 
-    DynamicJsonDocument doc(JSON_BUFFER_SIZE);
+    JsonDocument doc;
 
-    if (!Utils::checkJsonAlloc(doc, __FUNCTION__, __LINE__)) {
-        return false;
-    }
-
-    JsonObject cfg = doc.createNestedObject("cfg");
+    JsonObject cfg = doc["cfg"].to<JsonObject>();
     cfg["version"] = config.Cfg.Version;
     cfg["save_count"] = config.Cfg.SaveCount;
 
-    JsonObject wifi = doc.createNestedObject("wifi");
+    JsonObject wifi = doc["wifi"].to<JsonObject>();
     wifi["ssid"] = config.WiFi.Ssid;
     wifi["password"] = config.WiFi.Password;
     wifi["ip"] = IPAddress(config.WiFi.Ip).toString();
@@ -49,15 +45,15 @@ bool ConfigurationClass::write()
     wifi["hostname"] = config.WiFi.Hostname;
     wifi["aptimeout"] = config.WiFi.ApTimeout;
 
-    JsonObject mdns = doc.createNestedObject("mdns");
+    JsonObject mdns = doc["mdns"].to<JsonObject>();
     mdns["enabled"] = config.Mdns.Enabled;
 
 #ifdef USE_ModbusDTU
-    JsonObject modbus = doc.createNestedObject("modbus");
+    JsonObject modbus = doc["modbus"].to<JsonObject>();
     modbus["enabled"] = config.Modbus.Fronius_SM_Simulation_Enabled;
 #endif
 
-    JsonObject ntp = doc.createNestedObject("ntp");
+    JsonObject ntp = doc["ntp"].to<JsonObject>();
     ntp["server"] = config.Ntp.Server;
     ntp["timezone"] = config.Ntp.Timezone;
     ntp["timezone_descr"] = config.Ntp.TimezoneDescr;
@@ -65,7 +61,7 @@ bool ConfigurationClass::write()
     ntp["longitude"] = config.Ntp.Longitude;
     ntp["sunsettype"] = config.Ntp.SunsetType;
 
-    JsonObject mqtt = doc.createNestedObject("mqtt");
+    JsonObject mqtt = doc["mqtt"].to<JsonObject>();
     mqtt["enabled"] = config.Mqtt.Enabled;
     mqtt["hostname"] = config.Mqtt.Hostname;
     mqtt["port"] = config.Mqtt.Port;
@@ -76,13 +72,13 @@ bool ConfigurationClass::write()
     mqtt["publish_interval"] = config.Mqtt.PublishInterval;
     mqtt["clean_session"] = config.Mqtt.CleanSession;
 
-    JsonObject mqtt_lwt = mqtt.createNestedObject("lwt");
+    JsonObject mqtt_lwt = mqtt["lwt"].to<JsonObject>();
     mqtt_lwt["topic"] = config.Mqtt.Lwt.Topic;
     mqtt_lwt["value_online"] = config.Mqtt.Lwt.Value_Online;
     mqtt_lwt["value_offline"] = config.Mqtt.Lwt.Value_Offline;
     mqtt_lwt["qos"] = config.Mqtt.Lwt.Qos;
 
-    JsonObject mqtt_tls = mqtt.createNestedObject("tls");
+    JsonObject mqtt_tls = mqtt["tls"].to<JsonObject>();
     mqtt_tls["enabled"] = config.Mqtt.Tls.Enabled;
     mqtt_tls["root_ca_cert"] = config.Mqtt.Tls.RootCaCert;
     mqtt_tls["certlogin"] = config.Mqtt.Tls.CertLogin;
@@ -90,7 +86,7 @@ bool ConfigurationClass::write()
     mqtt_tls["client_key"] = config.Mqtt.Tls.ClientKey;
 
 #ifdef USE_HASS
-    JsonObject mqtt_hass = mqtt.createNestedObject("hass");
+    JsonObject mqtt_hass = mqtt["hass"].to<JsonObject>();
     mqtt_hass["enabled"] = config.Mqtt.Hass.Enabled;
     mqtt_hass["retain"] = config.Mqtt.Hass.Retain;
     mqtt_hass["topic"] = config.Mqtt.Hass.Topic;
@@ -98,7 +94,7 @@ bool ConfigurationClass::write()
     mqtt_hass["expire"] = config.Mqtt.Hass.Expire;
 #endif
 
-    JsonObject dtu = doc.createNestedObject("dtu");
+    JsonObject dtu = doc["dtu"].to<JsonObject>();
     dtu["serial"] = config.Dtu.Serial;
     dtu["pollinterval"] = config.Dtu.PollInterval;
     dtu["nrf_pa_level"] = config.Dtu.Nrf.PaLevel;
@@ -106,15 +102,15 @@ bool ConfigurationClass::write()
     dtu["cmt_frequency"] = config.Dtu.Cmt.Frequency;
     dtu["cmt_country_mode"] = config.Dtu.Cmt.CountryMode;
 
-    JsonObject security = doc.createNestedObject("security");
+    JsonObject security = doc["security"].to<JsonObject>();
     security["password"] = config.Security.Password;
     security["allow_readonly"] = config.Security.AllowReadonly;
 
-    JsonObject device = doc.createNestedObject("device");
+    JsonObject device = doc["device"].to<JsonObject>();
     device["pinmapping"] = config.Dev_PinMapping;
 
 #ifdef USE_DISPLAY_GRAPHIC
-    JsonObject display = device.createNestedObject("display");
+    JsonObject display = device["display"].to<JsonObject>();
     display["powersafe"] = config.Display.PowerSafe;
     display["screensaver"] = config.Display.ScreenSaver;
     display["rotation"] = config.Display.Rotation;
@@ -125,16 +121,16 @@ bool ConfigurationClass::write()
 #endif
 
 #if defined(USE_LED_SINGLE) || defined(USE_LED_STRIP)
-    JsonArray leds = device.createNestedArray("led");
+    JsonArray leds = device["led"].to<JsonArray>();
     for (uint8_t i = 0; i < LED_COUNT; i++) {
-        JsonObject led = leds.createNestedObject();
+        JsonObject led = leds.add<JsonObject>();
         led["brightness"] = config.Led[i].Brightness;
     }
 #endif
 
-    JsonArray inverters = doc.createNestedArray("inverters");
+    JsonArray inverters = doc["inverters"].to<JsonArray>();
     for (uint8_t i = 0; i < INV_MAX_COUNT; i++) {
-        JsonObject inv = inverters.createNestedObject();
+        JsonObject inv = inverters.add<JsonObject>();
         inv["serial"] = config.Inverter[i].Serial;
         inv["name"] = config.Inverter[i].Name;
         inv["order"] = config.Inverter[i].Order;
@@ -147,27 +143,27 @@ bool ConfigurationClass::write()
         inv["zero_day"] = config.Inverter[i].ZeroYieldDayOnMidnight;
         inv["yieldday_correction"] = config.Inverter[i].YieldDayCorrection;
 
-        JsonArray channel = inv.createNestedArray("channel");
+        JsonArray channel = inv["channel"].to<JsonArray>();
         for (uint8_t c = 0; c < INV_MAX_CHAN_COUNT; c++) {
-            JsonObject chanData = channel.createNestedObject();
+            JsonObject chanData = channel.add<JsonObject>();
             chanData["name"] = config.Inverter[i].channel[c].Name;
             chanData["max_power"] = config.Inverter[i].channel[c].MaxChannelPower;
             chanData["yield_total_offset"] = config.Inverter[i].channel[c].YieldTotalOffset;
         }
     }
 
-    JsonObject vedirect = doc.createNestedObject("vedirect");
+    JsonObject vedirect = doc["vedirect"].to<JsonObject>();
     vedirect["enabled"] = config.Vedirect.Enabled;
     vedirect["updatesonly"] = config.Vedirect.UpdatesOnly;
 
 #ifdef USE_REFUsol_INVERTER
-    JsonObject refusol = doc.createNestedObject("refusol");
+    JsonObject refusol = doc["refusol"].to<JsonObject>();
     refusol["enabled"] = config.REFUsol.Enabled;
     refusol["updatesonly"] = config.REFUsol.UpdatesOnly;
     refusol["pollinterval"] = config.REFUsol.PollInterval;
 #endif
 
-    JsonObject powermeter = doc.createNestedObject("powermeter");
+    JsonObject powermeter = doc["powermeter"].to<JsonObject>();
     powermeter["enabled"] = config.PowerMeter.Enabled;
     powermeter["pollinterval"] = config.PowerMeter.PollInterval;
     powermeter["updatesonly"] = config.PowerMeter.UpdatesOnly;
@@ -179,9 +175,9 @@ bool ConfigurationClass::write()
     powermeter["sdmaddress"] = config.PowerMeter.Sdm.Address;
     powermeter["http_individual_requests"] = config.PowerMeter.Http.IndividualRequests;
 
-    JsonArray powermeter_http_phases = powermeter.createNestedArray("http_phases");
+    JsonArray powermeter_http_phases = powermeter["http_phases"].to<JsonArray>();
     for (uint8_t i = 0; i < POWERMETER_MAX_PHASES; i++) {
-        JsonObject powermeter_phase = powermeter_http_phases.createNestedObject();
+        JsonObject powermeter_phase = powermeter_http_phases.add<JsonObject>();
 
         powermeter_phase["enabled"] = config.PowerMeter.Http.Phase[i].Enabled;
         powermeter_phase["url"] = config.PowerMeter.Http.Phase[i].Url;
@@ -192,10 +188,11 @@ bool ConfigurationClass::write()
         powermeter_phase["header_value"] = config.PowerMeter.Http.Phase[i].HeaderValue;
         powermeter_phase["timeout"] = config.PowerMeter.Http.Phase[i].Timeout;
         powermeter_phase["json_path"] = config.PowerMeter.Http.Phase[i].JsonPath;
-        powermeter_phase["unit"] = config.PowerMeter.Http.Phase[i].Unit;
+        powermeter_phase["unit"] = config.PowerMeter.Http.Phase[i].PowerUnit;
+        powermeter_phase["sign_inverted"] = config.PowerMeter.Http.Phase[i].SignInverted;
     }
 
-    JsonObject powerlimiter = doc.createNestedObject("powerlimiter");
+    JsonObject powerlimiter = doc["powerlimiter"].to<JsonObject>();
     powerlimiter["enabled"] = config.PowerLimiter.Enabled;
     powerlimiter["updatesonly"] = config.PowerLimiter.UpdatesOnly;
     powerlimiter["pollinterval"] = config.PowerLimiter.PollInterval;
@@ -209,6 +206,7 @@ bool ConfigurationClass::write()
     powerlimiter["target_power_consumption"] = config.PowerLimiter.TargetPowerConsumption;
     powerlimiter["target_power_consumption_hysteresis"] = config.PowerLimiter.TargetPowerConsumptionHysteresis;
     powerlimiter["lower_power_limit"] = config.PowerLimiter.LowerPowerLimit;
+    powerlimiter["base_load_limit"] = config.PowerLimiter.BaseLoadLimit;
     powerlimiter["upper_power_limit"] = config.PowerLimiter.UpperPowerLimit;
     powerlimiter["ignore_soc"] = config.PowerLimiter.IgnoreSoc;
     powerlimiter["battery_soc_start_threshold"] = config.PowerLimiter.BatterySocStartThreshold;
@@ -221,7 +219,7 @@ bool ConfigurationClass::write()
     powerlimiter["full_solar_passthrough_start_voltage"] = config.PowerLimiter.FullSolarPassThroughStartVoltage;
     powerlimiter["full_solar_passthrough_stop_voltage"] = config.PowerLimiter.FullSolarPassThroughStopVoltage;
 
-    JsonObject battery = doc.createNestedObject("battery");
+    JsonObject battery = doc["battery"].to<JsonObject>();
     battery["enabled"] = config.Battery.Enabled;
     battery["updatesonly"] = config.Battery.UpdatesOnly;
     battery["numberOfBatteries"] = config.Battery.numberOfBatteries;
@@ -239,18 +237,21 @@ bool ConfigurationClass::write()
     battery["max_charge_temp"] = config.Battery.MaxChargeTemperature;
     battery["min_discharge_temp"] = config.Battery.MinDischargeTemperature;
     battery["max_discharge_temp"] = config.Battery.MaxDischargeTemperature;
+    battery["stop_charging_soc"] = config.Battery.Stop_Charging_BatterySoC_Threshold;
 
 #ifdef CHARGER_HUAWEI
-    JsonObject huawei = doc.createNestedObject("huawei");
+    JsonObject huawei = doc["huawei"].to<JsonObject>();
     huawei["enabled"] = config.Huawei.Enabled;
+    huawei["verbose_logging"] = config.Huawei.VerboseLogging;
     huawei["can_controller_frequency"] = config.MPC2515.Controller_Frequency;
     huawei["auto_power_enabled"] = config.Huawei.Auto_Power_Enabled;
     huawei["voltage_limit"] = config.Huawei.Auto_Power_Voltage_Limit;
     huawei["enable_voltage_limit"] = config.Huawei.Auto_Power_Enable_Voltage_Limit;
     huawei["lower_power_limit"] = config.Huawei.Auto_Power_Lower_Power_Limit;
     huawei["upper_power_limit"] = config.Huawei.Auto_Power_Upper_Power_Limit;
+    huawei["stop_batterysoc_threshold"] = config.Huawei.Auto_Power_Stop_BatterySoC_Threshold;
 #else
-    JsonObject meanwell = doc.createNestedObject("meanwell");
+    JsonObject meanwell = doc["meanwell"].to<JsonObject>();
     meanwell["enabled"] = config.MeanWell.Enabled;
     meanwell["pollinterval"] = config.MeanWell.PollInterval;
     meanwell["min_voltage"] = config.MeanWell.MinVoltage;
@@ -261,11 +262,11 @@ bool ConfigurationClass::write()
     meanwell["mustInverterProduce"] = config.MeanWell.mustInverterProduce;
 #endif
 
-    JsonObject zeroExport = doc.createNestedObject("zeroExport");
+    JsonObject zeroExport = doc["zeroExport"].to<JsonObject>();
     zeroExport["enabled"] = config.ZeroExport.Enabled;
     zeroExport["updatesonly"] = config.ZeroExport.UpdatesOnly;
     zeroExport["InverterId"] = config.ZeroExport.InverterId;
-    JsonArray serials = zeroExport.createNestedArray("serials");
+    JsonArray serials = zeroExport["serials"].to<JsonArray>();
     for (uint8_t i = 0; i < INV_MAX_COUNT; i++) {
         if (config.ZeroExport.serials[i] != 0) {
             serials[i] = config.ZeroExport.serials[i];
@@ -275,6 +276,10 @@ bool ConfigurationClass::write()
     zeroExport["MaxGrid"] = config.ZeroExport.MaxGrid;
     zeroExport["MinimumLimit"] = config.ZeroExport.MinimumLimit;
     zeroExport["Tn"] = config.ZeroExport.Tn;
+
+    if (!Utils::checkJsonAlloc(doc, __FUNCTION__, __LINE__)) {
+        return false;
+    }
 
 /*
     {
@@ -297,16 +302,16 @@ bool ConfigurationClass::read()
 {
     File f = LittleFS.open(CONFIG_FILENAME, "r", false);
 
-    DynamicJsonDocument doc(JSON_BUFFER_SIZE);
-
-    if (!Utils::checkJsonAlloc(doc, __FUNCTION__, __LINE__)) {
-        return false;
-    }
+    JsonDocument doc;
 
     // Deserialize the JSON document
     const DeserializationError error = deserializeJson(doc, f);
     if (error) {
         MessageOutput.println("Failed to read file, using default configuration");
+    }
+
+    if (!Utils::checkJsonAlloc(doc, __FUNCTION__, __LINE__)) {
+        return false;
     }
 
     JsonObject cfg = doc["cfg"];
@@ -492,14 +497,15 @@ bool ConfigurationClass::read()
 
         config.PowerMeter.Http.Phase[i].Enabled = powermeter_phase["enabled"] | (i == 0);
         strlcpy(config.PowerMeter.Http.Phase[i].Url, powermeter_phase["url"] | "", sizeof(config.PowerMeter.Http.Phase[i].Url));
-        config.PowerMeter.Http.Phase[i].AuthType = powermeter_phase["auth_type"] | Auth::none;
+        config.PowerMeter.Http.Phase[i].AuthType = powermeter_phase["auth_type"] | PowerMeterHttpConfig::Auth::None;
         strlcpy(config.PowerMeter.Http.Phase[i].Username, powermeter_phase["username"] | "", sizeof(config.PowerMeter.Http.Phase[i].Username));
         strlcpy(config.PowerMeter.Http.Phase[i].Password, powermeter_phase["password"] | "", sizeof(config.PowerMeter.Http.Phase[i].Password));
         strlcpy(config.PowerMeter.Http.Phase[i].HeaderKey, powermeter_phase["header_key"] | "", sizeof(config.PowerMeter.Http.Phase[i].HeaderKey));
         strlcpy(config.PowerMeter.Http.Phase[i].HeaderValue, powermeter_phase["header_value"] | "", sizeof(config.PowerMeter.Http.Phase[i].HeaderValue));
         config.PowerMeter.Http.Phase[i].Timeout = powermeter_phase["timeout"] | POWERMETER_HTTP_TIMEOUT;
         strlcpy(config.PowerMeter.Http.Phase[i].JsonPath, powermeter_phase["json_path"] | "", sizeof(config.PowerMeter.Http.Phase[i].JsonPath));
-        config.PowerMeter.Http.Phase[i].Unit = powermeter_phase["unit"] | PowerMeterUnits::W;
+        config.PowerMeter.Http.Phase[i].PowerUnit = powermeter_phase["unit"] | PowerMeterHttpConfig::Unit::Watts;
+        config.PowerMeter.Http.Phase[i].SignInverted = powermeter_phase["sign_inverted"] | false;
     }
 
     JsonObject powerlimiter = doc["powerlimiter"];
@@ -524,6 +530,7 @@ bool ConfigurationClass::read()
     config.PowerLimiter.TargetPowerConsumption = powerlimiter["target_power_consumption"] | POWERLIMITER_TARGET_POWER_CONSUMPTION;
     config.PowerLimiter.TargetPowerConsumptionHysteresis = powerlimiter["target_power_consumption_hysteresis"] | POWERLIMITER_TARGET_POWER_CONSUMPTION_HYSTERESIS;
     config.PowerLimiter.LowerPowerLimit = powerlimiter["lower_power_limit"] | POWERLIMITER_LOWER_POWER_LIMIT;
+    config.PowerLimiter.BaseLoadLimit = powerlimiter["base_load_limit"] | POWERLIMITER_BASE_LOAD_LIMIT;
     config.PowerLimiter.UpperPowerLimit = powerlimiter["upper_power_limit"] | POWERLIMITER_UPPER_POWER_LIMIT;
     config.PowerLimiter.IgnoreSoc = powerlimiter["ignore_soc"] | POWERLIMITER_IGNORE_SOC;
     config.PowerLimiter.BatterySocStartThreshold = powerlimiter["battery_soc_start_threshold"] | POWERLIMITER_BATTERY_SOC_START_THRESHOLD;
@@ -554,6 +561,7 @@ bool ConfigurationClass::read()
     config.Battery.MaxChargeTemperature = battery["max_charge_temp"] | BATTERY_MAX_CHARGE_TEMPERATURE;
     config.Battery.MinDischargeTemperature = battery["min_discharge_temp"] | BATTERY_MIN_DISCHARGE_TEMPERATURE;
     config.Battery.MaxDischargeTemperature = battery["max_discharge_temp"] | BATTERY_MAX_DISCHARGE_TEMPERATURE;
+    config.Battery.Stop_Charging_BatterySoC_Threshold = battery["stop_charging_soc"] | 100;
 
 #ifdef CHARGER_HUAWEI
     JsonObject huawei = doc["huawei"];
@@ -620,11 +628,7 @@ void ConfigurationClass::migrate()
         return;
     }
 
-    DynamicJsonDocument doc(JSON_BUFFER_SIZE);
-
-    if (!Utils::checkJsonAlloc(doc, __FUNCTION__, __LINE__)) {
-        return;
-    }
+    JsonDocument doc;
 
     // Deserialize the JSON document
     const DeserializationError error = deserializeJson(doc, f);
@@ -632,6 +636,11 @@ void ConfigurationClass::migrate()
         MessageOutput.printf("Failed to read file, cancel migration: %s\r\n", error.c_str());
         return;
     }
+
+    if (!Utils::checkJsonAlloc(doc, __FUNCTION__, __LINE__)) {
+        return;
+    }
+
     /*
     if (config.Cfg.Version < 0x00011700) {
         JsonArray inverters = doc["inverters"];

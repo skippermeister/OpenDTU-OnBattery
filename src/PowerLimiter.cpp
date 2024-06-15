@@ -38,7 +38,7 @@ void PowerLimiterClass::init(Scheduler& scheduler)
 
     _lastStatusPrinted.set(10 * 1000);
 
-    _switchMosFeetOffTimer=0;
+    _switchMosFetOffTimer=0;
 
     const PowerLimiter_CONFIG_T& cPL = Configuration.get().PowerLimiter;
 
@@ -66,14 +66,11 @@ frozen::string const& PowerLimiterClass::getStatusText(PowerLimiterClass::Status
 {
     static const frozen::string missing = "programmer error: missing status text";
 
-    static const frozen::map<Status, frozen::string, 25> texts = {
+    static const frozen::map<Status, frozen::string, 22> texts = {
         { Status::Initializing, "initializing (should not see me)" },
         { Status::DisabledByConfig, "disabled by configuration" },
         { Status::DisabledByMqtt, "disabled by MQTT" },
         { Status::WaitingForValidTimestamp, "waiting for valid date and time to be available" },
-        { Status::PowerMeterDisabled, "no power meter is configured/enabled" },
-        { Status::PowerMeterTimeoutWarning, "warning, power meter readings are outdated more than 30 seconds" },
-        { Status::PowerMeterTimeout, "power meter readings are outdated more than 1 minute" },
         { Status::PowerMeterPending, "waiting for sufficiently recent power meter reading" },
         { Status::InverterInvalid, "invalid inverter selection/configuration" },
         { Status::InverterChanged, "target inverter changed" },
@@ -83,7 +80,7 @@ frozen::string const& PowerLimiterClass::getStatusText(PowerLimiterClass::Status
         { Status::InverterPowerCmdPending, "waiting for a start/stop/restart command to complete" },
         { Status::InverterDevInfoPending, "waiting for inverter device information to be available" },
         { Status::InverterStatsPending, "waiting for sufficiently recent inverter data" },
-        { Status::CalculatedLimitBelowMinLimit, "calculated limit is less than lower power limit" },
+        { Status::CalculatedLimitBelowMinLimit, "calculated limit is less than minimum power limit" },
         { Status::UnconditionalSolarPassthrough, "unconditionally passing through all solar power (MQTT override)" },
         { Status::NoVeDirect, "VE.Direct disabled, connection broken, or data outdated" },
         { Status::NoEnergy, "no energy source available to power the inverter from" },
@@ -118,34 +115,11 @@ void PowerLimiterClass::announceStatus(PowerLimiterClass::Status status)
     _lastStatusPrinted.reset();
 }
 
-void PowerLimiterClass::switchMosFeetsOff()
-{
-    auto const& config = Configuration.get();
-
-    if (_inverter)
-        MessageOutput.printf("%s%s: inverter %" PRIx64 " is %s producing. AC power: %.1f\r\n", TAG, __FUNCTION__,
-            config.PowerLimiter.InverterId,
-            _inverter->isProducing() ? "still" : "not",
-            _inverter->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_PAC));
-
-    if (digitalRead(PinMapping.get().full_power) == LOW || digitalRead(PinMapping.get().pre_charge) == LOW) {
-        MessageOutput.printf("%s%s: switch DC power of inverter id %" PRIx64 " at channel %d OFF\r\n", TAG, __FUNCTION__,
-            config.PowerLimiter.InverterId,
-            config.PowerLimiter.InverterChannelId);
-
-        digitalWrite(PinMapping.get().full_power, HIGH); // MOSfet gate off
-        digitalWrite(PinMapping.get().pre_charge, HIGH); // MOSfet gate off
-
-        _preChargePowerState = 0;
-        if (_inverter) _inverter->setConnected(false);
-
-        _lastPreCharge = millis();
-        _preChargeDelay = 0;
-    }
-
-    _switchMosFeetOffTimer = 0;
-}
-
+/**
+ * returns true if the inverter state was changed or is about to change, i.e.,
+ * if it is actually in need of a shutdown. returns false otherwise, i.e., the
+ * inverter is already shut down.
+ */
 bool PowerLimiterClass::shutdown(PowerLimiterClass::Status status)
 {
     if (_lastStatus != Status::DisconnectFromBattery)
@@ -155,16 +129,8 @@ bool PowerLimiterClass::shutdown(PowerLimiterClass::Status status)
 
     _oTargetPowerState = false;
 
-    auto const& config = Configuration.get();
-    if ( (Status::PowerMeterTimeout == status ||
-          Status::CalculatedLimitBelowMinLimit == status)
-        && config.PowerLimiter.IsInverterSolarPowered) {
-      _oTargetPowerState = true;
-    } else {
-        _switchMosFeetOffTimer = millis();
-    }
+    _switchMosFetOffTimer = millis();
 
-    _oTargetPowerLimitWatts = config.PowerLimiter.LowerPowerLimit;
     return updateInverter();
 }
 
@@ -185,10 +151,10 @@ void PowerLimiterClass::loop()
     if (updateInverter()) { return; }
 
     if (_shutdownPending) {
-        if (_switchMosFeetOffTimer) {
-            // wait till timer elapsed
-            if (millis() - _switchMosFeetOffTimer > 30*1000 ) {
-                switchMosFeetsOff();
+        if ( _switchMosFetOffTimer) {
+            // wait till timer elapsed or inverter stops
+            if ( /*(_inverter && !_inverter->isProducing()) || */ (millis() - _switchMosFetOffTimer > 60*1000) ) {
+                switchMosFetsOff();
             } else {
                 return;
             }
@@ -258,18 +224,6 @@ void PowerLimiterClass::loop()
         return announceStatus(Status::InverterCommandsDisabled);
     }
 
-    // concerns active power commands (power limits) only (also from web app or MQTT)
-    auto lastLimitCommandState = _inverter->SystemConfigPara()->getLastLimitCommandSuccess();
-    if (CMD_PENDING == lastLimitCommandState) {
-        return announceStatus(Status::InverterLimitPending);
-    }
-
-    // concerns power commands (start, stop, restart) only (also from web app or MQTT)
-    auto lastPowerCommandState = _inverter->PowerCommand()->getLastPowerCommandSuccess();
-    if (CMD_PENDING == lastPowerCommandState) {
-        return announceStatus(Status::InverterPowerCmdPending);
-    }
-
     // a calculated power limit will always be limited to the reported
     // device's max power. that upper limit is only known after the first
     // DevInfoSimpleCommand succeeded.
@@ -282,39 +236,34 @@ void PowerLimiterClass::loop()
         return unconditionalSolarPassthrough(_inverter);
     }
 
-    // the normal mode of operation requires a valid
-    // power meter reading to calculate a power limit
-    if (!Configuration.get().PowerMeter.Enabled) {
-        shutdown(Status::PowerMeterDisabled);
-        return;
-    }
-
-    // after 30 seconds no power meter values we warn,
-    // after 2 minute no power meter values we shutdown the inverter
-    // it seems to be that shelly3EM sometimes logs off from WLAN and reports for more than 30 seconds no values
-    long delta_t = millis() - PowerMeter.getLastPowerMeterUpdate();
-    if ( delta_t > (120 * 1000)) {
-        shutdown(Status::PowerMeterTimeout);
-        return;
-    } else if (delta_t > (90 * 1000)) {
-        return announceStatus(Status::PowerMeterTimeoutWarning);
-    } else if (delta_t > (60 * 1000)) {
-        return announceStatus(Status::PowerMeterTimeoutWarning);
-    } else if (delta_t > (30 * 1000)) {
-        return announceStatus(Status::PowerMeterTimeoutWarning);
-    }
-
     // concerns both power limits and start/stop/restart commands and is
     // only updated if a respective response was received from the inverter
     auto lastUpdateCmd = std::max(
         _inverter->SystemConfigPara()->getLastUpdateCommand(),
         _inverter->PowerCommand()->getLastUpdateCommand());
 
-    if (_inverter->Statistics()->getLastUpdate() - lastUpdateCmd <= 0) {
-        return announceStatus(Status::InverterStatsPending);
+    // we need inverter stats younger than the last update command
+    if (_oInverterStatsMillis.has_value() && lastUpdateCmd > *_oInverterStatsMillis) {
+        _oInverterStatsMillis = std::nullopt;
     }
 
-    if (PowerMeter.getLastPowerMeterUpdate() - lastUpdateCmd <= 0) {
+    if (!_oInverterStatsMillis.has_value()) {
+        auto lastStats = _inverter->Statistics()->getLastUpdate();
+        if (lastStats <= lastUpdateCmd) {
+            return announceStatus(Status::InverterStatsPending);
+        }
+
+        _oInverterStatsMillis = lastStats;
+    }
+
+    // if the power meter is being used, i.e., if its data is valid, we want to
+    // wait for a new reading after adjusting the inverter limit. otherwise, we
+    // proceed as we will use a fallback limit independent of the power meter.
+    // the power meter reading is expected to be at most 2 seconds old when it
+    // arrives. this can be the case for readings provided by networked meter
+    // readers, where a packet needs to travel through the network for some
+    // time after the actual measurement was done by the reader.
+    if (PowerMeter.isDataValid() && PowerMeter.getLastPowerMeterUpdate() <= (*_oInverterStatsMillis + 2000)) {
         return announceStatus(Status::PowerMeterPending);
     }
 
@@ -461,7 +410,7 @@ int32_t PowerLimiterClass::inverterPowerDcToAc(std::shared_ptr<InverterAbstract>
 {
     PowerLimiter_CONFIG_T& cPL = Configuration.get().PowerLimiter;
 
-    float inverterEfficiencyPercent = inverter->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_EFF);
+    float inverterEfficiencyPercent = inverter->Statistics()->getChannelFieldValue(TYPE_INV, CH0, FLD_EFF);
 
     // fall back to hoymiles peak efficiency as per datasheet if inverter
     // is currently not producing (efficiency is zero in that case)
@@ -515,7 +464,7 @@ uint8_t PowerLimiterClass::getPowerLimiterState()
     return PL_UI_STATE_INACTIVE;
 }
 
-// Logic table
+// Logic table ("PowerMeter value" can be "base load setting" as a fallback)
 // | Case # | batteryPower | solarPower     | useFullSolarPassthrough | Resulting inverter limit                               |
 // | 1      | false        |  < 20 W        | doesn't matter          | 0 (inverter off)                                       |
 // | 2      | false        | >= 20 W        | doesn't matter          | min(PowerMeter value, solarPower)                      |
@@ -539,43 +488,59 @@ bool PowerLimiterClass::calcPowerLimit(std::shared_ptr<InverterAbstract> inverte
     // Limiter should run and the PSU will shut down as a consequence.
     if (!useFullSolarPassthrough() &&
 #ifdef CHARGER_HUAWEI
-    HuaweiCan.getAutoPowerStatus()
+        HuaweiCan.getAutoPowerStatus()
 #else
-    MeanWellCan.getAutoPowerStatus()
+        MeanWellCan.getAutoPowerStatus()
 #endif
     ) {
         return shutdown(Status::MeanWellPsu);
     }
 
-    auto powerMeter = static_cast<int32_t>(PowerMeter.getPowerTotal());
+    auto meterValid = PowerMeter.isDataValid();
 
+    auto meterValue = static_cast<int32_t>(PowerMeter.getPowerTotal());
+
+    // We don't use FLD_PAC from the statistics, because that data might be too
+    // old and unreliable. TODO(schlimmchen): is this comment outdated?
     auto inverterOutput = static_cast<int32_t>(inverter->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_PAC));
 
     auto solarPowerAC = inverterPowerDcToAc(inverter, solarPowerDC);
 
     auto const& config = Configuration.get();
+    auto targetConsumption = config.PowerLimiter.TargetPowerConsumption;
+    auto baseLoad = config.PowerLimiter.LowerPowerLimit;
+    bool meterIncludesInv = config.PowerLimiter.IsInverterBehindPowerMeter;
 
-    if (_verboseLogging) MessageOutput.printf("%s%s: power meter: %d W, target consumption: %d W, inverter output: %d W, solar power (AC): %d\r\n",
+    if (_verboseLogging) {
+        MessageOutput.printf("%s%s: target consumption: %d W, "
+                "base load: %d W, power meter does %sinclude inverter output\r\n",
+                TAG, __FUNCTION__,
+                targetConsumption,
+                baseLoad,
+                (meterIncludesInv?"":"NOT "));
+
+        MessageOutput.printf("%s%s: power meter: %d W, power meter valid: %s, inverter output: %d W, solar power (AC): %d\r\n",
             TAG, __FUNCTION__,
-            powerMeter,
-            config.PowerLimiter.TargetPowerConsumption,
+            meterValue,
+            (meterValid?"yes":"no"),
             inverterOutput,
             solarPowerAC);
-
-    auto newPowerLimit = powerMeter;
-
-    if (config.PowerLimiter.IsInverterBehindPowerMeter) {
-        // If the inverter the behind the power meter (part of measurement),
-        // the produced power of this inverter has also to be taken into account.
-        // We don't use FLD_PAC from the statistics, because that
-        // data might be too old and unreliable.
-        if (_verboseLogging) MessageOutput.printf("%s%s: Inverter Output Power %d W\r\n", TAG, __FUNCTION__, inverterOutput);
-        newPowerLimit += inverterOutput;
     }
 
-    // We're not trying to hit 0 exactly but take an offset into account
-    // This means we never fully compensate the used power with the inverter
-    newPowerLimit -= config.PowerLimiter.TargetPowerConsumption;
+    auto newPowerLimit = baseLoad;
+
+    if (meterValid) {
+        newPowerLimit = meterValue;
+
+        if (meterIncludesInv) {
+            // If the inverter is wired behind the power meter, i.e., if its
+            // output is part of the power meter measurement, the produced
+            // power of this inverter has to be taken into account.
+            newPowerLimit += inverterOutput;
+        }
+
+        newPowerLimit -= targetConsumption;
+    }
 
     // Case 2:
     if (!batteryPower) {
@@ -599,7 +564,7 @@ bool PowerLimiterClass::calcPowerLimit(std::shared_ptr<InverterAbstract> inverte
         return setNewPowerLimit(inverter, newPowerLimit);
     }
 
-    if (_verboseLogging) MessageOutput.printf("%s%s: match power meter with limit of %d W\r\n", TAG, __FUNCTION__, newPowerLimit);
+    if (_verboseLogging) MessageOutput.printf("%s%s: match household consumption with limit of %d W\r\n", TAG, __FUNCTION__, newPowerLimit);
 
     // Case 3:
     return setNewPowerLimit(inverter, newPowerLimit);
@@ -781,7 +746,6 @@ int32_t PowerLimiterClass::scalePowerLimit(std::shared_ptr<InverterAbstract> inv
     return scaled;
 }
 
-
 /**
  * enforces limits and a hystersis on the requested power limit, after scaling
  * the power limit to the ratio of total and producing inverter channels.
@@ -795,12 +759,17 @@ bool PowerLimiterClass::setNewPowerLimit(std::shared_ptr<InverterAbstract> inver
     auto upperLimit = config.PowerLimiter.UpperPowerLimit;
     auto hysteresis = config.PowerLimiter.TargetPowerConsumptionHysteresis;
 
-    if (_verboseLogging) MessageOutput.printf("%s%s: input limit: %d W, lower limit: %d W, upper limit: %d W, hysteresis: %d W\r\n",
+    if (_verboseLogging) MessageOutput.printf("%s%s: input limit: %d W, min limit: %d W, max limit: %d W, hysteresis: %d W\r\n",
             TAG, __FUNCTION__,
             newPowerLimit, lowerLimit, upperLimit, hysteresis);
 
     if (newPowerLimit < lowerLimit) {
-        return shutdown(Status::CalculatedLimitBelowMinLimit);
+        if (!config.PowerLimiter.IsInverterSolarPowered) {
+            return shutdown(Status::CalculatedLimitBelowMinLimit);
+        }
+
+        MessageOutput.printf("%s%s: keep solar-powered inverter running at min limit\r\n", TAG, __FUNCTION__);
+        newPowerLimit = lowerLimit;
     }
 
     // enforce configured upper power limit
@@ -836,7 +805,7 @@ int32_t PowerLimiterClass::getSolarPower()
 {
     auto const& config = Configuration.get();
 
-    if (config.PowerLimiter.IsInverterSolarPowered) {
+    if (config.PowerLimiter.IsInverterSolarPowered || !config.Vedirect.Enabled) {
         // the returned value is arbitrary, as long as it's
         // greater than the inverters max DC power consumption.
         return 10 * 1000;
@@ -1003,12 +972,12 @@ bool PowerLimiterClass::manageBatteryDCpowerSwitch()
         && !SunPosition.isAnnouceDayPeriod() //
         && _inverter->getEnablePolling() // Inverter connected to Battery must be enabled for polling
         && _inverter->getEnableCommands() // Inverter connected to Battery must be enabled to receive commands
-        && Battery.getStats()->getSoC() >= cPL.BatterySocStopThreshold // Battery SoC must be geater than equal StopThreshold
+        && !isStopThresholdReached() // Battery SoC must be geater than equal StopThreshold
         && MeanWellCan._rp.operation == 0) // only if Charger is off
     {
         switch (_preChargePowerState) {
         case 0:
-            if ((millis() - _lastPreCharge > _preChargeDelay) && (Battery.getStats()->getSoC() >= cPL.BatterySocStartThreshold /*|| (Battery.getStats()->getSoC() > cPL.BatterySocStopThreshold && _lastDCState == false)*/ )) {
+            if ((millis() - _lastPreCharge > _preChargeDelay) && (isStartThresholdReached() /*|| (!isStopThresholdReached() && _lastDCState == false)*/ )) {
                 MessageOutput.printf("%s%s: switch DC power of inverter id %" PRIx64 " at channel %d OFF\r\n",
                     TAG, __FUNCTION__,
                     cPL.InverterId, cPL.InverterChannelId);
@@ -1064,7 +1033,7 @@ bool PowerLimiterClass::manageBatteryDCpowerSwitch()
             return false;
 
         case 3:
-            //                announceStatus(Status::WaitingInverterPowerOn);
+            // announceStatus(Status::WaitingInverterPowerOn);
             if (millis() - _lastPreCharge > _preChargeDelay) {
                 _preChargeDelay = 5 * 1000; // at minimum 5 seconds delay
                 _lastPreCharge = millis();
@@ -1078,20 +1047,35 @@ bool PowerLimiterClass::manageBatteryDCpowerSwitch()
     } else {
         shutdown(Status::DisconnectFromBattery);
         return false;
-        /*
-                // minimum time between start of inverter DC power and switch off DC power 30 seconds
-                if ( (millis() - _lastPreCharge > 30 * 1000) && _preChargePowerState == 0) {
-                    MessageOutput.printf("%s%s: switch DC power of inverter id %"PRIx64" at channel %d OFF\r\n", TAG, __FUNCTION__, cPL.InverterId, cPL.InverterChannelId);
-                    digitalWrite(PinMapping.get().full_power, HIGH);    // MOSfet gate off
-                    digitalWrite(PinMapping.get().pre_charge, HIGH);    // MOSfet gate off
-                    _preChargeDelay= 30* 1000;
-                    _lastPreCharge = millis();
-                    _preChargePowerState = 0;
-                    _inverter->setConnected(false);
-                }
-                if (_preChargePowerState == 0) return false;
-        */
     }
 
     return true;
+}
+
+void PowerLimiterClass::switchMosFetsOff()
+{
+    auto const& config = Configuration.get();
+
+    if (_inverter)
+        MessageOutput.printf("%s%s: inverter %" PRIx64 " is %s producing. AC power: %.1f\r\n", TAG, __FUNCTION__,
+            config.PowerLimiter.InverterId,
+            _inverter->isProducing() ? "still" : "not",
+            _inverter->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_PAC));
+
+    if (digitalRead(PinMapping.get().full_power) == LOW || digitalRead(PinMapping.get().pre_charge) == LOW) {
+        MessageOutput.printf("%s%s: switch DC power of inverter id %" PRIx64 " at channel %d OFF\r\n", TAG, __FUNCTION__,
+            config.PowerLimiter.InverterId,
+            config.PowerLimiter.InverterChannelId);
+
+        digitalWrite(PinMapping.get().full_power, HIGH); // MOSfet gate off
+        digitalWrite(PinMapping.get().pre_charge, HIGH); // MOSfet gate off
+
+        _preChargePowerState = 0;
+        if (_inverter) _inverter->setConnected(false);
+
+        _lastPreCharge = millis();
+        _preChargeDelay = 0;
+    }
+
+    _switchMosFetOffTimer = 0;
 }

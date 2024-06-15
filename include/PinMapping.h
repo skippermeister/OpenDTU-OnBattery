@@ -64,6 +64,9 @@ struct PinMapping_t {
     int8_t victron_tx2;
     int8_t victron_rx2;
 
+    int8_t victron_tx3;
+    int8_t victron_rx3;
+
 #if defined(USE_REFUsol_INVERTER)
     int8_t REFUsol_rx;
     int8_t REFUsol_tx;

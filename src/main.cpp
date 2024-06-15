@@ -10,6 +10,7 @@
 #include "Led_Single.h"
 #include "Led_Strip.h"
 #include "MessageOutput.h"
+#include "SerialPortManager.h"
 #include "REFUsolRS485Receiver.h"
 #include "VictronMppt.h"
 #include "Huawei_can.h"
@@ -98,6 +99,8 @@ void setup()
 
     CONFIG_T& config = Configuration.get();
     PinMapping.init(String(Configuration.get().Dev_PinMapping)); // Load PinMapping
+
+    SerialPortManager.init();
 
     // Initialize WiFi
     NetworkSettings.init(scheduler);

@@ -186,6 +186,7 @@ private:
     bool enable(void);
     bool getCanCharger(void);
     bool parseCanPackets(void);
+    void calcPower();
     void onReceive(uint8_t* frame, uint8_t len);
     const char* Word2BinaryString(uint16_t w);
     uint8_t* Float2Uint(float value);

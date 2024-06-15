@@ -15,11 +15,10 @@ static constexpr char TAG[] = "[REFUsol]";
 #include "Configuration.h"
 #include "MessageOutput.h"
 #include "PinMapping.h"
+#include "SerialPortManager.h"
 #include <Arduino.h>
 #include <HardwareSerial.h>
 #include <driver/uart.h>
-
-HardwareSerial REFUsolSerial(1);    // HW Serial 1, Victron not usable !!!
 
 REFUsolRS485ReceiverClass REFUsol;
 
@@ -67,7 +66,12 @@ void REFUsolRS485ReceiverClass::updateSettings(void)
 
     if (!_initialized) {
         RS485BaudRate = 57600;
-        REFUsolSerial.begin(RS485BaudRate, SERIAL_8N1, pin.REFUsol_rx, pin.REFUsol_tx);
+        auto oHwSerialPort = SerialPortManager.allocatePort(_serialPortOwner);
+        if (!oHwSerialPort) { return; }
+
+        _upSerial = std::make_unique<HardwareSerial>(*oHwSerialPort);
+
+        _upSerial->begin(RS485BaudRate, SERIAL_8N1, pin.REFUsol_rx, pin.REFUsol_tx);
         MessageOutput.printf("RS485 (Type %d) port rx = %d, tx = %d", pin.REFUsol_rts >= 0 ? 1 : 2, pin.REFUsol_rx, pin.REFUsol_tx);
         if (pin.REFUsol_rts >= 0) {
             /*
@@ -78,17 +82,17 @@ void REFUsolRS485ReceiverClass::updateSettings(void)
              *         In this case we only need a TX and RX pin.
              */
             MessageOutput.printf(", rts = %d", pin.REFUsol_rts);
-            REFUsolSerial.setPins(pin.REFUsol_rx, pin.REFUsol_tx, UART_PIN_NO_CHANGE, pin.REFUsol_rts);
+            _upSerial->setPins(pin.REFUsol_rx, pin.REFUsol_tx, UART_PIN_NO_CHANGE, pin.REFUsol_rts);
         }
         ESP_ERROR_CHECK(uart_set_mode(1, UART_MODE_RS485_HALF_DUPLEX));
 
         // Set read timeout of UART TOUT feature
         ESP_ERROR_CHECK(uart_set_rx_timeout(1, ECHO_READ_TOUT));
 
-        REFUsolSerial.flush();
+        _upSerial->flush();
 
-        while (REFUsolSerial.available()) { // clear RS485 read buffer
-            REFUsolSerial.read();
+        while (_upSerial->available()) { // clear RS485 read buffer
+            _upSerial->read();
             vTaskDelay(1);
         }
 
@@ -152,8 +156,15 @@ void REFUsolRS485ReceiverClass::deinit(void)
         return;
     }
 
-    MessageOutput.printf("%s RS485 driver uninstalled\r\n", TAG);
+    _upSerial->end();
+
+    if (PinMapping.get().REFUsol_rts >= 0) { pinMode(PinMapping.get().REFUsol_rts, INPUT); }
+
+    SerialPortManager.freePort(_serialPortOwner);
+
     _initialized = false;
+
+    MessageOutput.printf("%s RS485 driver uninstalled\r\n", TAG);
 }
 
 void REFUsolRS485ReceiverClass::loop()
@@ -172,7 +183,7 @@ void REFUsolRS485ReceiverClass::loop()
 
     uint32_t t_start = millis();
 
-    if (REFUsolSerial.available()) {
+    if (_upSerial->available()) {
         parse();
     }
 
@@ -445,9 +456,9 @@ void REFUsolRS485ReceiverClass::sendTelegram(void)
     //  int StartInterval = (int)((1000000.0*2*(1+8+1+1))/RS485BaudRate+0.5);
     //  digitalWrite(RTSPin, RS485Transmit);
     //  delayMicroseconds(StartInterval);
-    REFUsolSerial.write(sTelegram.buffer, sTelegram.LGE + 1);
-    REFUsolSerial.write(sTelegram.BCC);
-    REFUsolSerial.flush();
+    _upSerial->write(sTelegram.buffer, sTelegram.LGE + 1);
+    _upSerial->write(sTelegram.BCC);
+    _upSerial->flush();
     //  digitalWrite(RTSPin, RS485Receive);
 }
 
@@ -459,23 +470,23 @@ uint8_t REFUsolRS485ReceiverClass::receiveTelegram(void)
 
     uint32_t t1 = millis(); // maximum response time 20ms timeout for first character
     while (1) {
-        if (REFUsolSerial.available())
+        if (_upSerial->available())
             break;
         if (millis() - t1 > MaximumResponseTime)
             return idx;
     }
     idx++;
-    rTelegram.STX = REFUsolSerial.read();
+    rTelegram.STX = _upSerial->read();
 
     t1 = millis(); // 10ms timeout for third character
     while (1) {
-        if (REFUsolSerial.available())
+        if (_upSerial->available())
             break;
         if (millis() - t1 > 10)
             return idx;
     }
     idx++;
-    rTelegram.LGE = REFUsolSerial.read();
+    rTelegram.LGE = _upSerial->read();
     if (rTelegram.LGE < 3) {
         MessageOutput.printf("%s ERROR: receive buffer, LGE too small %d\r\n", TAG, rTelegram.LGE);
         error = true;
@@ -489,19 +500,19 @@ uint8_t REFUsolRS485ReceiverClass::receiveTelegram(void)
 
     t1 = millis(); // 10ms timeout for second character
     while (1) {
-        if (REFUsolSerial.available())
+        if (_upSerial->available())
             break;
         if (millis() - t1 > 10)
             return idx;
     }
     idx++;
-    rTelegram.ADR = REFUsolSerial.read();
+    rTelegram.ADR = _upSerial->read();
 
     TimeOut = (uint32_t)((1 + 8 + 1 + 1) * 1000.0 / RS485BaudRate * rTelegram.LGE) + 20;
     t1 = millis(); // 0.625ms * LGE timeout for remaining character
     while (1) {
-        if (REFUsolSerial.available())
-            rTelegram.buffer[idx++] = REFUsolSerial.read();
+        if (_upSerial->available())
+            rTelegram.buffer[idx++] = _upSerial->read();
         if (millis() - t1 > TimeOut)
             break;
         if (idx > 255) {

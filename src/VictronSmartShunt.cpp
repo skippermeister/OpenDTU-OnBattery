@@ -6,6 +6,13 @@
 #include "MessageOutput.h"
 #include "PinMapping.h"
 
+void VictronSmartShunt::deinit()
+{
+    SerialPortManager.freePort(_serialPortOwner);
+
+    MessageOutput.printf("%s Serial driver uninstalled\r\n", TAG);
+}
+
 bool VictronSmartShunt::init()
 {
     MessageOutput.println("Initialize Ve.Direct interface...");
@@ -21,7 +28,10 @@ bool VictronSmartShunt::init()
     auto tx = static_cast<gpio_num_t>(pin.battery_tx);
     auto rx = static_cast<gpio_num_t>(pin.battery_rx);
 
-    VeDirectShunt.init(rx, tx, &MessageOutput, VictronMppt.getVerboseLogging());
+    auto oHwSerialPort = SerialPortManager.allocatePort(_serialPortOwner);
+    if (!oHwSerialPort) { return false; }
+
+    VeDirectShunt.init(rx, tx, &MessageOutput, VictronMppt.getVerboseLogging(), *oHwSerialPort);
     return true;
 }
 

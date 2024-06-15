@@ -57,19 +57,14 @@ void WebApiWsHuaweiLiveClass::sendDataTaskCb()
 
     try {
         std::lock_guard<std::mutex> lock(_mutex);
-        DynamicJsonDocument root(1024);
-        if (Utils::checkJsonAlloc(root, __FUNCTION__, __LINE__)) {
-            JsonVariant var = root;
-            generateJsonResponse(var);
+        JsonDocument root;
+        JsonVariant var = root;
 
+        generateCommonJsonResponse(var);
+
+        if (Utils::checkJsonAlloc(root, __FUNCTION__, __LINE__)) {
             String buffer;
             serializeJson(root, buffer);
-
-            if (Configuration.get().Security.AllowReadonly) {
-                _ws.setAuthentication("", "");
-            } else {
-                _ws.setAuthentication(AUTH_USERNAME, Configuration.get().Security.Password);
-            }
 
             _ws.textAll(buffer);
         }
@@ -80,7 +75,7 @@ void WebApiWsHuaweiLiveClass::sendDataTaskCb()
     }
 }
 
-void WebApiWsHuaweiLiveClass::generateJsonResponse(JsonVariant& root)
+void WebApiWsHuaweiLiveClass::generateCommonJsonResponse(JsonVariant& root)
 {
     const RectifierParameters_t * rp = HuaweiCan.get();
 
@@ -110,15 +105,9 @@ void WebApiWsHuaweiLiveClass::generateJsonResponse(JsonVariant& root)
 void WebApiWsHuaweiLiveClass::onWebsocketEvent(AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType type, void* arg, uint8_t* data, size_t len)
 {
     if (type == WS_EVT_CONNECT) {
-        char str[64];
-        snprintf(str, sizeof(str), "Websocket: [%s][%u] connect", server->url(), client->id());
-        Serial.println(str);
-        MessageOutput.println(str);
+        MessageOutput.printf("Websocket: [%s][%u] connect", server->url(), client->id());
     } else if (type == WS_EVT_DISCONNECT) {
-        char str[64];
-        snprintf(str, sizeof(str), "Websocket: [%s][%u] disconnect", server->url(), client->id());
-        Serial.println(str);
-        MessageOutput.println(str);
+        MessageOutput.printf("Websocket: [%s][%u] disconnect", server->url(), client->id());
     }
 }
 
@@ -129,13 +118,13 @@ void WebApiWsHuaweiLiveClass::onLivedataStatus(AsyncWebServerRequest* request)
     }
     try {
         std::lock_guard<std::mutex> lock(_mutex);
-        AsyncJsonResponse* response = new AsyncJsonResponse(false, 1024U);
+        AsyncJsonResponse* response = new AsyncJsonResponse();
         auto& root = response->getRoot();
 
-        generateJsonResponse(root);
+        generateCommonJsonResponse(root);
 
-        response->setLength();
-        request->send(response);
+        WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
+
     } catch (std::bad_alloc& bad_alloc) {
         MessageOutput.printf("Calling /api/huaweilivedata/status has temporarily run out of resources. Reason: \"%s\".\r\n", bad_alloc.what());
         WebApi.sendTooManyRequests(request);

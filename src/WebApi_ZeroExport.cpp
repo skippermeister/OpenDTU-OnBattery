@@ -36,7 +36,7 @@ void WebApiZeroExportClass::onStatus(AsyncWebServerRequest* request)
     root["updatesonly"] = cZeroExport.UpdatesOnly;
     root["verbose_logging"] = ZeroExport.getVerboseLogging();
 //    root["InverterId"] = cZeroExport.InverterId; // the bid mask of the inverter Ids
-    JsonArray serials = root.createNestedArray("serials");
+    JsonArray serials = root["serials"].to<JsonArray>();
     for (uint8_t i = 0; i < INV_MAX_COUNT; i++) {
         if (cZeroExport.serials[i] != 0) {
             serials[i] = String(cZeroExport.serials[i]);
@@ -46,15 +46,14 @@ void WebApiZeroExportClass::onStatus(AsyncWebServerRequest* request)
     root["MinimumLimit"] = cZeroExport.MinimumLimit;
     root["PowerHysteresis"] = cZeroExport.PowerHysteresis;
     root["Tn"] = cZeroExport.Tn;
-
+/*
     {
         String buffer;
         serializeJsonPretty(root, buffer);
         Serial.println(buffer);
     }
-
-    response->setLength();
-    request->send(response);
+*/
+    WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 }
 
 void WebApiZeroExportClass::onMetaData(AsyncWebServerRequest* request)
@@ -68,12 +67,12 @@ void WebApiZeroExportClass::onMetaData(AsyncWebServerRequest* request)
         if (config.Inverter[i].Serial != 0) { ++invAmount; }
     }
 
-    AsyncJsonResponse* response = new AsyncJsonResponse(false, 128 + 256 * invAmount);
+    AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& root = response->getRoot();
 
     root["powerlimiter_inverter_serial"] = config.PowerLimiter.InverterId;
 
-    JsonObject inverters = root.createNestedObject("inverters");
+    JsonObject inverters = root["inverters"].to<JsonObject>();
     for (uint8_t i = 0; i < INV_MAX_COUNT; i++) {
         if (config.Inverter[i].Serial == 0) { continue; }
 
@@ -81,7 +80,7 @@ void WebApiZeroExportClass::onMetaData(AsyncWebServerRequest* request)
         // rather than the hex represenation as used when handling the inverter
         // serial elsewhere in the web application, because in this case, the
         // serial is actually not displayed but only used as a value/index.
-        JsonObject obj = inverters.createNestedObject(String(config.Inverter[i].Serial));
+        JsonObject obj = inverters[String(config.Inverter[i].Serial)].to<JsonObject>();
         obj["pos"] = i;
         obj["name"] = String(config.Inverter[i].Name);
 /*
@@ -102,14 +101,14 @@ void WebApiZeroExportClass::onMetaData(AsyncWebServerRequest* request)
         }
     }
 
+/*
     {
         String buffer;
         serializeJsonPretty(root, buffer);
         MessageOutput.println(buffer);
     }
-
-    response->setLength();
-    request->send(response);
+*/
+    WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 }
 
 void WebApiZeroExportClass::onAdminGet(AsyncWebServerRequest* request)
@@ -128,39 +127,12 @@ void WebApiZeroExportClass::onAdminPost(AsyncWebServerRequest* request)
     }
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
-    JsonObject retMsg = response->getRoot();
-    retMsg["type"] = Warning;
-
-    if (!request->hasParam("data", true)) {
-        retMsg["message"] = NoValuesFound;
-        retMsg["code"] = WebApiError::GenericNoValueFound;
-        response->setLength();
-        request->send(response);
+    JsonDocument root;
+    if (!WebApi.parseRequestData(request, response, root)) {
         return;
     }
 
-    String json = request->getParam("data", true)->value();
-
-    //    MessageOutput.println(json);
-
-    if (json.length() > 2 * 1024) {
-        retMsg["message"] = DataTooLarge;
-        retMsg["code"] = WebApiError::GenericDataTooLarge;
-        response->setLength();
-        request->send(response);
-        return;
-    }
-
-    DynamicJsonDocument root(2 * 1024);
-    DeserializationError error = deserializeJson(root, json);
-
-    if (error) {
-        retMsg["message"] = FailedToParseData;
-        retMsg["code"] = WebApiError::GenericParseError;
-        response->setLength();
-        request->send(response);
-        return;
-    }
+    auto& retMsg = response->getRoot();
 
     if (!(root.containsKey("enabled")
             && root.containsKey("updatesonly")
@@ -172,17 +144,16 @@ void WebApiZeroExportClass::onAdminPost(AsyncWebServerRequest* request)
             && root.containsKey("Tn"))) {
         retMsg["message"] = ValuesAreMissing;
         retMsg["code"] = WebApiError::GenericValueMissing;
-        response->setLength();
-        request->send(response);
+        WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;
     }
 
-    {
+/*    {
         String buffer;
         serializeJsonPretty(root, buffer);
         MessageOutput.println(buffer);
     }
-
+*/
     ZeroExport_CONFIG_T& cZeroExport = Configuration.get().ZeroExport;
     ZeroExport.setVerboseLogging(root["verbose_logging"].as<bool>());
     cZeroExport.Enabled = root["enabled"].as<bool>();
@@ -214,6 +185,5 @@ void WebApiZeroExportClass::onAdminPost(AsyncWebServerRequest* request)
     retMsg["message"] = SettingsSaved;
     retMsg["code"] = WebApiError::GenericSuccess;
 
-    response->setLength();
-    request->send(response);
+    WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 }

@@ -57,10 +57,10 @@ void WebApiBatteryClass::onStatus(AsyncWebServerRequest* request)
     root["max_charge_temp"] = cBattery.MaxChargeTemperature;
     root["min_discharge_temp"] = cBattery.MinDischargeTemperature;
     root["max_discharge_temp"] = cBattery.MaxDischargeTemperature;
+    root["stop_charging_soc"] = cBattery.Stop_Charging_BatterySoC_Threshold;
     root["verbose_logging"] = Battery._verboseLogging;
 
-    response->setLength();
-    request->send(response);
+    WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 }
 
 void WebApiBatteryClass::onAdminGet(AsyncWebServerRequest* request)
@@ -75,37 +75,12 @@ void WebApiBatteryClass::onAdminPost(AsyncWebServerRequest* request)
     }
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
+    JsonDocument root;
+    if (!WebApi.parseRequestData(request, response, root)) {
+        return;
+    }
+
     auto& retMsg = response->getRoot();
-    retMsg["type"] = Warning;
-
-    if (!request->hasParam("data", true)) {
-        retMsg["message"] = NoValuesFound;
-        retMsg["code"] = WebApiError::GenericNoValueFound;
-        response->setLength();
-        request->send(response);
-        return;
-    }
-
-    String json = request->getParam("data", true)->value();
-
-    if (json.length() > 2048) {
-        retMsg["message"] = DataTooLarge;
-        retMsg["code"] = WebApiError::GenericDataTooLarge;
-        response->setLength();
-        request->send(response);
-        return;
-    }
-
-    DynamicJsonDocument root(2048);
-    const DeserializationError error = deserializeJson(root, json);
-
-    if (error) {
-        retMsg["message"] = FailedToParseData;
-        retMsg["code"] = WebApiError::GenericParseError;
-        response->setLength();
-        request->send(response);
-        return;
-    }
 
     if (!(root.containsKey("enabled")
             && root.containsKey("pollinterval")
@@ -118,8 +93,7 @@ void WebApiBatteryClass::onAdminPost(AsyncWebServerRequest* request)
             && root.containsKey("verbose_logging"))) {
         retMsg["message"] = ValuesAreMissing;
         retMsg["code"] = WebApiError::GenericValueMissing;
-        response->setLength();
-        request->send(response);
+        WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;
     }
 
@@ -128,9 +102,7 @@ void WebApiBatteryClass::onAdminPost(AsyncWebServerRequest* request)
         retMsg["code"] = WebApiError::MqttPublishInterval;
         retMsg["param"]["min"] = 5;
         retMsg["param"]["max"] = 65535;
-
-        response->setLength();
-        request->send(response);
+        WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;
     }
 
@@ -156,15 +128,19 @@ void WebApiBatteryClass::onAdminPost(AsyncWebServerRequest* request)
     strlcpy(cBattery.Mqtt.SocTopic, root["mqtt_soc_topic"].as<String>().c_str(), sizeof(cBattery.Mqtt.SocTopic));
     strlcpy(cBattery.Mqtt.VoltageTopic, root["mqtt_voltage_topic"].as<String>().c_str(), sizeof(cBattery.Mqtt.VoltageTopic));
 #endif
+    cBattery.Stop_Charging_BatterySoC_Threshold = root["stop_charging_soc"].as<uint8_t>();
+
     Battery._verboseLogging = root["verbose_logging"].as<bool>();
 
     WebApi.writeConfig(retMsg);
 
-    response->setLength();
-    request->send(response);
+    WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 
     Battery.updateSettings();
 #ifdef USE_HASS
     MqttHandleBatteryHass.forceUpdate();
+
+    // potentially make SoC thresholds auto-discoverable
+    MqttHandlePowerLimiterHass.forceUpdate();
 #endif
 }

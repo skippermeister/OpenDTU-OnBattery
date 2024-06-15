@@ -134,7 +134,52 @@ frozen::string const& veStruct::getPidAsString() const
 		{ 0xA3F0, "Smart BuckBoost 12V/12V-50A" },
 	};
 
-	return getAsString(values, PID);
+	return getAsString(values, productID_PID);
+}
+
+/*
+ * This function returns the firmware version as an integer, disregarding
+ * release candidate marks.
+ */
+uint32_t veStruct::getFwVersionAsInteger() const
+{
+	char const* strVersion = firmwareVer_FW;
+
+	// VE.Direct protocol manual states that the first char can be a non-digit,
+	// in which case that char represents a release candidate version
+	if (strVersion[0] < '0' || strVersion[0] > '9') { ++strVersion; }
+
+	return static_cast<uint32_t>(strtoul(strVersion, nullptr, 10));
+}
+
+/*
+ * This function returns the firmware version as readable text.
+ */
+String veStruct::getFwVersionFormatted() const
+{
+	char const* strVersion = firmwareVer_FW;
+	char rc = 0;
+
+	// VE.Direct protocol manual states that the first char can be a non-digit,
+	// in which case that char represents a release candidate version
+	if (strVersion[0] < '0' || strVersion[0] > '9') {
+		rc = strVersion[0];
+		++strVersion;
+	}
+
+	// SmartShunt firmware version is transmitted with leading zero(es)
+	while (strVersion[0] == '0') { ++strVersion; }
+
+	String res(strVersion[0]);
+	res += ".";
+	res += strVersion + 1;
+
+	if (rc != 0) {
+		res += "-rc-";
+		res += rc;
+	}
+
+	return res;
 }
 
 /*
@@ -154,7 +199,7 @@ frozen::string const& veMpptStruct::getCsAsString() const
 		{ 252, "External Control" }
 	};
 
-	return getAsString(values, CS);
+	return getAsString(values, currentState_CS);
 }
 
 /*
@@ -168,7 +213,7 @@ frozen::string const& veMpptStruct::getMpptAsString() const
 		{ 2, "MPP Tracker active" }
 	};
 
-	return getAsString(values, MPPT);
+	return getAsString(values, stateOfTracker_MPPT);
 }
 
 /*
@@ -199,7 +244,7 @@ frozen::string const& veMpptStruct::getErrAsString() const
 		{ 118, "User settings invalid" }
 	};
 
-	return getAsString(values, ERR);
+	return getAsString(values, errorCode_ERR);
 }
 
 /*
@@ -220,7 +265,7 @@ frozen::string const& veMpptStruct::getOrAsString() const
 		{ 0x00000100, "Analysing input voltage" }
 	};
 
-	return getAsString(values, OR);
+	return getAsString(values, offReason_OR);
 }
 
 

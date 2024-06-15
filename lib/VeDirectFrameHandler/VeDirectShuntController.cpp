@@ -3,9 +3,9 @@
 
 VeDirectShuntController VeDirectShunt;
 
-void VeDirectShuntController::init(int8_t rx, int8_t tx, Print* msgOut, bool verboseLogging)
+void VeDirectShuntController::init(int8_t rx, int8_t tx, Print* msgOut, bool verboseLogging, uint8_t hwSerialPort)
 {
-	VeDirectFrameHandler::init("SmartShunt", rx, tx, msgOut, verboseLogging, 2);
+	VeDirectFrameHandler::init("SmartShunt", rx, tx, msgOut, verboseLogging, hwSerialPort);
 }
 
 bool VeDirectShuntController::processTextDataDerived(std::string const& name, std::string const& value)
@@ -33,6 +33,10 @@ bool VeDirectShuntController::processTextDataDerived(std::string const& name, st
 	}
 	if (name == "ALARM") {
 		_tmpFrame.ALARM = (value == "ON");
+		return true;
+	}
+	if (name == "AR") {
+		_tmpFrame.alarmReason_AR = atoi(value.c_str());
 		return true;
 	}
 	if (name == "H1") {
@@ -103,10 +107,26 @@ bool VeDirectShuntController::processTextDataDerived(std::string const& name, st
 		_tmpFrame.H17 = atoi(value.c_str());
 		return true;
 	}
+	if (name == "VM") {
+		_tmpFrame.VM = atoi(value.c_str());
+		return true;
+	}
+	if (name == "DM") {
+		_tmpFrame.DM = atoi(value.c_str());
+		return true;
+	}
 	if (name == "H18") {
 		_tmpFrame.H18 = atoi(value.c_str());
 		return true;
 	}
-
+	if (name == "BMV") {
+		// This field contains a textual description of the BMV model,
+		// for example 602S or 702. It is deprecated, refer to the field PID instead.
+		return true;
+	}
+	if (name == "MON") {
+		_tmpFrame.dcMonitorMode_MON = static_cast<int8_t>(atoi(value.c_str()));
+		return true;
+	}
 	return false;
 }

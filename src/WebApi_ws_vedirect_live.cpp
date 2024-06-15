@@ -80,21 +80,14 @@ void WebApiWsVedirectLiveClass::sendDataTaskCb()
     if (fullUpdate || updateAvailable) {
         try {
             std::lock_guard<std::mutex> lock(_mutex);
-            DynamicJsonDocument root(responseSize());
+            JsonDocument root;
+            JsonVariant var = root;
+
+            generateCommonJsonResponse(var, fullUpdate);
+
             if (Utils::checkJsonAlloc(root, __FUNCTION__, __LINE__)) {
-                JsonVariant var = root;
-                generateJsonResponse(var, fullUpdate);
-
-                if (Utils::checkJsonOverflow(root, __FUNCTION__, __LINE__)) { return; }
-
                 String buffer;
                 serializeJson(root, buffer);
-
-                if (Configuration.get().Security.AllowReadonly) {
-                    _ws.setAuthentication("", "");
-                } else {
-                    _ws.setAuthentication(AUTH_USERNAME, Configuration.get().Security.Password);
-                }
 
                 _ws.textAll(buffer);
             }
@@ -113,38 +106,38 @@ void WebApiWsVedirectLiveClass::sendDataTaskCb()
 }
 
 template <typename T>
-void addOutputValue(const JsonObject& root, std::string const& name,
+void addOutputValue(const JsonObject& output, std::string const& name,
     T&& value, std::string const& unit, uint8_t precision)
 {
-    auto jsonValue = root["output"][name];
+    auto jsonValue = output[name];
     jsonValue["v"] = value;
     jsonValue["u"] = unit;
     jsonValue["d"] = precision;
 }
 
 template <typename T>
-void addInputValue(const JsonObject& root, std::string const& name,
+void addInputValue(const JsonObject& input, std::string const& name,
     T&& value, std::string const& unit, uint8_t precision)
 {
-    auto jsonValue = root["input"][name];
+    auto jsonValue = input[name];
     jsonValue["v"] = value;
     jsonValue["u"] = unit;
     jsonValue["d"] = precision;
 }
 
 template <typename T>
-void addDeviceValue(const JsonObject& root, std::string const& name,
+void addDeviceValue(const JsonObject& device, std::string const& name,
     T&& value, std::string const& unit, uint8_t precision)
 {
-    auto jsonValue = root["device"][name];
+    auto jsonValue = device[name];
     jsonValue["v"] = value;
     jsonValue["u"] = unit;
     jsonValue["d"] = precision;
 }
 
-void WebApiWsVedirectLiveClass::generateJsonResponse(JsonVariant& root, bool fullUpdate)
+void WebApiWsVedirectLiveClass::generateCommonJsonResponse(JsonVariant& root, bool fullUpdate)
 {
-    const JsonObject &array = root["vedirect"].createNestedObject("instances");
+    const JsonObject &array = root["vedirect"]["instances"].to<JsonObject>();
     root["vedirect"]["full_update"] = fullUpdate;
 
     for (size_t idx = 0; idx < VictronMppt.controllerAmount(); ++idx) {
@@ -153,10 +146,10 @@ void WebApiWsVedirectLiveClass::generateJsonResponse(JsonVariant& root, bool ful
 
         if (!fullUpdate && !hasUpdate(idx)) { continue; }
 
-        String serial(optMpptData->SER);
+        String serial(optMpptData->serialNr_SER);
         if (serial.isEmpty()) { continue; } // serial required as index
 
-        const JsonObject &nested = array.createNestedObject(serial);
+        const JsonObject &nested = array[serial].to<JsonObject>();
         nested["data_age_ms"] = VictronMppt.getDataAgeMillis(idx);
         populateJson(nested, *optMpptData);
     }
@@ -171,64 +164,66 @@ void WebApiWsVedirectLiveClass::generateJsonResponse(JsonVariant& root, bool ful
 void WebApiWsVedirectLiveClass::populateJson(const JsonObject &root, const VeDirectMpptController::data_t &mpptData) {
     // device info
     root["product_id"] = mpptData.getPidAsString();
-    root["firmware_version"] = String(mpptData.FW);
+    root["firmware_version"] = mpptData.getFwVersionFormatted();
 
-    const JsonObject &values = root.createNestedObject("values");
+    const JsonObject values = root["values"].to<JsonObject>();
 
-    const JsonObject &device = values.createNestedObject("device");
+    const JsonObject device = values["device"].to<JsonObject>();
     if (mpptData.Capabilities.second & (1<<0)) {  // Load output present ?
-        device["LOAD"] = mpptData.LOAD ? "ON" : "OFF";
+        device["LOAD"] = mpptData.loadOutputState_LOAD ? "ON" : "OFF";
         if (mpptData.Capabilities.second & (1<<12) ) // Load current IL in Text protocol
-            addDeviceValue(values, "IL", mpptData.IL, "A", 2);
+            addDeviceValue(device, "IL", mpptData.loadCurrent_IL_mA/1000.0, "A", 2);
         else if (mpptData.LoadCurrent.first > 0)
-            addDeviceValue(values, "IL", mpptData.LoadCurrent.second / 1000.0, "A", 2);
+            addDeviceValue(device, "IL", mpptData.LoadCurrent.second / 1000.0, "A", 2);
         if (mpptData.LoadOutputVoltage.first > 0)
-            addDeviceValue(values, "LoadOutputVoltage", mpptData.LoadOutputVoltage.second / 1000.0, "V", 2);
+            addDeviceValue(device, "LoadOutputVoltage", mpptData.LoadOutputVoltage.second / 1000.0, "V", 2);
     }
     device["CS"]   = mpptData.getCsAsString();
     device["MPPT"] = mpptData.getMpptAsString();
     device["OR"]   = mpptData.getOrAsString();
     device["ERR"]  = mpptData.getErrAsString();
-    addDeviceValue(root, "HSDS", mpptData.HSDS, "d", 0);
+    addDeviceValue(device, "HSDS", mpptData.daySequenceNr_HSDS, "d", 0);
     if (mpptData.ChargerMaximumCurrent.first > 0)
-        addDeviceValue(values, "ChargerMaxCurrent", mpptData.ChargerMaximumCurrent.second / 1000.0, "A", 1);
+        addDeviceValue(device, "ChargerMaxCurrent", mpptData.ChargerMaximumCurrent.second / 1000.0, "A", 1);
     if (mpptData.VoltageSettingsRange.first > 0) {
         device["VoltageSettingsRange"] = String(mpptData.VoltageSettingsRange.second & 0xFF)
                 + " - "
                 + String(mpptData.VoltageSettingsRange.second >> 8) + String(" V");
-//        addDeviceValue(values, "VoltageSettingsMin", mpptData.VoltageSettingsRange.second & 0xFF, "V", 0);
-//        addDeviceValue(values, "VoltageSettingsMax", mpptData.VoltageSettingsRange.second >> 8, "V", 0);
+//        addDeviceValue(device, "VoltageSettingsMin", mpptData.VoltageSettingsRange.second & 0xFF, "V", 0);
+//        addDeviceValue(device, "VoltageSettingsMax", mpptData.VoltageSettingsRange.second >> 8, "V", 0);
     }
     if (mpptData.MpptTemperatureMilliCelsius.first > 0)
-        addDeviceValue(values, "MpptTemperature", mpptData.MpptTemperatureMilliCelsius.second / 1000.0, "°C", 1);
+        addDeviceValue(device, "MpptTemperature", mpptData.MpptTemperatureMilliCelsius.second / 1000.0, "°C", 1);
 
     // battery info
-    addOutputValue(values, "P", mpptData.P, "W", 0);
-    addOutputValue(values, "V", mpptData.V, "V", 2);
-    addOutputValue(values, "I", mpptData.I, "A", 2);
-    addOutputValue(values, "E", mpptData.E, "%", 1);
+    const JsonObject output = values["output"].to<JsonObject>();
+    addOutputValue(output, "P", mpptData.batteryOutputPower_W, "W", 0);
+    addOutputValue(output, "V", mpptData.batteryVoltage_V_mV/1000.0, "V", 2);
+    addOutputValue(output, "I", mpptData.batteryCurrent_I_mA/1000.0, "A", 2);
+    addOutputValue(output, "E", mpptData.mpptEfficiency_Percent, "%", 1);
     if (mpptData.BatteryType.first > 0)
-        values["output"]["BatteryType"]   = mpptData.getBatteryTypeAsString();
+        output["BatteryType"]   = mpptData.getBatteryTypeAsString();
     if (mpptData.BatteryAbsorptionVoltage.first > 0)
-        addOutputValue(values, "BatteryAbsorptionVoltage", mpptData.BatteryAbsorptionVoltage.second / 1000.0, "V", 2);
+        addOutputValue(output, "BatteryAbsorptionVoltage", mpptData.BatteryAbsorptionVoltage.second / 1000.0, "V", 2);
     if (mpptData.BatteryAbsorptionVoltage.first > 0)
-        addOutputValue(values, "BatteryFloatVoltage", mpptData.BatteryFloatVoltage.second / 1000.0, "V", 2);
+        addOutputValue(output, "BatteryFloatVoltage", mpptData.BatteryFloatVoltage.second / 1000.0, "V", 2);
     if (mpptData.BatteryFloatVoltage.first > 0)
-        addOutputValue(values, "BatteryMaxCurrent", mpptData.BatteryMaximumCurrent.second / 1000.0, "A", 1);
+        addOutputValue(output, "BatteryMaxCurrent", mpptData.BatteryMaximumCurrent.second / 1000.0, "A", 1);
     if (mpptData.SmartBatterySenseTemperatureMilliCelsius.first > 0)
-        addOutputValue(values, "BatteryTemperature", mpptData.SmartBatterySenseTemperatureMilliCelsius.second / 1000.0, "°C", 1);
+        addOutputValue(output, "BatteryTemperature", mpptData.SmartBatterySenseTemperatureMilliCelsius.second / 1000.0, "°C", 1);
 
     // panel info
+    const JsonObject input = values["input"].to<JsonObject>();
     if (mpptData.NetworkTotalDcInputPowerMilliWatts.first > 0)
-        addInputValue(values, "NetworkPower", mpptData.NetworkTotalDcInputPowerMilliWatts.second / 1000.0, "W", 0);
-    addInputValue(values, "PPV", mpptData.PPV, "W", 0);
-    addInputValue(values, "VPV", mpptData.VPV, "V", 2);
-    addInputValue(values, "IPV", mpptData.IPV, "A", 2);
-    addInputValue(values, "YieldToday", mpptData.H20, "kWh", 3);
-    addInputValue(values, "YieldYesterday", mpptData.H22, "kWh", 3);
-    addInputValue(values, "YieldTotal", mpptData.H19, "kWh", 3);
-    addInputValue(values, "MaximumPowerToday", mpptData.H21, "W", 0);
-    addInputValue(values, "MaximumPowerYesterday", mpptData.H23, "W", 0);
+        addInputValue(input, "NetworkPower", mpptData.NetworkTotalDcInputPowerMilliWatts.second / 1000.0, "W", 0);
+    addInputValue(input, "PPV", mpptData.panelPower_PPV_W, "W", 0);
+    addInputValue(input, "VPV", mpptData.panelVoltage_VPV_mV/1000.0, "V", 2);
+    addInputValue(input, "IPV", mpptData.panelCurrent_mA/1000.0, "A", 2);
+    addInputValue(input, "YieldToday", mpptData.yieldToday_H20_Wh/1000.0, "kWh", 2);
+    addInputValue(input, "YieldYesterday", mpptData.yieldYesterday_H22_Wh/1000.0, "kWh", 2);
+    addInputValue(input, "YieldTotal", mpptData.yieldTotal_H19_Wh/1000.0, "kWh", 2);
+    addInputValue(input, "MaximumPowerToday", mpptData.maxPowerToday_H21_W, "W", 0);
+    addInputValue(input, "MaximumPowerYesterday", mpptData.maxPowerYesterday_H23_W, "W", 0);
 }
 
 void WebApiWsVedirectLiveClass::onWebsocketEvent(AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType type, void* arg, uint8_t* data, size_t len)
@@ -247,15 +242,12 @@ void WebApiWsVedirectLiveClass::onLivedataStatus(AsyncWebServerRequest* request)
     }
     try {
         std::lock_guard<std::mutex> lock(_mutex);
-        AsyncJsonResponse* response = new AsyncJsonResponse(false, responseSize());
+        AsyncJsonResponse* response = new AsyncJsonResponse();
         auto& root = response->getRoot();
 
-        generateJsonResponse(root, true/*fullUpdate*/);
+        generateCommonJsonResponse(root, true/*fullUpdate*/);
 
-        if (Utils::checkJsonOverflow(root, __FUNCTION__, __LINE__)) { return; }
-
-        response->setLength();
-        request->send(response);
+        WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 
     } catch (std::bad_alloc& bad_alloc) {
         MessageOutput.printf("Calling /api/vedirectlivedata/status has temporarily run out of resources. Reason: \"%s\".\r\n", bad_alloc.what());

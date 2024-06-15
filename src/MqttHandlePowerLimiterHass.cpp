@@ -115,11 +115,7 @@ void MqttHandlePowerLimiterHassClass::publishSelect(
     const String cmdTopic = MqttSettings.getPrefix() + "powerlimiter/cmd/" + commandTopic;
     const String statTopic = MqttSettings.getPrefix() + "powerlimiter/status/" + stateTopic;
 
-    DynamicJsonDocument root(1024);
-    if (!Utils::checkJsonAlloc(root, __FUNCTION__, __LINE__)) {
-        return;
-    }
-
+    JsonDocument root;
     root["name"] = caption;
     root["uniq_id"] = selectId;
     if (strcmp(icon, "")) {
@@ -128,15 +124,17 @@ void MqttHandlePowerLimiterHassClass::publishSelect(
     root["ent_cat"] = category;
     root["cmd_t"] = cmdTopic;
     root["stat_t"] = statTopic;
-    JsonArray options = root.createNestedArray("options");
+    JsonArray options = root["options"].to<JsonArray>();
     options.add("0");
     options.add("1");
     options.add("2");
 
-    JsonObject deviceObj = root.createNestedObject("dev");
+    JsonObject deviceObj = root["dev"].to<JsonObject>();
     createDeviceInfo(deviceObj);
 
-    if (Utils::checkJsonOverflow(root, __FUNCTION__, __LINE__)) { return; }
+    if (!Utils::checkJsonAlloc(root, __FUNCTION__, __LINE__)) {
+        return;
+    }
 
     String buffer;
     serializeJson(root, buffer);
@@ -158,11 +156,7 @@ void MqttHandlePowerLimiterHassClass::publishNumber(
     const String cmdTopic = MqttSettings.getPrefix() + "powerlimiter/cmd/" + commandTopic;
     const String statTopic = MqttSettings.getPrefix() + "powerlimiter/status/" + stateTopic;
 
-    DynamicJsonDocument root(1024);
-    if (!Utils::checkJsonAlloc(root, __FUNCTION__, __LINE__)) {
-        return;
-    }
-
+    JsonDocument root;
     root["name"] = caption;
     root["uniq_id"] = numberId;
     if (strcmp(icon, "")) {
@@ -181,10 +175,12 @@ void MqttHandlePowerLimiterHassClass::publishNumber(
         root["exp_aft"] = config.Mqtt.PublishInterval * 3;
     }
 
-    JsonObject deviceObj = root.createNestedObject("dev");
+     JsonObject deviceObj = root["dev"].to<JsonObject>();
     createDeviceInfo(deviceObj);
 
-    if (Utils::checkJsonOverflow(root, __FUNCTION__, __LINE__)) { return; }
+    if (!Utils::checkJsonAlloc(root, __FUNCTION__, __LINE__)) {
+        return;
+    }
 
     String buffer;
     serializeJson(root, buffer);

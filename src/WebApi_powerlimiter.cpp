@@ -47,6 +47,7 @@ void WebApiPowerLimiterClass::onStatus(AsyncWebServerRequest* request)
     root["target_power_consumption"] = config.PowerLimiter.TargetPowerConsumption;
     root["target_power_consumption_hysteresis"] = config.PowerLimiter.TargetPowerConsumptionHysteresis;
     root["lower_power_limit"] = config.PowerLimiter.LowerPowerLimit;
+    root["base_load_limit"] = config.PowerLimiter.BaseLoadLimit;
     root["upper_power_limit"] = config.PowerLimiter.UpperPowerLimit;
     root["ignore_soc"] = config.PowerLimiter.IgnoreSoc;
     root["battery_soc_start_threshold"] = config.PowerLimiter.BatterySocStartThreshold;
@@ -60,8 +61,7 @@ void WebApiPowerLimiterClass::onStatus(AsyncWebServerRequest* request)
     root["full_solar_passthrough_start_voltage"] = static_cast<int>(config.PowerLimiter.FullSolarPassThroughStartVoltage * 100 + 0.5) / 100.0;
     root["full_solar_passthrough_stop_voltage"] = static_cast<int>(config.PowerLimiter.FullSolarPassThroughStopVoltage * 100 + 0.5) / 100.0;
 
-    response->setLength();
-    request->send(response);
+    WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 }
 
 void WebApiPowerLimiterClass::onMetaData(AsyncWebServerRequest* request)
@@ -75,7 +75,7 @@ void WebApiPowerLimiterClass::onMetaData(AsyncWebServerRequest* request)
         if (config.Inverter[i].Serial != 0) { ++invAmount; }
     }
 
-    AsyncJsonResponse* response = new AsyncJsonResponse(false, 256 + 256 * invAmount);
+    AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& root = response->getRoot();
 
     root["power_meter_enabled"] = config.PowerMeter.Enabled;
@@ -83,7 +83,7 @@ void WebApiPowerLimiterClass::onMetaData(AsyncWebServerRequest* request)
     root["charge_controller_enabled"] = config.Vedirect.Enabled;
     root["charger_enabled"] = config.MeanWell.Enabled;
 
-    JsonObject inverters = root.createNestedObject("inverters");
+    auto inverters = root["inverters"].to<JsonObject>();
     for (uint8_t i = 0; i < INV_MAX_COUNT; i++) {
         if (config.Inverter[i].Serial == 0) { continue; }
 
@@ -91,7 +91,7 @@ void WebApiPowerLimiterClass::onMetaData(AsyncWebServerRequest* request)
         // rather than the hex represenation as used when handling the inverter
         // serial elsewhere in the web application, because in this case, the
         // serial is actually not displayed but only used as a value/index.
-        JsonObject obj = inverters.createNestedObject(String(config.Inverter[i].Serial));
+        auto obj = inverters[String(config.Inverter[i].Serial)].to<JsonObject>();
         obj["pos"] = i;
         obj["name"] = String(config.Inverter[i].Name);
         obj["poll_enable_day"] = config.Inverter[i].Poll_Enable_Day;
@@ -109,8 +109,7 @@ void WebApiPowerLimiterClass::onMetaData(AsyncWebServerRequest* request)
         }
     }
 
-    response->setLength();
-    request->send(response);
+    WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 }
 
 void WebApiPowerLimiterClass::onAdminGet(AsyncWebServerRequest* request)
@@ -129,34 +128,12 @@ void WebApiPowerLimiterClass::onAdminPost(AsyncWebServerRequest* request)
     }
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
+    JsonDocument root;
+    if (!WebApi.parseRequestData(request, response, root)) {
+        return;
+    }
+
     auto& retMsg = response->getRoot();
-    retMsg["type"] = Warning;
-
-    if (!request->hasParam("data", true)) {
-        retMsg["message"] = NoValuesFound;
-        response->setLength();
-        request->send(response);
-        return;
-    }
-
-    const String json = request->getParam("data", true)->value();
-
-    if (json.length() > 3 * 1024) {
-        retMsg["message"] = DataTooLarge;
-        response->setLength();
-        request->send(response);
-        return;
-    }
-
-    DynamicJsonDocument root(3 * 1024);
-    const DeserializationError error = deserializeJson(root, json);
-
-    if (error) {
-        retMsg["message"] = FailedToParseData;
-        response->setLength();
-        request->send(response);
-        return;
-    }
 
     // we were not actually checking for all the keys we (unconditionally)
     // access below for a long time, and it is technically not needed if users
@@ -168,8 +145,7 @@ void WebApiPowerLimiterClass::onAdminPost(AsyncWebServerRequest* request)
     if (!root.containsKey("enabled")) {
         retMsg["message"] = ValuesAreMissing;
         retMsg["code"] = WebApiError::GenericValueMissing;
-        response->setLength();
-        request->send(response);
+        WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;
     }
 
@@ -196,6 +172,7 @@ void WebApiPowerLimiterClass::onAdminPost(AsyncWebServerRequest* request)
     config.PowerLimiter.TargetPowerConsumption = root["target_power_consumption"].as<int32_t>();
     config.PowerLimiter.TargetPowerConsumptionHysteresis = root["target_power_consumption_hysteresis"].as<int32_t>();
     config.PowerLimiter.LowerPowerLimit = root["lower_power_limit"].as<int32_t>();
+    config.PowerLimiter.BaseLoadLimit = root["base_load_limit"].as<int32_t>();
     config.PowerLimiter.UpperPowerLimit = root["upper_power_limit"].as<int32_t>();
 
     if (config.Battery.Enabled) {
@@ -214,8 +191,7 @@ void WebApiPowerLimiterClass::onAdminPost(AsyncWebServerRequest* request)
 
     WebApi.writeConfig(retMsg);
 
-    response->setLength();
-    request->send(response);
+    WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 
     PowerLimiter.calcNextInverterRestart();
 

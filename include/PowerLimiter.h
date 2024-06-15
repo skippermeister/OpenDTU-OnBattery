@@ -37,9 +37,6 @@ public:
         DisabledByConfig,
         DisabledByMqtt,
         WaitingForValidTimestamp,
-        PowerMeterDisabled,
-        PowerMeterTimeoutWarning,
-        PowerMeterTimeout,
         PowerMeterPending,
         InverterInvalid,
         InverterChanged,
@@ -86,6 +83,7 @@ private:
 
     int32_t _lastRequestedPowerLimit = 0;
     bool _shutdownPending = false;
+    std::optional<uint32_t> _oInverterStatsMillis = std::nullopt;
     std::optional<uint32_t> _oUpdateStartMillis = std::nullopt;
     std::optional<int32_t> _oTargetPowerLimitWatts = std::nullopt;
     std::optional<bool> _oTargetPowerState = std::nullopt;
@@ -103,7 +101,7 @@ private:
 
     frozen::string const& getStatusText(Status status);
     void announceStatus(Status status);
-    void switchMosFeetsOff();
+    void switchMosFetsOff();
     bool shutdown(Status status);
     bool shutdown() { return shutdown(_lastStatus); }
     float getBatteryVoltage(bool log = false);
@@ -115,8 +113,7 @@ private:
     int32_t scalePowerLimit(std::shared_ptr<InverterAbstract> inverter, int32_t newLimit, int32_t currentLimitWatts);
     int32_t getSolarPower();
     float getLoadCorrectedVoltage();
-    bool testThreshold(float socThreshold, float voltThreshold,
-        std::function<bool(float, float)> compare);
+    bool testThreshold(float socThreshold, float voltThreshold, std::function<bool(float, float)> compare);
     bool isStartThresholdReached();
     bool isStopThresholdReached();
     bool isBelowStopThreshold();
@@ -124,11 +121,11 @@ private:
 
     bool manageBatteryDCpowerSwitch();
 //    bool _lastDCState = false;
-
-    uint32_t _switchMosFeetOffTimer;
+    uint32_t _switchMosFetOffTimer;
     int8_t _preChargePowerState;
     uint32_t _preChargeDelay = 0;
     uint32_t _lastPreCharge = 0;
+
     bool _verboseLogging = false;
 };
 

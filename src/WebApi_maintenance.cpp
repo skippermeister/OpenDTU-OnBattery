@@ -22,44 +22,17 @@ void WebApiMaintenanceClass::onRebootPost(AsyncWebServerRequest* request)
         return;
     }
 
-    AsyncJsonResponse* response = new AsyncJsonResponse(false, MQTT_JSON_DOC_SIZE);
+    AsyncJsonResponse* response = new AsyncJsonResponse();
+    JsonDocument root;
+    if (!WebApi.parseRequestData(request, response, root)) {
+        return;
+    }
+
     auto& retMsg = response->getRoot();
-    retMsg["type"] = Warning;
-
-    if (!request->hasParam("data", true)) {
-        retMsg["message"] = NoValuesFound;
-        retMsg["code"] = WebApiError::GenericNoValueFound;
-        response->setLength();
-        request->send(response);
-        return;
-    }
-
-    const String json = request->getParam("data", true)->value();
-
-    if (json.length() > MQTT_JSON_DOC_SIZE) {
-        retMsg["message"] = DataTooLarge;
-        retMsg["code"] = WebApiError::GenericDataTooLarge;
-        response->setLength();
-        request->send(response);
-        return;
-    }
-
-    DynamicJsonDocument root(MQTT_JSON_DOC_SIZE);
-    const DeserializationError error = deserializeJson(root, json);
-
-    if (error) {
-        retMsg["message"] = FailedToParseData;
-        retMsg["code"] = WebApiError::GenericParseError;
-        response->setLength();
-        request->send(response);
-        return;
-    }
-
     if (!(root.containsKey("reboot"))) {
         retMsg["message"] = ValuesAreMissing;
         retMsg["code"] = WebApiError::GenericValueMissing;
-        response->setLength();
-        request->send(response);
+        WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;
     }
 
@@ -68,14 +41,12 @@ void WebApiMaintenanceClass::onRebootPost(AsyncWebServerRequest* request)
         retMsg["message"] = "Reboot triggered!";
         retMsg["code"] = WebApiError::MaintenanceRebootTriggered;
 
-        response->setLength();
-        request->send(response);
+        WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         Utils::restartDtu();
     } else {
         retMsg["message"] = "Reboot cancled!";
         retMsg["code"] = WebApiError::MaintenanceRebootCancled;
 
-        response->setLength();
-        request->send(response);
+        WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
     }
 }

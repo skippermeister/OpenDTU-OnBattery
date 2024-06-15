@@ -10,6 +10,7 @@
 #include "MessageOutput.h"
 #include "MqttSettings.h"
 #include "PinMapping.h"
+#include "SerialPortManager.h"
 #include "defaults.h"
 #include <Arduino.h>
 #include <ctime>
@@ -40,7 +41,12 @@ bool PylontechRS485Receiver::init()
     }
 
     if (!_stats->_initialized) {
-        RS485.begin(115200, SERIAL_8N1, pin.battery_rx, pin.battery_tx);
+        auto oHwSerialPort = SerialPortManager.allocatePort(_serialPortOwner);
+        if (!oHwSerialPort) { return false; }
+
+        _upSerial = std::make_unique<HardwareSerial>(*oHwSerialPort);
+
+        _upSerial->begin(115200, SERIAL_8N1, pin.battery_rx, pin.battery_tx);
         MessageOutput.printf("RS485 (Type %d) port rx = %d, tx = %d", pin.battery_rts >= 0 ? 1 : 2, pin.battery_rx, pin.battery_tx);
         if (pin.battery_rts >= 0) {
             /*
@@ -51,15 +57,15 @@ bool PylontechRS485Receiver::init()
              *         In this case we only need a TX and RX pin.
              */
             MessageOutput.printf(", rts = %d", pin.battery_rts);
-            RS485.setPins(pin.battery_rx, pin.battery_tx, UART_PIN_NO_CHANGE, pin.battery_rts);
+            _upSerial->setPins(pin.battery_rx, pin.battery_tx, UART_PIN_NO_CHANGE, pin.battery_rts);
         }
         ESP_ERROR_CHECK(uart_set_mode(2, UART_MODE_RS485_HALF_DUPLEX));
 
         // Set read timeout of UART TOUT feature
         ESP_ERROR_CHECK(uart_set_rx_timeout(2, ECHO_READ_TOUT));
 
-        while (RS485.available()) { // clear RS485 read buffer
-            RS485.read();
+        while (_upSerial->available()) { // clear RS485 read buffer
+            _upSerial->read();
             vTaskDelay(1);
         }
 
@@ -124,8 +130,6 @@ bool PylontechRS485Receiver::init()
 
     Battery._verboseLogging = temp;
 
-    _isInstalled = true;
-
     MessageOutput.println("done");
 
     return true;
@@ -133,26 +137,31 @@ bool PylontechRS485Receiver::init()
 
 void PylontechRS485Receiver::deinit()
 {
-    if (!_isInstalled) {
+    if (!_stats->_initialized) {
         return;
     }
 
+    _upSerial->end();
+
+    if (PinMapping.get().battery_rts >= 0) { pinMode(PinMapping.get().battery_rts, INPUT); }
+
+    SerialPortManager.freePort(_serialPortOwner);
+
+    _stats->_initialized = false;
+
     MessageOutput.printf("%s RS485 driver uninstalled\r\n", TAG);
-    _isInstalled = false;
 }
 
 void PylontechRS485Receiver::loop()
 {
     Battery_CONFIG_T& cBattery = Configuration.get().Battery;
 
-    if (!cBattery.Enabled || !_stats->_initialized) {
-        if (!cBattery.Enabled) {
-            deinit();
-        }
+    if (!cBattery.Enabled ) {
+        deinit();
         return;
     }
 
-    if (!_isInstalled) {
+    if (!_stats->_initialized) {
         init();
         return;
     }
@@ -162,7 +171,7 @@ void PylontechRS485Receiver::loop()
     if (module >= _lastSlaveBatteryID)
         module = _masterBatteryID; // inital check
 
-    if (RS485.available()) {
+    if (_upSerial->available()) {
         uint32_t t_start = millis();
         switch (_lastCmnd) {
         case Command::GetChargeDischargeManagementInfo:
@@ -182,11 +191,11 @@ void PylontechRS485Receiver::loop()
             // This shouldn't happen in normal operation, but it seems like some RS485 adapters/chips are very sensitive or out of specification.
             // In order not to block the scheduler too much, the filter will periodically read the input buffer for a maximum of 50ms per loop
             static uint16_t spikes = 0;
-            while (RS485.available() && (millis() - t_start) < 50) {
-                if (RS485.peek() != 0x7E) {
+            while (_upSerial->available() && (millis() - t_start) < 50) {
+                if (_upSerial->peek() != 0x7E) {
                     // we consume all incomming bytes which are not 0x7E (start sequence of a frame)
                     spikes++;
-                    RS485.read();
+                    _upSerial->read();
                 } else {
                     // this should never happen.
                     // It would mean that we had issued a command to the battery that was not recognized and processed in the parser above.
@@ -825,10 +834,10 @@ void PylontechRS485Receiver::get_alarm_info(const PylontechRS485Receiver::Functi
             AlarmInfo.dischargeOverTemperature ? "trigger" : "normal",
             AlarmInfo.chargeOverTemperature ? "trigger" : "normal",
             AlarmInfo.moduleUnderVoltage ? "trigger" : "normal");
-        MessageOutput.printf("%s Status 2: %s using battery module power, Discharge MOSFET %s, Charge MOSFEET %s, Pre MOSFET %s\r\n", TAG,
+        MessageOutput.printf("%s Status 2: %s using battery module power, Discharge MOSFET %s, Charge MOSFET %s, Pre MOSFET %s\r\n", TAG,
             AlarmInfo.usingBatteryModulePower ? "" : "not",
             AlarmInfo.dischargeMOSFET ? "ON" : "OFF",
-            AlarmInfo.chargeMOSFEET ? "ON" : "OFF",
+            AlarmInfo.chargeMOSFET ? "ON" : "OFF",
             AlarmInfo.preMOSFET ? "ON" : "OFF");
         MessageOutput.printf("%s Status 3: buzzer %s, fully Charged (SOC=%s), discharge current detected by BMS %s, charge current detected by BMS %s\r\n", TAG,
             AlarmInfo.buzzer ? "on" : "off",
@@ -1030,7 +1039,7 @@ void PylontechRS485Receiver::send_cmd(uint8_t address, uint8_t cmnd, uint8_t Inf
     if (Battery._verboseLogging)
         MessageOutput.printf("%s:%s frame=%s\r\n", TAG, __FUNCTION__, raw_frame);
 
-    if (RS485.write(raw_frame, length) != length) {
+    if (_upSerial->write(raw_frame, length) != length) {
         MessageOutput.printf("%s Send data critical failure.\r\n", TAG);
         // add your code to handle sending failure here
         //        abort();
@@ -1042,11 +1051,11 @@ size_t PylontechRS485Receiver::readline(void)
 {
     uint32_t t_end = millis() + 2000; // timeout 2 seconds
     while (millis() < t_end) {
-        if (RS485.available())
+        if (_upSerial->available())
             break;
         yield();
     }
-    if (!RS485.available()) {
+    if (!_upSerial->available()) {
         // #ifdef PYLONTECH_RS485_DEBUG_ENABLED
         MessageOutput.printf("%s RS485 read timeout\r\n", TAG);
         // #endif
@@ -1059,8 +1068,8 @@ size_t PylontechRS485Receiver::readline(void)
     t_end = millis() + 1000; // timeout 1 second
     while (millis() < t_end) {
         char c;
-        if (RS485.available()) {
-            c = RS485.read();
+        if (_upSerial->available()) {
+            c = _upSerial->read();
             if (!start && c != 0x7E) { // start of line ?
                 yield();
                 continue;

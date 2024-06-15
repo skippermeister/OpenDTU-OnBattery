@@ -13,7 +13,6 @@
 #include "WebApi_errors.h"
 #include <AsyncJson.h>
 #include <Hoymiles.h>
-#include "Utils.h"
 
 void WebApiHuaweiClass::init(AsyncWebServer& server, Scheduler& scheduler)
 {
@@ -62,10 +61,7 @@ void WebApiHuaweiClass::onStatus(AsyncWebServerRequest* request)
     auto& root = response->getRoot();
     getJsonData(root);
 
-    if (Utils::checkJsonOverflow(root, __FUNCTION__, __LINE__)) { return; }
-
-    response->setLength();
-    request->send(response);
+    WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 }
 
 void WebApiHuaweiClass::onPost(AsyncWebServerRequest* request)
@@ -75,40 +71,16 @@ void WebApiHuaweiClass::onPost(AsyncWebServerRequest* request)
     }
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
-    auto& retMsg = response->getRoot();
-    retMsg["type"] = Warning;
-
-    if (!request->hasParam("data", true)) {
-        retMsg["message"] = NoValuesFound;
-        retMsg["code"] = WebApiError::GenericNoValueFound;
-        response->setLength();
-        request->send(response);
+    JsonDocument root;
+    if (!WebApi.parseRequestData(request, response, root)) {
         return;
     }
 
-    String json = request->getParam("data", true)->value();
-
-    if (json.length() > 1024) {
-        retMsg["message"] = DataTooLarge;
-        retMsg["code"] = WebApiError::GenericDataTooLarge;
-        response->setLength();
-        request->send(response);
-        return;
-    }
-
-    DynamicJsonDocument root(1024);
-    DeserializationError error = deserializeJson(root, json);
     float value;
     uint8_t online = true;
     float minimal_voltage;
 
-    if (error) {
-        retMsg["message"] = FailedToParseData;
-        retMsg["code"] = WebApiError::GenericParseError;
-        response->setLength();
-        request->send(response);
-        return;
-    }
+    auto& retMsg = response->getRoot();
 
     if (root.containsKey("online")) {
         online = root["online"].as<bool>();
@@ -120,8 +92,7 @@ void WebApiHuaweiClass::onPost(AsyncWebServerRequest* request)
     } else {
         retMsg["message"] = "Could not read info if data should be set for online/offline operation!";
         retMsg["code"] = WebApiError::LimitInvalidType;
-        response->setLength();
-        request->send(response);
+        WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;
     }
 
@@ -167,12 +138,9 @@ void WebApiHuaweiClass::onPost(AsyncWebServerRequest* request)
         }
     }
 
-    retMsg["type"] = Success;
-    retMsg["message"] = SettingsSaved;
-    retMsg["code"] = WebApiError::GenericSuccess;
+    WebApi.writeConfig(retMsg);
 
-    response->setLength();
-    request->send(response);
+    WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 }
 
 void WebApiHuaweiClass::onAdminGet(AsyncWebServerRequest* request)
@@ -186,15 +154,19 @@ void WebApiHuaweiClass::onAdminGet(AsyncWebServerRequest* request)
     const Huawei_CONFIG_T& cHuawei = Configuration.get().Huawei;
 
     root["enabled"] = cHuawei.Enabled;
+    root["verbose_logging"] = cHuawei.VerboseLogging;
     root["can_controller_frequency"] = cHuawei.CAN_Controller_Frequency;
     root["auto_power_enabled"] = cHuawei.Auto_Power_Enabled;
+    root["auto_power_batterysoc_limits_enabled"] = cHuawei.Auto_Power_BatterySoC_Limits_Enabled;
+    root["emergency_charge_enabled"] = cHuawei.Emergency_Charge_Enabled;
     root["voltage_limit"] = static_cast<int>(cHuawei.Auto_Power_Voltage_Limit * 100) / 100.0;
     root["enable_voltage_limit"] = static_cast<int>(cHuawei.Auto_Power_Enable_Voltage_Limit * 100) / 100.0;
     root["lower_power_limit"] = cHuawei.Auto_Power_Lower_Power_Limit;
     root["upper_power_limit"] = cHuawei.Auto_Power_Upper_Power_Limit;
+    root["stop_batterysoc_threshold"] = cHuawei.Auto_Power_Stop_BatterySoC_Threshold;
+    root["target_power_consumption"] = cHuawei.Auto_Power_Target_Power_Consumption;
 
-    response->setLength();
-    request->send(response);
+    reWebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 }
 
 void WebApiHuaweiClass::onAdminPost(AsyncWebServerRequest* request)
@@ -204,64 +176,43 @@ void WebApiHuaweiClass::onAdminPost(AsyncWebServerRequest* request)
     }
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
+    JsonDocument root;
+    if (!WebApi.parseRequestData(request, response, root)) {
+        return;
+    }
+
     auto& retMsg = response->getRoot();
-    retMsg["type"] = Warning;
-
-    if (!request->hasParam("data", true)) {
-        retMsg["message"] = NoValuesFound;
-        retMsg["code"] = WebApiError::GenericNoValueFound;
-        response->setLength();
-        request->send(response);
-        return;
-    }
-
-    String json = request->getParam("data", true)->value();
-
-    if (json.length() > 1024) {
-        retMsg["message"] = DataTooLarge;
-        retMsg["code"] = WebApiError::GenericDataTooLarge;
-        response->setLength();
-        request->send(response);
-        return;
-    }
-
-    DynamicJsonDocument root(1024);
-    DeserializationError error = deserializeJson(root, json);
-
-    if (error) {
-        retMsg["message"] = FailedToParseData;
-        retMsg["code"] = WebApiError::GenericParseError;
-        response->setLength();
-        request->send(response);
-        return;
-    }
 
     if (!(root.containsKey("enabled")) ||
         !(root.containsKey("can_controller_frequency")) ||
         !(root.containsKey("auto_power_enabled")) ||
+        !(root.containsKey("emergency_charge_enabled")) ||
         !(root.containsKey("voltage_limit")) ||
         !(root.containsKey("lower_power_limit")) ||
         !(root.containsKey("upper_power_limit"))) {
         retMsg["message"] = ValuesAreMissing;
         retMsg["code"] = WebApiError::GenericValueMissing;
-        response->setLength();
-        request->send(response);
+        WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;
     }
 
     CONFIG_T& config = Configuration.get();
     config.Huawei.Enabled = root["enabled"].as<bool>();
+    config.Huawei.VerboseLogging = root["verbose_logging"];
     config.Huawei.CAN_Controller_Frequency = root["can_controller_frequency"].as<uint32_t>();
     config.Huawei.Auto_Power_Enabled = root["auto_power_enabled"].as<bool>();
+    config.Huawei.Auto_Power_BatterySoC_Limits_Enabled = root["auto_power_batterysoc_limits_enabled"].as<bool>();
+    config.Huawei.Emergency_Charge_Enabled = root["emergency_charge_enabled"].as<bool>();
     config.Huawei.Auto_Power_Voltage_Limit = root["voltage_limit"].as<float>();
     config.Huawei.Auto_Power_Enable_Voltage_Limit = root["enable_voltage_limit"].as<float>();
     config.Huawei.Auto_Power_Lower_Power_Limit = root["lower_power_limit"].as<float>();
     config.Huawei.Auto_Power_Upper_Power_Limit = root["upper_power_limit"].as<float>();
+    config.Huawei.Auto_Power_Stop_BatterySoC_Threshold = root["stop_batterysoc_threshold"];
+    config.Huawei.Auto_Power_Target_Power_Consumption = root["target_power_consumption"];
 
     WebApi.writeConfig(retMsg);
 
-    response->setLength();
-    request->send(response);
+    WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 
     // TODO(schlimmchen): HuaweiCan has no real concept of the fact that the
     // config might change. at least not regarding CAN parameters. until that
@@ -271,20 +222,28 @@ void WebApiHuaweiClass::onAdminPost(AsyncWebServerRequest* request)
     yield();
     ESP.restart();
 
+    const PinMapping_t& pin = PinMapping.get();
     // Properly turn this on
-    if (cHuawei.Enabled) {
-      	HuaweiCan.init();
+    if (config.Huawei.Enabled) {
+        MessageOutput.println("Initialize Huawei AC charger interface... ");
+        if (PinMapping.isValidHuaweiConfig()) {
+            MessageOutput.printf("Huawei AC-charger miso = %d, mosi = %d, clk = %d, irq = %d, cs = %d, power_pin = %d\r\n", pin.huawei_miso, pin.huawei_mosi, pin.huawei_clk, pin.huawei_irq, pin.huawei_cs, pin.huawei_power);
+            HuaweiCan.updateSettings(pin.huawei_miso, pin.huawei_mosi, pin.huawei_clk, pin.huawei_irq, pin.huawei_cs, pin.huawei_power);
+            MessageOutput.println("done");
+        } else {
+            MessageOutput.println("Invalid pin config");
+        }
     }
 
     // Properly turn this off
-    if (!cHuawei.Enabled) {
+    if (!config.Huawei.Enabled) {
       HuaweiCan.setValue(0, HUAWEI_ONLINE_CURRENT);
       delay(500);
       HuaweiCan.setMode(HUAWEI_MODE_OFF);
       return;
     }
 
-    if (cHuawei.Auto_Power_Enabled) {
+    if (config.Huawei.Auto_Power_Enabled) {
       HuaweiCan.setMode(HUAWEI_MODE_AUTO_INT);
       return;
     }

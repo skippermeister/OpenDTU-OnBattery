@@ -6,6 +6,7 @@
 #include "MessageOutput.h"
 #include "MqttSettings.h"
 #include "PinMapping.h"
+#include "SerialPortManager.h"
 #include <Arduino.h>
 #include <ctime>
 #include <frozen/map.h>
@@ -32,7 +33,12 @@ bool DalyBmsController::init()
     }
 
     if (!_stats->_initialized) {
-        HwSerial.begin(9600, SERIAL_8N1, pin.battery_rx, pin.battery_tx);
+        auto oHwSerialPort = SerialPortManager.allocatePort(_serialPortOwner);
+        if (!oHwSerialPort) { return false; }
+
+        _upSerial = std::make_unique<HardwareSerial>(*oHwSerialPort);
+
+        _upSerial->begin(9600, SERIAL_8N1, pin.battery_rx, pin.battery_tx);
         if (pin.battery_rts >= -1) {
             /*
              * Daly BMS is connected via a RS485 module. Two different types of modules are supported.
@@ -44,7 +50,7 @@ bool DalyBmsController::init()
             MessageOutput.printf("RS485 module (Type %d) rx = %d, tx = %d", pin.battery_rts >= 0 ? 1 : 2, pin.battery_rx, pin.battery_tx);
             if (pin.battery_rts >= 0) {
                 MessageOutput.printf(", rts = %d", pin.battery_rts);
-                HwSerial.setPins(pin.battery_rx, pin.battery_tx, UART_PIN_NO_CHANGE, pin.battery_rts);
+                _upSerial->setPins(pin.battery_rx, pin.battery_tx, UART_PIN_NO_CHANGE, pin.battery_rts);
             }
 
             // RS485 protocol is half duplex
@@ -57,10 +63,10 @@ bool DalyBmsController::init()
         // Set read timeout of UART TOUT feature
         ESP_ERROR_CHECK(uart_set_rx_timeout(2, ECHO_READ_TOUT));
 
-        HwSerial.flush();
+        _upSerial->flush();
 
-        while (HwSerial.available()) { // clear serial read buffer
-            HwSerial.read();
+        while (_upSerial->available()) { // clear serial read buffer
+            _upSerial->read();
             vTaskDelay(1);
         }
 
@@ -86,7 +92,17 @@ bool DalyBmsController::init()
 
 void DalyBmsController::deinit()
 {
-    HwSerial.end();
+    if (!_stats->_initialized) { return; }
+
+    _upSerial->end();
+
+    if (PinMapping.get().battery_rts >= 0) { pinMode(PinMapping.get().battery_rts, INPUT); }
+
+    SerialPortManager.freePort(_serialPortOwner);
+
+    _stats->_initialized = false;
+
+    MessageOutput.printf("%s Serial driver uninstalled\r\n", TAG);
 }
 
 frozen::string const& DalyBmsController::getStatusText(DalyBmsController::Status status)
@@ -147,12 +163,12 @@ void DalyBmsController::loop()
 
     _wasActive = false;
 
-    if (HwSerial.available()) {
+    if (_upSerial->available()) {
         _lastResponse = now;
     }
 
-    while (HwSerial.available()) {
-        rxData(HwSerial.read());
+    while (_upSerial->available()) {
+        rxData(_upSerial->read());
     }
 
     sendRequest(pollInterval);
@@ -306,7 +322,7 @@ bool DalyBmsController::requestData(uint8_t data_id) // new function to request 
     if (Battery._verboseLogging)
         MessageOutput.printf("%s %d Request datapacket Nr %x\r\n", TAG, _nextRequest, data_id);
 
-    HwSerial.write(request_message, sizeof(request_message));
+    _upSerial->write(request_message, sizeof(request_message));
 
     _nextRequest++;
 

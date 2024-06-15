@@ -22,9 +22,16 @@ class Controller : public BatteryProvider {
         void deinit() final;
         void loop() final;
         std::shared_ptr<BatteryStats> getStats() const final { return _stats; }
-        bool usesHwPort2() const final { return true; }
 
     private:
+        static char constexpr _serialPortOwner[] = "JK BMS";
+
+#ifdef JKBMS_DUMMY_SERIAL
+        std::unique_ptr<DummySerial> _upSerial;
+#else
+        std::unique_ptr<HardwareSerial> _upSerial;
+#endif
+
         enum class Status : unsigned {
             Initializing,
             Timeout,

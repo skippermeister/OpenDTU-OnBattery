@@ -53,9 +53,7 @@ void WebApiWsBatteryLiveClass::sendDataTaskCb()
         return;
     }
 
-    if (!Battery.getStats()->updateAvailable(_lastUpdateCheck)) {
-        return;
-    }
+    if (!Battery.getStats()->updateAvailable(_lastUpdateCheck)) { return; }
     _lastUpdateCheck = millis();
 
     for (uint8_t i = 0; i < Battery.getStats()->get_number_of_packs(); i++) {
@@ -63,17 +61,16 @@ void WebApiWsBatteryLiveClass::sendDataTaskCb()
 
         try {
             std::lock_guard<std::mutex> lock(_mutex);
-            DynamicJsonDocument root(_responseSize * 2);
+            JsonDocument root;
+            JsonVariant var = root;
+
+            generateCommonJsonResponse(var);
+
+            JsonArray packsArray = root["packs"].to<JsonArray>();
+            JsonObject packObject = packsArray.add<JsonObject>();
+            Battery.getStats()->generatePackCommonJsonResponse(packObject, i);
+
             if (Utils::checkJsonAlloc(root, __FUNCTION__, __LINE__)) {
-                JsonVariant var = root;
-
-                generateJsonResponse(var);
-
-                JsonArray packsArray = root.createNestedArray("packs");
-                JsonObject packObject = packsArray.createNestedObject();
-                Battery.getStats()->generatePackCommonJsonResponse(packObject, i);
-
-                if (Utils::checkJsonOverflow(root, __FUNCTION__, __LINE__)) { return; }
 
                 String buffer;
                 serializeJson(root, buffer);
@@ -95,7 +92,7 @@ void WebApiWsBatteryLiveClass::sendDataTaskCb()
     }
 }
 
-void WebApiWsBatteryLiveClass::generateJsonResponse(JsonVariant& root)
+void WebApiWsBatteryLiveClass::generateCommonJsonResponse(JsonVariant& root)
 {
     Battery.getStats()->getLiveViewData(root);
 }
@@ -117,27 +114,25 @@ void WebApiWsBatteryLiveClass::onLivedataStatus(AsyncWebServerRequest* request)
 
     try {
         std::lock_guard<std::mutex> lock(_mutex);
-        AsyncJsonResponse* response = new AsyncJsonResponse(false, _responseSize + MAX_BATTERIES * _responseSize);
+        AsyncJsonResponse* response = new AsyncJsonResponse();
         auto& root = response->getRoot();
 
-        generateJsonResponse(root);
+        generateCommonJsonResponse(root);
 
-        JsonArray packsArray = root.createNestedArray("packs");
+        JsonArray packsArray = root["packs"].to<JsonArray>();
         for (uint8_t i = 0; i < Battery.getStats()->get_number_of_packs(); i++) {
 //        for (uint8_t i=0; i<MAX_BATTERIES; i++) {
-            JsonObject packObject = packsArray.createNestedObject();
+            JsonObject packObject = packsArray.add<JsonObject>();
             Battery.getStats()->generatePackCommonJsonResponse(packObject, i);
         }
-
-        if (Utils::checkJsonOverflow(root, __FUNCTION__, __LINE__)) { return; }
 
         /*
                 String buffer;
                 serializeJsonPretty(root, buffer);
                 Serial.println(buffer);
         */
-        response->setLength();
-        request->send(response);
+        WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
+
     } catch (std::bad_alloc& bad_alloc) {
         MessageOutput.printf("Calling /api/batterylivedata/status has temporarily run out of resources. Reason: \"%s\".\r\n", bad_alloc.what());
         WebApi.sendTooManyRequests(request);

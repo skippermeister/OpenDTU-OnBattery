@@ -35,8 +35,7 @@ void WebApiVedirectClass::onVedirectStatus(AsyncWebServerRequest* request)
     root["updatesonly"] = config.Vedirect.UpdatesOnly;
     root["verbose_logging"] = VictronMppt.getVerboseLogging();
 
-    response->setLength();
-    request->send(response);
+    WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 }
 
 void WebApiVedirectClass::onVedirectAdminGet(AsyncWebServerRequest* request)
@@ -51,45 +50,19 @@ void WebApiVedirectClass::onVedirectAdminPost(AsyncWebServerRequest* request)
     }
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
+    JsonDocument root;
+    if (!WebApi.parseRequestData(request, response, root)) {
+        return;
+    }
+
     auto& retMsg = response->getRoot();
-    retMsg["type"] = Warning;
-
-    if (!request->hasParam("data", true)) {
-        retMsg["message"] = NoValuesFound;
-        retMsg["code"] = WebApiError::GenericNoValueFound;
-        response->setLength();
-        request->send(response);
-        return;
-    }
-
-    const String json = request->getParam("data", true)->value();
-
-    if (json.length() > 1024) {
-        retMsg["message"] = DataTooLarge;
-        retMsg["code"] = WebApiError::GenericDataTooLarge;
-        response->setLength();
-        request->send(response);
-        return;
-    }
-
-    DynamicJsonDocument root(1024);
-    const DeserializationError error = deserializeJson(root, json);
-
-    if (error) {
-        retMsg["message"] = FailedToParseData;
-        retMsg["code"] = WebApiError::GenericParseError;
-        response->setLength();
-        request->send(response);
-        return;
-    }
 
     if (!(root.containsKey("enabled")
             && root.containsKey("updatesonly")
             && root.containsKey("verbose_logging"))) {
         retMsg["message"] = ValuesAreMissing;
         retMsg["code"] = WebApiError::GenericValueMissing;
-        response->setLength();
-        request->send(response);
+        WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;
     }
 
@@ -100,8 +73,12 @@ void WebApiVedirectClass::onVedirectAdminPost(AsyncWebServerRequest* request)
 
     WebApi.writeConfig(retMsg);
 
+    WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
+
     VictronMppt.updateSettings();
 
-    response->setLength();
-    request->send(response);
+    // potentially make solar passthrough thresholds auto-discoverable
+    #ifdef USE_HASS
+    MqttHandlePowerLimiterHass.forceUpdate();
+    #endif
 }

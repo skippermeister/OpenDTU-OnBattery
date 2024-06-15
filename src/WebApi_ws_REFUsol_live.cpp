@@ -63,20 +63,15 @@ void WebApiWsREFUsolLiveClass::sendDataTaskCb()
 
     try {
         std::lock_guard<std::mutex> lock(_mutex);
-        DynamicJsonDocument root(3 * 1024);
-        if (Utils::checkJsonAlloc(root, __FUNCTION__, __LINE__)) {
-            JsonVariant var = root;
-            REFUsol.generateJsonResponse(var);
+        JsonDocument root;
+        JsonVariant var = root;
 
+        REFUsol.generateJsonResponse(var);
+
+        if (Utils::checkJsonAlloc(root, __FUNCTION__, __LINE__)) {
             String buffer;
             serializeJson(root, buffer);
             _newestREFUsolTimestamp = std::max<uint32_t>(_newestREFUsolTimestamp, REFUsol.getLastUpdate());
-
-            if (Configuration.get().Security.AllowReadonly) {
-                _ws.setAuthentication("", "");
-            } else {
-                _ws.setAuthentication(AUTH_USERNAME, Configuration.get().Security.Password);
-            }
 
             _ws.textAll(buffer);
         }
@@ -106,7 +101,7 @@ void WebApiWsREFUsolLiveClass::onLivedataStatus(AsyncWebServerRequest* request)
     }
     try {
         std::lock_guard<std::mutex> lock(_mutex);
-        AsyncJsonResponse* response = new AsyncJsonResponse(false, 3 * 1024U);
+        AsyncJsonResponse* response = new AsyncJsonResponse();
         auto& root = response->getRoot();
 
         REFUsol.generateJsonResponse(root);
@@ -114,8 +109,7 @@ void WebApiWsREFUsolLiveClass::onLivedataStatus(AsyncWebServerRequest* request)
             _newestREFUsolTimestamp = REFUsol.getLastUpdate();
         }
 
-        response->setLength();
-        request->send(response);
+        WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 
     } catch (std::bad_alloc& bad_alloc) {
         MessageOutput.printf("Calling /api/refusollivedata/status has temporarily run out of resources. Reason: \"%s\".\r\n", bad_alloc.what());

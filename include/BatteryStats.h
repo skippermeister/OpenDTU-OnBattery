@@ -105,6 +105,8 @@ class BatteryStats {
         }
 
         String _manufacturer = "unknown";
+        String _hwversion = "";
+        String _fwversion = "";
         uint32_t _lastUpdate = 0;
 
     private:
@@ -168,7 +170,7 @@ typedef struct {
         uint8_t status2;
         struct {
             unsigned preMOSFET : 1;
-            unsigned chargeMOSFEET : 1;
+            unsigned chargeMOSFET : 1;
             unsigned dischargeMOSFET : 1;
             unsigned usingBatteryModulePower : 1;
             unsigned dummy4 : 4;
@@ -429,7 +431,8 @@ private:
         float cellDiffVoltage;
 
         float averageBMSTemperature;
-        float averageCellTemperature;
+        float minCellTemperature;
+        float maxCellTemperature;
         float* CellVoltages;
         float* GroupedCellsTemperatures;
 
@@ -457,7 +460,6 @@ private:
         float* CellVoltages;
 
         float averageBMSTemperature;
-        float averageCellTemperature;
         float* GroupedCellsTemperatures;
 
         ChargeDischargeManagementInfo_t ChargeDischargeManagementInfo;
@@ -756,7 +758,11 @@ class VictronSmartShuntStats : public BatteryStats {
         uint32_t _timeToGo;
         float _chargedEnergy;
         float _dischargedEnergy;
-        String _modelName;
+        int32_t _instantaneousPower;
+        float _midpointVoltage;
+        float _midpointDeviation;
+        float _consumedAmpHours;
+        int32_t _lastFullCharge;
 
         bool _alarmLowVoltage;
         bool _alarmHighVoltage;

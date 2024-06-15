@@ -158,6 +158,10 @@ public:
     void setVerboseLogging(bool logging) { _verbose_logging = logging; };
 
 private:
+    static char constexpr _serialPortOwner[] = "REFUsol";
+
+    std::unique_ptr<HardwareSerial> _upSerial;
+
     void loop(void); // main loop to read ve.direct data
 
     Task _loopTask;

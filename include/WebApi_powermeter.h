@@ -3,6 +3,8 @@
 
 #include <ESPAsyncWebServer.h>
 #include <TaskSchedulerDeclarations.h>
+#include <ArduinoJson.h>
+#include "Configuration.h"
 
 class WebApiPowerMeterClass {
 public:
@@ -12,5 +14,6 @@ private:
     void onStatus(AsyncWebServerRequest* request);
     void onAdminGet(AsyncWebServerRequest* request);
     void onAdminPost(AsyncWebServerRequest* request);
+    void decodeJsonPhaseConfig(JsonObject const& json, PowerMeterHttpConfig& config) const;
     void onTestHttpRequest(AsyncWebServerRequest* request);
 };

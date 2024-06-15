@@ -155,6 +155,8 @@ void MeanWellCanClass::updateSettings()
 
         MessageOutput.print("Initialized Successfully! ");
     }
+
+    _setupParameter = true;
 }
 
 bool MeanWellCanClass::getCanCharger(void)
@@ -262,16 +264,16 @@ float MeanWellCanClass::calcEfficency(float x)
     int i;
 
     static coord_t c[] = {
-        {    0.0f, 0.7500f },
-        {  100.0f, 0.9000f },
-        {  177.0f, 0.9222f },
-        {  222.0f, 0.9535f },
-        {  440.0f, 0.9522f },
-        {  666.0f, 0.9498f },
-        {  888.0f, 0.9380f },
-        { 1000.0f, 0.9250f },
-        { 1100.0f, 0.9200f },
-        { 1300.0f, 0.9150f }
+        {    0.0f, 0.7500f },   // NPB-450   NPB-750  NPB-1200  NPB-1700
+        {  100.0f, 0.9200f },   //  37.50W    62.50W   100.00W   141.67W
+        {  177.0f, 0.9530f },   //  66.38W   110.63W   177.00W   250.75W
+        {  222.0f, 0.9569f },   //  83.25W   138.75W   222.00W   314.50W
+        {  440.0f, 0.9750f },   // 165.00W   275.00W   440.00W   623.33W
+        {  666.0f, 0.9569f },   // 249.75W   416.25W   666.00W   943.50W
+        {  888.0f, 0.9548f },   // 333.00W   555.00W   888.00W  1258.00W
+        { 1000.0f, 0.9548f },   // 375.00W   625.00W  1000.00W  1416.67W
+        { 1100.0f, 0.9525f },   // 412.50W   687.50W  1100.00W  1558.33W
+        { 1300.0f, 0.9500f }    // 487.50W   812.50W  1300.00W  1841.67W
     };
 
     float scaling = 1.0f;
@@ -309,38 +311,44 @@ float MeanWellCanClass::calcEfficency(float x)
     return x < c[0].x * scaling ? c[0].y : c[i].y; // Not in Range
 }
 
+void MeanWellCanClass::calcPower() {
+    _rp.outputPower = _rp.outputCurrent * _rp.outputVoltage;
+    _rp.inputPower = _rp.outputPower / calcEfficency(_rp.outputPower) // efficiency of NPB-1200-48
+                    + 4.0f                                            // self power of NPB-1200-48
+                    + (0.75f * 240.0f / 1000.0f);                     // leakage power
+    _rp.efficiency = (_rp.inputPower > 0.0f) ? 100.0f * _rp.outputPower / _rp.inputPower : 0.0f;
+}
+
 void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
 {
     switch (readUnsignedInt16(frame)) { // parse Command
     case 0x0000: // OPERATION 1 byte ON/OFF control
         _rp.operation = *(frame + 2);
-#ifdef MEANWELL_DEBUG_ENABLED
-        if (_verboseLogging)
-            MessageOutput.printf("%s Operation: %02X %s\r\n", TAG, _rp.operation, _rp.operation ? "On" : "Off");
-#endif
         _lastUpdate = millis();
+#ifdef MEANWELL_DEBUG_ENABLED
+        if (_verboseLogging) MessageOutput.printf("%s Operation: %02X %s\r\n", TAG, _rp.operation, _rp.operation ? "On" : "Off");
+#endif
         break;
 
     case 0x0020: // VOUT_SET 2 bytes Output voltage setting (format: value, F=0.01)
         _rp.outputVoltageSet = scaleValue(readUnsignedInt16(frame + 2), 0.01f);
-#ifdef MEANWELL_DEBUG_ENABLED
-        if (_verboseLogging)
-            MessageOutput.printf("%s OutputVoltage(VOUT_SET): %.2fV\r\n", TAG, _rp.outputVoltageSet);
-#endif
         _lastUpdate = millis();
+#ifdef MEANWELL_DEBUG_ENABLED
+        if (_verboseLogging) MessageOutput.printf("%s OutputVoltage(VOUT_SET): %.2fV\r\n", TAG, _rp.outputVoltageSet);
+#endif
         break;
 
     case 0x0030: // IOUT_SET 2 bytes Output current setting (format: value, F=0.01)
         _rp.outputCurrentSet = scaleValue(readUnsignedInt16(frame + 2), 0.01f);
-#ifdef MEANWELL_DEBUG_ENABLED
-        if (_verboseLogging)
-            MessageOutput.printf("%s OutputCurrent(IOUT_SET): %.2fA\r\n", TAG, _rp.outputCurrentSet);
-#endif
         _lastUpdate = millis();
+#ifdef MEANWELL_DEBUG_ENABLED
+        if (_verboseLogging) MessageOutput.printf("%s OutputCurrent(IOUT_SET): %.2fA\r\n", TAG, _rp.outputCurrentSet);
+#endif
         break;
 
     case 0x0040: // FAULT_STATUS  2 bytes Abnormal status
         _rp.FaultStatus = readUnsignedInt16(frame + 2);
+        _lastUpdate = millis();
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging)
             MessageOutput.printf("%s FAULT_STATUS : %s : HI_TEMP: %d, OP_OFF: %d, AC_FAIL: %d, SHORT: %d, OLP: %d, OVP: %d, OTP: %d\r\n", TAG,
@@ -353,50 +361,41 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
                 _rp.FAULT_STATUS.OVP,
                 _rp.FAULT_STATUS.OTP);
 #endif
-        _lastUpdate = millis();
         break;
 
     case 0x0050: // READ_VIN	2 bytes Input voltage read value (format: value, F=0.1)
         _rp.inputVoltage = scaleValue(readUnsignedInt16(frame + 2), 0.1f);
-        if (_model == NPB_Model_t::NPB_450_48)
-            _rp.inputVoltage = 230.0;
-#ifdef MEANWELL_DEBUG_ENABLED
-        if (_verboseLogging)
-            MessageOutput.printf("%s InputVoltage: %.1fV\r\n", TAG, _rp.inputVoltage);
-#endif
+        if (_model == NPB_Model_t::NPB_450_48) _rp.inputVoltage = 230.0;
         _lastUpdate = millis();
+#ifdef MEANWELL_DEBUG_ENABLED
+        if (_verboseLogging) MessageOutput.printf("%s InputVoltage: %.1fV\r\n", TAG, _rp.inputVoltage);
+#endif
         break;
 
     case 0x0060: // READ_VOUT 2 bytes Output voltage read value (format: value, F=0.01)
         _rp.outputVoltage = scaleValue(readUnsignedInt16(frame + 2), 0.01f);
-        _rp.outputPower = _rp.outputCurrent * _rp.outputVoltage;
-        _rp.inputPower = _rp.outputPower / calcEfficency(_rp.outputPower) + (0.75f * 240.0f / 1000.0f); // efficiency of NPB-1200-48 and leakage
-        _rp.efficiency = (_rp.inputPower > 0.0f) ? 100.0f * _rp.outputPower / _rp.inputPower : 0.0f;
+        calcPower();
         _lastUpdate = millis();
 #ifdef MEANWELL_DEBUG_ENABLED
-        if (_verboseLogging)
-            MessageOutput.printf("%s OutputVoltage: %.2fV\r\n", TAG, _rp.outputVoltage);
+        if (_verboseLogging) MessageOutput.printf("%s OutputVoltage: %.2fV\r\n", TAG, _rp.outputVoltage);
 #endif
         break;
+
     case 0x0061: // READ_IOUT 2 bytes Output current read value (format: value, F=0.01)
         _rp.outputCurrent = scaleValue(readUnsignedInt16(frame + 2), 0.01f);
-        _rp.outputPower = _rp.outputCurrent * _rp.outputVoltage;
-        _rp.inputPower = _rp.outputPower / calcEfficency(_rp.outputPower) + (0.75f * 240.0f / 1000.0f); // efficiency of NPB-1200-48 and leakage
-        _rp.efficiency = (_rp.inputPower > 0.0f) ? 100.0f * _rp.outputPower / _rp.inputPower : 0.0f;
-#ifdef MEANWELL_DEBUG_ENABLED
-        if (_verboseLogging)
-            MessageOutput.printf("%s OutputCurrent: %.2fA\r\n", TAG, _rp.outputCurrent);
-#endif
+        calcPower();
         _lastUpdate = millis();
+#ifdef MEANWELL_DEBUG_ENABLED
+        if (_verboseLogging) MessageOutput.printf("%s OutputCurrent: %.2fA\r\n", TAG, _rp.outputCurrent);
+#endif
         break;
 
     case 0x0062: // READ_TEMPERATURE_1 2 bytes Internal ambient temperature (format: value, F=0.1)
         _rp.internalTemperature = scaleValue(readSignedInt16(frame + 2), 0.1f);
-#ifdef MEANWELL_DEBUG_ENABLED
-        if (_verboseLogging)
-            MessageOutput.printf("%s Temperature: %.1f°C\r\n", TAG, _rp.internalTemperature);
-#endif
         _lastUpdate = millis();
+#ifdef MEANWELL_DEBUG_ENABLED
+        if (_verboseLogging) MessageOutput.printf("%s Temperature: %.1f°C\r\n", TAG, _rp.internalTemperature);
+#endif
         break;
 
     case 0x0080: // MFR_ID_B0B5 6 bytes Manufacturer's name
@@ -411,11 +410,10 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
             else
                 break;
         }
-#ifdef MEANWELL_DEBUG_ENABLED
-        if (_verboseLogging)
-            MessageOutput.printf("%s Manufacturer Name: '%s'\r\n", TAG, _rp.ManufacturerName);
-#endif
         _lastUpdate = millis();
+#ifdef MEANWELL_DEBUG_ENABLED
+        if (_verboseLogging) MessageOutput.printf("%s Manufacturer Name: '%s'\r\n", TAG, _rp.ManufacturerName);
+#endif
         break;
 
     case 0x0082: // MFR_MODEL_B0B51 6 bytes Manufacturer's model name
@@ -423,7 +421,7 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
         break;
 
     case 0x0083: // MFR_MODEL_B6B11 6 bytes Manufacturer's model name
-    {
+        {
         strncpy(reinterpret_cast<char*>(&(_rp.ManufacturerModelName[6])), reinterpret_cast<char*>(frame + 2), 6);
         for (int i = 11; i > 0; i--) {
             if (isblank(_rp.ManufacturerModelName[i]))
@@ -488,16 +486,17 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
             cMeanWell.MinVoltage = 42.0f;
             cMeanWell.MaxVoltage = 80.0f;
         }
+        _lastUpdate = millis();
 
 #ifdef MEANWELL_DEBUG_ENABLED
-        if (_verboseLogging)
-            MessageOutput.printf("%s Manufacturer Model Name: '%s' %d\r\n", TAG, _rp.ManufacturerModelName, static_cast<int>(_model));
+        if (_verboseLogging) MessageOutput.printf("%s Manufacturer Model Name: '%s' %d\r\n", TAG, _rp.ManufacturerModelName, static_cast<int>(_model));
 #endif
-        _lastUpdate = millis();
-    } break;
+        }
+        break;
 
     case 0x0084: // MFR_REVISION_B0B5 6 bytes Firmware revision
         memcpy(reinterpret_cast<char*>(_rp.FirmwareRevision), reinterpret_cast<char*>(frame + 2), 6);
+        _lastUpdate = millis();
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging) {
             char hex[13];
@@ -512,25 +511,22 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
             MessageOutput.printf("%s Firmware Revision: '%s'\r\n", TAG, hex);
         }
 #endif
-        _lastUpdate = millis();
         break;
 
     case 0x0085: // MFR_LOCATION_B0B2 3 bytes Manufacturer's factory location
         strncpy(reinterpret_cast<char*>(_rp.ManufacturerFactoryLocation), reinterpret_cast<char*>(frame + 2), 3);
-#ifdef MEANWELL_DEBUG_ENABLED
-        if (_verboseLogging)
-            MessageOutput.printf("%s Manufacturer Factory Location: '%s'\r\n", TAG, _rp.ManufacturerFactoryLocation);
-#endif
         _lastUpdate = millis();
+#ifdef MEANWELL_DEBUG_ENABLED
+        if (_verboseLogging) MessageOutput.printf("%s Manufacturer Factory Location: '%s'\r\n", TAG, _rp.ManufacturerFactoryLocation);
+#endif
         break;
 
     case 0x0086: // MFR_DATE_B0B5 6 bytes Manufacturer date
         strncpy(reinterpret_cast<char*>(_rp.ManufacturerDate), reinterpret_cast<char*>(frame + 2), 6);
-#ifdef MEANWELL_DEBUG_ENABLED
-        if (_verboseLogging)
-            MessageOutput.printf("%s Manufacturer Date: '%s'\r\n", TAG, _rp.ManufacturerDate);
-#endif
         _lastUpdate = millis();
+#ifdef MEANWELL_DEBUG_ENABLED
+        if (_verboseLogging) MessageOutput.printf("%s Manufacturer Date: '%s'\r\n", TAG, _rp.ManufacturerDate);
+#endif
         break;
 
     case 0x0087: // MFR_SERIAL_B0B5 6 bytes Product serial number
@@ -539,51 +535,47 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
 
     case 0x0088: // MFR_SERIAL_B6B11 6 bytes Product serial number
         strncpy(reinterpret_cast<char*>(&(_rp.ProductSerialNo[6])), reinterpret_cast<char*>(frame + 2), 6);
-#ifdef MEANWELL_DEBUG_ENABLED
-        if (_verboseLogging)
-            MessageOutput.printf("%s Product Serial No '%s'\r\n", TAG, _rp.ProductSerialNo);
-#endif
         _lastUpdate = millis();
+#ifdef MEANWELL_DEBUG_ENABLED
+        if (_verboseLogging) MessageOutput.printf("%s Product Serial No '%s'\r\n", TAG, _rp.ProductSerialNo);
+#endif
         break;
 
     case 0x00B0: // CURVE_CC 2 bytes Constant current setting of charge curve (format: value, F=0.01)
         _rp.curveCC = scaleValue(readUnsignedInt16(frame + 2), 0.01f);
-#ifdef MEANWELL_DEBUG_ENABLED
-        if (_verboseLogging)
-            MessageOutput.printf("%s CurveCC: %.2fA\r\n", TAG, _rp.curveCC);
-#endif
         _lastUpdate = millis();
+#ifdef MEANWELL_DEBUG_ENABLED
+        if (_verboseLogging) MessageOutput.printf("%s CurveCC: %.2fA\r\n", TAG, _rp.curveCC);
+#endif
         break;
 
     case 0x00B1: // CURVE_CV 2 bytes Constant voltage setting of charge curve (format: value, F=0.01)
         _rp.curveCV = scaleValue(readUnsignedInt16(frame + 2), 0.01f);
-#ifdef MEANWELL_DEBUG_ENABLED
-        if (_verboseLogging)
-            MessageOutput.printf("%s CurveCV: %.2fV\r\n", TAG, _rp.curveCV);
-#endif
         _lastUpdate = millis();
+#ifdef MEANWELL_DEBUG_ENABLED
+        if (_verboseLogging) MessageOutput.printf("%s CurveCV: %.2fV\r\n", TAG, _rp.curveCV);
+#endif
         break;
 
     case 0x00B2: // CURVE_FV 2 bytes Floating voltage setting of charge curve (format: value, F=0.01)
         _rp.curveFV = scaleValue(readUnsignedInt16(frame + 2), 0.01f);
-#ifdef MEANWELL_DEBUG_ENABLED
-        if (_verboseLogging)
-            MessageOutput.printf("%s CurveFV: %.2fV\r\n", TAG, _rp.curveFV);
-#endif
         _lastUpdate = millis();
+#ifdef MEANWELL_DEBUG_ENABLED
+        if (_verboseLogging) MessageOutput.printf("%s CurveFV: %.2fV\r\n", TAG, _rp.curveFV);
+#endif
         break;
 
     case 0x00B3: // CURVE_TC 2 bytes Taper current setting value of charging curve (format: value, F=0.01)
         _rp.curveTC = scaleValue(readUnsignedInt16(frame + 2), 0.01f);
-#ifdef MEANWELL_DEBUG_ENABLED
-        if (_verboseLogging)
-            MessageOutput.printf("%s CurveTC: %.2fA\r\n", TAG, _rp.curveTC);
-#endif
         _lastUpdate = millis();
+#ifdef MEANWELL_DEBUG_ENABLED
+        if (_verboseLogging) MessageOutput.printf("%s CurveTC: %.2fA\r\n", TAG, _rp.curveTC);
+#endif
         break;
 
     case 0x00B4: // CURVE_CONFIG 2 bytes Configuration setting of charge curve
         _rp.CurveConfig = readUnsignedInt16(frame + 2);
+        _lastUpdate = millis();
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging)
             MessageOutput.printf("%s CURVE_CONFIG : %s : CUVE: %d, STGS: %d, TCS: %d, CUVS: %X\r\n", TAG,
@@ -593,38 +585,35 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
                 _rp.CURVE_CONFIG.TCS,
                 _rp.CURVE_CONFIG.CUVS);
 #endif
-        _lastUpdate = millis();
         break;
 
     case 0x00B5: // CURVE_CC_TIMEOUT 2 bytes CC charge timeout setting of charging curve
         _rp.curveCC_Timeout = readUnsignedInt16(frame + 2);
-#ifdef MEANWELL_DEBUG_ENABLED
-        if (_verboseLogging)
-            MessageOutput.printf("%s CurveCC_Timeout: %d minutes\r\n", TAG, _rp.curveCC_Timeout);
-#endif
         _lastUpdate = millis();
+#ifdef MEANWELL_DEBUG_ENABLED
+        if (_verboseLogging) MessageOutput.printf("%s CurveCC_Timeout: %d minutes\r\n", TAG, _rp.curveCC_Timeout);
+#endif
         break;
 
     case 0x00B6: // CURVE_CV_TIMEOUT 2 bytes CV charge timeout setting of charging curve
         _rp.curveCV_Timeout = readUnsignedInt16(frame + 2);
-#ifdef MEANWELL_DEBUG_ENABLED
-        if (_verboseLogging)
-            MessageOutput.printf("%s CurveCV_Timeout: %d minutes\r\n", TAG, _rp.curveCV_Timeout);
-#endif
         _lastUpdate = millis();
+#ifdef MEANWELL_DEBUG_ENABLED
+        if (_verboseLogging) MessageOutput.printf("%s CurveCV_Timeout: %d minutes\r\n", TAG, _rp.curveCV_Timeout);
+#endif
         break;
 
     case 0x00B7: // CURVE_FV_TIMEOUT 2 bytes FV charge timeout setting of charging curve
         _rp.curveFV_Timeout = readUnsignedInt16(frame + 2);
-#ifdef MEANWELL_DEBUG_ENABLED
-        if (_verboseLogging)
-            MessageOutput.printf("%s CurveFV_Timeout: %d minutes\r\n", TAG, _rp.curveFV_Timeout);
-#endif
         _lastUpdate = millis();
+#ifdef MEANWELL_DEBUG_ENABLED
+        if (_verboseLogging) MessageOutput.printf("%s CurveFV_Timeout: %d minutes\r\n", TAG, _rp.curveFV_Timeout);
+#endif
         break;
 
     case 0x00B8: // CHG_STATUS 2 bytes Charging status reporting
         _rp.ChargeStatus = readUnsignedInt16(frame + 2);
+        _lastUpdate = millis();
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging)
             MessageOutput.printf("%s CHG_STATUS : %s : BTNC: %d, WAKUP_STOP: %d, FVM: %d, CVM: %d, CCM: %d, FULLM: %d\r\n", TAG,
@@ -636,7 +625,6 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
                 _rp.CHG_STATUS.CCM,
                 _rp.CHG_STATUS.FULLM);
 #endif
-        _lastUpdate = millis();
         break;
 
     case 0x00B9: // CHG_RST_VBAT 2 bytes The voltage Rest to art the charging after the battery is fully
@@ -648,15 +636,15 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
 
     case 0x00C0: // SCALING_FACTOR 2 bytes Scaling ratio
         _rp.scalingFactor = readUnsignedInt16(frame + 2);
-#ifdef MEANWELL_DEBUG_ENABLED
-        if (_verboseLogging)
-            MessageOutput.printf("%s ScalingFactor: %d, %04X\r\n", TAG, _rp.scalingFactor, _rp.scalingFactor);
-#endif
         _lastUpdate = millis();
+#ifdef MEANWELL_DEBUG_ENABLED
+        if (_verboseLogging) MessageOutput.printf("%s ScalingFactor: %d, %04X\r\n", TAG, _rp.scalingFactor, _rp.scalingFactor);
+#endif
         break;
 
     case 0x00C1: // SYSTEM_STATUS 2 bytes System Status
         _rp.SystemStatus = readUnsignedInt16(frame + 2);
+        _lastUpdate = millis();
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging)
             MessageOutput.printf("%s SYSTEM_STATUS : %s : EEPER: %d, INITIAL_STATE: %d, DC_OK: %d\r\n", TAG,
@@ -665,11 +653,11 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
                 _rp.SYSTEM_STATUS.INITIAL_STATE,
                 _rp.SYSTEM_STATUS.DC_OK);
 #endif
-        _lastUpdate = millis();
         break;
 
     case 0x00C2: // SYSTEM_CONFIG 2 bytes System Configuration
         _rp.SystemConfig = readUnsignedInt16(frame + 2);
+        _lastUpdate = millis();
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging) {
             const char* OperationInit[4] = {
@@ -684,7 +672,6 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
                 _rp.SYSTEM_CONFIG.EEP_OFF);
         }
 #endif
-        _lastUpdate = millis();
         break;
 
     default:;
@@ -830,7 +817,6 @@ void MeanWellCanClass::loop()
     const MeanWell_CONFIG_T& cMeanWell = Configuration.get().MeanWell;
 
     if (!cMeanWell.Enabled || !_initialized) {
-        _setupParameter = true;
         return;
     }
 
@@ -839,7 +825,6 @@ void MeanWellCanClass::loop()
     uint32_t t_start = millis();
 
     parseCanPackets();
-
 
     updateEEPROMwrites2NVS();
 
@@ -941,10 +926,10 @@ void MeanWellCanClass::loop()
             || (!isProducing && Configuration.get().MeanWell.mustInverterProduce) ) {
             switchChargerOff("");
 
-            // check if battery request immediate charging or SoC is less than 100%
+            // check if battery request immediate charging or SoC is less than Stop_Charging_BatterySoC_Threshold (20 ... 100%)
             // and inverter is producing and reachable and day
             // than switch on charger
-        } else if (Battery.getStats()->getSoC() < 100
+        } else if (Battery.getStats()->getSoC() < Configuration.get().Battery.Stop_Charging_BatterySoC_Threshold
                    && (    (isProducing && isReachable && Configuration.get().MeanWell.mustInverterProduce)
                         || (!Configuration.get().MeanWell.mustInverterProduce)
                       )

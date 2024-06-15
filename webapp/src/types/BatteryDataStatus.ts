@@ -14,6 +14,8 @@ export interface Pack {
 
 export interface BatteryData {
     manufacturer: string;
+    fwversion: string;
+    hwversion: string;
     data_age: number;
     values: (ValueObject | string)[];
     issues: number[];

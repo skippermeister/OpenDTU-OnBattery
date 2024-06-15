@@ -23,6 +23,10 @@
                             </a></td>
                     </tr>
                     <tr>
+                        <th>{{ $t('firmwareinfo.FirmwareBranch') }}</th>
+                        <td>{{ systemStatus.git_branch }}</td>
+                    </tr>
+                    <tr>
                         <th>{{ $t('firmwareinfo.PioEnv') }}</th>
                         <td>{{ systemStatus.pioenv }}</td>
                     </tr>
@@ -83,10 +87,10 @@ export default defineComponent({
     },
     computed: {
         modelAllowVersionInfo: {
-            get(): any {
+            get(): boolean {
                 return !!this.allowVersionInfo;
             },
-            set(value: any) {
+            set(value: boolean) {
                 this.$emit('update:allowVersionInfo', value);
             },
         },

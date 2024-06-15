@@ -48,8 +48,6 @@
     #define LED_COUNT   2
 #endif
 
-#define JSON_BUFFER_SIZE 16 * 1024
-
 struct CHANNEL_CONFIG_T {
     uint16_t MaxChannelPower;
     char Name[CHAN_MAX_NAME_STRLEN];
@@ -84,13 +82,9 @@ typedef struct {
     } Cmt;
 } Dtu_CONFIG_T;
 
-enum Auth { none,
-    basic,
-    digest };
-enum PowerMeterUnits { kW,
-    W,
-    mW };
 struct POWERMETER_HTTP_PHASE_CONFIG_T {
+    enum Auth { None, Basic, Digest };
+    enum Unit { KiloWatts = 0, Watts = 1, MilliWatts = 2 };
     bool Enabled;
     char Url[POWERMETER_MAX_HTTP_URL_STRLEN + 1];
     Auth AuthType;
@@ -100,8 +94,10 @@ struct POWERMETER_HTTP_PHASE_CONFIG_T {
     char HeaderValue[POWERMETER_MAX_HTTP_HEADER_VALUE_STRLEN + 1];
     uint16_t Timeout;
     char JsonPath[POWERMETER_MAX_HTTP_JSON_PATH_STRLEN + 1];
-    PowerMeterUnits Unit;
+    Unit PowerUnit;
+    bool SignInverted;
 };
+using PowerMeterHttpConfig = struct POWERMETER_HTTP_PHASE_CONFIG_T;
 
 struct WiFi_CONFIG_T {
     char Ssid[WIFI_MAX_SSID_STRLEN + 1];
@@ -168,6 +164,7 @@ struct PowerLimiter_CONFIG_T {
     int32_t TargetPowerConsumption;
     int32_t TargetPowerConsumptionHysteresis;
     int32_t LowerPowerLimit;
+    int32_t BaseLoadLimit;
     int32_t UpperPowerLimit;
     bool IgnoreSoc;
     uint32_t BatterySocStartThreshold;
@@ -203,6 +200,7 @@ struct Battery_CONFIG_T {
     int8_t MaxChargeTemperature;
     int8_t MinDischargeTemperature;
     int8_t MaxDischargeTemperature;
+    uint8_t Stop_Charging_BatterySoC_Threshold;
 };
 
 struct Mqtt_CONFIG_T {

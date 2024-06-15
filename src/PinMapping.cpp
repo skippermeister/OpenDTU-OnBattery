@@ -14,7 +14,6 @@
 #ifdef JSON_BUFFER_SIZE
 #undef JSON_BUFFER_SIZE
 #endif
-#define JSON_BUFFER_SIZE 8*1024
 
 #ifndef DISPLAY_TYPE
 #define DISPLAY_TYPE 0  // DisplayType_t::SSD1309  entspricht 5
@@ -230,7 +229,10 @@ PinMappingClass::PinMappingClass()
     _pinMapping.victron_rx = SERIAL1_PIN_RX;
 
     _pinMapping.victron_tx2 = -1;
-    _pinMapping.victron_rx2 = -1;
+    _pinMapping.victron_rx2 = 0;
+
+    _pinMapping.victron_tx3 = -1;
+    _pinMapping.victron_rx3 = 0;
 
 #if defined(USE_REFUsol_INVERTER)
     _pinMapping.REFUsol_rx = SERIAL1_PIN_RX;
@@ -285,7 +287,7 @@ void PinMappingClass::init(const String& deviceMapping)
 
     if (f) {
 
-        DynamicJsonDocument doc(JSON_BUFFER_SIZE);
+        JsonDocument doc;
         // Deserialize the JSON document
         DeserializationError error = deserializeJson(doc, f);
         if (error) {
@@ -349,6 +351,9 @@ void PinMappingClass::init(const String& deviceMapping)
 
                 _pinMapping.victron_rx2 = doc[i]["victron"]["rs323_rx2"] | -1;
                 _pinMapping.victron_tx2 = doc[i]["victron"]["rs323_tx2"] | -1;
+
+                _pinMapping.victron_rx3 = doc[i]["victron"]["rs323_rx3"] | -1;
+                _pinMapping.victron_tx3 = doc[i]["victron"]["rs323_tx3"] | -1;
 
 #if defined(USE_REFUsol_INVERTER)
                 _pinMapping.REFUsol_rx = doc[i]["refusol"]["rs485_rx"] | SERIAL1_PIN_RX;
@@ -531,15 +536,15 @@ bool PinMappingClass::isValidPreChargeConfig() const
 
 void PinMappingClass::createPinMappingJson() const
 {
-    DynamicJsonDocument obj(JSON_BUFFER_SIZE);
+    JsonDocument obj;
 
-    JsonArray array = obj.createNestedArray("");
-    JsonObject doc = array.createNestedObject();
+    JsonArray array = obj[""].to<JsonArray>();
+    JsonObject doc = array.add<JsonObject>();
 
     doc["name"] = "my_very_special_board";
 
 #if defined(USE_RADIO_NRF)
-    JsonObject nrf24 = doc.createNestedObject("nrf24");
+    JsonObject nrf24 = doc["nrf24"].to<JsonObject>();
     nrf24["clk"]  = _pinMapping.nrf24_clk;
     nrf24["cs"]   = _pinMapping.nrf24_cs;
     nrf24["en"]   = _pinMapping.nrf24_en;
@@ -549,7 +554,7 @@ void PinMappingClass::createPinMappingJson() const
 #endif
 
 #if defined(USE_RADIO_CMT)
-    JsonObject cmt = doc.createNestedObject("cmt");
+    JsonObject cmt = doc["cmt"].to<JsonObject>();
     cmt["clk"]   = _pinMapping.cmt_clk;
     cmt["cs"]    = _pinMapping.cmt_cs;
     cmt["fcs"]   = _pinMapping.cmt_fcs;
@@ -559,7 +564,7 @@ void PinMappingClass::createPinMappingJson() const
 #endif
 
 #if defined(OPENDTU_ETHERNET)
-    JsonObject eth = doc.createNestedObject("eth");
+    JsonObject eth = doc["eth"].to<JsonObject>();
     eth["enabled"]  = _pinMapping.eth_enabled;
     eth["phy_addr"] = _pinMapping.eth_phy_addr;
     eth["power"]    = _pinMapping.eth_power;
@@ -570,7 +575,7 @@ void PinMappingClass::createPinMappingJson() const
 #endif
 
 #if defined(USE_DISPLAY_GRAPHIC)
-    JsonObject display = doc.createNestedObject("display");
+    JsonObject display = doc["display"].to<JsonObject>();
     display["type"]  = _pinMapping.display_type;
     display["data"]  = _pinMapping.display_data;
     display["clk"]   = _pinMapping.display_clk;
@@ -581,7 +586,7 @@ void PinMappingClass::createPinMappingJson() const
 #endif
 
 #if defined(USE_LED_SINGLE) || defined(USE_LED_STRIP)
-    JsonObject led = doc.createNestedObject("led");
+    JsonObject led = doc["led"].to<JsonObject>();
     led["led0"] = _pinMapping.led[0];
     led["led1"] = _pinMapping.led[1];
 #if defined(USE_LED_STRIP)
@@ -589,20 +594,22 @@ void PinMappingClass::createPinMappingJson() const
 #endif
 #endif
 
-    JsonObject victron = doc.createNestedObject("victron");
+    JsonObject victron = doc["victron"].to<JsonObject>();
     victron["rs232_rx"] = _pinMapping.victron_rx;
     victron["rs232_tx"] = _pinMapping.victron_tx;
     victron["rs232_rx2"] = _pinMapping.victron_rx2;
     victron["rs232_tx2"] = _pinMapping.victron_tx2;
+    victron["rs232_rx3"] = _pinMapping.victron_rx3;
+    victron["rs232_tx3"] = _pinMapping.victron_tx3;
 
 #if defined(USE_REFUsol_INVERTER)
-    JsonObject refusol = doc.createNestedObject("refusol");
+    JsonObject refusol = doc["refusol"].to<JsonObject>();
     refusol["rs485_rx"] = _pinMapping.REFUsol_rx;
     refusol["rs485_tx"] = _pinMapping.REFUsol_tx;
     if (_pinMapping.REFUsol_rts >= 0) refusol["rs485_rts"] = _pinMapping.REFUsol_rts;
 #endif
 
-    JsonObject battery = doc.createNestedObject("battery");
+    JsonObject battery = doc["battery"].to<JsonObject>();
 #if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER) || defined(USE_JKBMS_CONTROLLER)
     if (_pinMapping.battery_rts >= -1) {
         battery["rs485_rx"]  = _pinMapping.battery_rx;
@@ -620,9 +627,9 @@ void PinMappingClass::createPinMappingJson() const
     battery["can0_tx"] = _pinMapping.battery_tx;
 #endif
 
-    //JsonObject huawei = doc.createNestedObject("huawei");
-    JsonObject charger = doc.createNestedObject("charger");
-    JsonObject mcp2515 = doc.createNestedObject("mcp2515");
+    //JsonObject huawei = doc["huawei"].to<JsonObject>();
+    JsonObject charger = doc["charger"].to<JsonObject>();
+    JsonObject mcp2515 = doc["mcp2515"].to<JsonObject>();
 #if defined(CHARGER_HUAWEI)
     huawei["power"] = _pinMapping.huawei_power;
     huawei["mcp2515_miso"] = _pinMapping.mcp2515_miso;
@@ -649,12 +656,12 @@ void PinMappingClass::createPinMappingJson() const
     charger["mcp2515_cs"] = _pinMapping.mcp2515_cs;
 #endif
 #endif
-    JsonObject battery_connected_inverter = doc.createNestedObject("batteryConnectedInverter");
+    JsonObject battery_connected_inverter = doc["batteryConnectedInverter"].to<JsonObject>();
     battery_connected_inverter["pre_charge"] = _pinMapping.pre_charge;
     battery_connected_inverter["full_power"] = _pinMapping.full_power;
 
     PowerMeterClass::Source source = static_cast<PowerMeterClass::Source>(Configuration.get().PowerMeter.Source);
-    JsonObject powermeter = doc.createNestedObject("powermeter");
+    JsonObject powermeter = doc["powermeter"].to<JsonObject>();
     if (source == PowerMeterClass::Source::SML)
     {
         powermeter["sml_rs232_rx"] = _pinMapping.powermeter_rx;

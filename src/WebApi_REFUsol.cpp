@@ -39,8 +39,7 @@ void WebApiREFUsolClass::onREFUsolStatus(AsyncWebServerRequest* request)
     root["updatesonly"] = cREFUsol.UpdatesOnly;
     root["verbose_logging"] = REFUsol.getVerboseLogging();
 
-    response->setLength();
-    request->send(response);
+    WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 }
 
 void WebApiREFUsolClass::onREFUsolAdminGet(AsyncWebServerRequest* request)
@@ -59,37 +58,12 @@ void WebApiREFUsolClass::onREFUsolAdminPost(AsyncWebServerRequest* request)
     }
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
+    JsonDocument root;
+    if (!WebApi.parseRequestData(request, response, root)) {
+        return;
+    }
+
     auto& retMsg = response->getRoot();
-    retMsg["type"] = Warning;
-
-    if (!request->hasParam("data", true)) {
-        retMsg["message"] = NoValuesFound;
-        retMsg["code"] = WebApiError::GenericNoValueFound;
-        response->setLength();
-        request->send(response);
-        return;
-    }
-
-    const String json = request->getParam("data", true)->value();
-
-    if (json.length() > 1024) {
-        retMsg["message"] = DataTooLarge;
-        retMsg["code"] = WebApiError::GenericDataTooLarge;
-        response->setLength();
-        request->send(response);
-        return;
-    }
-
-    DynamicJsonDocument root(1024);
-    const DeserializationError error = deserializeJson(root, json);
-
-    if (error) {
-        retMsg["message"] = FailedToParseData;
-        retMsg["code"] = WebApiError::GenericParseError;
-        response->setLength();
-        request->send(response);
-        return;
-    }
 
     if (!(root.containsKey("enabled")
             && root.containsKey("pollinterval")
@@ -97,8 +71,7 @@ void WebApiREFUsolClass::onREFUsolAdminPost(AsyncWebServerRequest* request)
             && root.containsKey("verbose_logging"))) {
         retMsg["message"] = "Values are missing!";
         retMsg["code"] = WebApiError::GenericValueMissing;
-        response->setLength();
-        request->send(response);
+        WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;
     }
 
@@ -107,9 +80,7 @@ void WebApiREFUsolClass::onREFUsolAdminPost(AsyncWebServerRequest* request)
         retMsg["code"] = WebApiError::MqttPublishInterval;
         retMsg["param"]["min"] = 5;
         retMsg["param"]["max"] = 65535;
-
-        response->setLength();
-        request->send(response);
+        WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;
     }
 
@@ -121,8 +92,7 @@ void WebApiREFUsolClass::onREFUsolAdminPost(AsyncWebServerRequest* request)
 
     WebApi.writeConfig(retMsg);
 
-    response->setLength();
-    request->send(response);
+    WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 
     REFUsol.updateSettings();
 }

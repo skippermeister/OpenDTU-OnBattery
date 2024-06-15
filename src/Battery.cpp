@@ -44,7 +44,6 @@ void BatteryClass::updateSettings()
         _upProvider->deinit();
         _upProvider = nullptr;
     }
-    SerialPortManager.invalidateBatteryPort();
 
     Battery_CONFIG_T& cBattery = Configuration.get().Battery;
 
@@ -57,9 +56,6 @@ void BatteryClass::updateSettings()
 #ifdef USE_PYLONTECH_RS485_RECEIVER
     case 0: // Initialize Pylontech Battery / RS485 bus
         _upProvider = std::make_unique<PylontechRS485Receiver>();
-        if (!_upProvider->init()) {
-            _upProvider = nullptr;
-        }
         break;
 #endif
 #ifdef USE_PYLONTECH_CAN_RECEIVER
@@ -93,18 +89,7 @@ void BatteryClass::updateSettings()
         break;
     }
 
-    if(_upProvider->usesHwPort2()) {
-        if (!SerialPortManager.allocateBatteryPort(2)) {
-            MessageOutput.printf("[Battery] Serial port %d already in use. Initialization aborted!\r\n", 2);
-            _upProvider = nullptr;
-            return;
-        }
-    }
-
-    if (!_upProvider->init()) {
-        SerialPortManager.invalidateBatteryPort();
-        _upProvider = nullptr;
-    }
+    if (!_upProvider->init()) { _upProvider = nullptr; }
 }
 
 void BatteryClass::loop()

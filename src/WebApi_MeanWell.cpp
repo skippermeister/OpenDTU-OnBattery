@@ -14,7 +14,6 @@
 #include "WebApi_errors.h"
 #include <AsyncJson.h>
 #include <Hoymiles.h>
-#include "Utils.h"
 
 void WebApiMeanWellClass::init(AsyncWebServer& server, Scheduler& scheduler)
 {
@@ -41,10 +40,7 @@ void WebApiMeanWellClass::onStatus(AsyncWebServerRequest* request)
     auto& root = response->getRoot();
     MeanWellCan.generateJsonResponse(root);
 
-    if (Utils::checkJsonOverflow(root, __FUNCTION__, __LINE__)) { return; }
-
-    response->setLength();
-    request->send(response);
+    WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 }
 
 void WebApiMeanWellClass::onAdminGet(AsyncWebServerRequest* request)
@@ -69,8 +65,7 @@ void WebApiMeanWellClass::onAdminGet(AsyncWebServerRequest* request)
     root["EEPROMwrites"] = MeanWellCan.getEEPROMwrites();
     root["mustInverterProduce"] = cMeanWell.mustInverterProduce;
 
-    response->setLength();
-    request->send(response);
+    WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 }
 
 void WebApiMeanWellClass::onAdminPost(AsyncWebServerRequest* request)
@@ -80,37 +75,12 @@ void WebApiMeanWellClass::onAdminPost(AsyncWebServerRequest* request)
     }
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
+    JsonDocument root;
+    if (!WebApi.parseRequestData(request, response, root)) {
+        return;
+    }
+
     auto& retMsg = response->getRoot();
-    retMsg["type"] = Warning;
-
-    if (!request->hasParam("data", true)) {
-        retMsg["message"] = NoValuesFound;
-        retMsg["code"] = WebApiError::GenericNoValueFound;
-        response->setLength();
-        request->send(response);
-        return;
-    }
-
-    const String json = request->getParam("data", true)->value();
-
-    if (json.length() > 1024) {
-        retMsg["message"] = DataTooLarge;
-        retMsg["code"] = WebApiError::GenericDataTooLarge;
-        response->setLength();
-        request->send(response);
-        return;
-    }
-
-    DynamicJsonDocument root(1024);
-    const DeserializationError error = deserializeJson(root, json);
-
-    if (error) {
-        retMsg["message"] = FailedToParseData;
-        retMsg["code"] = WebApiError::GenericParseError;
-        response->setLength();
-        request->send(response);
-        return;
-    }
 
     if (!(root.containsKey("enabled")
             && root.containsKey("pollinterval")
@@ -123,8 +93,7 @@ void WebApiMeanWellClass::onAdminPost(AsyncWebServerRequest* request)
             && root.containsKey("verbose_logging"))) {
         retMsg["message"] = ValuesAreMissing;
         retMsg["code"] = WebApiError::GenericValueMissing;
-        response->setLength();
-        request->send(response);
+        WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;
     }
 
@@ -133,9 +102,7 @@ void WebApiMeanWellClass::onAdminPost(AsyncWebServerRequest* request)
         retMsg["code"] = WebApiError::MqttPublishInterval;
         retMsg["param"]["min"] = 5;
         retMsg["param"]["max"] = 65535;
-
-        response->setLength();
-        request->send(response);
+        WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;
     }
 
@@ -153,8 +120,7 @@ void WebApiMeanWellClass::onAdminPost(AsyncWebServerRequest* request)
 
     WebApi.writeConfig(retMsg);
 
-    response->setLength();
-    request->send(response);
+    WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 
     MeanWellCan.updateSettings();
 }
@@ -182,8 +148,7 @@ void WebApiMeanWellClass::onLimitGet(AsyncWebServerRequest* request)
             MessageOutput.println(output);
         }
     */
-    response->setLength();
-    request->send(response);
+    WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 }
 
 void WebApiMeanWellClass::onLimitPost(AsyncWebServerRequest* request)
@@ -193,29 +158,12 @@ void WebApiMeanWellClass::onLimitPost(AsyncWebServerRequest* request)
     }
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
+    JsonDocument root;
+    if (!WebApi.parseRequestData(request, response, root)) {
+        return;
+    }
+
     auto& retMsg = response->getRoot();
-    retMsg["type"] = Warning;
-
-    if (!request->hasParam("data", true)) {
-        retMsg["message"] = NoValuesFound;
-        retMsg["code"] = WebApiError::GenericNoValueFound;
-        response->setLength();
-        request->send(response);
-        return;
-    }
-
-    const String json = request->getParam("data", true)->value();
-
-    if (json.length() > 1024) {
-        retMsg["message"] = DataTooLarge;
-        retMsg["code"] = WebApiError::GenericDataTooLarge;
-        response->setLength();
-        request->send(response);
-        return;
-    }
-
-    DynamicJsonDocument root(1024);
-    const DeserializationError error = deserializeJson(root, json);
 
     /*
         if (MeanWellCan.getVerboseLogging()) {
@@ -225,14 +173,6 @@ void WebApiMeanWellClass::onLimitPost(AsyncWebServerRequest* request)
         }
     */
     float value;
-
-    if (error) {
-        retMsg["message"] = FailedToParseData;
-        retMsg["code"] = WebApiError::GenericParseError;
-        response->setLength();
-        request->send(response);
-        return;
-    }
 
     const MeanWell_CONFIG_T& cMeanWell = Configuration.get().MeanWell;
 
@@ -244,8 +184,7 @@ void WebApiMeanWellClass::onLimitPost(AsyncWebServerRequest* request)
                 retMsg["code"] = WebApiError::LimitInvalidLimit;
                 retMsg["param"]["max"] = cMeanWell.MaxVoltage;
                 retMsg["param"]["min"] = cMeanWell.MinVoltage;
-                response->setLength();
-                request->send(response);
+                WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
                 return;
             } else {
                 value = root["voltage"].as<float>();
@@ -262,8 +201,7 @@ void WebApiMeanWellClass::onLimitPost(AsyncWebServerRequest* request)
                 retMsg["code"] = WebApiError::LimitInvalidLimit;
                 retMsg["param"]["max"] = cMeanWell.MaxCurrent;
                 retMsg["param"]["min"] = cMeanWell.MinCurrent;
-                response->setLength();
-                request->send(response);
+                WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
                 return;
             } else {
                 value = root["current"].as<float>();
@@ -280,8 +218,7 @@ void WebApiMeanWellClass::onLimitPost(AsyncWebServerRequest* request)
                 retMsg["code"] = WebApiError::LimitInvalidLimit;
                 retMsg["param"]["max"] = cMeanWell.MaxVoltage;
                 retMsg["param"]["min"] = cMeanWell.MinVoltage;
-                response->setLength();
-                request->send(response);
+                WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
                 return;
             } else {
                 value = root["curveCV"].as<float>();
@@ -298,8 +235,7 @@ void WebApiMeanWellClass::onLimitPost(AsyncWebServerRequest* request)
                 retMsg["code"] = WebApiError::LimitInvalidLimit;
                 retMsg["param"]["max"] = cMeanWell.MaxCurrent;
                 retMsg["param"]["min"] = cMeanWell.MinCurrent;
-                response->setLength();
-                request->send(response);
+                WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
                 return;
             } else {
                 value = root["curveCC"].as<float>();
@@ -316,8 +252,7 @@ void WebApiMeanWellClass::onLimitPost(AsyncWebServerRequest* request)
                 retMsg["code"] = WebApiError::LimitInvalidLimit;
                 retMsg["param"]["max"] = cMeanWell.MaxVoltage;
                 retMsg["param"]["min"] = cMeanWell.MinVoltage;
-                response->setLength();
-                request->send(response);
+                WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
                 return;
             } else {
                 value = root["curveFV"].as<float>();
@@ -334,8 +269,7 @@ void WebApiMeanWellClass::onLimitPost(AsyncWebServerRequest* request)
                 retMsg["code"] = WebApiError::LimitInvalidLimit;
                 retMsg["param"]["max"] = cMeanWell.MaxCurrent / 3.33333333;
                 retMsg["param"]["min"] = cMeanWell.MinCurrent / 10.0;
-                response->setLength();
-                request->send(response);
+                WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
                 return;
             } else {
                 value = root["curveTC"].as<float>();
@@ -348,8 +282,7 @@ void WebApiMeanWellClass::onLimitPost(AsyncWebServerRequest* request)
     retMsg["message"] = SettingsSaved;
     retMsg["code"] = WebApiError::GenericSuccess;
 
-    response->setLength();
-    request->send(response);
+    WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 }
 
 void WebApiMeanWellClass::onPowerGet(AsyncWebServerRequest* request)
@@ -370,8 +303,7 @@ void WebApiMeanWellClass::onPowerGet(AsyncWebServerRequest* request)
             MessageOutput.println(output);
         }
     */
-    response->setLength();
-    request->send(response);
+    WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 }
 
 void WebApiMeanWellClass::onPowerPost(AsyncWebServerRequest* request)
@@ -381,29 +313,12 @@ void WebApiMeanWellClass::onPowerPost(AsyncWebServerRequest* request)
     }
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
+    JsonDocument root;
+    if (!WebApi.parseRequestData(request, response, root)) {
+        return;
+    }
+
     auto& retMsg = response->getRoot();
-    retMsg["type"] = Warning;
-
-    if (!request->hasParam("data", true)) {
-        retMsg["message"] = NoValuesFound;
-        retMsg["code"] = WebApiError::GenericNoValueFound;
-        response->setLength();
-        request->send(response);
-        return;
-    }
-
-    const String json = request->getParam("data", true)->value();
-
-    if (json.length() > 1024) {
-        retMsg["message"] = DataTooLarge;
-        retMsg["code"] = WebApiError::GenericDataTooLarge;
-        response->setLength();
-        request->send(response);
-        return;
-    }
-
-    DynamicJsonDocument root(1024);
-    const DeserializationError error = deserializeJson(root, json);
 
     /*
         if (MeanWellCan.getVerboseLogging()) {
@@ -412,13 +327,6 @@ void WebApiMeanWellClass::onPowerPost(AsyncWebServerRequest* request)
             MessageOutput.println(output);
         }
     */
-    if (error) {
-        retMsg["message"] = FailedToParseData;
-        retMsg["code"] = WebApiError::GenericParseError;
-        response->setLength();
-        request->send(response);
-        return;
-    }
 
     if (root.containsKey("power")) {
         uint16_t power = root["power"].as<int>();
@@ -444,8 +352,7 @@ void WebApiMeanWellClass::onPowerPost(AsyncWebServerRequest* request)
     retMsg["message"] = SettingsSaved;
     retMsg["code"] = WebApiError::GenericSuccess;
 
-    response->setLength();
-    request->send(response);
+    WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 }
 
 #endif

@@ -61,10 +61,10 @@ void MqttHandleVedirectClass::loop()
             std::optional<VeDirectMpptController::data_t> optMpptData = VictronMppt.getData(idx);
             if (!optMpptData.has_value()) { continue; }
 
-            auto const& kvFrame = _kvFrames[optMpptData->SER];
+            auto const& kvFrame = _kvFrames[optMpptData->serialNr_SER];
             publish_mppt_data(*optMpptData, kvFrame);
             if (!_PublishFull) {
-                _kvFrames[optMpptData->SER] = *optMpptData;
+                _kvFrames[optMpptData->serialNr_SER] = *optMpptData;
             }
         }
 
@@ -102,49 +102,51 @@ void MqttHandleVedirectClass::publish_mppt_data(const VeDirectMpptController::da
                                                 const VeDirectMpptController::data_t &previousData) const {
     String value;
     String topic = "victron/";
-    topic.concat(currentData.SER);
+    topic.concat(currentData.serialNr_SER);
     topic.concat("/");
 
-    if (_PublishFull || currentData.PID != previousData.PID)
+    if (_PublishFull || currentData.productID_PID != previousData.productID_PID)
         MqttSettings.publish(topic + "PID", currentData.getPidAsString().data());
-    if (_PublishFull || strcmp(currentData.SER, previousData.SER) != 0)
-        MqttSettings.publish(topic + "SER", currentData.SER);
-    if (_PublishFull || strcmp(currentData.FW, previousData.FW) != 0)
-        MqttSettings.publish(topic + "FW", currentData.FW);
-    if (_PublishFull || currentData.LOAD != previousData.LOAD)
-        MqttSettings.publish(topic + "LOAD", currentData.LOAD == true ? "ON" : "OFF");
-    if (_PublishFull || currentData.CS != previousData.CS)
+    if (_PublishFull || strcmp(currentData.serialNr_SER, previousData.serialNr_SER) != 0)
+        MqttSettings.publish(topic + "SER", currentData.serialNr_SER);
+    if (_PublishFull || strcmp(currentData.firmwareVer_FW, previousData.firmwareVer_FW) != 0)
+        MqttSettings.publish(topic + "FW", currentData.firmwareVer_FW);
+    if (_PublishFull || currentData.loadCurrent_IL_mA != previousData.loadCurrent_IL_mA)
+        MqttSettings.publish(topic + "I", String(currentData.loadCurrent_IL_mA/1000.0));
+    if (_PublishFull || currentData.loadOutputState_LOAD != previousData.loadOutputState_LOAD)
+        MqttSettings.publish(topic + "LOAD", currentData.loadOutputState_LOAD == true ? "ON" : "OFF");
+    if (_PublishFull || currentData.currentState_CS != previousData.currentState_CS)
         MqttSettings.publish(topic + "CS", currentData.getCsAsString().data());
-    if (_PublishFull || currentData.ERR != previousData.ERR)
+    if (_PublishFull || currentData.errorCode_ERR != previousData.errorCode_ERR)
         MqttSettings.publish(topic + "ERR", currentData.getErrAsString().data());
-    if (_PublishFull || currentData.OR != previousData.OR)
+    if (_PublishFull || currentData.offReason_OR != previousData.offReason_OR)
         MqttSettings.publish(topic + "OR", currentData.getOrAsString().data());
-    if (_PublishFull || currentData.MPPT != previousData.MPPT)
+    if (_PublishFull || currentData.stateOfTracker_MPPT != previousData.stateOfTracker_MPPT)
         MqttSettings.publish(topic + "MPPT", currentData.getMpptAsString().data());
-    if (_PublishFull || currentData.HSDS != previousData.HSDS)
-        MqttSettings.publish(topic + "HSDS", String(currentData.HSDS));
-    if (_PublishFull || currentData.V != previousData.V)
-        MqttSettings.publish(topic + "V", String(currentData.V));
-    if (_PublishFull || currentData.I != previousData.I)
-        MqttSettings.publish(topic + "I", String(currentData.I));
-    if (_PublishFull || currentData.P != previousData.P)
-        MqttSettings.publish(topic + "P", String(currentData.P));
-    if (_PublishFull || currentData.VPV != previousData.VPV)
-        MqttSettings.publish(topic + "VPV", String(currentData.VPV));
-    if (_PublishFull || currentData.IPV != previousData.IPV)
-        MqttSettings.publish(topic + "IPV", String(currentData.IPV));
-    if (_PublishFull || currentData.PPV != previousData.PPV)
-        MqttSettings.publish(topic + "PPV", String(currentData.PPV));
-    if (_PublishFull || currentData.E != previousData.E)
-        MqttSettings.publish(topic + "E", String(currentData.E));
-    if (_PublishFull || currentData.H19 != previousData.H19)
-        MqttSettings.publish(topic + "H19", String(currentData.H19));
-    if (_PublishFull || currentData.H20 != previousData.H20)
-        MqttSettings.publish(topic + "H20", String(currentData.H20));
-    if (_PublishFull || currentData.H21 != previousData.H21)
-        MqttSettings.publish(topic + "H21", String(currentData.H21));
-    if (_PublishFull || currentData.H22 != previousData.H22)
-        MqttSettings.publish(topic + "H22", String(currentData.H22));
-    if (_PublishFull || currentData.H23 != previousData.H23)
-        MqttSettings.publish(topic + "H23", String(currentData.H23));
+    if (_PublishFull || currentData.daySequenceNr_HSDS != previousData.daySequenceNr_HSDS)
+        MqttSettings.publish(topic + "HSDS", String(currentData.daySequenceNr_HSDS));
+    if (_PublishFull || currentData.batteryVoltage_V_mV != previousData.batteryVoltage_V_mV)
+        MqttSettings.publish(topic + "V", String(currentData.batteryVoltage_V_mV/1000.0));
+    if (_PublishFull || currentData.batteryCurrent_I_mA != previousData.batteryCurrent_I_mA)
+        MqttSettings.publish(topic + "I", String(currentData.batteryCurrent_I_mA/1000.0));
+    if (_PublishFull || currentData.batteryOutputPower_W != previousData.batteryOutputPower_W)
+        MqttSettings.publish(topic + "P", String(currentData.batteryOutputPower_W));
+    if (_PublishFull || currentData.panelVoltage_VPV_mV != previousData.panelVoltage_VPV_mV)
+        MqttSettings.publish(topic + "VPV", String(currentData.panelVoltage_VPV_mV/1000.0));
+    if (_PublishFull || currentData.panelCurrent_mA != previousData.panelCurrent_mA)
+        MqttSettings.publish(topic + "IPV", String(currentData.panelCurrent_mA/1000.0));
+    if (_PublishFull || currentData.panelPower_PPV_W != previousData.panelPower_PPV_W)
+        MqttSettings.publish(topic + "PPV", String(currentData.panelPower_PPV_W));
+    if (_PublishFull || currentData.mpptEfficiency_Percent != previousData.mpptEfficiency_Percent)
+        MqttSettings.publish(topic + "E", String(currentData.mpptEfficiency_Percent));
+    if (_PublishFull || currentData.yieldTotal_H19_Wh != previousData.yieldTotal_H19_Wh)
+        MqttSettings.publish(topic + "H19", String(currentData.yieldTotal_H19_Wh/1000.0));
+    if (_PublishFull || currentData.yieldToday_H20_Wh != previousData.yieldToday_H20_Wh)
+        MqttSettings.publish(topic + "H20", String(currentData.yieldToday_H20_Wh/1000.0));
+    if (_PublishFull || currentData.maxPowerToday_H21_W != previousData.maxPowerToday_H21_W)
+        MqttSettings.publish(topic + "H21", String(currentData.maxPowerToday_H21_W));
+    if (_PublishFull || currentData.yieldYesterday_H22_Wh != previousData.yieldYesterday_H22_Wh)
+        MqttSettings.publish(topic + "H22", String(currentData.yieldYesterday_H22_Wh/1000.0));
+    if (_PublishFull || currentData.maxPowerYesterday_H23_W != previousData.maxPowerYesterday_H23_W)
+        MqttSettings.publish(topic + "H23", String(currentData.maxPowerYesterday_H23_W));
 }

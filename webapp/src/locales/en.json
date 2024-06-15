@@ -49,6 +49,9 @@
         "Release": "Release to refresh",
         "Close": "Close"
     },
+    "Error": {
+        "Oops": "Oops!"
+    },
     "localeswitcher": {
         "Dark": "Dark",
         "Light": "Light",
@@ -670,10 +673,13 @@
         "sdmaddress": "Modbus Address",
         "HTTP": "HTTP(S) + Json - General configuration",
         "httpIndividualRequests": "Individual HTTP requests per phase",
+        "urlExamplesHeading": "URL Examples",
+        "jsonPathExamplesHeading": "JSON Path Examples",
+        "jsonPathExamplesExplanation": "The following paths each find the value '123.4' in the respective example JSON.",
         "httpPhase": "HTTP(S) + Json configuration - Phase {phaseNumber}",
         "httpEnabled": "Phase enabled",
         "httpUrl": "URL:",
-        "httpUrlDescription": "URL must start with http:// or https://. Some characters like spaces and = have to be encoded with URL encoding (%xx). Warning: SSL server certificate check is not implemented (MITM attacks are possible)! See below for some examples.",
+        "httpUrlDescription": "URL must start with http:// or https://. Some characters like spaces and = have to be encoded with URL encoding (%xx). Warning: SSL server certificate check is not implemented (MITM attacks are possible)!",
         "httpAuthorization": "Authorization Type:",
         "httpUsername": "@:login.Username",
         "httpPassword": "@:login.Password",
@@ -682,10 +688,12 @@
         "httpHeaderValue": "Optional: HTTP request header - Value",
         "httpJsonPath": "Json path:",
         "httpJsonPathDescription": "JSON path to find the power value in the response. This uses the JSON path query syntax from mobizt/FirebaseJson. See below for some examples.",
+        "httpUnit": "Unit of power meter (kW, W or mW)",
+        "httpSignInverted": "Change Sign",
+        "httpSignInvertedHint": "Is is expected that positive values denote power usage from the grid. Check this option if the sign of this value has the opposite meaning.",
         "httpTimeout": "Timeout:",
         "testHttpRequest": "Run test",
-        "milliSeconds": "ms",
-        "Units": "Unit of power meter (kW, W or mW)"
+        "milliSeconds": "ms"
     },
     "powerlimiteradmin": {
         "PowerLimiterSettings": "Dynamic Power Limiter Settings",
@@ -722,8 +730,12 @@
         "TargetPowerConsumptionHint": "Grid power consumption the limiter tries to achieve.",
         "TargetPowerConsumptionHysteresis": "Hysteresis",
         "TargetPowerConsumptionHysteresisHint": "Only send a newly calculated power limit to the inverter if the absolute difference to the last sent power limit matches or exceeds this amount.",
-        "LowerPowerLimit": "Lower Power Limit",
-        "UpperPowerLimit": "Upper Power Limit",
+        "LowerPowerLimit": "Minimum Power Limit",
+        "LowerPowerLimitHint": "This value must be selected so that stable operation is possible at this limit. If the inverter could only be operated with a lower limit, it is put into standby instead.",
+        "BaseLoadLimit": "Base Load",
+        "BaseLoadLimitHint": "Relevant for operation without power meter or when the power meter fails. As long as the other conditions allow (in particular battery charge), this limit is set on the inverter.",
+        "UpperPowerLimit": "Maximum Power Limit",
+        "UpperPowerLimitHint": "The inverter is always set such that no more than this output power is achieved. This value must be selected to comply with the current carrying capacity of the AC connection cables.",
         "SocThresholds": "Battery State of Charge (SoC) Thresholds",
         "IgnoreSoc": "Ignore Battery SoC",
         "StartThreshold": "Start Threshold",
@@ -733,7 +745,8 @@
         "VoltageSolarPassthroughStopThreshold": "Full Solar-Passthrough Stop Threshold",
         "VoltageLoadCorrectionFactor": "Load correction factor",
         "BatterySocInfo": "<b>Hint:</b> The battery SoC (State of Charge) values are only used if the battery communication interface reported SoC updates in the last minute. Otherwise the voltage thresholds will be used as fallback.",
-        "InverterIsBehindPowerMeter": "Inverter is behind Power meter",
+        "InverterIsBehindPowerMeter": "PowerMeter reading includes inverter output",
+        "InverterIsBehindPowerMeterHint": "Enable this option if the power meter reading is reduced by the inverter's output when it produces power. This is typically true.",
         "InverterIsSolarPowered": "Inverter is powered by solar modules",
         "VoltageThresholds": "Battery Voltage Thresholds",
         "VoltageLoadCorrectionInfo": "<b>Hint:</b> When the battery is discharged, its voltage drops. The voltage drop scales with the discharge current. In order to not stop the inverter too early (stop threshold), this load correction factor can be specified to calculate the battery voltage if it was idle. Corrected voltage = DC Voltage + (Current power * correction factor).",
@@ -771,6 +784,9 @@
         "MaxChargeTemp": "Max. temperature when charging",
         "MinDischargeTemp": "Min. temperature when discharging",
         "MaxDischargeTemp": "Max. temperature when discharging",
+        "StopChargingSoC": "Stop charging at SoC",
+        "StopChargingSoCHint": "To prolong the battery's lifespan, charging can be stopped at a certain SoC level.\nHint: In order to keep the SoC reading accurate, some LiFePO cells must be charged to full capacity regularly.",
+        "Percent": "@:zeroexportadmin.Percent",
         "Celsius": "°C",
         "UpdatesOnly": "@:base.UpdatesOnly",
         "Seconds": "@:dtuadmin.Seconds"
@@ -1005,6 +1021,8 @@
     },
       "battery": {
         "battery": "Battery",
+        "FwVersion": "Firmware Version",
+        "HwVersion": "Hardware Version",
         "DataAge": "@:home.DataAge",
         "Seconds": "@:home.Seconds",
         "Status": "@:base.Status",

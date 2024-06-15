@@ -7,6 +7,7 @@
 #include "MessageOutput.h"
 #include "JkBmsDataPoints.h"
 #include "JkBmsController.h"
+#include "SerialPortManager.h"
 #include <driver/uart.h>
 #include <frozen/map.h>
 
@@ -204,9 +205,6 @@ class DummySerial {
         size_t _msg_idx = 0;
         size_t _byte_idx = 0;
 };
-DummySerial HwSerial;
-#else
-HardwareSerial HwSerial(2);
 #endif
 
 namespace JkBms {
@@ -229,8 +227,17 @@ bool Controller::init()
         return false;
     }
 
-    HwSerial.begin(115200, SERIAL_8N1, pin.battery_rx, pin.battery_tx);
-    HwSerial.flush();
+#ifdef JKBMS_DUMMY_SERIAL
+    _upSerial = std::make_unique<DummySerial>();
+#else
+    auto oHwSerialPort = SerialPortManager.allocatePort(_serialPortOwner);
+    if (!oHwSerialPort) { return false; }
+
+    _upSerial = std::make_unique<HardwareSerial>(*oHwSerialPort);
+#endif
+
+    _upSerial->begin(115200, SERIAL_8N1, pin.battery_rx, pin.battery_tx);
+    _upSerial->flush();
 
     if (Interface::Transceiver != getInterface()) {
         _stats->_initialized = true;
@@ -242,7 +249,7 @@ bool Controller::init()
         return false;
     }
 
-    HwSerial.setPins(pin.battery_rx, pin.battery_tx, UART_PIN_NO_CHANGE, pin.battery_rts);
+    _upSerial->setPins(pin.battery_rx, pin.battery_tx, UART_PIN_NO_CHANGE, pin.battery_rts);
 #ifndef JKBMS_DUMMY_SERIAL
     ESP_ERROR_CHECK(uart_set_mode(2, UART_MODE_RS485_HALF_DUPLEX));
 #endif
@@ -254,7 +261,17 @@ bool Controller::init()
 
 void Controller::deinit()
 {
-    HwSerial.end();
+    if (!_stats->_initialized) { return; }
+
+    _upSerial->end();
+
+    if (PinMapping.get().battery_rts >= 0) { pinMode(PinMapping.get().battery_rts, INPUT); }
+
+    SerialPortManager.freePort(_serialPortOwner);
+
+    MessageOutput.printf("%s Serial driver uninstalled\r\n", TAG);
+
+    _stats->_initialized = false;
 }
 
 Controller::Interface Controller::getInterface() const
@@ -304,16 +321,16 @@ void Controller::sendRequest(uint8_t pollInterval)
         return announceStatus(Status::WaitingForPollInterval);
     }
 
-    if (!HwSerial.availableForWrite()) {
+    if (!_upSerial->availableForWrite()) {
         return announceStatus(Status::HwSerialNotAvailableForWrite);
     }
 
     SerialCommand readAll(SerialCommand::Command::ReadAll);
 
-    HwSerial.write(readAll.data(), readAll.size());
+    _upSerial->write(readAll.data(), readAll.size());
 
     if (Interface::Transceiver == getInterface()) {
-        HwSerial.flush();
+        _upSerial->flush();
     }
 
     _lastRequest = millis();
@@ -327,8 +344,8 @@ void Controller::loop()
     Battery_CONFIG_T& cBattery = Configuration.get().Battery;
     uint8_t pollInterval = cBattery.JkBms.PollingInterval;
 
-    while (HwSerial.available()) {
-        rxData(HwSerial.read());
+    while (_upSerial->available()) {
+        rxData(_upSerial->read());
     }
 
     sendRequest(pollInterval);

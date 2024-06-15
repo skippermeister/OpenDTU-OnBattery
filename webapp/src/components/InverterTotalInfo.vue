@@ -112,7 +112,7 @@
 
     <div v-show="powerMeterData.enabled || meanwellData.enabled">
         <div class="row row-cols-1 row-cols-md-3 g-3">
-            <div v-show="powerMeterData.enabled" class="col">
+            <div class="col" v-if="powerMeterData.enabled">
                 <CardElement centerContent textVariant="text-bg-success" :text="$t('invertertotalinfo.GridPower')">
                     <h2>
                         {{ $n(powerMeterData.GridPower.v, 'decimal', {
@@ -123,7 +123,7 @@
                     </h2>
                 </CardElement>
             </div>
-            <div v-show="powerMeterData.enabled" class="col">
+            <div class="col" v-if="powerMeterData.enabled">
                 <CardElement centerContent textVariant="text-bg-success" :text="$t('invertertotalinfo.HousePower')">
                     <h2>
                         {{ $n(powerMeterData.HousePower.v, 'decimal', {
@@ -134,7 +134,7 @@
                     </h2>
                 </CardElement>
             </div>
-            <div v-show="meanwellData.enabled" class="col">
+            <div class="col" v-if="meanwellData.enabled">
                 <CardElement centerContent textVariant="text-bg-success" :text="$t('invertertotalinfo.MeanWellPower')">
                     <h2>
                         {{ $n(meanwellData.Power.v, 'decimal', {

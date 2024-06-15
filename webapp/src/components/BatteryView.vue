@@ -44,6 +44,14 @@
                                     <div style="padding-right: 2em;">
                                         {{ $t('battery.battery') }}: {{ batteryData.manufacturer }}
                                     </div>
+
+                                    <div style="padding-right: 2em;" v-if="'fwversion' in batteryData">
+                                      {{ $t('battery.FwVersion') }}: {{ batteryData.fwversion }}
+                                    </div>
+                                    <div style="padding-right: 2em;" v-if="'hwversion' in batteryData">
+                                      {{ $t('battery.HwVersion') }}: {{ batteryData.hwversion }}
+                                    </div>
+
                                     <div style="padding-right: 2em;" v-if="batteryData.numberOfPacks <= 1">
                                         {{ pack.moduleName }} {{ pack.device_name }} (S/N: {{ pack.moduleSerialNumber }}) Software Version: {{ pack.software_version }}
                                     </div>

@@ -56,21 +56,14 @@ void WebApiWsMeanWellLiveClass::sendDataTaskCb()
 
     try {
         std::lock_guard<std::mutex> lock(_mutex);
-        DynamicJsonDocument root(3 * 1024);
+        JsonDocument root;
+        JsonVariant var = root;
+
+        MeanWellCan.generateJsonResponse(var);
+
         if (Utils::checkJsonAlloc(root, __FUNCTION__, __LINE__)) {
-            JsonVariant var = root;
-            MeanWellCan.generateJsonResponse(var);
-
-            if (Utils::checkJsonOverflow(root, __FUNCTION__, __LINE__)) { return; }
-
             String buffer;
             serializeJson(root, buffer);
-
-            if (Configuration.get().Security.AllowReadonly) {
-                _ws.setAuthentication("", "");
-            } else {
-                _ws.setAuthentication(AUTH_USERNAME, Configuration.get().Security.Password);
-            }
 
             _ws.textAll(buffer);
         }
@@ -100,14 +93,12 @@ void WebApiWsMeanWellLiveClass::onLivedataStatus(AsyncWebServerRequest* request)
     }
     try {
         std::lock_guard<std::mutex> lock(_mutex);
-        AsyncJsonResponse* response = new AsyncJsonResponse(false, 3 * 1024U);
+        AsyncJsonResponse* response = new AsyncJsonResponse();
         auto& root = response->getRoot();
+
         MeanWellCan.generateJsonResponse(root);
 
-        if (Utils::checkJsonOverflow(root, __FUNCTION__, __LINE__)) { return; }
-
-        response->setLength();
-        request->send(response);
+        WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 
     } catch (std::bad_alloc& bad_alloc) {
         MessageOutput.printf("Calling /api/meanwelllivedata/status has temporarily run out of resources. Reason: \"%s\".\r\n", bad_alloc.what());

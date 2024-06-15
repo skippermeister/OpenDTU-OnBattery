@@ -102,9 +102,12 @@ public:
     void deinit() final;
     void loop() final;
     std::shared_ptr<BatteryStats> getStats() const final { return _stats; }
-    bool usesHwPort2() const final { return true; }
 
 private:
+    static char constexpr _serialPortOwner[] = "Pylontech";
+
+    std::unique_ptr<HardwareSerial> _upSerial;
+
     void get_protocol_version(const PylontechRS485Receiver::Function function, uint8_t module);
     void get_manufacturer_info(const PylontechRS485Receiver::Function function, uint8_t module);
     void get_barcode(const PylontechRS485Receiver::Function function, uint8_t module);
@@ -171,7 +174,6 @@ private:
     uint8_t _masterBatteryID = 0;
     uint8_t _lastSlaveBatteryID = 0;
 
-    bool _isInstalled = false;
     esp_err_t twaiLastResult;
 
     TimeoutHelper _lastBatteryCheck;

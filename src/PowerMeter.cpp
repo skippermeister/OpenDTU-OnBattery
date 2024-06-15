@@ -9,6 +9,7 @@
 #include "MessageOutput.h"
 #include "MqttSettings.h"
 #include "NetworkSettings.h"
+#include "SerialPortManager.h"
 #include <Arduino.h>
 #include <ctime>
 #include <SMA_HM.h>
@@ -84,16 +85,24 @@ void PowerMeterClass::init(Scheduler& scheduler)
            )
         {
             MessageOutput.printf("invalid pin config for SDM power meter (RX = %d, TX = %d, RTS = %d)\r\n",
-              pin.powermeter_rx, pin.powermeter_tx, pin.powermeter_rts);
+                pin.powermeter_rx, pin.powermeter_tx, pin.powermeter_rts);
             return;
         }
 
-#ifdef USE_POWERMETER_SERIAL2
-        MessageOutput.print("HWserial2 ");
-        _upSdm = std::make_unique<SDM>(Serial2, 9600, pin.powermeter_rts, SERIAL_8N1, pin.powermeter_rx, pin.powermeter_tx);
+#if defined(USE_POWERMETER_SERIAL2)
+        auto oHwSerialPort = SerialPortManager.allocatePort(_sdmSerialPortOwner);
+        if (!oHwSerialPort) { return; }
+
+        _upSdmSerial = std::make_unique<HardwareSerial>(*oHwSerialPort);
+        _upSdmSerial->end(); // make sure the UART will be re-initialized
+        _upSdm = std::make_unique<SDM>(*_upSdmSerial, 9600, pin.powermeter_rts, SERIAL_8N1, pin.powermeter_rx, pin.powermeter_tx);
+        }
 #else
-        MessageOutput.print("SWserial ");
-        _upSdm = std::make_unique<SDM>(sdmSerial, 9600, pin.powermeter_rts, SWSERIAL_8N1, pin.powermeter_rx, pin.powermeter_tx);
+//        else
+        {
+            MessageOutput.print("SWserial ");
+            _upSdm = std::make_unique<SDM>(sdmSerial, 9600, pin.powermeter_rts, SWSERIAL_8N1, pin.powermeter_rx, pin.powermeter_tx);
+        }
 #endif
         MessageOutput.printf("RS485 (Type %d) port rx = %d, tx = %d", pin.powermeter_rts >= 0 ? 1 : 2, pin.powermeter_rx, pin.powermeter_tx);
         if (pin.powermeter_rts >= 0) MessageOutput.printf(", rts = %d", pin.powermeter_rts);
@@ -238,6 +247,23 @@ uint32_t PowerMeterClass::getLastPowerMeterUpdate()
 {
     std::lock_guard<std::mutex> l(_mutex);
     return _lastPowerMeterUpdate;
+}
+
+bool PowerMeterClass::isDataValid()
+{
+    auto const& config = Configuration.get();
+
+    std::lock_guard<std::mutex> l(_mutex);
+
+    bool valid = config.PowerMeter.Enabled &&
+        _lastPowerMeterUpdate > 0 &&
+        ((millis() - _lastPowerMeterUpdate) < (30 * 1000));
+
+    // reset if timed out to avoid glitch once
+    // (millis() - _lastPowerMeterUpdate) overflows
+    if (!valid) { _lastPowerMeterUpdate = 0; }
+
+    return valid;
 }
 
 void PowerMeterClass::mqtt()

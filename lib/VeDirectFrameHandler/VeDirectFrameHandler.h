@@ -30,7 +30,7 @@ public:
 
 protected:
     VeDirectFrameHandler();
-    void init(char const* who, int8_t rx, int8_t tx, Print* msgOut, bool verboseLogging, uint16_t hwSerialPort);
+    void init(char const* who, int8_t rx, int8_t tx, Print* msgOut, bool verboseLogging, uint8_t hwSerialPort);
     virtual bool hexDataHandler(VeDirectHexData const &data) { return false; } // handles the disassembeled hex response
 
     bool _verboseLogging;
@@ -74,7 +74,7 @@ private:
     char _value[VE_MAX_VALUE_LEN];             // buffer for the field value
     std::array<uint8_t, 512> _debugBuffer;
     unsigned _debugIn;
-    uint32_t _lastByteMillis;
+    uint32_t _lastByteMillis;                  // time of last parsed byte
 
     /**
      * not every frame contains every value the device is communicating, i.e.,

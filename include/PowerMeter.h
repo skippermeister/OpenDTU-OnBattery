@@ -49,15 +49,25 @@ public:
     };
     PowerMeterClass();
     void init(Scheduler& scheduler);
+
     float getPowerTotal(bool forceUpdate = true);
     void setHousePower(float value);
     float getHousePower(void);
     uint32_t getLastPowerMeterUpdate(void);
+    bool isDataValid();
 
     bool getVerboseLogging(void) { return _verboseLogging; };
     void setVerboseLogging(bool logging) { _verboseLogging = logging; };
 
 private:
+    bool usesHwPort2() const {
+        #if defined(USE_POWERMETER_SERIAL2)
+        return true;
+        #else
+        return false;
+        #endif
+    }
+
     void loop();
 
     Task _loopTask;
@@ -81,6 +91,8 @@ private:
 
     mutable std::mutex _mutex;
 
+    static char constexpr _sdmSerialPortOwner[] = "SDM power meter";
+    std::unique_ptr<HardwareSerial> _upSdmSerial = nullptr;
     std::unique_ptr<SDM> _upSdm = nullptr;
     std::unique_ptr<SoftwareSerial> _upSmlSerial = nullptr;
 

@@ -72,7 +72,16 @@
                                 v-model="batteryConfigList.max_discharge_temp"
                                 type="number" step="1" min="-25" max="75" wide4_2
                                 :postfix="$t('batteryadmin.Celsius')"/>
+
+                    <InputElement :label="$t('batteryadmin.StopChargingSoC')"
+                                v-model="batteryConfigList.stop_charging_soc"
+                                type="number" step="1" min="20" max="100" wide4_2
+                                :tooltip="$t('batteryadmin.StopChargingSoCHint')"
+                                :postfix="$t('batteryadmin.Percent')"/>
+
                 </CardElement>
+
+
 
                 <CardElement v-show="batteryConfigList.provider == 2"
                              :text="$t('batteryadmin.CanControllerConfiguration')"

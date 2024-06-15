@@ -27,20 +27,20 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
         return;
     }
 
-    AsyncJsonResponse* response = new AsyncJsonResponse(false, MQTT_JSON_DOC_SIZE);
+    AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& root = response->getRoot();
     const CONFIG_T& config = Configuration.get();
     const PinMapping_t& pin = PinMapping.get();
 
-    auto curPin = root.createNestedObject("curPin");
+    auto curPin = root["curPin"].to<JsonObject>();
     curPin["name"] = config.Dev_PinMapping;
 
-    auto prechargePinObj = curPin.createNestedObject("batteryConnectedInverter");
+    auto prechargePinObj = curPin["batteryConnectedInverter"].to<JsonObject>();
     prechargePinObj["pre_charge"] = pin.pre_charge;
     prechargePinObj["full_power"] = pin.full_power;
 
 #if defined(USE_RADIO_NRF)
-    auto nrfPinObj = curPin.createNestedObject("nrf24");
+    auto nrfPinObj = curPin["nrf24"].to<JsonObject>();
     if (PinMapping.isValidNrf24Config()) {
         nrfPinObj["clk"] = pin.nrf24_clk;
         nrfPinObj["cs"] = pin.nrf24_cs;
@@ -54,7 +54,7 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
 #endif
 
 #if defined(USE_RADIO_CMT)
-    auto cmtPinObj = curPin.createNestedObject("cmt");
+    auto cmtPinObj = curPin["cmt"].to<JsonObject>();
     if (PinMapping.isValidCmt2300Config()) {
         cmtPinObj["clk"] = pin.cmt_clk;
         cmtPinObj["cs"] = pin.cmt_cs;
@@ -68,7 +68,7 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
 #endif
 
 #if defined(OPENDTU_ETHERNET)
-    auto ethPinObj = curPin.createNestedObject("eth");
+    auto ethPinObj = curPin["eth"].to<JsonObject>();
     ethPinObj["enabled"] = pin.eth_enabled;
     ethPinObj["phy_addr"] = pin.eth_phy_addr;
     ethPinObj["power"] = pin.eth_power;
@@ -79,7 +79,7 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
 #endif
 
 #if defined(USE_DISPLAY_GRAPHIC)
-    auto displayPinObj = curPin.createNestedObject("display");
+    auto displayPinObj = curPin["display"].to<JsonObject>();
     if (pin.display_data < 0 && pin.display_clk < 0 && pin.display_cs < 0 && pin.display_reset < 0 && pin.display_busy < 0 && pin.display_dc < 0) {
         ;
     } else {
@@ -102,7 +102,7 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
 #endif
 
 #if defined(USE_LED_SINGLE) || defined(USE_LED_STRIP)
-    auto ledPinObj = curPin.createNestedObject("led");
+    auto ledPinObj = curPin["led"].to<JsonObject>();
 #if defined(USE_LED_SINGLE)
     for (uint8_t i = 0; i < LED_COUNT; i++) {
         ledPinObj["led" + String(i)] = pin.led[i];
@@ -111,15 +111,15 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
 #if defined(USE_LED_STRIP)
     ledPinObj["rgb"] = pin.led_rgb;
 #endif
-    auto leds = root.createNestedArray("led");
+    auto leds = root["led"].to<JsonArray>();
     for (uint8_t i = 0; i < LED_COUNT; i++) {
-        JsonObject led = leds.createNestedObject();
+        JsonObject led = leds.add<JsonObject>();
         led["brightness"] = config.Led[i].Brightness;
     }
 #endif
 
 #if defined(USE_DISPLAY_GRAPHIC)
-    auto display = root.createNestedObject("display");
+    auto display = root["display"].to<JsonObject>();
     display["rotation"] = config.Display.Rotation;
     display["power_safe"] = config.Display.PowerSafe;
     display["screensaver"] = config.Display.ScreenSaver;
@@ -138,16 +138,20 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
                                                                                         : "unknown";
 #endif
 
-    auto victronPinObj = curPin.createNestedObject("victron");
+    auto victronPinObj = curPin["victron"].to<JsonObject>();
     victronPinObj["rs232_rx"] = pin.victron_rx;
     victronPinObj["rs232_tx"] = pin.victron_tx;
-    if (pin.victron_rx2 > 0 && pin.victron_tx2 >= 0) {
+    if (pin.victron_rx2 >= 0 && pin.victron_tx2 >= 0) {
         victronPinObj["rs232_rx2"] = pin.victron_rx2;
         victronPinObj["rs232_tx2"] = pin.victron_tx2;
     }
+    if (pin.victron_rx3 >= 0 && pin.victron_tx3 >= 0) {
+        victronPinObj["rs232_rx3"] = pin.victron_rx3;
+        victronPinObj["rs232_tx3"] = pin.victron_tx3;
+    }
 
 #if defined(USE_REFUsol_INVERTER)
-    auto refusolPinObj = curPin.createNestedObject("refusol");
+    auto refusolPinObj = curPin["refusol"].to<JsonObject>();
     refusolPinObj["rs485_rx"] = pin.REFUsol_rx;
     refusolPinObj["rs485_tx"] = pin.REFUsol_tx;
     if (pin.REFUsol_rts >= 0) {
@@ -155,7 +159,7 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
     }
 #endif
 
-    auto batteryPinObj = curPin.createNestedObject("battery");
+    auto batteryPinObj = curPin["battery"].to<JsonObject>();
 #if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER) || defined(USE_JKBMS_CONTROLLER)
     if (pin.battery_rts >= -1) {
         batteryPinObj["rs485_rx"] = pin.battery_rx;
@@ -175,7 +179,7 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
     batteryPinObj["can0_tx"] = pin.battery_tx;
 #endif
 
-    auto chargerPinObj = curPin.createNestedObject("charger");
+    auto chargerPinObj = curPin["charger"].to<JsonObject>();
 #if defined(CHARGER_HUAWEI)
     chargerPinObj["power"] = pin.huawei_power;
 #endif
@@ -184,7 +188,7 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
     chargerPinObj["can0_tx"] = pin.can0_tx;
     //    chargerPinObj["can0_stb"] = pin.can0_stb;
 
-    auto mcp2515PinObj = curPin.createNestedObject("mcp2515");
+    auto mcp2515PinObj = curPin["mcp2515"].to<JsonObject>();
     mcp2515PinObj["miso"] = pin.mcp2515_miso;
     mcp2515PinObj["mosi"] = pin.mcp2515_mosi;
     mcp2515PinObj["clk"] = pin.mcp2515_clk;
@@ -200,13 +204,13 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
 
     if (static_cast<PowerMeterClass::Source>(config.PowerMeter.Source) == PowerMeterClass::Source::SML)
     {
-        auto smlPinObj = curPin.createNestedObject("powermeter");
+        auto smlPinObj = curPin["powermeter"].to<JsonObject>();
         smlPinObj["sml_rs232_rx"] = pin.powermeter_rx;
         if (pin.powermeter_tx >= 0) smlPinObj["sml_rs232_tx"] = pin.powermeter_tx;
     } else if (   static_cast<PowerMeterClass::Source>(config.PowerMeter.Source) == PowerMeterClass::Source::SDM1PH
                || static_cast<PowerMeterClass::Source>(config.PowerMeter.Source) == PowerMeterClass::Source::SDM3PH)
     {
-        auto sdmPinObj = curPin.createNestedObject("powermeter");
+        auto sdmPinObj = curPin["powermeter"].to<JsonObject>();
         sdmPinObj["sdm_rs485_rx"] = pin.powermeter_rx;
         sdmPinObj["sdm_rs485_tx"] = pin.powermeter_tx;
         if (pin.powermeter_rts >= 0) {
@@ -218,8 +222,7 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
         serializeJsonPretty(root, output);
         Serial.println(output);
 */
-    response->setLength();
-    request->send(response);
+    WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 }
 
 void WebApiDeviceClass::onDeviceAdminPost(AsyncWebServerRequest* request)
@@ -228,38 +231,13 @@ void WebApiDeviceClass::onDeviceAdminPost(AsyncWebServerRequest* request)
         return;
     }
 
-    AsyncJsonResponse* response = new AsyncJsonResponse(false, MQTT_JSON_DOC_SIZE);
+    AsyncJsonResponse* response = new AsyncJsonResponse();
+    JsonDocument root;
+    if (!WebApi.parseRequestData(request, response, root)) {
+        return;
+    }
+
     auto& retMsg = response->getRoot();
-    retMsg["type"] = "warning";
-
-    if (!request->hasParam("data", true)) {
-        retMsg["message"] = NoValuesFound;
-        retMsg["code"] = WebApiError::GenericNoValueFound;
-        response->setLength();
-        request->send(response);
-        return;
-    }
-
-    const String json = request->getParam("data", true)->value();
-
-    if (json.length() > MQTT_JSON_DOC_SIZE) {
-        retMsg["message"] = DataTooLarge;
-        retMsg["code"] = WebApiError::GenericDataTooLarge;
-        response->setLength();
-        request->send(response);
-        return;
-    }
-
-    DynamicJsonDocument root(MQTT_JSON_DOC_SIZE);
-    const DeserializationError error = deserializeJson(root, json);
-
-    if (error) {
-        retMsg["message"] = FailedToParseData;
-        retMsg["code"] = WebApiError::GenericParseError;
-        response->setLength();
-        request->send(response);
-        return;
-    }
 
     if (!(root.containsKey("curPin")
 #if defined(USE_DISPLAY_GRAPHIC)
@@ -268,8 +246,7 @@ void WebApiDeviceClass::onDeviceAdminPost(AsyncWebServerRequest* request)
         )) {
         retMsg["message"] = ValuesAreMissing;
         retMsg["code"] = WebApiError::GenericValueMissing;
-        response->setLength();
-        request->send(response);
+        WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;
     }
 
@@ -277,8 +254,7 @@ void WebApiDeviceClass::onDeviceAdminPost(AsyncWebServerRequest* request)
         retMsg["message"] = "Pin mapping must between 1 and " STR(DEV_MAX_MAPPING_NAME_STRLEN) " characters long!";
         retMsg["code"] = WebApiError::HardwarePinMappingLength;
         retMsg["param"]["max"] = DEV_MAX_MAPPING_NAME_STRLEN;
-        response->setLength();
-        request->send(response);
+        WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;
     }
 
@@ -319,8 +295,7 @@ void WebApiDeviceClass::onDeviceAdminPost(AsyncWebServerRequest* request)
 
     WebApi.writeConfig(retMsg);
 
-    response->setLength();
-    request->send(response);
+    WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 
     if (performRestart) {
         Utils::restartDtu();

@@ -135,6 +135,12 @@ bool BatteryStats::updateAvailable(uint32_t since) const
 void BatteryStats::getLiveViewData(JsonVariant& root) const
 {
     root["manufacturer"] = _manufacturer;
+    if (!_fwversion.isEmpty()) {
+        root["fwversion"] = _fwversion;
+    }
+    if (!_hwversion.isEmpty()) {
+        root["hwversion"] = _hwversion;
+    }
     root["data_age"] = getAgeSeconds();
 
     addLiveViewValue(root, "SoC", _SoC, "%", _socPrecision);
@@ -760,11 +766,11 @@ void PylontechRS485BatteryStats::mqttPublish() /*const*/
     subtopic = topic + "settings/";
     //    MQTTpublishTotals(chargeVoltage, 2);
     MQTTpublishTotalsStruct(ChargeDischargeManagementInfo, chargeCurrentLimit, 2)
-        MQTTpublishTotalsStruct(ChargeDischargeManagementInfo, dischargeCurrentLimit, 2);
+    MQTTpublishTotalsStruct(ChargeDischargeManagementInfo, dischargeCurrentLimit, 2);
 
     subtopic = topic + "parameters/";
     MQTTpublishTotalsStruct(SystemParameters, chargeCurrentLimit, 2)
-        MQTTpublishTotalsStruct(SystemParameters, dischargeCurrentLimit, 2);
+    MQTTpublishTotalsStruct(SystemParameters, dischargeCurrentLimit, 2);
     MQTTpublishTotalsStruct(SystemParameters, chargeHighTemperatureLimit, 1);
     MQTTpublishTotalsStruct(SystemParameters, chargeLowTemperatureLimit, 1);
     MQTTpublishTotalsStruct(SystemParameters, dischargeHighTemperatureLimit, 1);
@@ -794,13 +800,15 @@ void PylontechRS485BatteryStats::mqttPublish() /*const*/
     MQTTpublishTotalsIntStruct(ChargeDischargeManagementInfo, chargeImmediately2);
     MQTTpublishTotalsIntStruct(ChargeDischargeManagementInfo, fullChargeRequest);
 
-    subtopic = topic + "voltages/";
+    subtopic = topic + "cellVoltages/";
     MQTTpublishTotals(cellMinVoltage, 3);
     MQTTpublishTotals(cellMaxVoltage, 3);
     MQTTpublishTotals(cellDiffVoltage, 0);
 
     subtopic = topic + "temperatures/";
     MQTTpublishTotals(averageBMSTemperature, 1);
+    MQTTpublishTotals(minCellTemperature, 1);
+    MQTTpublishTotals(maxCellTemperature, 1);
 
     for (uint8_t module = 0; module < _number_of_packs; module++) {
         const String moduleTopic = topic + String(module) + "/";
@@ -850,15 +858,16 @@ void PylontechRS485BatteryStats::mqttPublish() /*const*/
         MQTTpublishPackIntStruct(module, Warning, highVoltage);
         MQTTpublishPackIntStruct(module, Warning, bmsInternal);
 
-        subtopic = moduleTopic + "voltages/";
+        subtopic = moduleTopic + "cellVoltages/";
         MQTTpublishPack(module, cellMinVoltage, 3);
         MQTTpublishPack(module, cellMaxVoltage, 3);
         MQTTpublishPack(module, cellDiffVoltage, 0);
 
+        subtopic = subtopic + "cell";
         _lastPack[module].CellVoltages = reinterpret_cast<float*>(realloc(_lastPack[module].CellVoltages, Pack[module].numberOfCells * sizeof(float)));
         for (int i = 0; i < Pack[module].numberOfCells; i++) {
             if (!cBattery.UpdatesOnly || Pack[module].CellVoltages[i] != _lastPack[module].CellVoltages[i]) {
-                MqttSettings.publish(subtopic + "cell" + String(i + 1), String(Pack[module].CellVoltages[i], 3));
+                MqttSettings.publish(subtopic + String(i + 1), String(Pack[module].CellVoltages[i], 3));
                 _lastPack[module].CellVoltages[i] = Pack[module].CellVoltages[i];
             }
         }
@@ -866,7 +875,7 @@ void PylontechRS485BatteryStats::mqttPublish() /*const*/
         subtopic = moduleTopic + "temperatures/";
         MQTTpublishPack(0, averageBMSTemperature, 1);
 
-        subtopic = moduleTopic + "temperatures/group";
+        subtopic = subtopic + "group";
         _lastPack[module].GroupedCellsTemperatures = reinterpret_cast<float*>(realloc(_lastPack[module].GroupedCellsTemperatures, (Pack[module].numberOfTemperatures - 1) * sizeof(float)));
         for (int i = 0; i < Pack[module].numberOfTemperatures - 1; i++) {
             if (!cBattery.UpdatesOnly || Pack[module].GroupedCellsTemperatures[i] != _lastPack[module].GroupedCellsTemperatures[i]) {
@@ -928,12 +937,11 @@ void DalyBmsBatteryStats::mqttPublish() /* const */
     MQTTpublishInt(chargeImmediately2);
     MQTTpublishInt(cellBalanceActive);
 
-    subtopic = "battery/voltages/";
+    subtopic = "battery/cellVoltages/";
     MQTTpublish(minCellVoltage, 3);
     MQTTpublish(maxCellVoltage, 3);
     MQTTpublish(cellDiffVoltage, 0);
-    if (_cellsNumber > 15)
-        _cellsNumber = 15;
+    if (_cellsNumber > 15) _cellsNumber = 15;
     _last._cellVoltage = reinterpret_cast<float*>(realloc(_last._cellVoltage, _cellsNumber * sizeof(float)));
     for (int i = 0; i < _cellsNumber; i++) {
         if (!cBattery.UpdatesOnly || _cellVoltage[i] != _last._cellVoltage[i]) {
@@ -945,7 +953,7 @@ void DalyBmsBatteryStats::mqttPublish() /* const */
     subtopic = "battery/temperatures/";
     MQTTpublish(averageBMSTemperature, 1);
 
-    subtopic = "battery/temperatures/group";
+    subtopic = subtopic + "group";
     if (_tempsNumber > 5)
         _tempsNumber = 5;
     _last._temperature = reinterpret_cast<int*>(realloc(_last._temperature, _tempsNumber * sizeof(int)));
@@ -1082,6 +1090,24 @@ void JkBmsBatteryStats::updateFrom(JkBms::DataPointContainer const& dp)
         _cellVoltageTimestamp = millis();
     }
 
+    auto oVersion = _dataPoints.get<Label::BmsSoftwareVersion>();
+    if (oVersion.has_value()) {
+        // raw: "11.XW_S11.262H_"
+        //   => Hardware "V11.XW" (displayed in Android app)
+        //   => Software "V11.262H" (displayed in Android app)
+        auto first = oVersion->find('_');
+        if (first != std::string::npos) {
+            _hwversion = oVersion->substr(0, first).c_str();
+
+            auto second = oVersion->find('_', first + 1);
+
+            // the 'S' seems to be merely an indicator for "software"?
+            if (oVersion->at(first + 1) == 'S') { first++; }
+
+            _fwversion = oVersion->substr(first + 1, second - first - 1).c_str();
+        }
+    }
+
     auto oCurrent = _dataPoints.get<Label::BatteryCurrentMilliAmps>();
     if (oCurrent.has_value()) {
         current = static_cast<float>(*oCurrent) / 1000;
@@ -1135,25 +1161,30 @@ void JkBmsBatteryStats::updateFrom(JkBms::DataPointContainer const& dp)
 
 #ifdef USE_VICTRON_SMART_SHUNT
 void VictronSmartShuntStats::updateFrom(VeDirectShuntController::data_t const& shuntData) {
-    BatteryStats::setVoltage(shuntData.V, millis());
+    BatteryStats::setVoltage(shuntData.batteryVoltage_V_mV / 1000.0, millis())
     BatteryStats::setSoC(static_cast<float>(shuntData.SOC) / 10, 1 /*precision*/, millis());
+    _fwversion = shuntData.getFwVersionFormatted();
 
-    _current = shuntData.I;
-    _modelName = shuntData.getPidAsString().data();
+    _current = static_cast<float>(shuntData.batteryCurrent_I_mA) / 1000;
     _chargeCycles = shuntData.H4;
     _timeToGo = shuntData.TTG / 60;
     _chargedEnergy = shuntData.H18 / 100;
     _dischargedEnergy = shuntData.H17 / 100;
-    _manufacturer = "Victron " + _modelName;
+    _manufacturer = String("Victron ") + shuntData.getPidAsString().data();
     _temperature = shuntData.T;
     _tempPresent = shuntData.tempPresent;
+    _midpointVoltage = static_cast<float>(shuntData.VM) / 1000;
+    _midpointDeviation = static_cast<float>(shuntData.DM) / 10;
+    _instantaneousPower = shuntData.P;
+    _consumedAmpHours = static_cast<float>(shuntData.CE) / 1000;
+    _lastFullCharge = shuntData.H9 / 60;
 
     // shuntData.AR is a bitfield, so we need to check each bit individually
-    _alarmLowVoltage = shuntData.AR & 1;
-    _alarmHighVoltage = shuntData.AR & 2;
-    _alarmLowSOC = shuntData.AR & 4;
-    _alarmLowTemperature = shuntData.AR & 32;
-    _alarmHighTemperature = shuntData.AR & 64;
+    _alarmLowVoltage = shuntData.alarmReason_AR & 1;
+    _alarmHighVoltage = shuntData.alarmReason_AR & 2;
+    _alarmLowSOC = shuntData.alarmReason_AR & 4;
+    _alarmLowTemperature = shuntData.alarmReason_AR & 32;
+    _alarmHighTemperature = shuntData.alarmReason_AR & 64;
 
     _lastUpdate = VeDirectShunt.getLastUpdate();
 }
@@ -1167,6 +1198,11 @@ void VictronSmartShuntStats::getLiveViewData(JsonVariant& root) const
     addLiveViewValue(root, "chargeCycles", _chargeCycles, "", 0);
     addLiveViewValue(root, "chargedEnergy", _chargedEnergy, "KWh", 1);
     addLiveViewValue(root, "dischargedEnergy", _dischargedEnergy, "KWh", 1);
+    addLiveViewValue(root, "instantaneousPower", _instantaneousPower, "W", 0);
+    addLiveViewValue(root, "consumedAmpHours", _consumedAmpHours, "Ah", 3);
+    addLiveViewValue(root, "midpointVoltage", _midpointVoltage, "V", 2);
+    addLiveViewValue(root, "midpointDeviation", _midpointDeviation, "%", 1);
+    addLiveViewValue(root, "lastFullCharge", _lastFullCharge, "min", 0);
     if (_tempPresent) {
         addLiveViewValue(root, "temperature", _temperature, "°C", 0);
     }
@@ -1186,5 +1222,10 @@ void VictronSmartShuntStats::mqttPublish() /* const */
     MqttSettings.publish("battery/chargeCycles", String(_chargeCycles));
     MqttSettings.publish("battery/chargedEnergy", String(_chargedEnergy));
     MqttSettings.publish("battery/dischargedEnergy", String(_dischargedEnergy));
+    MqttSettings.publish("battery/instantaneousPower", String(_instantaneousPower));
+    MqttSettings.publish("battery/consumedAmpHours", String(_consumedAmpHours));
+    MqttSettings.publish("battery/lastFullCharge", String(_lastFullCharge));
+    MqttSettings.publish("battery/midpointVoltage", String(_midpointVoltage));
+    MqttSettings.publish("battery/midpointDeviation", String(_midpointDeviation));
 }
 #endif

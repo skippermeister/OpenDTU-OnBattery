@@ -14,4 +14,5 @@ export interface BatteryConfig {
     max_charge_temp: number;
     min_discharge_temp: number;
     max_discharge_temp: number;
+    stop_charging_soc: number;
 }

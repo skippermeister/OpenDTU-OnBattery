@@ -516,17 +516,15 @@ export default defineComponent({
                 }
             };
 
-            var self = this;
-
-            this.socket.onopen = function (event) {
+            this.socket.onopen = (event) => {
                 console.log(event);
                 console.log("Successfully connected to the echo websocket server...");
-                self.isWebsocketConnected = true;
+                this.isWebsocketConnected = true;
             };
 
-            this.socket.onclose = function () {
+            this.socket.onclose = () => {
                 console.log("Connection to websocket closed...")
-                self.isWebsocketConnected = false;
+                this.isWebsocketConnected = false;
             }
 
             // Listen to window events , When the window closes , Take the initiative to disconnect websocket Connect

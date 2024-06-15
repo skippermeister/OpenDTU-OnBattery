@@ -13,8 +13,6 @@
 #include <vector>
 #include <frozen/string.h>
 
-#define HwSerial Serial2
-
 // Timeout threshold for UART = number of symbols (~10 tics) with unchanged state on receive pin
 #define ECHO_READ_TOUT (3) // 3.5T * 8 = 28 ticks, TOUT=3 -> ~24..33 ticks
 
@@ -29,11 +27,14 @@ class DalyBmsController : public BatteryProvider {
         void deinit() final;
         void loop() final;
         std::shared_ptr<BatteryStats> getStats() const final { return _stats; }
-        bool usesHwPort2() const final { return true; }
 
         void set_address(uint8_t address) { _addr = address; }
 
     private:
+        static char constexpr _serialPortOwner[] = "Daly BMS";
+
+        std::unique_ptr<HardwareSerial> _upSerial;
+
         static const uint8_t XFER_BUFFER_LENGTH = 13;
 
         static const uint8_t START_BYTE = 0xA5; // Start byte

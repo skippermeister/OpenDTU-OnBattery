@@ -157,10 +157,7 @@ void MqttHandleBatteryHassClass::publishSensor(const char* caption, const char* 
     // statTopic.concat("/");
     statTopic.concat(subTopic);
 
-    DynamicJsonDocument root(1024);
-    if (!Utils::checkJsonAlloc(root, __FUNCTION__, __LINE__)) {
-        return;
-    }
+    JsonDocument root;
     root["name"] = caption;
     root["stat_t"] = statTopic;
     root["uniq_id"] = serial + "_" + sensorId;
@@ -173,7 +170,7 @@ void MqttHandleBatteryHassClass::publishSensor(const char* caption, const char* 
         root["unit_of_meas"] = unitOfMeasurement;
     }
 
-    JsonObject deviceObj = root.createNestedObject("dev");
+    JsonObject deviceObj = root["dev"].to<JsonObject>();
     createDeviceInfo(deviceObj);
 
     if (Configuration.get().Mqtt.Hass.Expire) {
@@ -186,7 +183,9 @@ void MqttHandleBatteryHassClass::publishSensor(const char* caption, const char* 
         root["stat_cla"] = stateClass;
     }
 
-    if (Utils::checkJsonOverflow(root, __FUNCTION__, __LINE__)) { return; }
+    if (!Utils::checkJsonAlloc(root, __FUNCTION__, __LINE__)) {
+        return;
+    }
 
     String buffer;
     serializeJson(root, buffer);
@@ -210,10 +209,7 @@ void MqttHandleBatteryHassClass::publishBinarySensor(const char* caption, const 
     // statTopic.concat("/");
     statTopic.concat(subTopic);
 
-    DynamicJsonDocument root(1024);
-    if (!Utils::checkJsonAlloc(root, __FUNCTION__, __LINE__)) {
-        return;
-    }
+    JsonDocument root;
     root["name"] = caption;
     root["uniq_id"] = serial + "_" + sensorId;
     root["stat_t"] = statTopic;
@@ -224,10 +220,12 @@ void MqttHandleBatteryHassClass::publishBinarySensor(const char* caption, const 
         root["icon"] = icon;
     }
 
-    JsonObject deviceObj = root.createNestedObject("dev");
+    JsonObject deviceObj = root["dev"].to<JsonObject>();
     createDeviceInfo(deviceObj);
 
-    if (Utils::checkJsonOverflow(root, __FUNCTION__, __LINE__)) { return; }
+    if (!Utils::checkJsonAlloc(root, __FUNCTION__, __LINE__)) {
+        return;
+    }
 
     String buffer;
     serializeJson(root, buffer);

@@ -42,7 +42,7 @@ bool SunPositionClass::isAnnouceDayPeriod() const
     getLocalTime(&timeinfo, 5);
     const uint32_t minutesPastMidnight = timeinfo.tm_hour * 60 + timeinfo.tm_min;
     // 2 minutes before sunrise we state the annoucement of the sunrise
-    return (minutesPastMidnight >= _sunriseMinutes - 60000L * 2) && (minutesPastMidnight < _sunriseMinutes);
+    return (minutesPastMidnight >= (_sunriseMinutes - 2)) && (minutesPastMidnight < _sunriseMinutes);
 }
 
 bool SunPositionClass::isDayPeriod() const

@@ -28,7 +28,10 @@ void VictronMpptClass::updateSettings()
     std::lock_guard<std::mutex> lock(_mutex);
 
     _controllers.clear();
-    SerialPortManager.invalidateMpptPorts();
+    for (auto const& o: _serialPortOwners) {
+        SerialPortManager.freePort(o.c_str());
+    }
+    _serialPortOwners.clear();
 
     if (!Configuration.get().Vedirect.Enabled) {
         MessageOutput.print("not enabled... ");
@@ -37,34 +40,36 @@ void VictronMpptClass::updateSettings()
 
     const PinMapping_t& pin = PinMapping.get();
 
-    int hwSerialPort = 1;
+    initController(pin.victron_rx, pin.victron_tx, _verboseLogging, 1);
 
-    bool initSuccess = initController(pin.victron_rx, pin.victron_tx, _verboseLogging, hwSerialPort);
-    if (initSuccess) {
-        hwSerialPort++;
-    }
+    initController(pin.victron_rx2, pin.victron_tx2, _verboseLogging, 2);
 
-    // only initialize if rx2 and tx2 pin is configured
-    if (pin.victron_rx2 > 0 && pin.victron_tx2 >= 0) initController(pin.victron_rx2, pin.victron_tx2, _verboseLogging, hwSerialPort);
+    initController(pin.victron_rx3, pin.victron_tx3, _verboseLogging, 3);
 }
 
-bool VictronMpptClass::initController(int8_t rx, int8_t tx, bool logging, int hwSerialPort)
+bool VictronMpptClass::initController(int8_t rx, int8_t tx, bool logging, uint8_t instance)
 {
-    MessageOutput.printf("%s%s RS232 port rx = %d, tx = %d, hwSerialPort = %d\r\n", TAG, __FUNCTION__, rx, tx, hwSerialPort);
+    MessageOutput.printf("%s%s RS232 port rx = %d, tx = %d, instance = %d ", TAG, __FUNCTION__, rx, tx, instance);
 
-    if (rx < 0) {
-        MessageOutput.printf("%s%s invalid pin config\r\n", TAG, __FUNCTION__);
+    if (rx < 0 && tx < 0) {
+        MessageOutput.printf("not configued\r\n");
         return false;
     }
-
-    if (!SerialPortManager.allocateMpptPort(hwSerialPort)) {
-        MessageOutput.printf("%s%s Serial port %d already in use. Initialization aborted!\r\n", TAG, __FUNCTION__,
-                             hwSerialPort);
+    if (rx == tx || rx < 0 || tx < 0) {
+        MessageOutput.printf("invalid pin config\r\n");
         return false;
     }
+    MessageOutput.println();
+
+    String owner("Victron MPPT ");
+    owner += String(instance);
+    auto oHwSerialPort = SerialPortManager.allocatePort(owner.c_str());
+    if (!oHwSerialPort) { return false; }
+
+    _serialPortOwners.push_back(owner);
 
     auto upController = std::make_unique<VeDirectMpptController>();
-    upController->init(rx, tx, &MessageOutput, logging, hwSerialPort);
+    upController->init(rx, tx, &MessageOutput, logging, *oHwSerialPort);
     _controllers.push_back(std::move(upController));
     return true;
 }
@@ -158,10 +163,10 @@ int32_t VictronMpptClass::getPowerOutputWatts() const
         // the calculated efficiency of the connected charge controller.
         auto networkPower = upController->getData().NetworkTotalDcInputPowerMilliWatts;
         if (networkPower.first > 0) {
-            return static_cast<int32_t>(networkPower.second / 1000.0 * upController->getData().E / 100);
+            return static_cast<int32_t>(networkPower.second / 1000.0 * upController->getData().mpptEfficiency_Percent / 100);
         }
 
-        sum += upController->getData().P;
+        sum += upController->getData().batteryOutputPower_W;
     }
 
     return sum;
@@ -182,7 +187,7 @@ int32_t VictronMpptClass::getPanelPowerWatts() const
             return static_cast<int32_t>(networkPower.second / 1000.0);
         }
 
-        sum += upController->getData().PPV;
+        sum += upController->getData().panelPower_PPV_W;
     }
 
     return sum;
@@ -194,7 +199,7 @@ float VictronMpptClass::getYieldTotal() const
 
     for (const auto& upController : _controllers) {
         if (!upController->isDataValid()) { continue; }
-        sum += upController->getData().H19;
+        sum += upController->getData().yieldTotal_H19_Wh/1000.0;
     }
 
     return sum;
@@ -206,7 +211,7 @@ float VictronMpptClass::getYieldDay() const
 
     for (const auto& upController : _controllers) {
         if (!upController->isDataValid()) { continue; }
-        sum += upController->getData().H20;
+        sum += upController->getData().yieldToday_H20_Wh/1000.0;
     }
 
     return sum;
@@ -218,7 +223,7 @@ float VictronMpptClass::getOutputVoltage() const
 
     for (const auto& upController : _controllers) {
         if (!upController->isDataValid()) { continue; }
-        float volts = upController->getData().V;
+        float volts = upController->getData().batteryVoltage_V_mV/1000.0;
         if (min == -1) { min = volts; }
         min = std::min(min, volts);
     }
