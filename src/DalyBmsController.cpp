@@ -54,14 +54,14 @@ bool DalyBmsController::init()
             }
 
             // RS485 protocol is half duplex
-            ESP_ERROR_CHECK(uart_set_mode(2, UART_MODE_RS485_HALF_DUPLEX));
+            ESP_ERROR_CHECK(uart_set_mode(*oHwSerialPort, UART_MODE_RS485_HALF_DUPLEX));
 
         } else {
             // pin.battery_rts is negativ and less -1, Daly BMS is connected via RS232
             MessageOutput.printf("RS232 module rx = %d, tx = %d", pin.battery_rx, pin.battery_tx);
         }
         // Set read timeout of UART TOUT feature
-        ESP_ERROR_CHECK(uart_set_rx_timeout(2, ECHO_READ_TOUT));
+        ESP_ERROR_CHECK(uart_set_rx_timeout(*oHwSerialPort, ECHO_READ_TOUT));
 
         _upSerial->flush();
 
@@ -73,11 +73,11 @@ bool DalyBmsController::init()
         memset(_txBuffer, 0x00, XFER_BUFFER_LENGTH);
         clearGet();
 
-        if (PinMapping.get().battery_bms_wakeup >= 0) {
-            pinMode(PinMapping.get().battery_bms_wakeup, OUTPUT);
-            digitalWrite(PinMapping.get().battery_bms_wakeup, HIGH);
+        if (PinMapping.get().battery_wakeup >= 0) {
+            pinMode(PinMapping.get().battery_wakeup, OUTPUT);
+            digitalWrite(PinMapping.get().battery_wakeup, HIGH);
             vTaskDelay(500);
-            digitalWrite(PinMapping.get().battery_bms_wakeup, LOW);
+            digitalWrite(PinMapping.get().battery_wakeup, LOW);
         }
 
         MessageOutput.print(" initialized successfully.");
@@ -186,11 +186,11 @@ void DalyBmsController::sendRequest(uint8_t pollInterval)
 
     if (_nextRequest == 0) {
         if ((millis() - _lastRequest) < pollInterval * 1000) {
-            if (PinMapping.get().battery_bms_wakeup >= 0) {
+            if (PinMapping.get().battery_wakeup >= 0) {
                 if ((millis() - _lastRequest) > 50 && (millis() - _lastRequest) < 600) { // 500ms High Impuls
-                    digitalWrite(PinMapping.get().battery_bms_wakeup, HIGH);
+                    digitalWrite(PinMapping.get().battery_wakeup, HIGH);
                 } else {
-                    digitalWrite(PinMapping.get().battery_bms_wakeup, LOW);
+                    digitalWrite(PinMapping.get().battery_wakeup, LOW);
                 }
             }
             return announceStatus(Status::WaitingForPollInterval);

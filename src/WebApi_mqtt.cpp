@@ -5,6 +5,7 @@
 #include "WebApi_mqtt.h"
 #include "Configuration.h"
 #include "MqttHandleHass.h"
+#include "MqttHandleInverter.h"
 #include "MqttHandleVedirectHass.h"
 #include "MqttHandleVedirect.h"
 #include "MqttSettings.h"
@@ -299,7 +300,6 @@ void WebApiMqttClass::onMqttAdminPost(AsyncWebServerRequest* request)
     strlcpy(cMqtt.Hostname, root["hostname"].as<String>().c_str(), sizeof(cMqtt.Hostname));
     strlcpy(cMqtt.Username, root["username"].as<String>().c_str(), sizeof(cMqtt.Username));
     strlcpy(cMqtt.Password, root["password"].as<String>().c_str(), sizeof(cMqtt.Password));
-    strlcpy(cMqtt.Topic, root["topic"].as<String>().c_str(), sizeof(cMqtt.Topic));
     strlcpy(cMqtt.Lwt.Topic, root["lwt_topic"].as<String>().c_str(), sizeof(cMqtt.Lwt.Topic));
     strlcpy(cMqtt.Lwt.Value_Online, root["lwt_online"].as<String>().c_str(), sizeof(cMqtt.Lwt.Value_Online));
     strlcpy(cMqtt.Lwt.Value_Offline, root["lwt_offline"].as<String>().c_str(), sizeof(cMqtt.Lwt.Value_Offline));
@@ -313,7 +313,14 @@ void WebApiMqttClass::onMqttAdminPost(AsyncWebServerRequest* request)
     cMqtt.Hass.IndividualPanels = root["hass_individualpanels"].as<bool>();
     strlcpy(cMqtt.Hass.Topic, root["hass_topic"].as<String>().c_str(), sizeof(cMqtt.Hass.Topic));
 #endif
+
     MqttSettings.setVerboseLogging(root["verbose_logging"].as<bool>());
+    // Check if base topic was changed
+    if (strcmp(cMqtt.Topic, root["mqtt_topic"].as<String>().c_str())) {
+        MqttHandleInverter.unsubscribeTopics();
+        strlcpy(cMqtt.Topic, root["mqtt_topic"].as<String>().c_str(), sizeof(cMqtt.Topic));
+        MqttHandleInverter.subscribeTopics();
+    }
 
     WebApi.writeConfig(retMsg);
 

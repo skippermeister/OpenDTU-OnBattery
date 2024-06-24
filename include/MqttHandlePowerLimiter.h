@@ -3,7 +3,6 @@
 
 #include "Configuration.h"
 #include <espMqttClient.h>
-#include <MeanWell_can.h>
 #include <TaskSchedulerDeclarations.h>
 #include <TimeoutHelper.h>
 #include <mutex>
@@ -18,9 +17,22 @@ public:
 private:
     void loop();
 
-    Task _loopTask;
+    enum class MqttPowerLimiterCommand : unsigned {
+        Mode,
+        BatterySoCStartThreshold,
+        BatterySoCStopThreshold,
+        FullSolarPassthroughSoC,
+        VoltageStartThreshold,
+        VoltageStopThreshold,
+        FullSolarPassThroughStartVoltage,
+        FullSolarPassThroughStopVoltage,
+        UpperPowerLimit,
+        TargetPowerConsumption
+    };
 
-    void onCmdMode(const espMqttClientTypes::MessageProperties& properties, const char* topic, const uint8_t* payload, size_t len, size_t index, size_t total);
+    void onMqttCmd(MqttPowerLimiterCommand command, const espMqttClientTypes::MessageProperties& properties, const char* topic, const uint8_t* payload, size_t len, size_t index, size_t total);
+
+    Task _loopTask;
 
     TimeoutHelper _lastPublish;
 

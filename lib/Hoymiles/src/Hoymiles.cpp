@@ -156,6 +156,9 @@ void HoymilesClass::loop()
                     if (inv->getZeroYieldDayOnMidnight()) {
                         inv->Statistics()->zeroDailyData();
                     }
+                    if (inv->getClearEventlogOnMidnight()) {
+                        inv->EventLog()->clearBuffer();
+                    }
                 }
 
                 lastWeekDay = currentWeekDay;

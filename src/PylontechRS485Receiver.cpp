@@ -47,7 +47,7 @@ bool PylontechRS485Receiver::init()
         _upSerial = std::make_unique<HardwareSerial>(*oHwSerialPort);
 
         _upSerial->begin(115200, SERIAL_8N1, pin.battery_rx, pin.battery_tx);
-        MessageOutput.printf("RS485 (Type %d) port rx = %d, tx = %d", pin.battery_rts >= 0 ? 1 : 2, pin.battery_rx, pin.battery_tx);
+        MessageOutput.printf("Port= %d, RS485 (Type %d) port rx = %d, tx = %d", *oHwSerialPort, pin.battery_rts >= 0 ? 1 : 2, pin.battery_rx, pin.battery_tx);
         if (pin.battery_rts >= 0) {
             /*
              * Pylontech is connected via a RS485 module. Two different types of modules are supported.
@@ -59,10 +59,10 @@ bool PylontechRS485Receiver::init()
             MessageOutput.printf(", rts = %d", pin.battery_rts);
             _upSerial->setPins(pin.battery_rx, pin.battery_tx, UART_PIN_NO_CHANGE, pin.battery_rts);
         }
-        ESP_ERROR_CHECK(uart_set_mode(2, UART_MODE_RS485_HALF_DUPLEX));
+        ESP_ERROR_CHECK(uart_set_mode(*oHwSerialPort, UART_MODE_RS485_HALF_DUPLEX));
 
         // Set read timeout of UART TOUT feature
-        ESP_ERROR_CHECK(uart_set_rx_timeout(2, ECHO_READ_TOUT));
+        ESP_ERROR_CHECK(uart_set_rx_timeout(*oHwSerialPort, ECHO_READ_TOUT));
 
         while (_upSerial->available()) { // clear RS485 read buffer
             _upSerial->read();

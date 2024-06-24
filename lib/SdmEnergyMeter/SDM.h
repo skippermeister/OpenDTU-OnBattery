@@ -206,7 +206,11 @@ class SDM {
 #endif
     virtual ~SDM();
 
+#if defined(USE_POWERMETER_SERIAL2)
+    void begin(uart_port_t port);
+#else
     void begin(void);
+#endif
     float readVal(uint16_t reg, uint8_t node = SDM_B_01, boolean verbose = false);      //  read value from register = reg and from deviceId = node
     uint16_t getErrCode(bool _clear = false);                                   //  return last errorcode (optional clear this value, default flase)
     uint32_t getErrCount(bool _clear = false);                                  //  return total errors count (optional clear this value, default flase)

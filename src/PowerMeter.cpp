@@ -107,7 +107,11 @@ void PowerMeterClass::init(Scheduler& scheduler)
         MessageOutput.printf("RS485 (Type %d) port rx = %d, tx = %d", pin.powermeter_rts >= 0 ? 1 : 2, pin.powermeter_rx, pin.powermeter_tx);
         if (pin.powermeter_rts >= 0) MessageOutput.printf(", rts = %d", pin.powermeter_rts);
         MessageOutput.print(". ");
+#if defined(USE_POWERMETER_SERIAL2)
+        _upSdm->begin(*oHwSerialPort);
+#else
         _upSdm->begin();
+#endif
         break;
 
     case Source::HTTP:

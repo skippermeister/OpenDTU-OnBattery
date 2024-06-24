@@ -79,7 +79,7 @@ struct PinMapping_t {
 #if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER) || defined(USE_JKMS_CONTROLLER)
     int8_t battery_rts;
 #if defined(USE_DALYBMS_CONTROLLER)
-    int8_t battery_bms_wakeup;
+    int8_t battery_wakeup;
 #endif
 #endif
 

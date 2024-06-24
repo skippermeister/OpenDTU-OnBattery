@@ -50,6 +50,16 @@
                         </select>
                     </div>
                 </div>
+                <InputElement v-show="ntpConfigList.sunsettype == 4"
+                                :label="$t('ntpadmin.Sunrise')"
+                                v-model="ntpConfigList.sunrise"
+                                type="number" min="60" max="110" wide3_2
+                                :postfix="$t('ntpadmin.Angle')"/>
+                <InputElement v-show="ntpConfigList.sunsettype == 4"
+                                :label="$t('ntpadmin.Sunset')"
+                                v-model="ntpConfigList.sunset"
+                                type="number" min="60" max="110" wide3_2
+                                :postfix="$t('ntpadmin.Angle')"/>
             </CardElement>
 
             <FormFooter @reload="getNtpConfig"/>
@@ -112,6 +122,7 @@ export default defineComponent({
                 { key: 1, value: 'NAUTICAL' },
                 { key: 2, value: 'CIVIL' },
                 { key: 3, value: 'ASTONOMICAL' },
+                { key: 4, value: 'SPECIAL'},
             ],
         };
     },

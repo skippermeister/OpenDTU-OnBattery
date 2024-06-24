@@ -61,6 +61,9 @@ public:
     void setZeroYieldDayOnMidnight(const bool enabled);
     bool getZeroYieldDayOnMidnight() const;
 
+    void setClearEventlogOnMidnight(const bool enabled);
+    bool getClearEventlogOnMidnight() const;
+
     void clearRxFragmentBuffer();
     void addRxFragment(const uint8_t fragment[], const uint8_t len);
     uint8_t verifyAllFragments(CommandAbstract& cmd);
@@ -105,6 +108,7 @@ private:
 
     bool _zeroValuesIfUnreachable = false;
     bool _zeroYieldDayOnMidnight = false;
+    bool _clearEventlogOnMidnight = false;
 
     std::unique_ptr<AlarmLogParser> _alarmLogParser;
     std::unique_ptr<DevInfoParser> _devInfoParser;

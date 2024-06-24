@@ -65,6 +65,7 @@ struct INVERTER_CONFIG_T {
     uint8_t ReachableThreshold;
     bool ZeroRuntimeDataIfUnrechable;
     bool ZeroYieldDayOnMidnight;
+    bool ClearEventlogOnMidnight;
     bool YieldDayCorrection;
     CHANNEL_CONFIG_T channel[INV_MAX_CHAN_COUNT];
 };
@@ -127,6 +128,8 @@ struct Ntp_CONFIG_T {
     double Longitude;
     double Latitude;
     uint8_t SunsetType;
+    float Sunrise;
+    float Sunset;
 };
 
 struct PowerMeter_CONFIG_T {

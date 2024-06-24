@@ -84,10 +84,10 @@ void REFUsolRS485ReceiverClass::updateSettings(void)
             MessageOutput.printf(", rts = %d", pin.REFUsol_rts);
             _upSerial->setPins(pin.REFUsol_rx, pin.REFUsol_tx, UART_PIN_NO_CHANGE, pin.REFUsol_rts);
         }
-        ESP_ERROR_CHECK(uart_set_mode(1, UART_MODE_RS485_HALF_DUPLEX));
+        ESP_ERROR_CHECK(uart_set_mode(*oHwSerialPort, UART_MODE_RS485_HALF_DUPLEX));
 
         // Set read timeout of UART TOUT feature
-        ESP_ERROR_CHECK(uart_set_rx_timeout(1, ECHO_READ_TOUT));
+        ESP_ERROR_CHECK(uart_set_rx_timeout(*oHwSerialPort, ECHO_READ_TOUT));
 
         _upSerial->flush();
 

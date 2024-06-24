@@ -33,9 +33,9 @@ SDM::~SDM()
 {
 }
 
-void SDM::begin(void)
-{
 #if defined(USE_POWERMETER_SERIAL2)
+void SDM::begin(uart_port_t port)
+{
     sdmSer.begin(_baud, _config, _rx_pin, _tx_pin);
     if (_dere_pin >= 0) {
         /*
@@ -47,11 +47,14 @@ void SDM::begin(void)
          */
         sdmSer.setPins(_rx_pin, _tx_pin, UART_PIN_NO_CHANGE, _dere_pin);
     }
-    ESP_ERROR_CHECK(uart_set_mode(2, UART_MODE_RS485_HALF_DUPLEX));
+    ESP_ERROR_CHECK(uart_set_mode(port, UART_MODE_RS485_HALF_DUPLEX));
 
     // Set read timeout of UART TOUT feature
-    ESP_ERROR_CHECK(uart_set_rx_timeout(2, ECHO_READ_TOUT));
+    ESP_ERROR_CHECK(uart_set_rx_timeout(port, ECHO_READ_TOUT));
+}
 #else
+void SDM::begin(void)
+{
     sdmSer.begin(_baud, (EspSoftwareSerial::Config)_config, _rx_pin, _tx_pin);
     if (_dere_pin >= 0) {
         /*
@@ -63,8 +66,8 @@ void SDM::begin(void)
          */
         sdmSer.setTransmitEnablePin(_dere_pin); // in SoftwareSerial it is handled within driver
     }
-#endif
 }
+#endif
 
 void sdm_debug(const char* s, uint8_t* frame, uint8_t len)
 {

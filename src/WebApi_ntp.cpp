@@ -83,6 +83,8 @@ void WebApiNtpClass::onNtpAdminGet(AsyncWebServerRequest* request)
     root["longitude"] = cNtp.Longitude;
     root["latitude"] = cNtp.Latitude;
     root["sunsettype"] = cNtp.SunsetType;
+    root["sunrise"] = cNtp.Sunrise;
+    root["sunset"] = cNtp.Sunset;
 
     WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 }
@@ -105,7 +107,9 @@ void WebApiNtpClass::onNtpAdminPost(AsyncWebServerRequest* request)
             && root.containsKey("ntp_timezone")
             && root.containsKey("longitude")
             && root.containsKey("latitude")
-            && root.containsKey("sunsettype"))) {
+            && root.containsKey("sunsettype")
+            && root.containsKey("sunrise")
+            && root.containsKey("sunset"))) {
         retMsg["message"] = ValuesAreMissing;
         retMsg["code"] = WebApiError::GenericValueMissing;
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
@@ -143,6 +147,8 @@ void WebApiNtpClass::onNtpAdminPost(AsyncWebServerRequest* request)
     cNtp.Latitude = root["latitude"].as<double>();
     cNtp.Longitude = root["longitude"].as<double>();
     cNtp.SunsetType = root["sunsettype"].as<uint8_t>();
+    cNtp.Sunrise = root["sunrise"].as<float>();
+    cNtp.Sunset = root["sunset"].as<float>();
 
     WebApi.writeConfig(retMsg);
 

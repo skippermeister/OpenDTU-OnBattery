@@ -103,28 +103,56 @@
 #define CMT_SDIO -1
 #endif
 
-#ifndef SERIAL1_PIN_RX
-#define SERIAL1_PIN_RX 22
+#ifndef VICTRON_PIN_RX
+#define VICTRON_PIN_RX 22
 #endif
 
-#ifndef SERIAL1_PIN_TX
-#define SERIAL1_PIN_TX 21
+#ifndef VICTRON_PIN_TX
+#define VICTRON_PIN_TX 21
 #endif
 
-#ifndef SERIAL2_PIN_RX
-#define SERIAL2_PIN_RX 16
+#ifndef VICTRON_PIN_RX2
+#define VICTRON_PIN_RX2 -1
 #endif
 
-#ifndef SERIAL2_PIN_TX
-#define SERIAL2_PIN_TX 17
+#ifndef VICTRON_PIN_TX2
+#define VICTRON_PIN_TX2 -1
 #endif
 
-#ifndef SERIAL2_PIN_RTS
-#define SERIAL2_PIN_RTS 4
+#ifndef VICTRON_PIN_RX3
+#define VICTRON_PIN_RX3 -1
 #endif
 
-#ifndef PIN_BMS_WAKEUP
-#define PIN_BMS_WAKEUP -1
+#ifndef VICTRON_PIN_TX3
+#define VICTRON_PIN_TX3 -1
+#endif
+
+#ifndef REFUSOL_PIN_RX
+#define REFUSOL_PIN_RX -1
+#endif
+
+#ifndef REFUSOL_PIN_TX
+#define REFUSOL_PIN_TX -1
+#endif
+
+#ifndef REFUSOL_PIN_RTS
+#define REFUSOL_PIN_RTS -1
+#endif
+
+#ifndef BATTERY_PIN_RX
+#define BATTERY_PIN_RX 16
+#endif
+
+#ifndef BATTERY_PIN_TX
+#define BATTERY_PIN_TX 17
+#endif
+
+#ifndef BATTERY_PIN_RTS
+#define BATTERY_PIN_RTS 4
+#endif
+
+#ifndef BATTERY_PIN_WAKEUP
+#define BATTERY_PIN_WAKEUP -1
 #endif
 
 #ifdef CHARGER_USE_CAN0
@@ -225,27 +253,27 @@ PinMappingClass::PinMappingClass()
     _pinMapping.led_rgb = LED_RGB;
 #endif
 
-    _pinMapping.victron_tx = SERIAL1_PIN_TX;
-    _pinMapping.victron_rx = SERIAL1_PIN_RX;
+    _pinMapping.victron_tx = VICTRON_PIN_TX;
+    _pinMapping.victron_rx = VICTRON_PIN_RX;
 
     _pinMapping.victron_tx2 = -1;
-    _pinMapping.victron_rx2 = 0;
+    _pinMapping.victron_rx2 = -1;
 
     _pinMapping.victron_tx3 = -1;
-    _pinMapping.victron_rx3 = 0;
+    _pinMapping.victron_rx3 = -1;
 
 #if defined(USE_REFUsol_INVERTER)
-    _pinMapping.REFUsol_rx = SERIAL1_PIN_RX;
-    _pinMapping.REFUsol_tx = SERIAL1_PIN_TX;
-    _pinMapping.REFUsol_rts = SERIAL1_PIN_RTS;
+    _pinMapping.REFUsol_rx = REFUSOL_PIN_RX;
+    _pinMapping.REFUsol_tx = REFUSOL_PIN_TX;
+    _pinMapping.REFUsol_rts = REFUSOL_PIN_RTS;
 #endif
 
 #if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER) || defined(USE_JKBMS_CONTROLLER)
-    _pinMapping.battery_rx = SERIAL2_PIN_RX;
-    _pinMapping.battery_tx = SERIAL2_PIN_TX;
-    _pinMapping.battery_rts = SERIAL2_PIN_RTS;
+    _pinMapping.battery_rx = BATTERY_PIN_RX;
+    _pinMapping.battery_tx = BATTERY_PIN_TX;
+    _pinMapping.battery_rts = BATTERY_PIN_RTS;
 #if defined(USE_DALYBMS_CONTROLLER)
-    _pinMapping.battery_bms_wakeup = PIN_BMS_WAKEUP;
+    _pinMapping.battery_wakeup = BATTERY_PIN_WAKEUP;
 #endif
 #else
     _pinMapping.battery_rx = CAN0_PIN_RX;
@@ -346,20 +374,20 @@ void PinMappingClass::init(const String& deviceMapping)
 #if defined(USE_LED_STRIP)
                 _pinMapping.led_rgb = doc[i]["led"]["rgb"] | LED_RGB;
 #endif
-                _pinMapping.victron_rx = doc[i]["victron"]["rs323_rx"] | SERIAL1_PIN_RX;
-                _pinMapping.victron_tx = doc[i]["victron"]["rs323_tx"] | SERIAL1_PIN_TX;
+                _pinMapping.victron_rx = doc[i]["victron"]["rs323_rx"] | VICTRON_PIN_RX;
+                _pinMapping.victron_tx = doc[i]["victron"]["rs323_tx"] | VICTRON_PIN_TX;
 
-                _pinMapping.victron_rx2 = doc[i]["victron"]["rs323_rx2"] | -1;
-                _pinMapping.victron_tx2 = doc[i]["victron"]["rs323_tx2"] | -1;
+                _pinMapping.victron_rx2 = doc[i]["victron"]["rs323_rx2"] | VICTRON_PIN_RX2;
+                _pinMapping.victron_tx2 = doc[i]["victron"]["rs323_tx2"] | VICTRON_PIN_TX2;
 
-                _pinMapping.victron_rx3 = doc[i]["victron"]["rs323_rx3"] | -1;
-                _pinMapping.victron_tx3 = doc[i]["victron"]["rs323_tx3"] | -1;
+                _pinMapping.victron_rx3 = doc[i]["victron"]["rs323_rx3"] | VICTRON_PIN_RX3;
+                _pinMapping.victron_tx3 = doc[i]["victron"]["rs323_tx3"] | VICTRON_PIN_TX3;
 
 #if defined(USE_REFUsol_INVERTER)
-                _pinMapping.REFUsol_rx = doc[i]["refusol"]["rs485_rx"] | SERIAL1_PIN_RX;
-                _pinMapping.REFUsol_tx = doc[i]["refusol"]["rs485_tx"] | SERIAL1_PIN_TX;
+                _pinMapping.REFUsol_rx = doc[i]["refusol"]["rs485_rx"] | REFUSOL_PIN_RX;
+                _pinMapping.REFUsol_tx = doc[i]["refusol"]["rs485_tx"] | REFUSOL_PIN_TX;
                 if (doc[i]["refusol"].containsKey("rs485_rts")) {
-                    _pinMapping.REFUsol_rts = doc[i]["refusol"]["rs485_rts"] | SERIAL1_PIN_RTS;
+                    _pinMapping.REFUsol_rts = doc[i]["refusol"]["rs485_rts"] | REFUSOL_PIN_RTS;
                 } else {
                     _pinMapping.REFUsol_rts = -1;
                 }
@@ -367,10 +395,10 @@ void PinMappingClass::init(const String& deviceMapping)
 
 #if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER) || defined(USE_JKMS_CONTROLLER)
                 if (doc[i]["battery"].containsKey("rs485_rx")) {
-                    _pinMapping.battery_rx = doc[i]["battery"]["rs485_rx"] | SERIAL2_PIN_RX;
-                    _pinMapping.battery_tx = doc[i]["battery"]["rs485_tx"] | SERIAL2_PIN_TX;
+                    _pinMapping.battery_rx = doc[i]["battery"]["rs485_rx"] | BATTERY_PIN_RX;
+                    _pinMapping.battery_tx = doc[i]["battery"]["rs485_tx"] | BATTERY_PIN_TX;
                     if (doc[i]["battery"].containsKey("rs485_rts")) {
-                        _pinMapping.battery_rts = doc[i]["battery"]["rs485_rts"] | SERIAL2_PIN_RTS;
+                        _pinMapping.battery_rts = doc[i]["battery"]["rs485_rts"] | BATTERY_PIN_RTS;
                     } else {
                         _pinMapping.battery_rts = -1;
                     }
@@ -378,8 +406,8 @@ void PinMappingClass::init(const String& deviceMapping)
 #endif
 #if defined(USE_DALYBMS_CONTROLLER) || defined(USE_JKBMS_CONTROLLER)
                  if (doc[i]["battery"].containsKey("rs232_rx")) {
-                    _pinMapping.battery_rx = doc[i]["battery"]["rs232_rx"] | SERIAL2_PIN_RX;
-                    _pinMapping.battery_tx = doc[i]["battery"]["rs232_tx"] | SERIAL2_PIN_TX;
+                    _pinMapping.battery_rx = doc[i]["battery"]["rs232_rx"] | BATTERY_PIN_RX;
+                    _pinMapping.battery_tx = doc[i]["battery"]["rs232_tx"] | BATTERY_PIN_TX;
                     _pinMapping.battery_rts = -2; // indicate we have a RS232 interface
                 } else
 #endif
@@ -390,12 +418,12 @@ void PinMappingClass::init(const String& deviceMapping)
                 } else
 #endif
                 {
-                    _pinMapping.battery_rx = SERIAL2_PIN_RX;
-                    _pinMapping.battery_tx = SERIAL2_PIN_TX;
-                    _pinMapping.battery_rts = SERIAL2_PIN_RTS;
+                    _pinMapping.battery_rx = BATTERY_PIN_RX;
+                    _pinMapping.battery_tx = BATTERY_PIN_TX;
+                    _pinMapping.battery_rts = BATTERY_PIN_RTS;
                 }
 #if defined(USE_DALYBMS_CONTROLLER)
-                _pinMapping.battery_bms_wakeup = doc[i]["battery"]["bms_wakeup"] | PIN_BMS_WAKEUP;
+                _pinMapping.battery_wakeup = doc[i]["battery"]["wakeup"] | BATTERY_PIN_WAKEUP;
 #endif
 
 #if defined(CHARGER_HUAWEI)
@@ -495,8 +523,8 @@ bool PinMappingClass::isValidBatteryConfig() const
            && (_pinMapping.battery_rts != _pinMapping.battery_rx)
            && (_pinMapping.battery_rts != _pinMapping.battery_tx)
 #if defined (USE_DALYBMS_CONTROLLER)
-           && (_pinMapping.battery_bms_wakeup != _pinMapping.battery_rx)
-           && (_pinMapping.battery_bms_wakeup != _pinMapping.battery_tx)
+           && (_pinMapping.battery_wakeup != _pinMapping.battery_rx)
+           && (_pinMapping.battery_wakeup != _pinMapping.battery_tx)
 #endif
            ;
 }
@@ -620,7 +648,7 @@ void PinMappingClass::createPinMappingJson() const
         battery["rs232_tx"]  = _pinMapping.battery_tx;
     }
 #if defined(USE_DALYBMS_CONTROLLER)
-    battery["bms_wakeup"] = _pinMapping.battery_bms_wakeup;
+    battery["wakeup"] = _pinMapping.battery_wakeup;
 #endif
 #else
     battery["can0_rx"] = _pinMapping.battery_rx;

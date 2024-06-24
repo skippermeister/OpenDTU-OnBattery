@@ -178,6 +178,8 @@
                 <InputElement :label="$t('inverteradmin.ZeroDay')" v-model="selectedInverterData.zero_day" type="checkbox"
                     :tooltip="$t('inverteradmin.ZeroDayHint')" wide5_1 />
 
+                <InputElement :label="$t('inverteradmin.ClearEventlog')" v-model="selectedInverterData.clear_eventlog" type="checkbox" wide5_1 />
+
                 <InputElement :label="$t('inverteradmin.YieldDayCorrection')"
                     v-model="selectedInverterData.yieldday_correction" type="checkbox"
                     :tooltip="$t('inverteradmin.YieldDayCorrectionHint')" wide5_1 />

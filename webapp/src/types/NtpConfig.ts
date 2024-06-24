@@ -5,4 +5,6 @@ export interface NtpConfig {
     latitude: number;
     longitude: number;
     sunsettype: number;
+    sunrise: number;
+    sunset: number;
 }

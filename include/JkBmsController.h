@@ -9,6 +9,9 @@
 
 #include "Battery.h"
 #include "JkBmsSerialMessage.h"
+#include "JkBmsDummy.h"
+
+//#define JKBMS_DUMMY_SERIAL
 
 class DataPointContainer;
 

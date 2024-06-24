@@ -98,19 +98,23 @@ void SunPositionClass::updateSunData()
 
     Ntp_CONFIG_T const& cNtp = Configuration.get().Ntp;
 
-    double sunset_type;
+    double sunset_type, sunrise_type;
     switch (cNtp.SunsetType) {
     case 0:
-        sunset_type = SunSet::SUNSET_OFFICIAL;
+        sunrise_type = sunset_type = SunSet::SUNSET_OFFICIAL;
         break;
     case 2:
-        sunset_type = SunSet::SUNSET_CIVIL;
+        sunrise_type = sunset_type = SunSet::SUNSET_CIVIL;
         break;
     case 3:
-        sunset_type = SunSet::SUNSET_ASTONOMICAL;
+        sunrise_type = sunset_type = SunSet::SUNSET_ASTONOMICAL;
+        break;
+    case 4:
+        sunrise_type = cNtp.Sunrise;
+        sunset_type = cNtp.Sunset;
         break;
     default:
-        sunset_type = SunSet::SUNSET_NAUTICAL;
+        sunrise_type = sunset_type = SunSet::SUNSET_NAUTICAL;
         break;
     }
 
@@ -120,7 +124,7 @@ void SunPositionClass::updateSunData()
     sun.setPosition(cNtp.Latitude, cNtp.Longitude, offset);
     sun.setCurrentDate(1900 + timeinfo.tm_year, timeinfo.tm_mon + 1, timeinfo.tm_mday);
 
-    const double sunriseRaw = sun.calcCustomSunrise(sunset_type);
+    const double sunriseRaw = sun.calcCustomSunrise(sunrise_type);
     const double sunsetRaw = sun.calcCustomSunset(sunset_type);
 
     // If no sunset/sunrise exists (e.g. astronomical calculation in summer)

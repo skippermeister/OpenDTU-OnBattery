@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright (C) 2022 Thomas Basler and others
+ * Copyright (C) 2022-2024 Thomas Basler and others
  */
 #include "InverterAbstract.h"
 #include "../Hoymiles.h"
@@ -127,6 +127,16 @@ bool InverterAbstract::getZeroYieldDayOnMidnight() const
     return _zeroYieldDayOnMidnight;
 }
 
+void InverterAbstract::setClearEventlogOnMidnight(const bool enabled)
+{
+    _clearEventlogOnMidnight = enabled;
+}
+
+bool InverterAbstract::getClearEventlogOnMidnight() const
+{
+    return _clearEventlogOnMidnight;
+}
+
 bool InverterAbstract::sendChangeChannelRequest()
 {
     return false;
@@ -226,7 +236,7 @@ uint8_t InverterAbstract::verifyAllFragments(CommandAbstract& cmd)
         if (cmd.getSendCount() <= cmd.getMaxResendCount()) {
             return FRAGMENT_ALL_MISSING_RESEND;
         } else {
-            cmd.gotTimeout(*this);
+            cmd.gotTimeout();
             return FRAGMENT_ALL_MISSING_TIMEOUT;
         }
     }
@@ -237,7 +247,7 @@ uint8_t InverterAbstract::verifyAllFragments(CommandAbstract& cmd)
         if (_rxFragmentRetransmitCnt++ < cmd.getMaxRetransmitCount()) {
             return _rxFragmentLastPacketId + 1;
         } else {
-            cmd.gotTimeout(*this);
+            cmd.gotTimeout();
             return FRAGMENT_RETRANSMIT_TIMEOUT;
         }
     }
@@ -249,14 +259,14 @@ uint8_t InverterAbstract::verifyAllFragments(CommandAbstract& cmd)
             if (_rxFragmentRetransmitCnt++ < cmd.getMaxRetransmitCount()) {
                 return i + 1;
             } else {
-                cmd.gotTimeout(*this);
+                cmd.gotTimeout();
                 return FRAGMENT_RETRANSMIT_TIMEOUT;
             }
         }
     }
 
-    if (!cmd.handleResponse(*this, _rxFragmentBuffer, _rxFragmentMaxPacketId)) {
-        cmd.gotTimeout(*this);
+    if (!cmd.handleResponse(_rxFragmentBuffer, _rxFragmentMaxPacketId)) {
+        cmd.gotTimeout();
         return FRAGMENT_HANDLE_ERROR;
     }
 
