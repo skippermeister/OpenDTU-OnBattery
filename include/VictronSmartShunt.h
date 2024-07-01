@@ -8,7 +8,7 @@
 class VictronSmartShunt : public BatteryProvider {
 public:
     bool init() final;
-    void deinit() final { }
+    void deinit() final;
     void loop() final;
     std::shared_ptr<BatteryStats> getStats() const final { return _stats; }
 

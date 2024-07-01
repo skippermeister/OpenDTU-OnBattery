@@ -21,7 +21,7 @@ static constexpr char TAG[] = "[PowerMeter]";
 
 PowerMeterClass PowerMeter;
 
-#ifndef USE_POWERMETER_SERIAL2
+#ifndef USE_POWERMETER_HWSERIAL
   static SoftwareSerial sdmSerial;
 #endif
 
@@ -89,7 +89,7 @@ void PowerMeterClass::init(Scheduler& scheduler)
             return;
         }
 
-#if defined(USE_POWERMETER_SERIAL2)
+#if defined(USE_POWERMETER_HWSERIAL)
         auto oHwSerialPort = SerialPortManager.allocatePort(_sdmSerialPortOwner);
         if (!oHwSerialPort) { return; }
 
@@ -107,7 +107,7 @@ void PowerMeterClass::init(Scheduler& scheduler)
         MessageOutput.printf("RS485 (Type %d) port rx = %d, tx = %d", pin.powermeter_rts >= 0 ? 1 : 2, pin.powermeter_rx, pin.powermeter_tx);
         if (pin.powermeter_rts >= 0) MessageOutput.printf(", rts = %d", pin.powermeter_rts);
         MessageOutput.print(". ");
-#if defined(USE_POWERMETER_SERIAL2)
+#if defined(USE_POWERMETER_HWSERIAL)
         _upSdm->begin(*oHwSerialPort);
 #else
         _upSdm->begin();

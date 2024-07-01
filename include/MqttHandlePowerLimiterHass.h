@@ -8,6 +8,7 @@
 
 class MqttHandlePowerLimiterHassClass {
 public:
+    MqttHandlePowerLimiterHassClass();
     void init(Scheduler& scheduler);
     void publishConfig();
     void forceUpdate();

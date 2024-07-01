@@ -6,7 +6,7 @@
     </div>
 
     <template v-else>
-        <div class="row gy-3">
+        <div class="row gy-3 mt-0">
             <div class="col-sm-3 col-md-2" :style="[packData.length == 1 ? { 'display': 'none' } : {}]">
                 <div class="nav nav-pills row-cols-sm-1" id="v-pills-tab-pack" role="tablist" aria-orientation="vertical">
                     <button v-for="pack in packData" :key="pack.moduleNumber" class="nav-link border border-primary text-break"

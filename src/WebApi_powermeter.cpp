@@ -17,6 +17,7 @@
 #include "VeDirectFrameHandler.h"
 #include "WebApi.h"
 #include "helper.h"
+#include <SMA_HM.h>
 
 void WebApiPowerMeterClass::init(AsyncWebServer& server, Scheduler& scheduler)
 {

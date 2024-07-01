@@ -7,7 +7,7 @@
 #include "SDM.h"
 
 //------------------------------------------------------------------------------
-#if defined(USE_POWERMETER_SERIAL2)
+#if defined(USE_POWERMETER_HWSERIAL)
 SDM::SDM(HardwareSerial& serial, long baud, int dere_pin, int config, int8_t rx_pin, int8_t tx_pin)
     : sdmSer(serial)
 {
@@ -33,7 +33,7 @@ SDM::~SDM()
 {
 }
 
-#if defined(USE_POWERMETER_SERIAL2)
+#if defined(USE_POWERMETER_HWSERIAL)
 void SDM::begin(uart_port_t port)
 {
     sdmSer.begin(_baud, _config, _rx_pin, _tx_pin);
@@ -102,7 +102,7 @@ float SDM::readVal(uint16_t reg, uint8_t node, boolean verbose)
     sdmarr[6] = lowByte(temp);
     sdmarr[7] = highByte(temp);
 
-#if !defined(USE_POWERMETER_SERIAL2)
+#if !defined(USE_POWERMETER_HWSERIAL)
     sdmSer.listen(); // enable softserial rx interrupt
 #endif
 
@@ -169,7 +169,7 @@ float SDM::readVal(uint16_t reg, uint8_t node, boolean verbose)
         ++readingsuccesscount;
     }
 
-#if !defined(USE_POWERMETER_SERIAL2)
+#if !defined(USE_POWERMETER_HWSERIAL)
     sdmSer.stopListening(); // disable softserial rx interrupt
 #endif
 

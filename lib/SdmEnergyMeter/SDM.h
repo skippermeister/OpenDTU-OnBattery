@@ -9,7 +9,7 @@
 //------------------------------------------------------------------------------
 #include <Arduino.h>
 #include <SDM_Config_User.h>
-#if defined ( USE_POWERMETER_SERIAL2 )
+#if defined ( USE_POWERMETER_HWSERIAL )
   #include <HardwareSerial.h>
   #include <driver/uart.h>
 #else
@@ -24,7 +24,7 @@
 #endif
 
 #if !defined ( SDM_UART_CONFIG )
-    #if defined ( USE_POWERMETER_SERIAL2 )
+    #if defined ( USE_POWERMETER_HWSERIAL )
         #define SDM_UART_CONFIG                       SERIAL_8N1                //  default hardware uart config
     #else
         #define SDM_UART_CONFIG                       SWSERIAL_8N1              //  default softwareware uart config for esp8266/esp32
@@ -199,14 +199,14 @@
 
 class SDM {
   public:
-#if defined ( USE_POWERMETER_SERIAL2 )                                          //  hardware serial
+#if defined ( USE_POWERMETER_HWSERIAL )                                          //  hardware serial
     SDM(HardwareSerial& serial, long baud, int dere_pin, int config, int8_t rx_pin, int8_t tx_pin);
 #else                                                                           //  software serial
     SDM(SoftwareSerial& serial, long baud, int dere_pin, int config, int8_t rx_pin, int8_t tx_pin);
 #endif
     virtual ~SDM();
 
-#if defined(USE_POWERMETER_SERIAL2)
+#if defined(USE_POWERMETER_HWSERIAL)
     void begin(uart_port_t port);
 #else
     void begin(void);
@@ -224,7 +224,7 @@ class SDM {
     uint16_t getMsTimeout();                                                    //  get current value of RESPONSE_TIMEOUT (ms)
 
   private:
-#if defined ( USE_POWERMETER_SERIAL2 )
+#if defined ( USE_POWERMETER_HWSERIAL )
     HardwareSerial& sdmSer;
 #else
     SoftwareSerial& sdmSer;

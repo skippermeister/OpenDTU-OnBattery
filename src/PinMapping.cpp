@@ -11,10 +11,6 @@
 #include <LittleFS.h>
 #include <string.h>
 
-#ifdef JSON_BUFFER_SIZE
-#undef JSON_BUFFER_SIZE
-#endif
-
 #ifndef DISPLAY_TYPE
 #define DISPLAY_TYPE 0  // DisplayType_t::SSD1309  entspricht 5
 #endif
@@ -163,11 +159,26 @@
     #ifndef CAN0_PIN_TX
     #define CAN0_PIN_TX 26
     #endif
-    /*
-    #ifndef CAN0_PIN_STB
-    #define CAN0_PIN_STB    -1
+
+    #ifndef MCP2515_PIN_MISO
+    #define MCP2515_PIN_MISO -1
     #endif
-    */
+
+    #ifndef MCP2515_PIN_MOSI
+    #define MCP2515_PIN_MOSI -1
+    #endif
+
+    #ifndef MCP2515_PIN_SCLK
+    #define MCP2515_PIN_SCLK -1
+    #endif
+
+    #ifndef MCP2515_PIN_IRQ
+    #define MCP2515_PIN_IRQ -1
+    #endif
+
+    #ifndef MCP2515_PIN_CS
+    #define MCP2515_PIN_CS -1
+    #endif
 #else
 
     #ifndef MCP2515_PIN_MISO
@@ -190,6 +201,14 @@
     #define MCP2515_PIN_CS 15
     #endif
 
+#endif
+
+#ifndef PRE_CHARGE_PIN
+#define PRE_CHARGE_PIN -1
+#endif
+
+#ifndef FULL_POWER_PIN
+#define FULL_POWER_PIN -1
 #endif
 
 #ifndef POWERMETER_PIN_RX
@@ -291,7 +310,6 @@ PinMappingClass::PinMappingClass()
 #else
     _pinMapping.can0_rx = CAN0_PIN_RX;
     _pinMapping.can0_tx = CAN0_PIN_TX;
-//    _pinMapping.can0_stb = CAN0_PIN_STB;
 #endif
 
     _pinMapping.pre_charge = PRE_CHARGE_PIN;
@@ -437,7 +455,6 @@ void PinMappingClass::init(const String& deviceMapping)
 #if defined(CHARGER_USE_CAN0)
                 _pinMapping.can0_rx = doc[i]["charger"]["can0_rx"] | CAN0_PIN_RX;
                 _pinMapping.can0_tx = doc[i]["charger"]["can0_tx"] | CAN0_PIN_TX;
-                // _pinMapping.can0_stb = doc[i]["charger"]["can0_stb"] | CAN0_PIN_STB;
 
                 _pinMapping.mcp2515_miso = doc[i]["mcp2515"]["miso"] | MCP2515_PIN_MISO;
                 _pinMapping.mcp2515_mosi = doc[i]["mcp2515"]["mosi"] | MCP2515_PIN_MOSI;
@@ -545,7 +562,6 @@ bool PinMappingClass::isValidMeanWellConfig() const
 #if defined(CHARGER_USE_CAN0)
     return _pinMapping.can0_rx > 0
         && _pinMapping.can0_tx > 0;
-//        && (_pinMapping.can0_stb > 0 || _pinMapping.can0_stb == -1);
 #else
     return _pinMapping.mcp2515_miso > 0
         && _pinMapping.mcp2515_mosi > 0
@@ -669,7 +685,6 @@ void PinMappingClass::createPinMappingJson() const
 #if defined(CHARGER_USE_CAN0)
     charger["can0_rx"] = _pinMapping.can0_rx;
     charger["can0_tx"] = _pinMapping.can0_tx;
-    // charger["can0_stb"] = _pinMapping.can0_stb;
 
     mcp2515["miso"] = _pinMapping.mcp2515_miso;
     mcp2515["mosi"] = _pinMapping.mcp2515_mosi;

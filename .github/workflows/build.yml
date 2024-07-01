@@ -1,4 +1,4 @@
-name: OpenDTU-onBattery Build
+name: OpenDTU-OnBattery Build
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
       - master
       - development
     tags-ignore:
-      - v*
+      - 'v**'
   pull_request:
     paths-ignore:
       - docs/**
@@ -59,6 +59,15 @@ jobs:
 
       - name: Get tags
         run: git fetch --force --tags origin
+
+      - name: Create and switch to a meaningful branch for pull-requests
+        if: github.event_name == 'pull_request'
+        run: |
+          OWNER=${{ github.repository_owner }}
+          NAME=${{ github.event.repository.name }}
+          ID=${{ github.event.pull_request.number }}
+          DATE=$(date +'%Y%m%d%H%M')
+          git switch -c ${OWNER}/${NAME}/pr${ID}-${DATE}
 
       - name: Cache pip
         uses: actions/cache@v4
@@ -111,6 +120,7 @@ jobs:
           name: opendtu-onbattery-${{ matrix.environment }}
           path: |
             .pio/build/${{ matrix.environment }}/opendtu-onbattery-${{ matrix.environment }}.bin
+            !.pio/build/generic_esp32_4mb_no_ota/opendtu-onbattery-generic_esp32_4mb_no_ota.bin
             .pio/build/${{ matrix.environment }}/opendtu-onbattery-${{ matrix.environment }}.factory.bin
 
   release:
@@ -122,9 +132,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
+      - name: Get tags
+        run: git fetch --force --tags origin
+
+      - name: Get openDTU core release
+        run: |
+          echo "OPEN_DTU_CORE_RELEASE=$(git for-each-ref --sort=creatordate --format '%(refname) %(creatordate)' refs/tags | grep 'refs/tags/v' | tail -1 | sed 's#.*/##' | sed 's/ .*//')" >> $GITHUB_ENV
+
+      - name: Create openDTU-core-release-Badge
+        uses: schneegans/dynamic-badges-action@v1.6.0
+        with:
+          auth: ${{ secrets.GIST_SECRET }}
+          gistID: 68b47cc8c8994d04ab3a4fa9d8aee5e6
+          filename: openDTUcoreRelease.json
+          label: based on original OpenDTU
+          message: ${{ env.OPEN_DTU_CORE_RELEASE }}
+          color: lightblue
+
       - name: Build Changelog
         id: github_release
-        uses: mikepenz/release-changelog-builder-action@v3
+        uses: mikepenz/release-changelog-builder-action@v4
         with:
           failOnError: true
           commitMode: true
@@ -143,7 +170,7 @@ jobs:
           for i in */; do cp ${i}opendtu-onbattery-*.bin ./; done
 
       - name: Create release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           body: ${{steps.github_release.outputs.changelog}}
           draft: False

@@ -94,7 +94,6 @@ struct PinMapping_t {
 #endif
     int8_t can0_rx;
     int8_t can0_tx;
-    //    int8_t can0_stb;
 
     int8_t pre_charge;
     int8_t full_power;

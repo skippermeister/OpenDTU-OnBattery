@@ -11,6 +11,7 @@
 #include "MessageOutput.h"
 #include "VictronMppt.h"
 #include "Utils.h"
+#include "__compiled_constants.h"
 
 MqttHandleVedirectHassClass MqttHandleVedirectHass;
 
@@ -52,13 +53,16 @@ void MqttHandleVedirectHassClass::forceUpdate()
 
 void MqttHandleVedirectHassClass::publishConfig()
 {
-    if (!Configuration.get().Mqtt.Hass.Enabled || !Configuration.get().Vedirect.Enabled || !MqttSettings.getConnected() || !VictronMppt.isDataValid()) // and ensure data is revieved from victron
+    if (!Configuration.get().Mqtt.Hass.Enabled ||
+       (!Configuration.get().Vedirect.Enabled) ||
+       (!MqttSettings.getConnected()) ||
+       (!VictronMppt.isDataValid())) // and ensure data is revieved from victron
     {
         return;
     }
 
+    // device info
     for (int idx = 0; idx < VictronMppt.controllerAmount(); ++idx) {
-        // device info
         auto optMpptData = VictronMppt.getData(idx);
         if (!optMpptData.has_value()) { continue; }
 
@@ -102,9 +106,9 @@ void MqttHandleVedirectHassClass::publishConfig()
     yield();
 }
 
-void MqttHandleVedirectHassClass::publishSensor(const char* caption, const char* icon, const char* subTopic,
-                                                const char* deviceClass, const char* stateClass,
-                                                const char* unitOfMeasurement,
+void MqttHandleVedirectHassClass::publishSensor(const char *caption, const char* icon, const char *subTopic,
+                                                const char *deviceClass, const char *stateClass,
+                                                const char *unitOfMeasurement,
                                                 const VeDirectMpptController::data_t &mpptData)
 {
     String serial = mpptData.serialNr_SER;
@@ -158,8 +162,8 @@ void MqttHandleVedirectHassClass::publishSensor(const char* caption, const char*
     publish(configTopic, buffer);
 }
 
-void MqttHandleVedirectHassClass::publishBinarySensor(const char* caption, const char* icon, const char* subTopic,
-                                                      const char* payload_on, const char* payload_off,
+void MqttHandleVedirectHassClass::publishBinarySensor(const char *caption, const char *icon, const char *subTopic,
+                                                      const char *payload_on, const char* payload_off,
                                                       const VeDirectMpptController::data_t &mpptData)
 {
     String serial = mpptData.serialNr_SER;
@@ -209,7 +213,7 @@ void MqttHandleVedirectHassClass::createDeviceInfo(JsonObject& object,
     object["cu"] = String("http://") + NetworkSettings.localIP().toString();
     object["mf"] = "OpenDTU";
     object["mdl"] = mpptData.getPidAsString();
-    object["sw"] = AUTO_GIT_HASH;
+    object["sw"] = __COMPILED_GIT_HASH__;
 }
 
 void MqttHandleVedirectHassClass::publish(const String& subtopic, const String& payload)

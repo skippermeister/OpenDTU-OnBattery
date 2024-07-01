@@ -1161,7 +1161,7 @@ void JkBmsBatteryStats::updateFrom(JkBms::DataPointContainer const& dp)
 
 #ifdef USE_VICTRON_SMART_SHUNT
 void VictronSmartShuntStats::updateFrom(VeDirectShuntController::data_t const& shuntData) {
-    BatteryStats::setVoltage(shuntData.batteryVoltage_V_mV / 1000.0, millis())
+    BatteryStats::setVoltage(shuntData.batteryVoltage_V_mV / 1000.0, millis());
     BatteryStats::setSoC(static_cast<float>(shuntData.SOC) / 10, 1 /*precision*/, millis());
     _fwversion = shuntData.getFwVersionFormatted();
 

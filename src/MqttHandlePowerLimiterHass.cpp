@@ -11,14 +11,18 @@
 #include "NetworkSettings.h"
 #include "MessageOutput.h"
 #include "Utils.h"
+#include "__compiled_constants.h"
 
 MqttHandlePowerLimiterHassClass MqttHandlePowerLimiterHass;
+
+MqttHandlePowerLimiterHassClass::MqttHandlePowerLimiterHassClass()
+    : _loopTask(TASK_IMMEDIATE, TASK_FOREVER, std::bind(&MqttHandlePowerLimiterHassClass::loop, this))
+{
+}
 
 void MqttHandlePowerLimiterHassClass::init(Scheduler& scheduler)
 {
     scheduler.addTask(_loopTask);
-    _loopTask.setCallback(std::bind(&MqttHandlePowerLimiterHassClass::loop, this));
-    _loopTask.setIterations(TASK_FOREVER);
     _loopTask.enable();
 }
 
@@ -194,7 +198,7 @@ void MqttHandlePowerLimiterHassClass::createDeviceInfo(JsonObject& object)
     object["cu"] = String("http://") + NetworkSettings.localIP().toString();
     object["mf"] = "OpenDTU";
     object["mdl"] = "Dynamic Power Limiter";
-    object["sw"] = AUTO_GIT_HASH;
+    object["sw"] = __COMPILED_GIT_HASH__;
 }
 
 void MqttHandlePowerLimiterHassClass::publish(const String& subtopic, const String& payload)

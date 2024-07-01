@@ -9,6 +9,7 @@
 #include "Battery.h"
 #include "Configuration.h"
 #include "MqttHandleBatteryHass.h"
+#include "MqttHandlePowerLimiterHass.h"
 #include "WebApi.h"
 #include "WebApi_errors.h"
 #include "defaults.h"
@@ -46,8 +47,8 @@ void WebApiBatteryClass::onStatus(AsyncWebServerRequest* request)
     root["jkbms_polling_interval"] = 0;
 #endif
 #ifdef USE_MQTT_BATTERY
-    root["mqtt_soc_topic"] = config.Battery.Mqtt.SocTopic;
-    root["mqtt_voltage_topic"] = config.Battery.Mqtt.VoltageTopic;
+    root["mqtt_soc_topic"] = cBattery.Mqtt.SocTopic;
+    root["mqtt_voltage_topic"] = cBattery.Mqtt.VoltageTopic;
 #else
     root["mqtt_soc_topic"] = "";
     root["mqtt_voltage_topic"] = "";

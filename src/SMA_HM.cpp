@@ -29,7 +29,7 @@ void SMA_HMClass::Soutput(int kanal, int index, int art, int tarif,
             name, value, timestamp);
 }
 
-void SMA_HMClass::init(Scheduler& scheduler,)
+void SMA_HMClass::init(Scheduler& scheduler)
 {
     scheduler.addTask(_loopTask);
     _loopTask.setCallback(std::bind(&SMA_HMClass::loop, this));

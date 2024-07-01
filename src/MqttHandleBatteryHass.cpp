@@ -8,6 +8,7 @@
 #include "MqttSettings.h"
 #include "PylontechCanReceiver.h"
 #include "Utils.h"
+#include "__compiled_constants.h"
 
 MqttHandleBatteryHassClass MqttHandleBatteryHass;
 
@@ -260,7 +261,7 @@ void MqttHandleBatteryHassClass::createDeviceInfo(JsonObject& object)
     object["cu"] = String("http://") + NetworkSettings.localIP().toString();
     object["mf"] = "OpenDTU";
     object["mdl"] = Battery.getStats()->getManufacturer();
-    object["sw"] = AUTO_GIT_HASH;
+    object["sw"] = __COMPILED_GIT_HASH__;
 }
 
 void MqttHandleBatteryHassClass::publish(const String& subtopic, const String& payload)

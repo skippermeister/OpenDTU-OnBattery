@@ -172,7 +172,7 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
         batteryPinObj["rs232_tx"] = pin.battery_tx;
     }
 #if defined(USE_DALYBMS_CONTROLLER)
-    if (pin.battery_bms_wakeup >= 0) batteryPinObj["bms_wakeup"] = pin.battery_bms_wakeup;
+    if (pin.battery_wakeup >= 0) batteryPinObj["wakeup"] = pin.battery_wakeup;
 #endif
 #else
     batteryPinObj["can0_rx"] = pin.battery_rx;

@@ -3,8 +3,11 @@
 
 #include "VictronSmartShunt.h"
 #include "Configuration.h"
-#include "MessageOutput.h"
 #include "PinMapping.h"
+#include "MessageOutput.h"
+#include "SerialPortManager.h"
+
+static constexpr char TAG[] = "[VictronSmartShunt]";
 
 void VictronSmartShunt::deinit()
 {
@@ -31,7 +34,7 @@ bool VictronSmartShunt::init()
     auto oHwSerialPort = SerialPortManager.allocatePort(_serialPortOwner);
     if (!oHwSerialPort) { return false; }
 
-    VeDirectShunt.init(rx, tx, &MessageOutput, VictronMppt.getVerboseLogging(), *oHwSerialPort);
+    VeDirectShunt.init(rx, tx, &MessageOutput, Battery._verboseLogging, *oHwSerialPort);
     return true;
 }
 
@@ -39,11 +42,9 @@ void VictronSmartShunt::loop()
 {
     VeDirectShunt.loop();
 
-    if (VeDirectShunt.getLastUpdate() <= _lastUpdate) {
-        return;
-    }
+    if (VeDirectShunt.getLastUpdate() <= _lastUpdate) { return; }
 
-    _stats->updateFrom(VeDirectShunt.veFrame);
+    _stats->updateFrom(VeDirectShunt.getData());
     _lastUpdate = VeDirectShunt.getLastUpdate();
 }
 
