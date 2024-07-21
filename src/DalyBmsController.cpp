@@ -224,7 +224,7 @@ void DalyBmsController::sendRequest(uint8_t pollInterval)
 
     if (_triggerNext) {
         _triggerNext = false;
-        static constexpr uint8_t Request[] = {
+        static constexpr uint8_t Requests[] = {
             Command::REQUEST_BATTERY_LEVEL,
             Command::REQUEST_MIN_MAX_VOLTAGE,
             Command::REQUEST_MIN_MAX_TEMPERATURE,
@@ -237,7 +237,7 @@ void DalyBmsController::sendRequest(uint8_t pollInterval)
         };
         if (_nextRequest == 0) MessageOutput.printf("%s request data\r\n", TAG);
         requestData(Requests[_nextRequest]);
-        if (_nextRequests == sizeof(Requests)/sizeof(uint8_t)-1) {
+        if (_nextRequest == sizeof(Requests)/sizeof(uint8_t)-1) {
             MessageOutput.printf("%s request data done\r\n", TAG);
             _nextRequest = 0;
         }
