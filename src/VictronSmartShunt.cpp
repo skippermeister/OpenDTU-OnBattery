@@ -13,6 +13,8 @@ void VictronSmartShunt::deinit()
 {
     SerialPortManager.freePort(_serialPortOwner);
 
+    _initialized = false;
+
     MessageOutput.printf("%s Serial driver uninstalled\r\n", TAG);
 }
 
@@ -34,7 +36,10 @@ bool VictronSmartShunt::init()
     auto oHwSerialPort = SerialPortManager.allocatePort(_serialPortOwner);
     if (!oHwSerialPort) { return false; }
 
-    VeDirectShunt.init(rx, tx, &MessageOutput, Battery._verboseLogging, *oHwSerialPort);
+    VeDirectShunt.init(rx, tx, &MessageOutput, _verboseLogging, *oHwSerialPort);
+
+    _initialized = true;
+
     return true;
 }
 
