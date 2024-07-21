@@ -59,7 +59,7 @@ void WebApiBatteryClass::onStatus(AsyncWebServerRequest* request)
     root["min_discharge_temp"] = cBattery.MinDischargeTemperature;
     root["max_discharge_temp"] = cBattery.MaxDischargeTemperature;
     root["stop_charging_soc"] = cBattery.Stop_Charging_BatterySoC_Threshold;
-    root["verbose_logging"] = Battery._verboseLogging;
+    root["verbose_logging"] = cBattery.VerboseLogging;
 
     WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 }
@@ -131,7 +131,7 @@ void WebApiBatteryClass::onAdminPost(AsyncWebServerRequest* request)
 #endif
     cBattery.Stop_Charging_BatterySoC_Threshold = root["stop_charging_soc"].as<uint8_t>();
 
-    Battery._verboseLogging = root["verbose_logging"].as<bool>();
+    cBattery.VerboseLogging = root["verbose_logging"].as<bool>();
 
     WebApi.writeConfig(retMsg);
 

@@ -17,7 +17,6 @@ static constexpr char TAG[] = "[REFUsol]";
 #include "PinMapping.h"
 #include "SerialPortManager.h"
 #include <Arduino.h>
-#include <HardwareSerial.h>
 #include <driver/uart.h>
 
 REFUsolRS485ReceiverClass REFUsol;
@@ -59,7 +58,9 @@ void REFUsolRS485ReceiverClass::updateSettings(void)
     if (pin.REFUsol_rx < 0 || pin.REFUsol_tx < 0
         || pin.REFUsol_rx == pin.REFUsol_tx
         || (pin.REFUsol_rts >= 0
-            && (pin.REFUsol_rts == pin.REFUsol_rx || pin.REFUsol_rts == pin.REFUsol_tx))) {
+            && (pin.REFUsol_rts == pin.REFUsol_rx || pin.REFUsol_rts == pin.REFUsol_tx))
+       )
+    {
         MessageOutput.println("Invalid TX/RX/RTS pin config");
         return;
     }
@@ -104,19 +105,11 @@ void REFUsolRS485ReceiverClass::updateSettings(void)
     MessageOutput.print("Read basic infos and parameters. ");
 
     getPVpeak(adr);
-    parse();
-
     getPVlimit(adr);
-    parse();
-
     getDeviceSpecificOffset(adr);
-    parse();
-
     getPlantSpecificOffset(adr);
-    parse();
-
     getOptionCosPhi(adr);
-    parse();
+
     Frame.effectivCosPhi = 0.0;
     switch (Frame.optionCosPhi) {
     case 0:
@@ -124,13 +117,11 @@ void REFUsolRS485ReceiverClass::updateSettings(void)
         break;
     case 1:
         getFixedOffset(adr);
-        parse();
         if (Frame.fixedOffset > NaN)
             Frame.effectivCosPhi = Frame.deviceSpecificOffset + Frame.plantSpecificOffset + Frame.fixedOffset;
         break;
     case 2:
         getVariableOffset(adr);
-        parse();
         if (Frame.variableOffset > NaN)
             Frame.effectivCosPhi = Frame.deviceSpecificOffset + Frame.plantSpecificOffset + Frame.variableOffset;
         break;
@@ -140,7 +131,6 @@ void REFUsolRS485ReceiverClass::updateSettings(void)
         break;
     case 4:
         getCosPhi(adr);
-        parse();
         if (Frame.cosPhi > NaN) {
             Frame.effectivCosPhi = Frame.deviceSpecificOffset + Frame.plantSpecificOffset + Frame.cosPhi;
         }
@@ -169,9 +159,7 @@ void REFUsolRS485ReceiverClass::deinit(void)
 
 void REFUsolRS485ReceiverClass::loop()
 {
-    REFUsol_CONFIG_T& cREFUsol = Configuration.get().REFUsol;
-
-    if (!cREFUsol.Enabled) {
+    if (!Configuration.get().REFUsol.Enabled) {
         deinit();
         return;
     }
@@ -187,7 +175,7 @@ void REFUsolRS485ReceiverClass::loop()
         parse();
     }
 
-    if ((millis() - getLastUpdate()) < cREFUsol.PollInterval * 1000) {
+    if ((millis() - getLastUpdate()) < Configuration.get().REFUsol.PollInterval * 1000) {
         return;
     }
 
@@ -197,17 +185,9 @@ void REFUsolRS485ReceiverClass::loop()
     case 5:
         MessageOutput.printf("%s DC Spannungen\r\n", TAG);
         getDCpower(adr);
-        parse();
-
         getDCcurrent(adr);
-        parse();
-
         getDCvoltage(adr);
-        parse();
-
         getACpower(adr);
-        parse();
-
         state++;
         break;
 
@@ -215,14 +195,9 @@ void REFUsolRS485ReceiverClass::loop()
     case 6:
         MessageOutput.printf("%s AC Spannungen\r\n", TAG);
         getACvoltage(adr, 0);
-        parse();
         getACvoltage(adr, 1);
-        parse();
         getACvoltage(adr, 2);
-        parse();
         getACvoltage(adr, 3);
-        parse();
-
         state++;
         break;
 
@@ -230,14 +205,9 @@ void REFUsolRS485ReceiverClass::loop()
     case 7:
         MessageOutput.printf("%s AC Ströme\r\n", TAG);
         getACcurrent(adr, 0);
-        parse();
         getACcurrent(adr, 1);
-        parse();
         getACcurrent(adr, 2);
-        parse();
         getACcurrent(adr, 3);
-        parse();
-
         state++;
         break;
 
@@ -245,12 +215,8 @@ void REFUsolRS485ReceiverClass::loop()
     case 8:
         MessageOutput.printf("%s Phasen Frequenzen\r\n", TAG);
         getACfrequency(adr, 1);
-        parse();
         getACfrequency(adr, 2);
-        parse();
         getACfrequency(adr, 3);
-        parse();
-
         state++;
         break;
 
@@ -258,30 +224,18 @@ void REFUsolRS485ReceiverClass::loop()
     case 9:
         MessageOutput.printf("%s Yield Solar Power\r\n", TAG);
         getYieldDay(adr);
-        parse();
         getYieldMonth(adr);
-        parse();
         getYieldYear(adr);
-        parse();
         getYieldTotal(adr);
-        parse();
-
         getTotalOperatingHours(adr);
-        parse();
-
         state++;
         break;
 
     case 10:
         getTemperatursensor(adr, 1);
-        parse();
         getTemperatursensor(adr, 2);
-        parse();
         getTemperatursensor(adr, 3);
-        parse();
         getTemperatursensor(adr, 4);
-        parse();
-
         state=0;
         break;
     }
@@ -449,6 +403,10 @@ void REFUsolRS485ReceiverClass::compute(uint8_t adr, bool mirror, uint16_t TaskI
         }
         MessageOutput.printf(", BCC: %02X\r\n", sTelegram.BCC);
     }
+
+    sendTelegram();
+
+    parse();
 }
 
 void REFUsolRS485ReceiverClass::sendTelegram(void)
@@ -710,25 +668,21 @@ void REFUsolRS485ReceiverClass::parse(void)
 void REFUsolRS485ReceiverClass::getDCvoltage(uint8_t adr)
 {
     computeTelegram(adr, false, RequestPWE, 1104, 0);
-    sendTelegram();
 }
 
 void REFUsolRS485ReceiverClass::getDCcurrent(uint8_t adr)
 {
     computeTelegram(adr, false, RequestPWE, 1105, 0);
-    sendTelegram();
 }
 
 void REFUsolRS485ReceiverClass::getACpower(uint8_t adr)
 {
     computeTelegram(adr, false, RequestPWE, 1106, 0);
-    sendTelegram();
 }
 
 void REFUsolRS485ReceiverClass::getDCpower(uint8_t adr)
 {
     computeTelegram(adr, false, RequestPWE, 1107, 0);
-    sendTelegram();
 }
 
 /*
@@ -742,11 +696,9 @@ void REFUsolRS485ReceiverClass::getACvoltage(uint8_t adr, uint16_t ind)
     if (ind == 0) {
         computeTelegram(adr, false, RequestPWE, 1123, 0);
     } else {
-        if (ind > 3)
-            ind = 3;
+        if (ind > 3) ind = 3;
         computeTelegram(adr, false, RequestPWE, 1121, ind - 1);
     }
-    sendTelegram();
 }
 
 /*
@@ -760,11 +712,9 @@ void REFUsolRS485ReceiverClass::getACcurrent(uint8_t adr, uint16_t ind)
     if (ind == 0) {
         computeTelegram(adr, false, RequestPWE, 1124, 0);
     } else {
-        if (ind > 3)
-            ind = 3;
+        if (ind > 3) ind = 3;
         computeTelegram(adr, false, RequestPWE, 1141, ind - 1);
     }
-    sendTelegram();
 }
 
 /*
@@ -774,96 +724,80 @@ void REFUsolRS485ReceiverClass::getACcurrent(uint8_t adr, uint16_t ind)
  */
 void REFUsolRS485ReceiverClass::getACfrequency(uint8_t adr, uint16_t ind)
 {
-    if (ind < 1)
-        ind = 1;
-    if (ind > 3)
-        ind = 3;
+    if (ind < 1) ind = 1;
+    if (ind > 3) ind = 3;
     computeTelegram(adr, false, RequestPWE, 1122, ind - 1);
-    sendTelegram();
 }
 
 void REFUsolRS485ReceiverClass::getYieldDay(uint8_t adr)
 {
     computeTelegram(adr, false, RequestPWE, 1150, 0);
-    sendTelegram();
 }
 
 void REFUsolRS485ReceiverClass::getTotalOperatingHours(uint8_t adr)
 {
     computeTelegram(adr, false, RequestPWE, 1152, 0);
-    sendTelegram();
 }
 
 void REFUsolRS485ReceiverClass::getYieldMonth(uint8_t adr)
 {
     computeTelegram(adr, false, RequestPWE, 1153, 0);
-    sendTelegram();
 }
 
 void REFUsolRS485ReceiverClass::getYieldYear(uint8_t adr)
 {
     computeTelegram(adr, false, RequestPWE, 1154, 0);
-    sendTelegram();
 }
 
 void REFUsolRS485ReceiverClass::getYieldTotal(uint8_t adr)
 {
     computeTelegram(adr, false, RequestPWE, 1151, 0);
-    sendTelegram();
 }
 
 void REFUsolRS485ReceiverClass::getPVpeak(uint8_t adr)
 {
     computeTelegram(adr, false, RequestPWE, 1155, 0);
-    sendTelegram();
 }
 
 // get power limit value in 0.1%
 void REFUsolRS485ReceiverClass::getPVlimit(uint8_t adr)
 {
     computeTelegram(adr, false, RequestPWE, 1162, 0);
-    sendTelegram();
 }
 
 // get Device specific angle Cos Phi in 0.01°, defult is 0.07°
 void REFUsolRS485ReceiverClass::getDeviceSpecificOffset(uint8_t adr)
 {
     computeTelegram(adr, false, RequestPWE, 51, 0);
-    sendTelegram();
 }
 
 // get Plant specific angle Cos Phi in 0.01°, default is 0.0°
 void REFUsolRS485ReceiverClass::getPlantSpecificOffset(uint8_t adr)
 {
     computeTelegram(adr, false, RequestPWE, 1165, 0);
-    sendTelegram();
 }
 
 // get fixed angle Cos Phi in 0.01°, default is 0.0°
 void REFUsolRS485ReceiverClass::getFixedOffset(uint8_t adr)
 {
     computeTelegram(adr, false, RequestPWE, 1166, 0);
-    sendTelegram();
 }
 
 // get variable angle Cos Phi in 0.01°, default is 0.0°
 void REFUsolRS485ReceiverClass::getVariableOffset(uint8_t adr)
 {
     computeTelegram(adr, false, RequestPWE, 1167, 0);
-    sendTelegram();
 }
 
 void REFUsolRS485ReceiverClass::getOptionCosPhi(uint8_t adr)
 {
     computeTelegram(adr, false, RequestPWE, 1164, 0);
-    sendTelegram();
 }
 
 // get Cos Phi in 0.01°
 void REFUsolRS485ReceiverClass::getCosPhi(uint8_t adr)
 {
     computeTelegram(adr, false, RequestPWE, 1169, 0);
-    sendTelegram();
 }
 
 /*
@@ -878,29 +812,24 @@ void REFUsolRS485ReceiverClass::getTemperatursensor(uint8_t adr, uint16_t ind)
     if (ind == 0) {
         computeTelegram(adr, false, RequestPWE, 1193, 0);
     } else {
-        if (ind > 4)
-            ind = 4;
+        if (ind > 4) ind = 4;
         computeTelegram(adr, false, RequestPWE, 92, ind);
     }
-    sendTelegram();
 }
 
 void REFUsolRS485ReceiverClass::getFehlercode(uint8_t adr)
 {
     computeTelegram(adr, false, RequestPWEarray, 500, 0);
-    sendTelegram();
 }
 
 void REFUsolRS485ReceiverClass::getActualStatus(uint8_t adr)
 {
     computeTelegram(adr, false, RequestPWEarray, 501, 0);
-    sendTelegram();
 }
 
 void REFUsolRS485ReceiverClass::getPassword(uint8_t adr)
 {
     computeTelegram(adr, false, RequestPWE, 2000, 0);
-    sendTelegram();
 }
 
 bool REFUsolRS485ReceiverClass::isDataValid()

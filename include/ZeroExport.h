@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #pragma once
 
-#include "Configuration.h"
 #include "MqttHandleZeroExport.h"
-#include <Arduino.h>
 #include <Hoymiles.h>
 #include <TaskSchedulerDeclarations.h>
 #include <TimeoutHelper.h>

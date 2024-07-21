@@ -33,14 +33,15 @@ void WebApiPowerLimiterClass::onStatus(AsyncWebServerRequest* request)
     auto& root = response->getRoot();
 
     root["enabled"] = config.PowerLimiter.Enabled;
-    root["pollinterval"] = config.PowerLimiter.PollInterval;
+    root["interval"] = config.PowerLimiter.Interval;
     root["updatesonly"] = config.PowerLimiter.UpdatesOnly;
-    root["verbose_logging"] = PowerLimiter.getVerboseLogging();
+    root["verbose_logging"] = config.PowerLimiter.VerboseLogging;
     root["solar_passthrough_enabled"] = config.PowerLimiter.SolarPassThroughEnabled;
     root["solar_passthrough_losses"] = config.PowerLimiter.SolarPassThroughLosses;
     root["battery_always_use_at_night"] = config.PowerLimiter.BatteryAlwaysUseAtNight;
     root["is_inverter_behind_powermeter"] = config.PowerLimiter.IsInverterBehindPowerMeter;
     root["is_inverter_solar_powered"] = config.PowerLimiter.IsInverterSolarPowered;
+    root["use_overscaling_to_compensate_shading"] = config.PowerLimiter.UseOverscalingToCompensateShading;
 //    root["inverter_id"] = config.PowerLimiter.InverterId;
     root["inverter_serial"] = String(config.PowerLimiter.InverterId); //config.Inverter[config.PowerLimiter.InverterId].Serial;
     root["inverter_channel_id"] = config.PowerLimiter.InverterChannelId;
@@ -151,10 +152,10 @@ void WebApiPowerLimiterClass::onAdminPost(AsyncWebServerRequest* request)
 
     CONFIG_T& config = Configuration.get();
     config.PowerLimiter.Enabled = root["enabled"].as<bool>();
-    config.PowerLimiter.PollInterval = root["pollinterval"].as<uint16_t>();
+    config.PowerLimiter.VerboseLogging = root["verbose_logging"].as<bool>();
+    config.PowerLimiter.Interval = root["interval"].as<uint16_t>();
     config.PowerLimiter.UpdatesOnly = root["updatesonly"].as<bool>();
     PowerLimiter.setMode(PowerLimiterClass::Mode::Normal); // User input sets PL to normal operation
-    PowerLimiter.setVerboseLogging(root["verbose_logging"].as<bool>());
 
     if (config.Vedirect.Enabled) {
         config.PowerLimiter.SolarPassThroughEnabled = root["solar_passthrough_enabled"].as<bool>();
@@ -166,6 +167,7 @@ void WebApiPowerLimiterClass::onAdminPost(AsyncWebServerRequest* request)
 
     config.PowerLimiter.IsInverterBehindPowerMeter = root["is_inverter_behind_powermeter"].as<bool>();
     config.PowerLimiter.IsInverterSolarPowered = root["is_inverter_solar_powered"].as<bool>();
+    config.PowerLimiter.UseOverscalingToCompensateShading = root["use_overscaling_to_compensate_shading"].as<bool>();
     //config.PowerLimiter.InverterId = root["inverter_id"].as<uint64_t>();
     config.PowerLimiter.InverterId = root["inverter_serial"].as<uint64_t>();
     config.PowerLimiter.InverterChannelId = root["inverter_channel_id"].as<uint8_t>();

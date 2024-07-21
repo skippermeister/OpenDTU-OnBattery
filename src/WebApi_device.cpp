@@ -202,13 +202,13 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
     chargerPinObj["mcp2515_cs"] = pin.mcp2515_cs;
 #endif
 
-    if (static_cast<PowerMeterClass::Source>(config.PowerMeter.Source) == PowerMeterClass::Source::SML)
+    if (static_cast<PowerMeterProvider::Type>(config.PowerMeter.Source) == PowerMeterProvider::Type::SERIAL_SML)
     {
         auto smlPinObj = curPin["powermeter"].to<JsonObject>();
         smlPinObj["sml_rs232_rx"] = pin.powermeter_rx;
         if (pin.powermeter_tx >= 0) smlPinObj["sml_rs232_tx"] = pin.powermeter_tx;
-    } else if (   static_cast<PowerMeterClass::Source>(config.PowerMeter.Source) == PowerMeterClass::Source::SDM1PH
-               || static_cast<PowerMeterClass::Source>(config.PowerMeter.Source) == PowerMeterClass::Source::SDM3PH)
+    } else if (   static_cast<PowerMeterProvider::Type>(config.PowerMeter.Source) == PowerMeterProvider::Type::SDM1PH
+               || static_cast<PowerMeterProvider::Type>(config.PowerMeter.Source) == PowerMeterProvider::Type::SDM3PH)
     {
         auto sdmPinObj = curPin["powermeter"].to<JsonObject>();
         sdmPinObj["sdm_rs485_rx"] = pin.powermeter_rx;

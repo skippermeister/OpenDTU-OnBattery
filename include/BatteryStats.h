@@ -21,8 +21,10 @@ typedef union {
         unsigned cellImbalance : 1;
         unsigned bmsInternal : 1;
         unsigned overCurrentCharge : 1;
+        unsigned overTemperatureCharge : 1;
+        unsigned underTemperatureCharge : 1;
     };
-    uint8_t alarms;
+    uint16_t alarms;
 } Alarm_t;
 
 typedef union {
@@ -35,8 +37,10 @@ typedef union {
         unsigned cellImbalance : 1;
         unsigned bmsInternal : 1;
         unsigned highCurrentCharge;
+        unsigned lowTemperatureCharge : 1;
+        unsigned highTemperatureCharge : 1;
     };
-    uint8_t warnings;
+    uint16_t warnings;
 } Warning_t;
 #pragma pack(pop)
 
@@ -69,6 +73,7 @@ class BatteryStats {
         virtual bool getChargeEnabled() const { return true; };
         virtual bool getDischargeEnabled() const { return true; };
         virtual bool getChargeImmediately() const { return false; };
+        virtual bool getFullChargeRequest() const { return false; };
         float getVoltage() const { return _voltage; };
         uint32_t getVoltageAgeSeconds() const { return (millis() - _lastUpdateVoltage) / 1000; }
 
@@ -88,8 +93,6 @@ class BatteryStats {
         bool isSoCValid() const { return _lastUpdateSoC > 0; }
         bool isVoltageValid() const { return _lastUpdateVoltage > 0; }
 
-        virtual bool initialized() const { return false; };
-
     protected:
         virtual void mqttPublish() /*const*/;
 
@@ -107,6 +110,7 @@ class BatteryStats {
         String _manufacturer = "unknown";
         String _hwversion = "";
         String _fwversion = "";
+        String _serial = "";
         uint32_t _lastUpdate = 0;
 
     private:
@@ -140,6 +144,7 @@ typedef struct {
     float dischargeCurrentLimit; // DivideBy100(construct.Int16sb),
 } SystemParameters_t;
 
+#pragma pack(push, 1)
 typedef struct {
     uint8_t commandValue; // construct.Byte,
     uint8_t numberOfCells; // Int8ub,
@@ -150,7 +155,6 @@ typedef struct {
     uint8_t chargeCurrent;
     uint8_t moduleVoltage;
     uint8_t dischargeCurrent;
-#pragma pack(push, 1)
     union {
         uint8_t status1;
         struct {
@@ -164,8 +168,6 @@ typedef struct {
             unsigned moduleUnderVoltage : 1;
         };
     };
-#pragma pack(pop)
-#pragma pack(push, 1)
     union {
         uint8_t status2;
         struct {
@@ -176,8 +178,6 @@ typedef struct {
             unsigned dummy4 : 4;
         };
     };
-#pragma pack(pop)
-#pragma pack(push, 1)
     union {
         uint8_t status3;
         struct {
@@ -190,8 +190,6 @@ typedef struct {
             unsigned effectiveChargeCurrent : 1;
         };
     };
-#pragma pack(pop)
-#pragma pack(push, 1)
     union {
         struct {
             uint8_t status4;
@@ -199,16 +197,16 @@ typedef struct {
         };
         uint16_t cellError;
     };
-#pragma pack(pop)
 } AlarmInfo_t;
+#pragma pack(pop)
 
+#pragma pack(push, 1)
 typedef struct {
     uint8_t commandValue; // construct.Byte,
     float chargeVoltageLimit; // construct.Array(2, construct.Byte),
     float dischargeVoltageLimit; // construct.Array(2, construct.Byte),
     float chargeCurrentLimit; // construct.Array(2, construct.Byte),
     float dischargeCurrentLimit; // construct.Array(2, construct.Byte),
-#pragma pack(push, 1)
     union {
         uint8_t Status; // construct.Byte,
         struct {
@@ -220,8 +218,8 @@ typedef struct {
             unsigned chargeEnable : 1; // 1: yes；0: request stop charge
         };
     };
-#pragma pack(pop)
 } ChargeDischargeManagementInfo_t;
+#pragma pack(pop)
 
 typedef struct {
     uint8_t commandValue; // construct.Byte,
@@ -246,8 +244,6 @@ public:
     void mqttPublish() /*const*/ final;
 
     uint32_t getMqttFullPublishIntervalMs() const final { return 60 * 1000; }
-
-    bool initialized() const final { return _initialized; };
 
 private:
     void setManufacturer(String&& m) { _manufacturer = std::move(m) + "tech"; }
@@ -305,8 +301,6 @@ private:
             };
         };
     } _last;
-
-    bool _initialized = false;
 };
 #endif
 
@@ -322,7 +316,12 @@ public:
     const Warning_t& getWarning() const final { return totals.Warning; };
     bool getChargeEnabled() const final { return totals.ChargeDischargeManagementInfo.chargeEnable; };
     bool getDischargeEnabled() const final { return totals.ChargeDischargeManagementInfo.dischargeEnable; };
-    bool getChargeImmediately() const final { return (totals.ChargeDischargeManagementInfo.chargeImmediately1 || totals.ChargeDischargeManagementInfo.chargeImmediately2 || totals.ChargeDischargeManagementInfo.fullChargeRequest); };
+    bool getChargeImmediately() const final {
+        return (   totals.ChargeDischargeManagementInfo.chargeImmediately1
+                || totals.ChargeDischargeManagementInfo.chargeImmediately2
+                || totals.ChargeDischargeManagementInfo.fullChargeRequest);
+    };
+    bool getFullChargeRequest() const final { return totals.ChargeDischargeManagementInfo.fullChargeRequest; }
     float getTemperature() const final { return totals.averageCellTemperature; };
 
     float getRecommendedChargeVoltageLimit() const final { return totals.ChargeDischargeManagementInfo.chargeVoltageLimit; };
@@ -348,8 +347,6 @@ public:
     void mqttPublish() /*const*/ final;
 
     uint32_t getMqttFullPublishIntervalMs() const final { return 60 * 1000; }
-
-    bool initialized() const final { return _initialized; };
 
 private:
     void setManufacturer(String&& m) { _manufacturer = std::move(m) + "tech"; }
@@ -468,8 +465,69 @@ private:
         Alarm_t Alarm;
         Warning_t Warning;
     } _lastPack[MAX_BATTERIES];
+};
+#endif
 
-    bool _initialized = false;
+#ifdef USE_PYTES_CAN_RECEIVER
+class PytesBatteryStats : public BatteryStats {
+    friend class PytesCanReceiver;
+
+    public:
+        void getLiveViewData(JsonVariant& root) const final;
+        void generatePackCommonJsonResponse(JsonObject& packObject, const uint8_t m) const final;
+        void mqttPublish() /* const */ final;
+        float getChargeCurrent() const { return _current; } ;
+        float getChargeCurrentLimitation() const { return _chargeCurrentLimit; } ;
+
+    private:
+        void setManufacturer(String&& m) { _manufacturer = std::move(m); }
+        void setLastUpdate(uint32_t ts) { _lastUpdate = ts; }
+        void updateSerial() {
+            if (!_serialPart1.isEmpty() && !_serialPart2.isEmpty()) {
+                _serial = _serialPart1 + _serialPart2;
+            }
+        }
+
+        String _serialPart1 = "";
+        String _serialPart2 = "";
+        String _serial = "";
+
+        float _chargeVoltageLimit;
+        float _chargeCurrentLimit;
+        float _dischargeVoltageLimit;
+        float _dischargeCurrentLimit;
+
+        uint16_t _stateOfHealth;
+
+        // total current into (positive) or from (negative)
+        // the battery, i.e., the charging current
+        float _current;
+        float _temperature;
+
+        uint16_t _cellMinMilliVolt;
+        uint16_t _cellMaxMilliVolt;
+        float _cellMinTemperature;
+        float _cellMaxTemperature;
+
+        String _cellMinVoltageName;
+        String _cellMaxVoltageName;
+        String _cellMinTemperatureName;
+        String _cellMaxTemperatureName;
+
+        uint8_t _moduleCountOnline;
+        uint8_t _moduleCountOffline;
+
+        uint8_t _moduleCountBlockingCharge;
+        uint8_t _moduleCountBlockingDischarge;
+
+        uint16_t _totalCapacity;
+        uint16_t _availableCapacity;
+
+        float _chargedEnergy = -1;
+        float _dischargedEnergy = -1;
+
+        Alarm_t Alarm;
+        Warning_t Warning;
 };
 #endif
 
@@ -508,10 +566,6 @@ public:
     void mqttPublish() /*const*/ final;
 
     void updateFrom(JkBms::DataPointContainer const& dp);
-
-    bool initialized() const final { return _initialized; };
-
-    bool _initialized = false;
 
 private:
     JkBms::DataPointContainer _dataPoints;
@@ -570,8 +624,6 @@ class DalyBmsBatteryStats : public BatteryStats {
         void mqttPublish() /*const*/ final;
 
 //        void updateFrom(DalyBms::DataPointContainer const& dp);
-
-        bool initialized() const final { return _initialized; };
 
     private:
         void setLastUpdate(uint32_t ts) { _lastUpdate = ts; }
@@ -734,8 +786,6 @@ class DalyBmsBatteryStats : public BatteryStats {
         char _cellBalance[6];
         FailureStatus_t FailureStatus;
         uint8_t _faultCode;
-
-        bool _initialized = false;
 };
 #endif
 
@@ -746,8 +796,6 @@ class VictronSmartShuntStats : public BatteryStats {
         void mqttPublish() /*const*/ final;
 
         void updateFrom(VeDirectShuntController::data_t const& shuntData);
-
-        bool initialized() const final { return _initialized; };
 
     private:
         float _voltage;
@@ -769,8 +817,6 @@ class VictronSmartShuntStats : public BatteryStats {
         bool _alarmLowSOC;
         bool _alarmLowTemperature;
         bool _alarmHighTemperature;
-
-        bool _initialized = false;
 };
 #endif
 

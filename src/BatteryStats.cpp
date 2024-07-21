@@ -46,27 +46,33 @@ static void addLiveViewPackParameter(JsonObject& root, std::string const& name,
 }
 
 static void addLiveViewText(JsonVariant& root, std::string const& name,
-    std::string const& text)
+    std::string const& text, bool translate = true)
 {
-    root["values"][name] = text;
+    auto jsonValue = root["values"][name];
+    jsonValue["value"] = text;
+    jsonValue["translate"] = translate;
 }
+
+#ifdef USE_PYTES_CAN_RECEIVER
+static void addLiveViewPackText(JsonObject& root, std::string const& name,
+    std::string const& text, bool translate = true)
+{
+    auto jsonValue = root["values"][name];
+    jsonValue["value"] = text;
+    jsonValue["translate"] = translate;
+}
+#endif
 
 static void addLiveViewWarning(JsonVariant& root, std::string const& name,
     bool warning)
 {
-    if (!warning) {
-        return;
-    }
-    root["issues"][name] = 1;
+    if (warning) { root["issues"][name] = 1; }
 }
 
 static void addLiveViewAlarm(JsonVariant& root, std::string const& name,
     bool alarm)
 {
-    if (!alarm) {
-        return;
-    }
-    root["issues"][name] = 2;
+    if (alarm) { root["issues"][name] = 2; }
 }
 
 /*
@@ -160,7 +166,7 @@ void PylontechCanBatteryStats::getLiveViewData(JsonVariant& root) const
     addLiveViewValue(root, "chargeCurrentLimit", chargeCurrentLimit, "A", 1);
     addLiveViewValue(root, "dischargeCurrentLimit", dischargeCurrentLimit, "A", 1);
     addLiveViewValue(root, "stateOfHealth", stateOfHealth, "%", 0);
-    addLiveViewValue(root, "voltage", voltage, "V", 2);
+//    addLiveViewValue(root, "voltage", voltage, "V", 2);
     addLiveViewValue(root, "current", current, "A", 1);
     addLiveViewValue(root, "temperature", temperature, "°C", 1);
 
@@ -193,7 +199,6 @@ void PylontechCanBatteryStats::getLiveViewData(JsonVariant& root) const
 #endif
 
 #ifdef USE_PYLONTECH_RS485_RECEIVER
-
 void PylontechRS485BatteryStats::generatePackCommonJsonResponse(JsonObject& packObject, const uint8_t module) const
 {
     packObject["moduleNumber"] = Pack[module].numberOfModule;
@@ -299,6 +304,90 @@ void PylontechRS485BatteryStats::getLiveViewData(JsonVariant& root) const
         addLiveViewValue(root, "cellMaxVoltage", totals.cellMaxVoltage, "V", 3);
         addLiveViewValue(root, "cellDiffVoltage", totals.cellDiffVoltage, "mV", 0);
     }
+}
+#endif
+
+#ifdef USE_PYTES_CAN_RECEIVER
+void PytesBatteryStats::generatePackCommonJsonResponse(JsonObject& packObject, const uint8_t module) const
+{
+    packObject["moduleNumber"] = 1;
+    packObject["moduleName"] = "";
+
+    packObject["device_name"] = "";
+
+    packObject["software_version"] = "";
+
+    packObject["moduleSerialNumber"] = _serial;
+
+    addLiveViewPackCellBalance(packObject, "cellMinVoltage", static_cast<float>(_cellMinMilliVolt)/1000, "V", 3);
+    addLiveViewPackCellBalance(packObject, "cellMaxVoltage", static_cast<float>(_cellMaxMilliVolt)/1000, "V", 3);
+    addLiveViewPackCellBalance(packObject, "cellDiffVoltage", (_cellMaxMilliVolt - _cellMinMilliVolt), "mV", 0);
+
+    addLiveViewPackValue(packObject, "cellMinTemperature", _cellMinTemperature, "V", 3);
+    addLiveViewPackValue(packObject, "cellMaxTemperature", _cellMaxTemperature, "V", 3);
+
+    addLiveViewPackText(packObject, "cellMinVoltageName", _cellMinVoltageName.c_str(), false);
+    addLiveViewPackText(packObject, "cellMaxVoltageName", _cellMaxVoltageName.c_str(), false);
+    addLiveViewPackText(packObject, "cellMinTemperatureName", _cellMinTemperatureName.c_str(), false);
+    addLiveViewPackText(packObject, "cellMaxTemperatureName", _cellMaxTemperatureName.c_str(), false);
+}
+
+void PytesBatteryStats::getLiveViewData(JsonVariant& root) const
+{
+    BatteryStats::getLiveViewData(root);
+
+    // values go into the "Status" card of the web application
+    addLiveViewValue(root, "current", _current, "A", 1);
+    addLiveViewValue(root, "chargeVoltage", _chargeVoltageLimit, "V", 1);
+    addLiveViewValue(root, "chargeCurrentLimit", _chargeCurrentLimit, "A", 1);
+    addLiveViewValue(root, "dischargeVoltageLimit", _dischargeVoltageLimit, "V", 1);
+    addLiveViewValue(root, "dischargeCurrentLimit", _dischargeCurrentLimit, "A", 1);
+    addLiveViewValue(root, "stateOfHealth", _stateOfHealth, "%", 0);
+    addLiveViewValue(root, "temperature", _temperature, "°C", 1);
+
+    addLiveViewValue(root, "capacity", _totalCapacity, "Ah", 0);
+    addLiveViewValue(root, "remainingCapacity", _availableCapacity, "Ah", 0);
+
+    if (_chargedEnergy != -1) {
+        addLiveViewValue(root, "chargedEnergy", _chargedEnergy, "kWh", 2);
+    }
+
+    if (_dischargedEnergy != -1) {
+        addLiveViewValue(root, "dischargedEnergy", _dischargedEnergy, "kWh", 2);
+    }
+
+    addLiveViewValue(root, "online", _moduleCountOnline, "Module", 0);
+    addLiveViewValue(root, "offline", _moduleCountOffline, "Module", 0);
+    addLiveViewValue(root, "chargeEnabled", _moduleCountBlockingCharge, "Module", 0);
+    addLiveViewValue(root, "dischargeEnabled", _moduleCountBlockingDischarge, "Module", 0);
+
+    // alarms and warnings go into the "Issues" card of the web application
+    ISSUE(Warning, highCurrentDischarge);
+    ISSUE(Alarm, overCurrentDischarge);
+
+    ISSUE(Warning, highCurrentCharge);
+    ISSUE(Alarm, overCurrentCharge);
+
+    ISSUE(Warning, lowVoltage);
+    ISSUE(Alarm, underVoltage);
+
+    ISSUE(Warning, highVoltage);
+    ISSUE(Alarm, overVoltage);
+
+    ISSUE(Warning, lowTemperature);
+    ISSUE(Alarm, underTemperature);
+
+    ISSUE(Warning, highTemperature);
+    ISSUE(Alarm, overTemperature);
+
+    ISSUE(Warning, lowTemperatureCharge);
+    ISSUE(Alarm, underTemperatureCharge);
+
+    ISSUE(Warning, highTemperatureCharge);
+    ISSUE(Alarm, overTemperatureCharge);
+
+    ISSUE(Warning, bmsInternal);
+    ISSUE(Alarm, bmsInternal);
 }
 #endif
 
@@ -705,7 +794,7 @@ void BatteryStats::mqttPublish() /* const */
         MqttSettings.publish(subtopic + #value, _lastPack[module].value = Pack[module].value);
 
 #ifdef USE_PYLONTECH_CAN_RECEIVER
-void PylontechCanBatteryStats::mqttPublish() const
+void PylontechCanBatteryStats::mqttPublish() /* const */
 {
     Battery_CONFIG_T& cBattery = Configuration.get().Battery;
 
@@ -964,6 +1053,71 @@ void DalyBmsBatteryStats::mqttPublish() /* const */
         }
     }
 }
+#endif
+
+#ifdef USE_PYTES_CAN_RECEIVER
+void PytesBatteryStats::mqttPublish() /* const */
+{
+    BatteryStats::mqttPublish();
+
+    MqttSettings.publish("battery/settings/chargeVoltage", String(_chargeVoltageLimit));
+    MqttSettings.publish("battery/settings/chargeCurrentLimitation", String(_chargeCurrentLimit));
+    MqttSettings.publish("battery/settings/dischargeCurrentLimitation", String(_dischargeCurrentLimit));
+    MqttSettings.publish("battery/settings/dischargeVoltageLimitation", String(_dischargeVoltageLimit));
+
+    MqttSettings.publish("battery/stateOfHealth", String(_stateOfHealth));
+    MqttSettings.publish("battery/current", String(_current));
+    MqttSettings.publish("battery/temperature", String(_temperature));
+
+    if (_chargedEnergy != -1) {
+        MqttSettings.publish("battery/chargedEnergy", String(_chargedEnergy));
+    }
+
+    if (_dischargedEnergy != -1) {
+        MqttSettings.publish("battery/dischargedEnergy", String(_dischargedEnergy));
+    }
+
+    MqttSettings.publish("battery/capacity", String(_totalCapacity));
+    MqttSettings.publish("battery/availableCapacity", String(_availableCapacity));
+
+    MqttSettings.publish("battery/CellMinMilliVolt", String(_cellMinMilliVolt));
+    MqttSettings.publish("battery/CellMaxMilliVolt", String(_cellMaxMilliVolt));
+    MqttSettings.publish("battery/CellDiffMilliVolt", String(_cellMaxMilliVolt - _cellMinMilliVolt));
+    MqttSettings.publish("battery/CellMinTemperature", String(_cellMinTemperature));
+    MqttSettings.publish("battery/CellMaxTemperature", String(_cellMaxTemperature));
+    MqttSettings.publish("battery/CellMinVoltageName", String(_cellMinVoltageName));
+    MqttSettings.publish("battery/CellMaxVoltageName", String(_cellMaxVoltageName));
+    MqttSettings.publish("battery/CellMinTemperatureName", String(_cellMinTemperatureName));
+    MqttSettings.publish("battery/CellMaxTemperatureName", String(_cellMaxTemperatureName));
+
+    MqttSettings.publish("battery/modulesOnline", String(_moduleCountOnline));
+    MqttSettings.publish("battery/modulesOffline", String(_moduleCountOffline));
+    MqttSettings.publish("battery/modulesBlockingCharge", String(_moduleCountBlockingCharge));
+    MqttSettings.publish("battery/modulesBlockingDischarge", String(_moduleCountBlockingDischarge));
+
+    MqttSettings.publish("battery/alarm/overCurrentDischarge", String(Alarm.overCurrentDischarge));
+    MqttSettings.publish("battery/alarm/overCurrentCharge", String(Alarm.overCurrentCharge));
+    MqttSettings.publish("battery/alarm/underVoltage", String(Alarm.underVoltage));
+    MqttSettings.publish("battery/alarm/overVoltage", String(Alarm.overVoltage));
+    MqttSettings.publish("battery/alarm/underTemperature", String(Alarm.underTemperature));
+    MqttSettings.publish("battery/alarm/overTemperature", String(Alarm.overTemperature));
+    MqttSettings.publish("battery/alarm/underTemperatureCharge", String(Alarm.underTemperatureCharge));
+    MqttSettings.publish("battery/alarm/overTemperatureCharge", String(Alarm.overTemperatureCharge));
+    MqttSettings.publish("battery/alarm/bmsInternal", String(Alarm.bmsInternal));
+    MqttSettings.publish("battery/alarm/cellImbalance", String(Alarm.cellImbalance));
+
+    MqttSettings.publish("battery/warning/highCurrentDischarge", String(Warning.highCurrentDischarge));
+    MqttSettings.publish("battery/warning/highCurrentCharge", String(Warning.highCurrentCharge));
+    MqttSettings.publish("battery/warning/lowVoltage", String(Warning.lowVoltage));
+    MqttSettings.publish("battery/warning/highVoltage", String(Warning.highVoltage));
+    MqttSettings.publish("battery/warning/lowTemperature", String(Warning.lowTemperature));
+    MqttSettings.publish("battery/warning/highTemperature", String(Warning.highTemperature));
+    MqttSettings.publish("battery/warning/lowTemperatureCharge", String(Warning.lowTemperatureCharge));
+    MqttSettings.publish("battery/warning/highTemperatureCharge", String(Warning.highTemperatureCharge));
+    MqttSettings.publish("battery/warning/bmsInternal", String(Warning.bmsInternal));
+    MqttSettings.publish("battery/warning/cellImbalance", String(Warning.cellImbalance));
+}
+
 #endif
 
 #ifdef USE_JKBMS_CONTROLLER

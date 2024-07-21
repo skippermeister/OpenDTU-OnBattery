@@ -12,7 +12,6 @@
 
 #pragma once
 
-#include <Arduino.h>
 #include <AsyncJson.h>
 #include <TaskSchedulerDeclarations.h>
 

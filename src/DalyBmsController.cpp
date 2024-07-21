@@ -1,13 +1,13 @@
 #ifdef USE_DALYBMS_CONTROLLER
 
 #include "DalyBmsController.h"
-#include "Battery.h"
 #include "Configuration.h"
 #include "MessageOutput.h"
 #include "MqttSettings.h"
 #include "PinMapping.h"
 #include "SerialPortManager.h"
 #include <Arduino.h>
+#include <driver/uart.h>
 #include <ctime>
 #include <frozen/map.h>
 
@@ -19,12 +19,6 @@ bool DalyBmsController::init()
 
     _lastStatusPrinted.set(10 * 1000);
 
-/*
-    if (!Configuration.get().Battery.Enabled) {
-        MessageOutput.println("not enabled");
-        return false;
-    }
-*/
     const PinMapping_t& pin = PinMapping.get();
 
     if (pin.battery_rx < 0 || pin.battery_tx < 0 || (pin.battery_rx == pin.battery_tx) || (pin.battery_rts >= 0 && (pin.battery_rts == pin.battery_rx || pin.battery_rts == pin.battery_tx))) {
@@ -32,75 +26,69 @@ bool DalyBmsController::init()
         return false;
     }
 
-    if (!_stats->_initialized) {
-        auto oHwSerialPort = SerialPortManager.allocatePort(_serialPortOwner);
-        if (!oHwSerialPort) { return false; }
+    auto oHwSerialPort = SerialPortManager.allocatePort(_serialPortOwner);
+    if (!oHwSerialPort) { return false; }
 
-        _upSerial = std::make_unique<HardwareSerial>(*oHwSerialPort);
+    _upSerial = std::make_unique<HardwareSerial>(*oHwSerialPort);
 
-        _upSerial->begin(9600, SERIAL_8N1, pin.battery_rx, pin.battery_tx);
-        if (pin.battery_rts >= -1) {
-            /*
-             * Daly BMS is connected via a RS485 module. Two different types of modules are supported.
-             * Type 1: If a GPIO pin greater 0 is given, we have a MAX3485 or SP3485 module with external driven DE/RE pins
-             *         Both pins are connected together and will be driven by the HWSerial driver.
-             * Type 2: If the GPIO is -1, we assume that we have a RS485 TTL module with a self controlled DE/RE circuit.
-             *         In this case we only need a TX and RX pin.
-             */
-            MessageOutput.printf("RS485 module (Type %d) rx = %d, tx = %d", pin.battery_rts >= 0 ? 1 : 2, pin.battery_rx, pin.battery_tx);
-            if (pin.battery_rts >= 0) {
-                MessageOutput.printf(", rts = %d", pin.battery_rts);
-                _upSerial->setPins(pin.battery_rx, pin.battery_tx, UART_PIN_NO_CHANGE, pin.battery_rts);
-            }
-
-            // RS485 protocol is half duplex
-            ESP_ERROR_CHECK(uart_set_mode(*oHwSerialPort, UART_MODE_RS485_HALF_DUPLEX));
-
-        } else {
-            // pin.battery_rts is negativ and less -1, Daly BMS is connected via RS232
-            MessageOutput.printf("RS232 module rx = %d, tx = %d", pin.battery_rx, pin.battery_tx);
-        }
-        // Set read timeout of UART TOUT feature
-        ESP_ERROR_CHECK(uart_set_rx_timeout(*oHwSerialPort, ECHO_READ_TOUT));
-
-        _upSerial->flush();
-
-        while (_upSerial->available()) { // clear serial read buffer
-            _upSerial->read();
-            vTaskDelay(1);
+    _upSerial->begin(9600, SERIAL_8N1, pin.battery_rx, pin.battery_tx);
+    if (pin.battery_rts >= -1) {
+        /*
+         * Daly BMS is connected via a RS485 module. Two different types of modules are supported.
+         * Type 1: If a GPIO pin greater 0 is given, we have a MAX3485 or SP3485 module with external driven DE/RE pins
+         *         Both pins are connected together and will be driven by the HWSerial driver.
+         * Type 2: If the GPIO is -1, we assume that we have a RS485 TTL module with a self controlled DE/RE circuit.
+         *         In this case we only need a TX and RX pin.
+         */
+        MessageOutput.printf("RS485 module (Type %d) rx = %d, tx = %d", pin.battery_rts >= 0 ? 1 : 2, pin.battery_rx, pin.battery_tx);
+        if (pin.battery_rts >= 0) {
+            MessageOutput.printf(", rts = %d", pin.battery_rts);
+            _upSerial->setPins(pin.battery_rx, pin.battery_tx, UART_PIN_NO_CHANGE, pin.battery_rts);
         }
 
-        memset(_txBuffer, 0x00, XFER_BUFFER_LENGTH);
-        clearGet();
+        // RS485 protocol is half duplex
+        ESP_ERROR_CHECK(uart_set_mode(*oHwSerialPort, UART_MODE_RS485_HALF_DUPLEX));
 
-        if (PinMapping.get().battery_wakeup >= 0) {
-            pinMode(PinMapping.get().battery_wakeup, OUTPUT);
-            digitalWrite(PinMapping.get().battery_wakeup, HIGH);
-            vTaskDelay(500);
-            digitalWrite(PinMapping.get().battery_wakeup, LOW);
-        }
+    } else {
+        // pin.battery_rts is negativ and less -1, Daly BMS is connected via RS232
+        MessageOutput.printf("RS232 module rx = %d, tx = %d", pin.battery_rx, pin.battery_tx);
+    }
+    // Set read timeout of UART TOUT feature
+    ESP_ERROR_CHECK(uart_set_rx_timeout(*oHwSerialPort, ECHO_READ_TOUT));
 
-        MessageOutput.print(" initialized successfully.");
+    _upSerial->flush();
 
-        _stats->_initialized = true;
+    while (_upSerial->available()) { // clear serial read buffer
+        _upSerial->read();
+        vTaskDelay(1);
     }
 
-    MessageOutput.println(" Done.");
+    memset(_txBuffer, 0x00, XFER_BUFFER_LENGTH);
+    clearGet();
+
+    if (PinMapping.get().battery_wakeup >= 0) {
+        pinMode(PinMapping.get().battery_wakeup, OUTPUT);
+        digitalWrite(PinMapping.get().battery_wakeup, HIGH);
+        vTaskDelay(500);
+        digitalWrite(PinMapping.get().battery_wakeup, LOW);
+    }
+
+    MessageOutput.print(" initialized successfully.");
+
+    _initialized = true;
 
     return true;
 }
 
 void DalyBmsController::deinit()
 {
-    if (!_stats->_initialized) { return; }
-
     _upSerial->end();
 
     if (PinMapping.get().battery_rts >= 0) { pinMode(PinMapping.get().battery_rts, INPUT); }
 
     SerialPortManager.freePort(_serialPortOwner);
 
-    _stats->_initialized = false;
+    _initialized = false;
 
     MessageOutput.printf("%s Serial driver uninstalled\r\n", TAG);
 }
@@ -204,58 +192,28 @@ void DalyBmsController::sendRequest(uint8_t pollInterval)
     if (_readParameter) {
         if (_triggerNext) {
             _triggerNext = false;
-            switch (_nextRequest) {
-            case 0:
-                MessageOutput.printf("%s request parameters\r\n", TAG);
-                requestData(Command::REQUEST_RATED_CAPACITY_CELL_VOLTAGE);
-                break;
-            case 1:
-                requestData(Command::REQUEST_ACQUISITION_BOARD_INFO);
-                break;
-            case 2:
-                requestData(Command::REQUEST_CUMULATIVE_CAPACITY);
-                break;
-            case 3:
-                requestData(Command::REQUEST_BATTERY_TYPE_INFO);
-                break;
-            case 4:
-                requestData(Command::REQUEST_FIRMWARE_INDEX);
-                break;
-            case 5:
-                requestData(Command::REQUEST_IP);
-                break;
-            case 6:
-                requestData(Command::REQUEST_BATTERY_CODE);
-                break;
-            case 7:
-                requestData(Command::REQUEST_MIN_MAX_CELL_VOLTAGE);
-                break;
-            case 8:
-                requestData(Command::REQUEST_MIN_MAX_PACK_VOLTAGE);
-                break;
-            case 9:
-                requestData(Command::REQUEST_MAX_PACK_DISCHARGE_CHARGE_CURRENT);
-                break;
-            case 10:
-                requestData(Command::REQUEST_MIN_MAX_SOC_LIMIT);
-                break;
-            case 11:
-                requestData(Command::REQUEST_VOLTAGE_TEMPERATURE_DIFFERENCE);
-                break;
-            case 12:
-                requestData(Command::REQUEST_BALANCE_START_DIFF_VOLTAGE);
-                break;
-            case 13:
-                requestData(Command::REQUEST_SHORT_CURRENT_RESISTANCE);
-                break;
-            case 14:
-                requestData(Command::REQUEST_RTC);
-                break;
-            case 15:
-                requestData(Command::REQUEST_BMS_SW_VERSION);
-                break;
-            case 16:
-                requestData(Command::REQUEST_BMS_HW_VERSION);
+            static constexpr uint8_t ParameterRequests[] = {
+                Command::REQUEST_RATED_CAPACITY_CELL_VOLTAGE,
+                Command::REQUEST_ACQUISITION_BOARD_INFO,
+                Command::REQUEST_CUMULATIVE_CAPACITY,
+                Command::REQUEST_BATTERY_TYPE_INFO,
+                Command::REQUEST_FIRMWARE_INDEX,
+                Command::REQUEST_IP,
+                Command::REQUEST_BATTERY_CODE,
+                Command::REQUEST_MIN_MAX_CELL_VOLTAGE,
+                Command::REQUEST_MIN_MAX_PACK_VOLTAGE,
+                Command::REQUEST_MAX_PACK_DISCHARGE_CHARGE_CURRENT,
+                Command::REQUEST_MIN_MAX_SOC_LIMIT,
+                Command::REQUEST_VOLTAGE_TEMPERATURE_DIFFERENCE,
+                Command::REQUEST_BALANCE_START_DIFF_VOLTAGE,
+                Command::REQUEST_SHORT_CURRENT_RESISTANCE,
+                Command::REQUEST_RTC,
+                Command::REQUEST_BMS_SW_VERSION,
+                Command::REQUEST_BMS_HW_VERSION
+            };
+            if (_nextRequest == 0) MessageOutput.printf("%s request parameters\r\n", TAG);
+            requestData(ParameterRequests[_nextRequest]);
+            if (_nextRequest == sizeof(ParameterRequests)/sizeof(uint8_t)-1) {
                 MessageOutput.printf("%s request parameters done\r\n", TAG);
                 _nextRequest = 0;
                 _readParameter = false;
@@ -266,34 +224,20 @@ void DalyBmsController::sendRequest(uint8_t pollInterval)
 
     if (_triggerNext) {
         _triggerNext = false;
-        switch (_nextRequest) {
-        case 0:
-            MessageOutput.printf("%s request data\r\n", TAG);
-            requestData(Command::REQUEST_BATTERY_LEVEL);
-            break;
-        case 1:
-            requestData(Command::REQUEST_MIN_MAX_VOLTAGE);
-            break;
-        case 2:
-            requestData(Command::REQUEST_MIN_MAX_TEMPERATURE);
-            break;
-        case 3:
-            requestData(Command::REQUEST_MOS);
-            break;
-        case 4:
-            requestData(Command::REQUEST_STATUS);
-            break;
-        case 5:
-            requestData(Command::REQUEST_CELL_VOLTAGE);
-            break;
-        case 6:
-            requestData(Command::REQUEST_TEMPERATURE);
-            break;
-        case 7:
-            requestData(Command::REQUEST_CELL_BALANCE_STATES);
-            break;
-        case 8:
-            requestData(Command::REQUEST_FAILURE_CODES);
+        static constexpr uint8_t Request[] = {
+            Command::REQUEST_BATTERY_LEVEL,
+            Command::REQUEST_MIN_MAX_VOLTAGE,
+            Command::REQUEST_MIN_MAX_TEMPERATURE,
+            Command::REQUEST_MOS,
+            Command::REQUEST_STATUS,
+            Command::REQUEST_CELL_VOLTAGE,
+            Command::REQUEST_TEMPERATURE,
+            Command::REQUEST_CELL_BALANCE_STATES,
+            Command::REQUEST_FAILURE_CODES
+        };
+        if (_nextRequest == 0) MessageOutput.printf("%s request data\r\n", TAG);
+        requestData(Requests[_nextRequest]);
+        if (_nextRequests == sizeof(Requests)/sizeof(uint8_t)-1) {
             MessageOutput.printf("%s request data done\r\n", TAG);
             _nextRequest = 0;
         }
@@ -319,7 +263,7 @@ bool DalyBmsController::requestData(uint8_t data_id) // new function to request 
 
     request_message[12] = (uint8_t)(request_message[0] + request_message[1] + request_message[2] + request_message[3]); // Checksum (Lower byte of the other bytes sum)
 
-    if (Battery._verboseLogging)
+    if (_verboseLogging)
         MessageOutput.printf("%s %d Request datapacket Nr %x\r\n", TAG, _nextRequest, data_id);
 
     _upSerial->write(request_message, sizeof(request_message));
@@ -373,13 +317,13 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer)
 
             if (checksum == it[12]) {
                 _wasActive = true;
-                if (Battery._verboseLogging)
+                if (_verboseLogging)
                     MessageOutput.printf("%s Receive datapacket Nr %02X\r\n", TAG, it[2]);
                 switch (it[2]) {
                 case Command::REQUEST_RATED_CAPACITY_CELL_VOLTAGE:
                     _stats->ratedCapacity = to_AmpHour(&it[4]); // in Ah 0.001
                     _stats->_ratedCellVoltage = to_Volt_001(&it[10]); // in V 0.001
-                    if (Battery._verboseLogging)
+                    if (_verboseLogging)
                         MessageOutput.printf("%s rated capacity: %.3fAh,  rated cell voltage: %.3fV\r\n", TAG, _stats->ratedCapacity, _stats->_ratedCellVoltage);
                     break;
 
@@ -394,7 +338,7 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer)
                 case Command::REQUEST_CUMULATIVE_CAPACITY:
                     _stats->_cumulativeChargeCapacity = ToUint32(&it[4]); // in Ah
                     _stats->_cumulativeDischargeCapacity = ToUint32(&it[8]); // in Ah
-                    if (Battery._verboseLogging)
+                    if (_verboseLogging)
                         MessageOutput.printf("%s cumulative charge capacity: %uAh,  cumulative discharge capacity: %uAh\r\n", TAG, _stats->_cumulativeChargeCapacity, _stats->_cumulativeDischargeCapacity);
                     break;
 
@@ -412,7 +356,7 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer)
                             _stats->_batteryCode[((it[4] - 1) * 7) + i] = c < 32 ? 0 : c;
                         }
                         _stats->_batteryCode[it[4] * 7] = 0;
-                        if (Battery._verboseLogging)
+                        if (_verboseLogging)
                             MessageOutput.printf("%s %d battery code: %s\r\n", TAG, it[4], _stats->_batteryCode);
                     }
                     break;
@@ -427,7 +371,7 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer)
                     _stats->WarningValues.maxCellVoltage = to_Volt_001(&it[6]); // in V
                     _stats->AlarmValues.minCellVoltage = to_Volt_001(&it[8]); // in V
                     _stats->WarningValues.minCellVoltage = to_Volt_001(&it[10]); // in V
-                    if (Battery._verboseLogging) {
+                    if (_verboseLogging) {
                         MessageOutput.printf("%s Alarm max cell voltage: %.3fV, min cell voltage: %.3fV\r\n", TAG,
                             _stats->AlarmValues.maxCellVoltage, _stats->AlarmValues.minCellVoltage);
                         MessageOutput.printf("%s Warning max cell voltage: %.3fV, min cell voltage: %.3fV\r\n", TAG,
@@ -440,7 +384,7 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer)
                     _stats->WarningValues.maxPackVoltage = static_cast<float>(ToUint16(&it[6])) / 10.0f; // in V
                     _stats->AlarmValues.minPackVoltage = static_cast<float>(ToUint16(&it[8])) / 10.0f; // in V
                     _stats->WarningValues.minPackVoltage = static_cast<float>(ToUint16(&it[10])) / 10.0f; // in V
-                    if (Battery._verboseLogging) {
+                    if (_verboseLogging) {
                         MessageOutput.printf("%s Alarm max pack voltage: %.1fV, min pack voltage: %.1fV\r\n", TAG,
                             _stats->AlarmValues.maxPackVoltage, _stats->AlarmValues.minPackVoltage);
                         MessageOutput.printf("%s Warning max pack voltage: %.1fV, min pack voltage: %.1fV\r\n", TAG,
@@ -453,7 +397,7 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer)
                     _stats->WarningValues.maxPackChargeCurrent = to_Amp_1(&it[6]); // in A
                     _stats->AlarmValues.maxPackDischargeCurrent = to_Amp_1(&it[8]); // in A
                     _stats->WarningValues.maxPackDischargeCurrent = to_Amp_1(&it[10]); // in A
-                    if (Battery._verboseLogging) {
+                    if (_verboseLogging) {
                         MessageOutput.printf("%s Alarm max pack charge current: %.1fA, max pack discharge current: %.1fA\r\n", TAG,
                             _stats->AlarmValues.maxPackChargeCurrent, _stats->AlarmValues.maxPackDischargeCurrent);
                         MessageOutput.printf("%s Warning max pack charge current: %.1fA, max pack discharge current: %.1fA\r\n", TAG,
@@ -466,7 +410,7 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer)
                     _stats->AlarmValues.maxSoc = static_cast<float>(ToUint16(&it[6])) / 10.0f; // in %
                     _stats->WarningValues.minSoc = static_cast<float>(ToUint16(&it[8])) / 10.0f; // in %
                     _stats->AlarmValues.minSoc = static_cast<float>(ToUint16(&it[10])) / 10.0f; // in %
-                    if (Battery._verboseLogging) {
+                    if (_verboseLogging) {
                         MessageOutput.printf("%s Alarm max SoC: %.1f%%, min SoC: %.1f%%\r\n", TAG, _stats->AlarmValues.maxSoc, _stats->AlarmValues.minSoc);
                         MessageOutput.printf("%s Warning max SoC: %.1f%%, min SoC: %.1f%%\r\n", TAG, _stats->WarningValues.maxSoc, _stats->WarningValues.minSoc);
                     }
@@ -490,7 +434,7 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer)
                             _stats->_bmsSWversion[((it[4] - 1) * 7) + i] = (it[5 + i]);
                         _stats->_bmsSWversion[it[4] * 7] = 0;
                     }
-                    if (Battery._verboseLogging)
+                    if (_verboseLogging)
                         MessageOutput.printf("%s %d bms SW version: %s\r\n", TAG, it[4], _stats->_bmsSWversion);
                     break;
 
@@ -500,7 +444,7 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer)
                             _stats->_bmsHWversion[((it[4] - 1) * 7) + i] = (it[5 + i]);
                         _stats->_bmsHWversion[it[4] * 7] = 0;
                     }
-                    if (Battery._verboseLogging)
+                    if (_verboseLogging)
                         MessageOutput.printf("%s %d bms HW version: %s\r\n", TAG, it[4], _stats->_bmsHWversion);
                     _stats->_manufacturer = String("Daly ") + String(_stats->_bmsHWversion);
                     break;
@@ -514,7 +458,7 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer)
                     _stats->setSoC((100.0 * _stats->remainingCapacity) / _stats->ratedCapacity, 1 /*precision*/, millis());
                     _stats->chargeImmediately2 = _stats->batteryLevel < max(_stats->WarningValues.minSoc, static_cast<float>(9.0));
                     _stats->chargeImmediately1 = _stats->batteryLevel < max(_stats->AlarmValues.minSoc, static_cast<float>(5.0));
-                    if (Battery._verboseLogging) {
+                    if (_verboseLogging) {
                         MessageOutput.printf("%s voltage: %.1fV, current: %.1fA\r\n", TAG, _stats->getVoltage(), _stats->current);
                         MessageOutput.printf("%s battery level: %.1f%%\r\n", TAG, _stats->batteryLevel);
                     }
@@ -553,7 +497,7 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer)
                     _stats->dischargingMosEnabled = it[6];
                     _stats->_bmsCycles = it[7];
                     _stats->remainingCapacity = static_cast<float>(ToUint32(&it[8])) / 1000.0f;
-                    if (Battery._verboseLogging) {
+                    if (_verboseLogging) {
                         MessageOutput.printf("%s status: %s, bms cycles: %d\r\n", TAG, _stats->_status, _stats->_bmsCycles);
                         MessageOutput.printf("%s remaining capacity: %.3fAh\r\n", TAG, _stats->remainingCapacity);
                     }
@@ -566,7 +510,7 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer)
                     _stats->_loadState = it[7];
                     _stats->_dIO = it[8];
                     _stats->batteryCycles = ToUint16(&it[9]);
-                    if (Battery._verboseLogging) {
+                    if (_verboseLogging) {
                         char dIO[9];
                         dIO[8] = 0;
                         for (int i = 0; i < 8; i++)
@@ -589,7 +533,7 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer)
                             _stats->_temperature[idx] = (it[5 + i] - DALY_TEMPERATURE_OFFSET);
                         }
                     }
-                    if (Battery._verboseLogging)
+                    if (_verboseLogging)
                         MessageOutput.printf("%s it[4] %d\r\n", TAG, it[4]);
                     break;
 
@@ -607,7 +551,7 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer)
                             _stats->_cellVoltage[idx] = to_Volt_001(&it[5 + i * 2]);
                         }
                     }
-                    if (Battery._verboseLogging)
+                    if (_verboseLogging)
                         MessageOutput.printf("%s it[4] %d\r\n", TAG, it[4]);
                     break;
 
@@ -625,7 +569,7 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer)
                         }
                     }
 
-                    if (Battery._verboseLogging) {
+                    if (_verboseLogging) {
                         char cellBalance[8 + 1 + 8 + 1 + 8 + 1];
                         for (uint8_t j = 0; j < 3; j++) {
                             for (uint8_t i = 0; i < 8; i++)
@@ -647,7 +591,7 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer)
                     }
                     bytes[(8 + 1) * 6 + 8] = 0;
                     _stats->_faultCode = it[11];
-                    if (Battery._verboseLogging)
+                    if (_verboseLogging)
                         MessageOutput.printf("%s failure status %s, fault code: %02X\r\n", TAG, bytes, _stats->_faultCode);
                 }
                     _stats->Warning.lowVoltage = _stats->FailureStatus.levelOneCellVoltageTooLow || _stats->FailureStatus.levelOnePackVoltageTooLow;

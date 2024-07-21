@@ -2,7 +2,6 @@
 
 #include <Arduino.h>
 #include "Configuration.h"
-#include "HardwareSerial.h"
 #include "PinMapping.h"
 #include "MessageOutput.h"
 #include "JkBmsDataPoints.h"
@@ -17,8 +16,6 @@ namespace JkBms {
 
 bool Controller::init()
 {
-    _stats->_initialized = false;
-
     _lastStatusPrinted.set(10 * 1000);
 
     std::string ifcType = "transceiver";
@@ -46,7 +43,6 @@ bool Controller::init()
     _upSerial->flush();
 
     if (Interface::Transceiver != getInterface()) {
-        _stats->_initialized = true;
         return true;
     }
 
@@ -60,15 +56,13 @@ bool Controller::init()
     ESP_ERROR_CHECK(uart_set_mode(*oHwSerialPort, UART_MODE_RS485_HALF_DUPLEX));
 #endif
 
-    _stats->_initialized = true;
+    _initialized = true;
 
     return true;
 }
 
 void Controller::deinit()
 {
-    if (!_stats->_initialized) { return; }
-
     _upSerial->end();
 
     if (PinMapping.get().battery_rts >= 0) { pinMode(PinMapping.get().battery_rts, INPUT); }
@@ -77,7 +71,7 @@ void Controller::deinit()
 
     MessageOutput.printf("%s Serial driver uninstalled\r\n", TAG);
 
-    _stats->_initialized = false;
+    _initialized = false;
 }
 
 Controller::Interface Controller::getInterface() const
@@ -209,7 +203,7 @@ void Controller::frameComplete()
 {
     announceStatus(Status::FrameCompleted);
 
-    if (Battery._verboseLogging) {
+    if (_verboseLogging) {
         MessageOutput.printf("%s raw data (%d Bytes):", TAG, _buffer.size());
         for (size_t ctr = 0; ctr < _buffer.size(); ++ctr) {
             if (ctr % 16 == 0) {
@@ -237,7 +231,7 @@ void Controller::processDataPoints(DataPointContainer const& dataPoints)
     auto oProtocolVersion = dataPoints.get<Label::ProtocolVersion>();
     if (oProtocolVersion.has_value()) { _protocolVersion = *oProtocolVersion; }
 
-    if (!Battery._verboseLogging) { return; }
+    if (!_verboseLogging) { return; }
 
     auto iter = dataPoints.cbegin();
     while ( iter != dataPoints.cend() ) {

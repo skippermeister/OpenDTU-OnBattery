@@ -55,6 +55,7 @@ public:
     #ifdef CONFIG_IDF_TARGET_ESP32
         // Datasheet https://www.espressif.com/sites/default/files/documentation/esp32_datasheet_en.pdf,
         // Pinout    https://docs.espressif.com/projects/esp-idf/en/latest/esp32/_images/esp32-devkitC-v4-pinout.jpg
+        // FIXME: (skippermeister) pin == 0
         return (pin == 0) || (pin == 1) || (pin >= 3 && pin <= 5) ||
             (pin >= 12 && pin <= 15) ||
             (!psramFound() && pin >= 16 && pin <= 17) ||
@@ -514,4 +515,3 @@ extern template bool circular_queue<uint32_t, EspSoftwareSerial::UARTBase*>::pus
 #endif // __GNUC__ < 12
 
 #endif // __SoftwareSerial_h
-

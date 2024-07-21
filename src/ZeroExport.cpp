@@ -3,7 +3,6 @@
 #include "Configuration.h"
 #include "MessageOutput.h"
 #include "PowerMeter.h"
-#include <Hoymiles.h>
 #include <frozen/map.h>
 
 ZeroExportClass ZeroExport;
@@ -191,7 +190,7 @@ void ZeroExportClass::loop()
         return;
     }
 
-    if (millis() - PowerMeter.getLastPowerMeterUpdate() > (30 * 1000)) {
+    if (millis() - PowerMeter.getLastUpdate() > (30 * 1000)) {
         announceStatus(Status::PowerMeterTimeout, true);
         return;
     }
@@ -217,7 +216,7 @@ void ZeroExportClass::loop()
         return;
     }
 
-    if (PowerMeter.getLastPowerMeterUpdate() <= settlingEnd) {
+    if (PowerMeter.getLastUpdate() <= settlingEnd) {
         announceStatus(Status::PowerMeterPending);
         _invID++;
         return;
@@ -306,7 +305,7 @@ int16_t ZeroExportClass::pid_Regler(void)
 
     // static_cast<unsigned int>(_inverter->Statistics()->getChannelFieldDigits(TYPE_AC, CH0, FLD_PAC)));
 
-    float p = (100.0 / _totalMaxPower) * (PowerMeter.getPowerTotal(false) + cZeroExport.MaxGrid);
+    float p = (100.0 / _totalMaxPower) * (PowerMeter.getPowerTotal() + cZeroExport.MaxGrid);
     _last_I = _actual_I;
     _actual_I = p * (_timeStamp - _last_timeStamp) / (1000 * cZeroExport.Tn);
     _last_timeStamp = _timeStamp;

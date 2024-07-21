@@ -31,7 +31,7 @@
 
                 <InputElement v-show="isEnabled()"
                     :label="$t('powermeteradmin.PollInterval')"
-                    v-model="powerLimiterConfigList.pollinterval"
+                    v-model="powerLimiterConfigList.interval"
                     type="number" min="1" max="60" wide4_2
                     :postfix="$t('powerlimiteradmin.Seconds')"/>
 
@@ -78,6 +78,12 @@
 
                 <InputElement :label="$t('powerlimiteradmin.InverterIsSolarPowered')"
                               v-model="powerLimiterConfigList.is_inverter_solar_powered"
+                              type="checkbox" wide4_1/>
+
+                <InputElement v-show="canUseOverscaling()"
+                              :label="$t('powerlimiteradmin.UseOverscalingToCompensateShading')"
+                              :tooltip="$t('powerlimiteradmin.UseOverscalingToCompensateShadingHint')"
+                              v-model="powerLimiterConfigList.use_overscaling_to_compensate_shading"
                               type="checkbox" wide4_1/>
 
                 <div class="row mb-3" v-if="needsChannelSelection()">
@@ -325,6 +331,10 @@ export default defineComponent({
         },
         hasPowerMeter() {
             return this.powerLimiterMetaData.power_meter_enabled;
+        },
+        canUseOverscaling() {
+            const cfg = this.powerLimiterConfigList;
+            return cfg.is_inverter_solar_powered;
         },
         canUseSolarPassthrough() {
             const cfg = this.powerLimiterConfigList;

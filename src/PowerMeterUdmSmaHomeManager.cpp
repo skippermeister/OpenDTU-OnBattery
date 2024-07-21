@@ -2,53 +2,48 @@
 /*
  * Copyright (C) 2024 Holger-Steffen Stapf
  */
-
-#ifdef USE_SMA_HM
-
-#include "SMA_HM.h"
+#include "PowerMeterUdpSmaHomeManager.h"
 #include <Arduino.h>
-#include "Configuration.h"
-#include "NetworkSettings.h"
 #include <WiFiUdp.h>
 #include "MessageOutput.h"
+#include "PowerMeter.h"
 
-unsigned int multicastPort = 9522;  // local port to listen on
-IPAddress multicastIP(239, 12, 255, 254);
-WiFiUDP SMAUdp;
+static constexpr char TAG[] = "[PowerMeterUdpSmaHomeManager]";
+
+static constexpr unsigned int multicastPort = 9522;  // local port to listen on
+static const IPAddress multicastIP(239, 12, 255, 254);
+static WiFiUDP SMAUdp;
 
 constexpr uint32_t interval = 1000;
 
-SMA_HMClass SMA_HM;
-
-void SMA_HMClass::Soutput(int kanal, int index, int art, int tarif,
+void PowerMeterUdpSmaHomeManager::Soutput(int kanal, int index, int art, int tarif,
         char const* name, float value, uint32_t timestamp)
 {
-    if (!_verboseLogging) { return; }
-
-    MessageOutput.printf("SMA_HM: %s = %.1f (timestamp %d)\r\n",
-            name, value, timestamp);
-}
-
-void SMA_HMClass::init(Scheduler& scheduler)
-{
-    scheduler.addTask(_loopTask);
-    _loopTask.setCallback(std::bind(&SMA_HMClass::loop, this));
-    _loopTask.setIterations(TASK_FOREVER);
-    _loopTask.enable();
-    SMAUdp.begin(multicastPort);
-    SMAUdp.beginMulticast(multicastIP, multicastPort);
-}
-
-void SMA_HMClass::loop()
-{
-    uint32_t currentMillis = millis();
-    if (currentMillis - _previousMillis >= interval) {
-        _previousMillis = currentMillis;
-        event1();
+    if (PowerMeter.getVerboseLogging()) {
+        MessageOutput.printf("%s %s = %.1f (timestamp %d)\r\n", TAG, name, value, timestamp);
     }
 }
 
-uint8_t* SMA_HMClass::decodeGroup(uint8_t* offset, uint16_t grouplen)
+bool PowerMeterUdpSmaHomeManager::init()
+{
+    SMAUdp.begin(multicastPort);
+    SMAUdp.beginMulticast(multicastIP, multicastPort);
+    return true;
+}
+
+PowerMeterUdpSmaHomeManager::~PowerMeterUdpSmaHomeManager()
+{
+    SMAUdp.stop();
+}
+
+void PowerMeterUdpSmaHomeManager::doMqttPublish() const
+{
+    mqttPublish("power1", _powerMeterL1);
+    mqttPublish("power2", _powerMeterL2);
+    mqttPublish("power3", _powerMeterL3);
+}
+
+uint8_t* PowerMeterUdpSmaHomeManager::decodeGroup(uint8_t* offset, uint16_t grouplen)
 {
     float Pbezug = 0;
     float BezugL1 = 0;
@@ -151,7 +146,7 @@ uint8_t* SMA_HMClass::decodeGroup(uint8_t* offset, uint16_t grouplen)
             continue;
         }
 
-        MessageOutput.printf("SMA_HM: Skipped unknown measurement: %d %d %d %d\r\n",
+        MessageOutput.printf("%s Skipped unknown measurement: %d %d %d %d\r\n", TAG,
                 kanal, index, art, tarif);
         offset += art;
     }
@@ -159,15 +154,20 @@ uint8_t* SMA_HMClass::decodeGroup(uint8_t* offset, uint16_t grouplen)
     return offset;
 }
 
-void SMA_HMClass::event1()
+void PowerMeterUdpSmaHomeManager::loop()
 {
+    uint32_t currentMillis = millis();
+    if (currentMillis - _previousMillis < interval) { return; }
+
+    _previousMillis = currentMillis;
+
     int packetSize = SMAUdp.parsePacket();
     if (!packetSize) { return; }
 
     uint8_t buffer[1024];
     int rSize = SMAUdp.read(buffer, 1024);
     if (buffer[0] != 'S' || buffer[1] != 'M' || buffer[2] != 'A') {
-        MessageOutput.println("SMA_HM: Not an SMA packet?");
+        MessageOutput.printf("%s Not an SMA packet?\r\n", TAG);
         return;
     }
 
@@ -198,10 +198,8 @@ void SMA_HMClass::event1()
             continue;
         }
 
-        MessageOutput.printf("SMA_HM: Unhandled group 0x%04x with length %d\r\n",
+        MessageOutput.printf("%s Unhandled group 0x%04x with length %d\r\n", TAG,
                 grouptag, grouplen);
         offset += grouplen;
     } while (grouplen > 0 && offset + 4 < buffer + rSize);
 }
-
-#endif

@@ -3,21 +3,21 @@
  * Copyright (C) 2022-2024 Thomas Basler and others
  */
 #include "WebApi_powermeter.h"
+#include "VeDirectFrameHandler.h"
 #include "ArduinoJson.h"
 #include "AsyncJson.h"
 #include "Configuration.h"
 #include "ErrorMessages.h"
-#include "HttpPowerMeter.h"
-#include "MqttHandleHass.h"
 #include "MqttHandleVedirectHass.h"
+#include "MqttHandleHass.h"
 #include "MqttSettings.h"
 #include "PowerLimiter.h"
 #include "PowerMeter.h"
+#include "PowerMeterHttpJson.h"
+#include "PowerMeterHttpSml.h"
 #include "REFUsolRS485Receiver.h"
-#include "VeDirectFrameHandler.h"
 #include "WebApi.h"
 #include "helper.h"
-#include <SMA_HM.h>
 
 void WebApiPowerMeterClass::init(AsyncWebServer& server, Scheduler& scheduler)
 {
@@ -26,23 +26,8 @@ void WebApiPowerMeterClass::init(AsyncWebServer& server, Scheduler& scheduler)
     server.on("/api/powermeter/status", HTTP_GET, std::bind(&WebApiPowerMeterClass::onStatus, this, _1));
     server.on("/api/powermeter/config", HTTP_GET, std::bind(&WebApiPowerMeterClass::onAdminGet, this, _1));
     server.on("/api/powermeter/config", HTTP_POST, std::bind(&WebApiPowerMeterClass::onAdminPost, this, _1));
-    server.on("/api/powermeter/testhttprequest", HTTP_POST, std::bind(&WebApiPowerMeterClass::onTestHttpRequest, this, _1));
-}
-
-void WebApiPowerMeterClass::decodeJsonPhaseConfig(JsonObject const& json, PowerMeterHttpConfig& config) const
-{
-        config.Enabled = json["enabled"].as<bool>();
-        strlcpy(config.Url, json["url"].as<String>().c_str(), sizeof(config.Url));
-        config.AuthType = json["auth_type"].as<PowerMeterHttpConfig::Auth>();
-        strlcpy(config.Username, json["username"].as<String>().c_str(), sizeof(config.Username));
-        strlcpy(config.Password, json["password"].as<String>().c_str(), sizeof(config.Password));
-        strlcpy(config.HeaderKey, json["header_key"].as<String>().c_str(), sizeof(config.HeaderKey));
-        strlcpy(config.HeaderValue, json["header_value"].as<String>().c_str(), sizeof(config.HeaderValue));
-        config.Timeout = json["timeout"].as<uint16_t>();
-        strlcpy(config.JsonPath, json["json_path"].as<String>().c_str(), sizeof(config.JsonPath));
-        config.PowerUnit = json["unit"].as<PowerMeterHttpConfig::Unit>();
-        config.SignInverted = json["sign_inverted"].as<bool>();
-}
+    server.on("/api/powermeter/testhttpjsonrequest", HTTP_POST, std::bind(&WebApiPowerMeterClass::onTestHttpJsonRequest, this, _1));
+    server.on("/api/powermeter/testhttpsmlrequest", HTTP_POST, std::bind(&WebApiPowerMeterClass::onTestHttpSmlRequest, this, _1));}
 
 void WebApiPowerMeterClass::onStatus(AsyncWebServerRequest* request)
 {
@@ -51,35 +36,20 @@ void WebApiPowerMeterClass::onStatus(AsyncWebServerRequest* request)
     const PowerMeter_CONFIG_T& cPM = Configuration.get().PowerMeter;
 
     root["enabled"] = cPM.Enabled;
-    root["source"] = cPM.Source;
-    root["pollinterval"] = cPM.PollInterval;
     root["updatesonly"] = cPM.UpdatesOnly;
     root["verbose_logging"] = PowerMeter.getVerboseLogging();
-    root["mqtt_topic_powermeter_1"] = cPM.Mqtt.TopicPowerMeter1;
-    root["mqtt_topic_powermeter_2"] = cPM.Mqtt.TopicPowerMeter2;
-    root["mqtt_topic_powermeter_3"] = cPM.Mqtt.TopicPowerMeter3;
-    root["sdmbaudrate"] = cPM.Sdm.Baudrate;
-    root["sdmaddress"] = cPM.Sdm.Address;
-    root["http_individual_requests"] = cPM.Http.IndividualRequests;
+    root["source"] = cPM.Source;
+    auto mqtt = root["mqtt"].to<JsonObject>();
+    Configuration.serializePowerMeterMqttConfig(cPM.Mqtt, mqtt);
 
-    auto httpPhases = root["http_phases"].to<JsonArray>();
+    auto serialSdm = root["serial_sdm"].to<JsonObject>();
+    Configuration.serializePowerMeterSerialSdmConfig(cPM.SerialSdm, serialSdm);
 
-    for (uint8_t i = 0; i < POWERMETER_MAX_PHASES; i++) {
-        JsonObject phaseObject = httpPhases.add<JsonObject>();
+    auto httpJson = root["http_json"].to<JsonObject>();
+    Configuration.serializePowerMeterHttpJsonConfig(cPM.HttpJson, httpJson);
 
-        phaseObject["index"] = i + 1;
-        phaseObject["enabled"] = cPM.Http.Phase[i].Enabled;
-        phaseObject["url"] = String(cPM.Http.Phase[i].Url);
-        phaseObject["auth_type"] = cPM.Http.Phase[i].AuthType;
-        phaseObject["username"] = String(cPM.Http.Phase[i].Username);
-        phaseObject["password"] = String(cPM.Http.Phase[i].Password);
-        phaseObject["header_key"] = String(cPM.Http.Phase[i].HeaderKey);
-        phaseObject["header_value"] = String(cPM.Http.Phase[i].HeaderValue);
-        phaseObject["json_path"] = String(cPM.Http.Phase[i].JsonPath);
-        phaseObject["timeout"] = cPM.Http.Phase[i].Timeout;
-        phaseObject["unit"] = cPM.Http.Phase[i].PowerUnit;
-        phaseObject["sign_inverted"] = cPM.Http.Phase[i].SignInverted;
-    }
+    auto httpSml = root["http_sml"].to<JsonObject>();
+    Configuration.serializePowerMeterHttpSmlConfig(cPM.HttpSml, httpSml);
 
     WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 }
@@ -113,96 +83,95 @@ void WebApiPowerMeterClass::onAdminPost(AsyncWebServerRequest* request)
         return;
     }
 
-    if (static_cast<PowerMeterClass::Source>(root["source"].as<uint8_t>()) == PowerMeterClass::Source::HTTP) {
-        JsonArray http_phases = root["http_phases"];
-        for (uint8_t i = 0; i < http_phases.size(); i++) {
-            JsonObject phase = http_phases[i].as<JsonObject>();
+    auto checkHttpConfig = [&](JsonObject const& cfg) -> bool {
+        if (!cfg.containsKey("url")
+                || (!cfg["url"].as<String>().startsWith("http://")
+                    && !cfg["url"].as<String>().startsWith("https://"))) {
+            retMsg["message"] = "URL must either start with http:// or https://!";
+            response->setLength();
+            request->send(response);
+            return false;
+        }
 
-            if (i > 0 && !phase["enabled"].as<bool>()) {
+        if ((cfg["auth_type"].as<uint8_t>() != HttpRequestConfig::Auth::None)
+                && (cfg["username"].as<String>().length() == 0 || cfg["password"].as<String>().length() == 0)) {
+            retMsg["message"] = "Username or password must not be empty!";
+            response->setLength();
+            request->send(response);
+            return false;
+        }
+
+        if (!cfg.containsKey("timeout")
+                || cfg["timeout"].as<uint16_t>() <= 0) {
+            retMsg["message"] = "Timeout must be greater than 0 ms!";
+            response->setLength();
+            request->send(response);
+            return false;
+        }
+
+        return true;
+    };
+
+    if (static_cast<PowerMeterProvider::Type>(root["source"].as<uint8_t>()) == PowerMeterProvider::Type::HTTP_JSON) {
+        JsonObject httpJson = root["http_json"];
+        JsonArray valueConfigs = httpJson["values"];
+        for (uint8_t i = 0; i < valueConfigs.size(); i++) {
+            JsonObject valueConfig = valueConfigs[i].as<JsonObject>();
+
+            if (i > 0 && !valueConfig["enabled"].as<bool>()) {
                 continue;
             }
 
-            if (i == 0 || phase["http_individual_requests"].as<bool>()) {
-                if (!phase.containsKey("url")
-                    || (!phase["url"].as<String>().startsWith("http://")
-                        && !phase["url"].as<String>().startsWith("https://"))) {
-                    retMsg["message"] = "URL must either start with http:// or https://!";
-                    WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
-                    return;
-                }
-
-                if ((phase["auth_type"].as<uint8_t>() != PowerMeterHttpConfig::Auth::None)
-                    && (phase["username"].as<String>().length() == 0 || phase["password"].as<String>().length() == 0)) {
-                    retMsg["message"] = "Username or password must not be empty!";
-                    WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
-                    return;
-                }
-
-                if (!phase.containsKey("timeout")
-                    || phase["timeout"].as<uint16_t>() <= 0) {
-                    retMsg["message"] = "Timeout must be greater than 0 ms!";
-                    WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
-                    return;
-                }
-
-                if (!phase.containsKey("unit")
-                    || phase["unit"].as<PowerMeterHttpConfig::Unit>() < PowerMeterHttpConfig::Unit::KiloWatts || phase["unit"].as<PowerMeterHttpConfig::Unit>() > PowerMeterHttpConfig::Unit::MilliWatts) {
-                    retMsg["message"] = "Unit must be kW, W or mW!";
-                    WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
+            if (i == 0 || httpJson["individual_requests"].as<bool>()) {
+                if (!checkHttpConfig(valueConfig["http_request"].as<JsonObject>())) {
                     return;
                 }
             }
 
-            if (!phase.containsKey("json_path")
-                || phase["json_path"].as<String>().length() == 0) {
+            if (!valueConfig.containsKey("json_path")
+                    || valueConfig["json_path"].as<String>().length() == 0) {
                 retMsg["message"] = "Json path must not be empty!";
-                WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
+                response->setLength();
+                request->send(response);
                 return;
             }
         }
     }
 
-    PowerMeter_CONFIG_T& cPM = Configuration.get().PowerMeter;
-
-    bool performRestart = false;
-    if (cPM.Source != root["source"].as<uint8_t>())
-        performRestart = true;
-
-    cPM.Enabled = root["enabled"].as<bool>();
-    PowerMeter.setVerboseLogging(root["verbose_logging"].as<bool>());
-#if defined (USE_SMA_HM)
-    SMA_HM.setVerboseLogging(root["verbose_logging"].as<bool>());
-#endif
-    cPM.Source = root["source"].as<uint8_t>();
-    cPM.PollInterval = root["pollinterval"].as<uint32_t>();
-    cPM.UpdatesOnly = root["updatesonly"].as<uint32_t>();
-    strlcpy(cPM.Mqtt.TopicPowerMeter1, root["mqtt_topic_powermeter_1"].as<String>().c_str(), sizeof(cPM.Mqtt.TopicPowerMeter1));
-    strlcpy(cPM.Mqtt.TopicPowerMeter2, root["mqtt_topic_powermeter_2"].as<String>().c_str(), sizeof(cPM.Mqtt.TopicPowerMeter2));
-    strlcpy(cPM.Mqtt.TopicPowerMeter3, root["mqtt_topic_powermeter_3"].as<String>().c_str(), sizeof(cPM.Mqtt.TopicPowerMeter3));
-    cPM.Sdm.Baudrate = root["sdmbaudrate"].as<uint32_t>();
-    cPM.Sdm.Address = root["sdmaddress"].as<uint8_t>();
-    cPM.Http.IndividualRequests = root["http_individual_requests"].as<bool>();
-
-    auto http_phases = root["http_phases"];
-    for (uint8_t i = 0; i < http_phases.size(); i++) {
-        decodeJsonPhaseConfig(http_phases[i].as<JsonObject>(), cPM.Http.Phase[i]);
+    if (static_cast<PowerMeterProvider::Type>(root["source"].as<uint8_t>()) == PowerMeterProvider::Type::HTTP_SML) {
+        JsonObject httpSml = root["http_sml"];
+        if (!checkHttpConfig(httpSml["http_request"].as<JsonObject>())) {
+            return;
+        }
     }
-    cPM.Http.Phase[0].Enabled = true;
+
+    CONFIG_T& config = Configuration.get();
+    config.PowerMeter.Enabled = root["enabled"].as<bool>();
+    PowerMeter.setVerboseLogging(root["verbose_logging"].as<bool>());
+    config.PowerMeter.Source = root["source"].as<uint8_t>();
+    config.PowerMeter.UpdatesOnly = root["updatesonly"].as<uint32_t>();
+
+    Configuration.deserializePowerMeterMqttConfig(root["mqtt"].as<JsonObject>(),
+            config.PowerMeter.Mqtt);
+
+    Configuration.deserializePowerMeterSerialSdmConfig(root["serial_sdm"].as<JsonObject>(),
+            config.PowerMeter.SerialSdm);
+
+    Configuration.deserializePowerMeterHttpJsonConfig(root["http_json"].as<JsonObject>(),
+            config.PowerMeter.HttpJson);
+
+    Configuration.deserializePowerMeterHttpSmlConfig(root["http_sml"].as<JsonObject>(),
+            config.PowerMeter.HttpSml);
+
 
     WebApi.writeConfig(retMsg);
 
     WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 
-    yield();
-
-    if (performRestart) {
-        delay(1000);
-        yield();
-        ESP.restart();
-    }
+    PowerMeter.updateSettings();
 }
 
-void WebApiPowerMeterClass::onTestHttpRequest(AsyncWebServerRequest* request)
+void WebApiPowerMeterClass::onTestHttpJsonRequest(AsyncWebServerRequest* request)
 {
     if (!WebApi.checkCredentials(request)) {
         return;
@@ -216,31 +185,60 @@ void WebApiPowerMeterClass::onTestHttpRequest(AsyncWebServerRequest* request)
 
     auto& retMsg = asyncJsonResponse->getRoot();
 
-    if (!root.containsKey("url")
-        || !root.containsKey("auth_type")
-        || !root.containsKey("username")
-        || !root.containsKey("password")
-        || !root.containsKey("header_key")
-        || !root.containsKey("header_value")
-        || !root.containsKey("timeout")
-        || !root.containsKey("json_path")
-        || !root.containsKey("unit")) {
-        retMsg["message"] = MissingFields;
-        asyncJsonResponse->setLength();
-        request->send(asyncJsonResponse);
+    char response[256];
+
+    auto powerMeterConfig = std::make_unique<PowerMeterHttpJsonConfig>();
+    Configuration.deserializePowerMeterHttpJsonConfig(root["http_json"].as<JsonObject>(),
+            *powerMeterConfig);
+    auto upMeter = std::make_unique<PowerMeterHttpJson>(*powerMeterConfig);
+    upMeter->init();
+    auto res = upMeter->poll();
+    using values_t = PowerMeterHttpJson::power_values_t;
+    if (std::holds_alternative<values_t>(res)) {
+        retMsg["type"] = "success";
+        auto vals = std::get<values_t>(res);
+        auto pos = snprintf(response, sizeof(response), "Result: %5.2fW", vals[0]);
+        for (size_t i = 1; i < vals.size(); ++i) {
+            if (!powerMeterConfig->Values[i].Enabled) { continue; }
+            pos += snprintf(response + pos, sizeof(response) - pos, ", %5.2fW", vals[i]);
+        }
+        snprintf(response + pos, sizeof(response) - pos, ", Total: %5.2f", upMeter->getPowerTotal());
+    } else {
+        snprintf(response, sizeof(response), "%s", std::get<String>(res).c_str());
+    }
+
+    retMsg["message"] = response;
+    asyncJsonResponse->setLength();
+    request->send(asyncJsonResponse);
+}
+
+void WebApiPowerMeterClass::onTestHttpSmlRequest(AsyncWebServerRequest* request)
+{
+    if (!WebApi.checkCredentials(request)) {
         return;
     }
 
+    AsyncJsonResponse* asyncJsonResponse = new AsyncJsonResponse();
+    JsonDocument root;
+    if (!WebApi.parseRequestData(request, asyncJsonResponse, root)) {
+        return;
+    }
+
+    auto& retMsg = asyncJsonResponse->getRoot();
+
     char response[256];
 
-    int phase = 0; //"absuing" index 0 of the float power[3] in HttpPowerMeter to store the result
-    PowerMeterHttpConfig phaseConfig;
-    decodeJsonPhaseConfig(root.as<JsonObject>(), phaseConfig);
-    if (HttpPowerMeter.queryPhase(phase, phaseConfig)) {
-        retMsg["type"] = Success;
-        snprintf(response, sizeof(response), "Success! Power: %5.2fW", HttpPowerMeter.getPower(phase + 1));
+    auto powerMeterConfig = std::make_unique<PowerMeterHttpSmlConfig>();
+    Configuration.deserializePowerMeterHttpSmlConfig(root["http_sml"].as<JsonObject>(),
+            *powerMeterConfig);
+    auto upMeter = std::make_unique<PowerMeterHttpSml>(*powerMeterConfig);
+    upMeter->init();
+    auto res = upMeter->poll();
+    if (res.isEmpty()) {
+        retMsg["type"] = "success";
+        snprintf(response, sizeof(response), "Result: %5.2fW", upMeter->getPowerTotal());
     } else {
-        snprintf(response, sizeof(response), "%s", HttpPowerMeter.httpPowerMeterError);
+        snprintf(response, sizeof(response), "%s", res.c_str());
     }
 
     retMsg["message"] = response;

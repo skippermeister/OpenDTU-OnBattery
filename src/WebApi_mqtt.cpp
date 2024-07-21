@@ -38,6 +38,7 @@ void WebApiMqttClass::onMqttStatus(AsyncWebServerRequest* request)
     root["enabled"] = cMqtt.Enabled;
     root["hostname"] = cMqtt.Hostname;
     root["port"] = cMqtt.Port;
+    root["clientid"] = MqttSettings.getClientId();
     root["username"] = cMqtt.Username;
     root["topic"] = cMqtt.Topic;
     root["connected"] = MqttSettings.getConnected();
@@ -80,6 +81,7 @@ void WebApiMqttClass::onMqttAdminGet(AsyncWebServerRequest* request)
     root["enabled"] = cMqtt.Enabled;
     root["hostname"] = cMqtt.Hostname;
     root["port"] = cMqtt.Port;
+    root["clientid"] = cMqtt.ClientId;
     root["username"] = cMqtt.Username;
     root["password"] = cMqtt.Password;
     root["topic"] = cMqtt.Topic;
@@ -130,6 +132,7 @@ void WebApiMqttClass::onMqttAdminPost(AsyncWebServerRequest* request)
     if (!(root.containsKey("enabled")
             && root.containsKey("hostname")
             && root.containsKey("port")
+            && root.containsKey("clientid")
             && root.containsKey("username")
             && root.containsKey("password")
             && root.containsKey("topic")
@@ -167,6 +170,13 @@ void WebApiMqttClass::onMqttAdminPost(AsyncWebServerRequest* request)
             return;
         }
 
+        if (root["clientid"].as<String>().length() > MQTT_MAX_CLIENTID_STRLEN) {
+            retMsg["message"] = "Client ID must not be longer than " STR(MQTT_MAX_CLIENTID_STRLEN) " characters!";
+            retMsg["code"] = WebApiError::MqttClientIdLength;
+            retMsg["param"]["max"] = MQTT_MAX_CLIENTID_STRLEN;
+            WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
+            return;
+        }
         if (root["username"].as<String>().length() > MQTT_MAX_USERNAME_STRLEN) {
             retMsg["message"] = "Username must not be longer than " STR(MQTT_MAX_USERNAME_STRLEN) " characters!";
             retMsg["code"] = WebApiError::MqttUsernameLength;
@@ -298,6 +308,7 @@ void WebApiMqttClass::onMqttAdminPost(AsyncWebServerRequest* request)
     strlcpy(cMqtt.Tls.ClientKey, root["client_key"].as<String>().c_str(), sizeof(cMqtt.Tls.ClientKey));
     cMqtt.Port = root["port"].as<uint>();
     strlcpy(cMqtt.Hostname, root["hostname"].as<String>().c_str(), sizeof(cMqtt.Hostname));
+    strlcpy(cMqtt.ClientId, root["clientid"].as<String>().c_str(), sizeof(cMqtt.ClientId));
     strlcpy(cMqtt.Username, root["username"].as<String>().c_str(), sizeof(cMqtt.Username));
     strlcpy(cMqtt.Password, root["password"].as<String>().c_str(), sizeof(cMqtt.Password));
     strlcpy(cMqtt.Lwt.Topic, root["lwt_topic"].as<String>().c_str(), sizeof(cMqtt.Lwt.Topic));

@@ -4,7 +4,7 @@
             :for="inputId"
             :class="[ wide5_1 || wide5_2 || wide5_3 || wide5_4 || wide5_7 ? 'col-sm-5'
                     : wide4_1 || wide4_2 || wide4_3 || wide4_4 || wide4_8 ? 'col-sm-4'
-                    : wide3_1 || wide3_2 || wide3_3 || wide3_4 || wide3_9 ? 'col-sm-3'
+                    : wide3_1 || wide3_2 || wide3_3 || wide3_4 || wide3_5 || wide3_6 || wide3_9 ? 'col-sm-3'
                     : 'col-sm-2', isCheckbox ? 'form-check-label' : 'col-form-label' ]"
         >
             {{ label }}
@@ -15,6 +15,8 @@
                     : wide2_3 || wide3_3 || wide4_3 || wide5_3  ? 'col-sm-3'
                     : wide2_4 || wide3_4 || wide4_4 || wide5_4? 'col-sm-4'
                     : wide2_10 || wide ? 'col-sm-10'
+                    : wide3_5 ? 'col-sm-5'
+                    : wide3_6 ? 'col-sm-6'
                     : wide3_9 ? 'col-sm-9'
                     : wide4_8 ? 'col-sm-8'
                     : 'col-sm-7']">
@@ -96,6 +98,8 @@ export default defineComponent({
         'wide3_2': Boolean,
         'wide3_3': Boolean,
         'wide3_4': Boolean,
+        'wide3_5': Boolean,
+        'wide3_6': Boolean,
         'wide3_9': Boolean,
         'wide4_1': Boolean,
         'wide4_2': Boolean,

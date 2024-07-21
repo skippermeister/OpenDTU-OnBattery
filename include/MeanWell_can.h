@@ -174,13 +174,14 @@ public:
 
     bool updateAvailable(uint32_t since) const;
 
-    void updateEEPROMwrites2NVS();
     uint32_t getEEPROMwrites() { return EEPROMwrites;}
 
 private:
     void loop();
 
     Task _loopTask;
+
+    void updateEEPROMwrites2NVS();
 
     void switchChargerOff(const char* reason);
     bool enable(void);

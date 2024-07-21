@@ -16,12 +16,6 @@
 #include "PinMapping.h"
 #include "Configuration.h"
 #include <Hoymiles.h>
-#ifdef CHARGER_USE_CAN0
-#include <driver/twai.h>
-#else
-#include <SPI.h>
-#include <mcp_can.h>
-#endif
 #include <math.h>
 #include <AsyncJson.h>
 
@@ -832,35 +826,20 @@ void MeanWellCanClass::loop()
     _previousMillis = t_start;
 
     static int state = 0;
-    switch (state) {
-    case 0:
-        readCmd(ChargerID, 0x0050); // read VIN
-        break;
+    static constexpr uint16_t Cmnds[] = {
+        0x0050,  // read VIN
+        0x00C1,  // read SYSTEM_STATUS
+        0x0062,  // read Temperature
+        0x00B8,  // read CHARGE_STATUS
+        0x0000,  // read ON/OFF Status
+        0x0040   // read FAULT_STATUS
+    };
+    if (_verboseLogging) MessageOutput.printf("%s State: %d\r\n", TAG, state);
+    readCmd(ChargerID, Cmnds[state++]);
+    if (state >= sizeof(Cmnds)/sizeof(uint16_t)) state = 0;
 
-    case 1:
-        readCmd(ChargerID, 0x00C1); // read SYSTEM_STATUS
-        break;
-
-    case 2:
-        readCmd(ChargerID, 0x0062); // read Temperature
-        break;
-
-    case 3:
-        readCmd(ChargerID, 0x00B8); // read CHARGE_STATUS
-        break;
-
-    case 4:
-        readCmd(ChargerID, 0x0000); // read ON/OFF Status
-        break;
-
-    case 5:
-        readCmd(ChargerID, 0x0040); // read FAULT_STATUS
-        break;
-    }
     readCmd(ChargerID, 0x0060); // read VOUT
     readCmd(ChargerID, 0x0061); // read IOUT
-    if (++state == 6)
-        state = 0;
 
     float InverterPower = 0.0;
     String invName;
@@ -893,12 +872,12 @@ void MeanWellCanClass::loop()
     }
 
     // static_cast<unsigned int>(inv0->Statistics()->getChannelFieldDigits(TYPE_AC, CH0, FLD_PAC)));
-    float GridPower = PowerMeter.getPowerTotal(false);
+    float GridPower = PowerMeter.getPowerTotal();
     if (_verboseLogging)
-        MessageOutput.printf("%s State: %d, %lu ms, House Power: %.1fW, Grid Power: %.1fW, Inverter (%s) Day Power: %.1fW, Batt con. Inverter (%s), Charger Power: %.1fW\r\n", TAG,
-            state, millis() - t_start, PowerMeter.getHousePower(), GridPower, invName.c_str(), InverterPower, BattInvName.c_str(), _rp.outputPower);
+        MessageOutput.printf("%s %lu ms, House Power: %.1fW, Grid Power: %.1fW, Inverter (%s) Day Power: %.1fW, Batt con. Inverter (%s), Charger Power: %.1fW\r\n", TAG,
+            millis() - t_start, PowerMeter.getHousePower(), GridPower, invName.c_str(), InverterPower, BattInvName.c_str(), _rp.outputPower);
 
-    if (!Battery.getStats()->initialized())
+    if (!Battery.initialized())
         goto exit;
 
     if (_automaticCharge) {
@@ -915,6 +894,15 @@ void MeanWellCanClass::loop()
                 BattInvName.c_str(), batteryConnected_isProducing ? "" : "not ",
                 _rp.operation ? "ON" : "OFF");
 
+        boolean _fullChargeRequested = false;
+        if (Battery.getStats()->getFullChargeRequest()) {
+            _fullChargeRequested = true;
+        }
+
+        if (!Battery.getStats()->getChargeEnabled()) {
+            _fullChargeRequested = false;
+        }
+
         // check if battery overvoltage, or night, or inverter is not producing, than switch of charger
         if (Battery.getStats()->getAlarm().overVoltage
             || Battery.getStats()->getAlarm().underTemperature
@@ -923,23 +911,33 @@ void MeanWellCanClass::loop()
             || !SunPosition.isDayPeriod()
             || batteryConnected_isProducing
             || !Battery.getStats()->getChargeEnabled()
-            || (!isProducing && Configuration.get().MeanWell.mustInverterProduce) ) {
+            || (!_fullChargeRequested
+                && Battery.getStats()->getSoC() >= Configuration.get().Battery.Stop_Charging_BatterySoC_Threshold
+               )
+            || (!isProducing && Configuration.get().MeanWell.mustInverterProduce) )
+        {
             switchChargerOff("");
 
             // check if battery request immediate charging or SoC is less than Stop_Charging_BatterySoC_Threshold (20 ... 100%)
             // and inverter is producing and reachable and day
             // than switch on charger
-        } else if (Battery.getStats()->getSoC() < Configuration.get().Battery.Stop_Charging_BatterySoC_Threshold
-                   && (    (isProducing && isReachable && Configuration.get().MeanWell.mustInverterProduce)
-                        || (!Configuration.get().MeanWell.mustInverterProduce)
-                      )
-                   && SunPosition.isDayPeriod()
-                   /*&& Battery.chargeEnabled*/
+        } else if ( (_fullChargeRequested
+                    || Battery.getStats()->getSoC() < Configuration.get().Battery.Stop_Charging_BatterySoC_Threshold
+                    )
+                    && (
+                        (   isProducing
+                         && isReachable
+                         && Configuration.get().MeanWell.mustInverterProduce
+                        )
+                        || !Configuration.get().MeanWell.mustInverterProduce
+                    )
+                    && SunPosition.isDayPeriod()
                   )
         {
             if (!_rp.operation
                  && (GridPower < -cMeanWell.MinCurrent * Battery.getStats()->getVoltage()
                      || Battery.getStats()->getChargeImmediately()
+                     || _fullChargeRequested
                     )
                )
             {
@@ -959,15 +957,17 @@ void MeanWellCanClass::loop()
             }
 
             static boolean _chargeImmediateRequested = false;
-            if (Battery.getStats()->getSoC() >= (Configuration.get().PowerLimiter.BatterySocStartThreshold - 10)) {
+            if (Battery.getStats()->getSoC() >= (Configuration.get().Battery.Stop_Charging_BatterySoC_Threshold - 10)
+                && !_fullChargeRequested)
+            {
                 _chargeImmediateRequested = false;
             }
 
-            if ((Battery.getStats()->getChargeImmediately()
-                 || _chargeImmediateRequested
+            if (_fullChargeRequested
+                || (   (Battery.getStats()->getChargeImmediately() || _chargeImmediateRequested)
+                     && Battery.getStats()->getSoC() < (Configuration.get().Battery.Stop_Charging_BatterySoC_Threshold - 10)
+                   )
                 )
-                && Battery.getStats()->getSoC() < (Configuration.get().PowerLimiter.BatterySocStartThreshold - 10)
-               )
             {
                 if (_verboseLogging) MessageOutput.printf("%s Immediate Charge requested", TAG);
                 setValue(cMeanWell.MaxCurrent, MEANWELL_SET_CURRENT);

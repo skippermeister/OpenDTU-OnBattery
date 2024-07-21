@@ -83,7 +83,7 @@
 
 
 
-                <CardElement v-show="batteryConfigList.provider == 2"
+                <CardElement v-show="batteryConfigList.provider == 2 || batteryConfigList.provider == 8"
                              :text="$t('batteryadmin.CanControllerConfiguration')"
                              textVariant="text-bg-primary"
                              addSpace>
@@ -181,7 +181,9 @@ export default defineComponent({
                 { key: 3, value: 'JkBmsSerial' },
                 { key: 4, value: 'Victron' },
                 { key: 5, value: 'DalyBmsRS485' },
-                { key: 6, value: 'Mqtt' }
+                { key: 6, value: 'Mqtt' },
+                { key: 7, value: 'PytesCan0' },
+                { key: 8, value: 'PytesMCP2515' }
             ],
             jkBmsInterfaceTypeList: [
                 { key: 0, value: 'Uart' },

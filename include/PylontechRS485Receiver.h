@@ -4,15 +4,9 @@
 #ifdef USE_PYLONTECH_RS485_RECEIVER
 
 #include "Battery.h"
-#include "Configuration.h"
-#include <Arduino.h>
-#include <HardwareSerial.h>
 #include <TimeoutHelper.h>
-#include <driver/uart.h>
 #include <espMqttClient.h>
 #include <memory>
-
-#define RS485 Serial2
 
 // Timeout threshold for UART = number of symbols (~10 tics) with unchanged state on receive pin
 #define ECHO_READ_TOUT (3) // 3.5T * 8 = 28 ticks, TOUT=3 -> ~24..33 ticks
@@ -103,10 +97,14 @@ public:
     void loop() final;
     std::shared_ptr<BatteryStats> getStats() const final { return _stats; }
 
+    bool initialized() const final { return _initialized; };
+
 private:
     static char constexpr _serialPortOwner[] = "Pylontech";
 
     std::unique_ptr<HardwareSerial> _upSerial;
+
+    void readParameter();
 
     void get_protocol_version(const PylontechRS485Receiver::Function function, uint8_t module);
     void get_manufacturer_info(const PylontechRS485Receiver::Function function, uint8_t module);
@@ -179,6 +177,8 @@ private:
     TimeoutHelper _lastBatteryCheck;
 
     std::shared_ptr<PylontechRS485BatteryStats> _stats = std::make_shared<PylontechRS485BatteryStats>();
+
+    bool _initialized = false;
 };
 
 #endif

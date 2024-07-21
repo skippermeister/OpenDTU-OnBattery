@@ -2,6 +2,7 @@ export interface MqttConfig {
     enabled: boolean;
     hostname: string;
     port: number;
+    clientid: string;
     username: string;
     password: string;
     topic: string;

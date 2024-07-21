@@ -26,6 +26,8 @@ class Controller : public BatteryProvider {
         void loop() final;
         std::shared_ptr<BatteryStats> getStats() const final { return _stats; }
 
+        bool initialized() const final { return _initialized; };
+
     private:
         static char constexpr _serialPortOwner[] = "JK BMS";
 
@@ -82,6 +84,8 @@ class Controller : public BatteryProvider {
         uint8_t _protocolVersion = -1;
         SerialResponse::tData _buffer = {};
         std::shared_ptr<JkBmsBatteryStats> _stats = std::make_shared<JkBmsBatteryStats>();
+
+        bool _initialized = false;
 };
 
 } /* namespace JkBms */

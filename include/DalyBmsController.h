@@ -3,11 +3,7 @@
 #pragma once
 
 #include "Battery.h"
-#include "Configuration.h"
-#include <Arduino.h>
-#include <HardwareSerial.h>
 #include <TimeoutHelper.h>
-#include <driver/uart.h>
 #include <espMqttClient.h>
 #include <memory>
 #include <vector>
@@ -29,6 +25,8 @@ class DalyBmsController : public BatteryProvider {
         std::shared_ptr<BatteryStats> getStats() const final { return _stats; }
 
         void set_address(uint8_t address) { _addr = address; }
+
+        bool initialized() const final { return _initialized; };
 
     private:
         static char constexpr _serialPortOwner[] = "Daly BMS";
@@ -169,6 +167,8 @@ class DalyBmsController : public BatteryProvider {
         bool _wasActive;
 
         std::shared_ptr<DalyBmsBatteryStats> _stats = std::make_shared<DalyBmsBatteryStats>();
+
+        bool _initialized = false;
 };
 
 #endif

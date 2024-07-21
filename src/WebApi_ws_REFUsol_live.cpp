@@ -6,7 +6,6 @@
 
 #include "WebApi_ws_REFUsol_live.h"
 #include "AsyncJson.h"
-#include "Configuration.h"
 #include "MessageOutput.h"
 #include "Utils.h"
 #include "WebApi.h"

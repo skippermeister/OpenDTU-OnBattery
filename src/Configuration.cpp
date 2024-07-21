@@ -4,6 +4,7 @@
  */
 #include "Configuration.h"
 #include "MessageOutput.h"
+#include "NetworkSettings.h"
 #include "Utils.h"
 #include "defaults.h"
 #include <ArduinoJson.h>
@@ -17,6 +18,64 @@ static constexpr char TAG[] = "[Configuration]";
 void ConfigurationClass::init()
 {
     memset(&config, 0x0, sizeof(config));
+}
+
+void ConfigurationClass::serializeHttpRequestConfig(HttpRequestConfig const& source, JsonObject& target)
+{
+    JsonObject target_http_config = target["http_request"].to<JsonObject>();
+    target_http_config["url"] = source.Url;
+    target_http_config["auth_type"] = source.AuthType;
+    target_http_config["username"] = source.Username;
+    target_http_config["password"] = source.Password;
+    target_http_config["header_key"] = source.HeaderKey;
+    target_http_config["header_value"] = source.HeaderValue;
+    target_http_config["timeout"] = source.Timeout;
+}
+
+void ConfigurationClass::serializePowerMeterMqttConfig(PowerMeterMqttConfig const& source, JsonObject& target)
+{
+    JsonArray values = target["values"].to<JsonArray>();
+    for (size_t i = 0; i < POWERMETER_MQTT_MAX_VALUES; ++i) {
+        JsonObject t = values.add<JsonObject>();
+        PowerMeterMqttValue const& s = source.Values[i];
+
+        t["topic"] = s.Topic;
+        t["json_path"] = s.JsonPath;
+        t["unit"] = s.PowerUnit;
+        t["sign_inverted"] = s.SignInverted;
+    }
+}
+
+void ConfigurationClass::serializePowerMeterSerialSdmConfig(PowerMeterSerialSdmConfig const& source, JsonObject& target)
+{
+    target["baudrate"] = source.Baudrate;
+    target["address"] = source.Address;
+    target["polling_interval"] = source.PollingInterval;
+}
+
+void ConfigurationClass::serializePowerMeterHttpJsonConfig(PowerMeterHttpJsonConfig const& source, JsonObject& target)
+{
+    target["polling_interval"] = source.PollingInterval;
+    target["individual_requests"] = source.IndividualRequests;
+
+    JsonArray values = target["values"].to<JsonArray>();
+    for (size_t i = 0; i < POWERMETER_HTTP_JSON_MAX_VALUES; ++i) {
+        JsonObject t = values.add<JsonObject>();
+        PowerMeterHttpJsonValue const& s = source.Values[i];
+
+        serializeHttpRequestConfig(s.HttpRequest, t);
+
+        t["enabled"] = s.Enabled;
+        t["json_path"] = s.JsonPath;
+        t["unit"] = s.PowerUnit;
+        t["sign_inverted"] = s.SignInverted;
+    }
+}
+
+void ConfigurationClass::serializePowerMeterHttpSmlConfig(PowerMeterHttpSmlConfig const& source, JsonObject& target)
+{
+    target["polling_interval"] = source.PollingInterval;
+    serializeHttpRequestConfig(source.HttpRequest, target);
 }
 
 bool ConfigurationClass::write()
@@ -67,6 +126,7 @@ bool ConfigurationClass::write()
     mqtt["enabled"] = config.Mqtt.Enabled;
     mqtt["hostname"] = config.Mqtt.Hostname;
     mqtt["port"] = config.Mqtt.Port;
+    mqtt["clientid"] = config.Mqtt.ClientId;
     mqtt["username"] = config.Mqtt.Username;
     mqtt["password"] = config.Mqtt.Password;
     mqtt["topic"] = config.Mqtt.Topic;
@@ -99,11 +159,14 @@ bool ConfigurationClass::write()
     JsonObject dtu = doc["dtu"].to<JsonObject>();
     dtu["serial"] = config.Dtu.Serial;
     dtu["pollinterval"] = config.Dtu.PollInterval;
+#ifdef USE_RADIO_NRF
     dtu["nrf_pa_level"] = config.Dtu.Nrf.PaLevel;
+#endif
+#ifdef USE_RADIO_CMT
     dtu["cmt_pa_level"] = config.Dtu.Cmt.PaLevel;
     dtu["cmt_frequency"] = config.Dtu.Cmt.Frequency;
     dtu["cmt_country_mode"] = config.Dtu.Cmt.CountryMode;
-
+#endif
     JsonObject security = doc["security"].to<JsonObject>();
     security["password"] = config.Security.Password;
     security["allow_readonly"] = config.Security.AllowReadonly;
@@ -168,42 +231,31 @@ bool ConfigurationClass::write()
 
     JsonObject powermeter = doc["powermeter"].to<JsonObject>();
     powermeter["enabled"] = config.PowerMeter.Enabled;
-    powermeter["pollinterval"] = config.PowerMeter.PollInterval;
     powermeter["updatesonly"] = config.PowerMeter.UpdatesOnly;
     powermeter["source"] = config.PowerMeter.Source;
-    powermeter["mqtt_topic_powermeter_1"] = config.PowerMeter.Mqtt.TopicPowerMeter1;
-    powermeter["mqtt_topic_powermeter_2"] = config.PowerMeter.Mqtt.TopicPowerMeter2;
-    powermeter["mqtt_topic_powermeter_3"] = config.PowerMeter.Mqtt.TopicPowerMeter3;
-    powermeter["sdmbaudrate"] = config.PowerMeter.Sdm.Baudrate;
-    powermeter["sdmaddress"] = config.PowerMeter.Sdm.Address;
-    powermeter["http_individual_requests"] = config.PowerMeter.Http.IndividualRequests;
 
-    JsonArray powermeter_http_phases = powermeter["http_phases"].to<JsonArray>();
-    for (uint8_t i = 0; i < POWERMETER_MAX_PHASES; i++) {
-        JsonObject powermeter_phase = powermeter_http_phases.add<JsonObject>();
+    JsonObject powermeter_mqtt = powermeter["mqtt"].to<JsonObject>();
+    serializePowerMeterMqttConfig(config.PowerMeter.Mqtt, powermeter_mqtt);
 
-        powermeter_phase["enabled"] = config.PowerMeter.Http.Phase[i].Enabled;
-        powermeter_phase["url"] = config.PowerMeter.Http.Phase[i].Url;
-        powermeter_phase["auth_type"] = config.PowerMeter.Http.Phase[i].AuthType;
-        powermeter_phase["username"] = config.PowerMeter.Http.Phase[i].Username;
-        powermeter_phase["password"] = config.PowerMeter.Http.Phase[i].Password;
-        powermeter_phase["header_key"] = config.PowerMeter.Http.Phase[i].HeaderKey;
-        powermeter_phase["header_value"] = config.PowerMeter.Http.Phase[i].HeaderValue;
-        powermeter_phase["timeout"] = config.PowerMeter.Http.Phase[i].Timeout;
-        powermeter_phase["json_path"] = config.PowerMeter.Http.Phase[i].JsonPath;
-        powermeter_phase["unit"] = config.PowerMeter.Http.Phase[i].PowerUnit;
-        powermeter_phase["sign_inverted"] = config.PowerMeter.Http.Phase[i].SignInverted;
-    }
+    JsonObject powermeter_serial_sdm = powermeter["serial_sdm"].to<JsonObject>();
+    serializePowerMeterSerialSdmConfig(config.PowerMeter.SerialSdm, powermeter_serial_sdm);
+
+    JsonObject powermeter_http_json = powermeter["http_json"].to<JsonObject>();
+    serializePowerMeterHttpJsonConfig(config.PowerMeter.HttpJson, powermeter_http_json);
+
+    JsonObject powermeter_http_sml = powermeter["http_sml"].to<JsonObject>();
+    serializePowerMeterHttpSmlConfig(config.PowerMeter.HttpSml, powermeter_http_sml);
 
     JsonObject powerlimiter = doc["powerlimiter"].to<JsonObject>();
     powerlimiter["enabled"] = config.PowerLimiter.Enabled;
     powerlimiter["updatesonly"] = config.PowerLimiter.UpdatesOnly;
-    powerlimiter["pollinterval"] = config.PowerLimiter.PollInterval;
+    powerlimiter["interval"] = config.PowerLimiter.Interval;
     powerlimiter["solar_passthrough_enabled"] = config.PowerLimiter.SolarPassThroughEnabled;
     powerlimiter["solar_passtrough_losses"] = config.PowerLimiter.SolarPassThroughLosses;
     powerlimiter["battery_always_use_at_night"] = config.PowerLimiter.BatteryAlwaysUseAtNight;
     powerlimiter["is_inverter_behind_powermeter"] = config.PowerLimiter.IsInverterBehindPowerMeter;
     powerlimiter["is_inverter_solar_powered"] = config.PowerLimiter.IsInverterSolarPowered;
+    powerlimiter["use_overscaling_to_compensate_shading"] = config.PowerLimiter.UseOverscalingToCompensateShading;
     powerlimiter["inverter_id"] = config.PowerLimiter.InverterId;
     powerlimiter["inverter_channel_id"] = config.PowerLimiter.InverterChannelId;
     powerlimiter["target_power_consumption"] = config.PowerLimiter.TargetPowerConsumption;
@@ -224,6 +276,7 @@ bool ConfigurationClass::write()
 
     JsonObject battery = doc["battery"].to<JsonObject>();
     battery["enabled"] = config.Battery.Enabled;
+    battery["verbose_logging"] = config.Battery.VerboseLogging;
     battery["updatesonly"] = config.Battery.UpdatesOnly;
     battery["numberOfBatteries"] = config.Battery.numberOfBatteries;
     battery["pollinterval"] = config.Battery.PollInterval;
@@ -242,11 +295,13 @@ bool ConfigurationClass::write()
     battery["max_discharge_temp"] = config.Battery.MaxDischargeTemperature;
     battery["stop_charging_soc"] = config.Battery.Stop_Charging_BatterySoC_Threshold;
 
+    JsonObject mcp2515 = doc["mcp2515"].to<JsonObject>();
+    mcp2515["can_controller_frequency"] = config.MCP2515.Controller_Frequency;
+
 #ifdef CHARGER_HUAWEI
     JsonObject huawei = doc["huawei"].to<JsonObject>();
     huawei["enabled"] = config.Huawei.Enabled;
     huawei["verbose_logging"] = config.Huawei.VerboseLogging;
-    huawei["can_controller_frequency"] = config.MPC2515.Controller_Frequency;
     huawei["auto_power_enabled"] = config.Huawei.Auto_Power_Enabled;
     huawei["voltage_limit"] = config.Huawei.Auto_Power_Voltage_Limit;
     huawei["enable_voltage_limit"] = config.Huawei.Auto_Power_Enable_Voltage_Limit;
@@ -299,6 +354,70 @@ bool ConfigurationClass::write()
 
     f.close();
     return true;
+}
+
+void ConfigurationClass::deserializeHttpRequestConfig(JsonObject const& source, HttpRequestConfig& target)
+{
+    JsonObject source_http_config = source["http_request"];
+
+    // http request parameters of HTTP/JSON power meter were previously stored
+    // alongside other settings. TODO(schlimmchen): remove in early 2025.
+    if (source_http_config.isNull()) { source_http_config = source; }
+
+    strlcpy(target.Url, source_http_config["url"] | "", sizeof(target.Url));
+    target.AuthType = source_http_config["auth_type"] | HttpRequestConfig::Auth::None;
+    strlcpy(target.Username, source_http_config["username"] | "", sizeof(target.Username));
+    strlcpy(target.Password, source_http_config["password"] | "", sizeof(target.Password));
+    strlcpy(target.HeaderKey, source_http_config["header_key"] | "", sizeof(target.HeaderKey));
+    strlcpy(target.HeaderValue, source_http_config["header_value"] | "", sizeof(target.HeaderValue));
+    target.Timeout = source_http_config["timeout"] | HTTP_REQUEST_TIMEOUT_MS;
+}
+
+void ConfigurationClass::deserializePowerMeterMqttConfig(JsonObject const& source, PowerMeterMqttConfig& target)
+{
+    for (size_t i = 0; i < POWERMETER_MQTT_MAX_VALUES; ++i) {
+        PowerMeterMqttValue& t = target.Values[i];
+        JsonObject s = source["values"][i];
+
+        strlcpy(t.Topic, s["topic"] | "", sizeof(t.Topic));
+        strlcpy(t.JsonPath, s["json_path"] | "", sizeof(t.JsonPath));
+        t.PowerUnit = s["unit"] | PowerMeterMqttValue::Unit::Watts;
+        t.SignInverted = s["sign_inverted"] | false;
+    }
+}
+
+void ConfigurationClass::deserializePowerMeterSerialSdmConfig(JsonObject const& source, PowerMeterSerialSdmConfig& target)
+{
+    target.PollingInterval = source["polling_interval"] | POWERMETER_POLLING_INTERVAL;
+    target.Baudrate = source["baudrate"] | POWERMETER_SDMBAUDRATE;
+    target.Address = source["address"] | POWERMETER_SDMADDRESS;
+}
+
+void ConfigurationClass::deserializePowerMeterHttpJsonConfig(JsonObject const& source, PowerMeterHttpJsonConfig& target)
+{
+    target.PollingInterval = source["polling_interval"] | POWERMETER_POLLING_INTERVAL;
+    target.IndividualRequests = source["individual_requests"] | false;
+
+    JsonArray values = source["values"].as<JsonArray>();
+    for (size_t i = 0; i < POWERMETER_HTTP_JSON_MAX_VALUES; ++i) {
+        PowerMeterHttpJsonValue& t = target.Values[i];
+        JsonObject s = values[i];
+
+        deserializeHttpRequestConfig(s, t.HttpRequest);
+
+        t.Enabled = s["enabled"] | false;
+        strlcpy(t.JsonPath, s["json_path"] | "", sizeof(t.JsonPath));
+        t.PowerUnit = s["unit"] | PowerMeterHttpJsonValue::Unit::Watts;
+        t.SignInverted = s["sign_inverted"] | false;
+    }
+
+    target.Values[0].Enabled = true;
+}
+
+void ConfigurationClass::deserializePowerMeterHttpSmlConfig(JsonObject const& source, PowerMeterHttpSmlConfig& target)
+{
+    target.PollingInterval = source["polling_interval"] | POWERMETER_POLLING_INTERVAL;
+    deserializeHttpRequestConfig(source, target.HttpRequest);
 }
 
 bool ConfigurationClass::read()
@@ -386,7 +505,7 @@ bool ConfigurationClass::read()
     config.Mqtt.Enabled = mqtt["enabled"] | MQTT_ENABLED;
     strlcpy(config.Mqtt.Hostname, mqtt["hostname"] | MQTT_HOST, sizeof(config.Mqtt.Hostname));
     config.Mqtt.Port = mqtt["port"] | MQTT_PORT;
-    strlcpy(config.Mqtt.Username, mqtt["username"] | MQTT_USER, sizeof(config.Mqtt.Username));
+    strlcpy(config.Mqtt.ClientId, mqtt["clientid"] | NetworkSettings.getApName().c_str(), sizeof(config.Mqtt.ClientId));    strlcpy(config.Mqtt.Username, mqtt["username"] | MQTT_USER, sizeof(config.Mqtt.Username));
     strlcpy(config.Mqtt.Password, mqtt["password"] | MQTT_PASSWORD, sizeof(config.Mqtt.Password));
     strlcpy(config.Mqtt.Topic, mqtt["topic"] | MQTT_TOPIC, sizeof(config.Mqtt.Topic));
     config.Mqtt.Retain = mqtt["retain"] | MQTT_RETAIN;
@@ -418,11 +537,14 @@ bool ConfigurationClass::read()
     JsonObject dtu = doc["dtu"];
     config.Dtu.Serial = dtu["serial"] | DTU_SERIAL;
     config.Dtu.PollInterval = dtu["pollinterval"] | DTU_POLLINTERVAL;
+#ifdef USE_RADIO_NRF
     config.Dtu.Nrf.PaLevel = dtu["nrf_pa_level"] | DTU_NRF_PA_LEVEL;
+#endif
+#ifdef USE_RADIO_CMT
     config.Dtu.Cmt.PaLevel = dtu["cmt_pa_level"] | DTU_CMT_PA_LEVEL;
     config.Dtu.Cmt.Frequency = dtu["cmt_frequency"] | DTU_CMT_FREQUENCY;
     config.Dtu.Cmt.CountryMode = dtu["cmt_country_mode"] | DTU_CMT_COUNTRY_MODE;
-
+#endif
     JsonObject security = doc["security"];
     strlcpy(config.Security.Password, security["password"] | ACCESS_POINT_PASSWORD, sizeof(config.Security.Password));
     config.Security.AllowReadonly = security["allow_readonly"] | SECURITY_ALLOW_READONLY;
@@ -487,43 +609,69 @@ bool ConfigurationClass::read()
 
     JsonObject powermeter = doc["powermeter"];
     config.PowerMeter.Enabled = powermeter["enabled"] | POWERMETER_ENABLED;
-    config.PowerMeter.PollInterval = powermeter["pollinterval"] | POWERMETER_POLLINTERVAL;
     config.PowerMeter.UpdatesOnly = powermeter["updatesonly"] | POWERMETER_UPDATESONLY;
     config.PowerMeter.Source = powermeter["source"] | POWERMETER_SOURCE;
-    strlcpy(config.PowerMeter.Mqtt.TopicPowerMeter1, powermeter["mqtt_topic_powermeter_1"] | "", sizeof(config.PowerMeter.Mqtt.TopicPowerMeter1));
-    strlcpy(config.PowerMeter.Mqtt.TopicPowerMeter2, powermeter["mqtt_topic_powermeter_2"] | "", sizeof(config.PowerMeter.Mqtt.TopicPowerMeter2));
-    strlcpy(config.PowerMeter.Mqtt.TopicPowerMeter3, powermeter["mqtt_topic_powermeter_3"] | "", sizeof(config.PowerMeter.Mqtt.TopicPowerMeter3));
-    config.PowerMeter.Sdm.Baudrate = powermeter["sdmbaudrate"] | POWERMETER_SDMBAUDRATE;
-    config.PowerMeter.Sdm.Address = powermeter["sdmaddress"] | POWERMETER_SDMADDRESS;
-    config.PowerMeter.Http.IndividualRequests = powermeter["http_individual_requests"] | false;
 
-    JsonArray powermeter_http_phases = powermeter["http_phases"];
-    for (uint8_t i = 0; i < POWERMETER_MAX_PHASES; i++) {
-        JsonObject powermeter_phase = powermeter_http_phases[i].as<JsonObject>();
+    deserializePowerMeterMqttConfig(powermeter["mqtt"], config.PowerMeter.Mqtt);
 
-        config.PowerMeter.Http.Phase[i].Enabled = powermeter_phase["enabled"] | (i == 0);
-        strlcpy(config.PowerMeter.Http.Phase[i].Url, powermeter_phase["url"] | "", sizeof(config.PowerMeter.Http.Phase[i].Url));
-        config.PowerMeter.Http.Phase[i].AuthType = powermeter_phase["auth_type"] | PowerMeterHttpConfig::Auth::None;
-        strlcpy(config.PowerMeter.Http.Phase[i].Username, powermeter_phase["username"] | "", sizeof(config.PowerMeter.Http.Phase[i].Username));
-        strlcpy(config.PowerMeter.Http.Phase[i].Password, powermeter_phase["password"] | "", sizeof(config.PowerMeter.Http.Phase[i].Password));
-        strlcpy(config.PowerMeter.Http.Phase[i].HeaderKey, powermeter_phase["header_key"] | "", sizeof(config.PowerMeter.Http.Phase[i].HeaderKey));
-        strlcpy(config.PowerMeter.Http.Phase[i].HeaderValue, powermeter_phase["header_value"] | "", sizeof(config.PowerMeter.Http.Phase[i].HeaderValue));
-        config.PowerMeter.Http.Phase[i].Timeout = powermeter_phase["timeout"] | POWERMETER_HTTP_TIMEOUT;
-        strlcpy(config.PowerMeter.Http.Phase[i].JsonPath, powermeter_phase["json_path"] | "", sizeof(config.PowerMeter.Http.Phase[i].JsonPath));
-        config.PowerMeter.Http.Phase[i].PowerUnit = powermeter_phase["unit"] | PowerMeterHttpConfig::Unit::Watts;
-        config.PowerMeter.Http.Phase[i].SignInverted = powermeter_phase["sign_inverted"] | false;
+    // process settings from legacy config if they are present
+    // TODO(skippermeister): remove in early 2025.
+    if (!powermeter["mqtt_topic_powermeter_1"].isNull()) {
+        auto& values = config.PowerMeter.Mqtt.Values;
+        strlcpy(values[0].Topic, powermeter["mqtt_topic_powermeter_1"], sizeof(values[0].Topic));
+        strlcpy(values[1].Topic, powermeter["mqtt_topic_powermeter_2"], sizeof(values[1].Topic));
+        strlcpy(values[2].Topic, powermeter["mqtt_topic_powermeter_3"], sizeof(values[2].Topic));
+    }
+
+    deserializePowerMeterSerialSdmConfig(powermeter["serial_sdm"], config.PowerMeter.SerialSdm);
+
+    // process settings from legacy config if they are present
+    // TODO(skippermeister): remove in early 2025.
+    if (!powermeter["sdmaddress"].isNull()) {
+        config.PowerMeter.SerialSdm.Address = powermeter["sdmaddress"];
+    }
+    if (!powermeter["sdmbaudrate"].isNull()) {
+        config.PowerMeter.SerialSdm.Baudrate = powermeter["sdmbaudrate"];
+    }
+
+    JsonObject powermeter_http_json = powermeter["http_json"];
+    deserializePowerMeterHttpJsonConfig(powermeter_http_json, config.PowerMeter.HttpJson);
+
+    JsonObject powermeter_sml = powermeter["http_sml"];
+    deserializePowerMeterHttpSmlConfig(powermeter_sml, config.PowerMeter.HttpSml);
+
+    // process settings from legacy config if they are present
+    // TODO(skippermeister): remove in early 2025.
+    if (!powermeter["http_phases"].isNull()) {
+        auto& target = config.PowerMeter.HttpJson;
+
+        for (size_t i = 0; i < POWERMETER_HTTP_JSON_MAX_VALUES; ++i) {
+            PowerMeterHttpJsonValue& t = target.Values[i];
+            JsonObject s = powermeter["http_phases"][i];
+
+            deserializeHttpRequestConfig(s, t.HttpRequest);
+
+            t.Enabled = s["enabled"] | false;
+            strlcpy(t.JsonPath, s["json_path"] | "", sizeof(t.JsonPath));
+            t.PowerUnit = s["unit"] | PowerMeterHttpJsonValue::Unit::Watts;
+            t.SignInverted = s["sign_inverted"] | false;
+        }
+
+        target.IndividualRequests = powermeter["http_individual_requests"] | false;
     }
 
     JsonObject powerlimiter = doc["powerlimiter"];
     config.PowerLimiter.Enabled = powerlimiter["enabled"] | POWERLIMITER_ENABLED;
+    config.PowerLimiter.VerboseLogging = powerlimiter["verbose_logging"] | false;
     config.PowerLimiter.SolarPassThroughEnabled = powerlimiter["solar_passthrough_enabled"] | POWERLIMITER_SOLAR_PASSTHROUGH_ENABLED;
     config.PowerLimiter.SolarPassThroughLosses = powerlimiter["solar_passthrough_losses"] | POWERLIMITER_SOLAR_PASSTHROUGH_LOSSES;
     config.PowerLimiter.BatteryAlwaysUseAtNight = powerlimiter["battery_always_use_at_night"] | POWERLIMITER_BATTERY_ALWAYS_USE_AT_NIGHT;
     if (powerlimiter["battery_drain_strategy"].as<uint8_t>() == 1) { config.PowerLimiter.BatteryAlwaysUseAtNight = true; } // convert legacy setting
-    config.PowerLimiter.PollInterval = powerlimiter["pollinterval"] | POWERLIMITER_POLLINTERVAL;
+    config.PowerLimiter.Interval =  powerlimiter["interval"] | POWERLIMITER_INTERVAL;
     config.PowerLimiter.UpdatesOnly = powerlimiter["updatesonly"] | POWERLIMITER_UPDATESONLY;
     config.PowerLimiter.IsInverterBehindPowerMeter = powerlimiter["is_inverter_behind_powermeter"] | POWERLIMITER_IS_INVERTER_BEHIND_POWER_METER;
     config.PowerLimiter.IsInverterSolarPowered = powerlimiter["is_inverter_solar_powered"] | POWERLIMITER_IS_INVERTER_SOLAR_POWERED;
+    config.PowerLimiter.UseOverscalingToCompensateShading = powerlimiter["use_overscaling_to_compensate_shading"] | POWERLIMITER_USE_OVERSCALING_TO_COMPENSATE_SHADING;
     config.PowerLimiter.InverterId = powerlimiter["inverter_id"].as<uint64_t>() | POWERLIMITER_INVERTER_ID;
     if (config.PowerLimiter.InverterId < INV_MAX_COUNT) {
         uint8_t id;
@@ -551,6 +699,7 @@ bool ConfigurationClass::read()
 
     JsonObject battery = doc["battery"];
     config.Battery.Enabled = battery["enabled"] | BATTERY_ENABLED;
+    config.Battery.VerboseLogging = battery["verbose_logging"] | false;
     config.Battery.numberOfBatteries = battery["numberOfBatteries"] | 1; // at minimum 1one battery
     config.Battery.UpdatesOnly = battery["updatesonly"] | BATTERY_UPDATESONLY;
     config.Battery.PollInterval = battery["pollinterval"] | BATTERY_POLLINTERVAL;
@@ -569,10 +718,12 @@ bool ConfigurationClass::read()
     config.Battery.MaxDischargeTemperature = battery["max_discharge_temp"] | BATTERY_MAX_DISCHARGE_TEMPERATURE;
     config.Battery.Stop_Charging_BatterySoC_Threshold = battery["stop_charging_soc"] | 100;
 
+    JsonObject mcp2515 = doc["mcp2515"];
+    config.MCP2515.Controller_Frequency = mcp2515["can_controller_frequency"] | MCP2515_CAN_CONTROLLER_FREQUENCY;
+
 #ifdef CHARGER_HUAWEI
     JsonObject huawei = doc["huawei"];
     config.Huawei.Enabled = huawei["enabled"] | HUAWEI_ENABLED;
-    config.MPC2515.Controller_Frequency = huawei["can_controller_frequency"] | MCP2515_CAN_CONTROLLER_FREQUENCY;
     config.Huawei.Auto_Power_Enabled = huawei["auto_power_enabled"] | false;
     config.Huawei.Auto_Power_Voltage_Limit = huawei["voltage_limit"] | HUAWEI_AUTO_POWER_VOLTAGE_LIMIT;
     config.Huawei.Auto_Power_Enable_Voltage_Limit = huawei["enable_voltage_limit"] | HUAWEI_AUTO_POWER_ENABLE_VOLTAGE_LIMIT;
@@ -689,7 +840,9 @@ void ConfigurationClass::migrate()
 
     if (config.Cfg.Version < 0x00011b00) {
         // Convert from kHz to Hz
+#ifdef USE_RADIO_CMT
         config.Dtu.Cmt.Frequency *= 1000;
+#endif
     }
 
     config.Cfg.Version = CONFIG_VERSION;

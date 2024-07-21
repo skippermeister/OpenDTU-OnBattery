@@ -11,89 +11,89 @@
 
 bool PylontechCanReceiver::init()
 {
-    return BatteryCanReceiver::init("[Pylontech CAN]");
+    return _initialized = BatteryCanReceiver::init(_isCAN0 ? "[Pylontech CAN0]" : "[Pylontech MCP2515]");
 }
 
 void PylontechCanReceiver::onMessage(twai_message_t rx_message)
 {
     switch (rx_message.identifier) {
         case 0x351: {
-            _stats->_chargeVoltage = this->scaleValue(this->readUnsignedInt16(rx_message.data), 0.1);
-            _stats->_chargeCurrentLimitation = this->scaleValue(this->readSignedInt16(rx_message.data + 2), 0.1);
-            _stats->_dischargeCurrentLimitation = this->scaleValue(this->readSignedInt16(rx_message.data + 4), 0.1);
+            _stats->chargeVoltage = this->scaleValue(this->readUnsignedInt16(rx_message.data), 0.1);
+            _stats->chargeCurrentLimit = this->scaleValue(this->readSignedInt16(rx_message.data + 2), 0.1);
+            _stats->dischargeCurrentLimit = this->scaleValue(this->readSignedInt16(rx_message.data + 4), 0.1);
 
             if (_verboseLogging) {
                 MessageOutput.printf("%s chargeVoltage: %f chargeCurrentLimitation: %f dischargeCurrentLimitation: %f\r\n", _providerName,
-                        _stats->_chargeVoltage, _stats->_chargeCurrentLimitation, _stats->_dischargeCurrentLimitation);
+                        _stats->chargeVoltage, _stats->chargeCurrentLimit, _stats->dischargeCurrentLimit);
             }
             break;
         }
 
         case 0x355: {
-            _stats->setSoC(static_cast<uint8_t>(this->readUnsignedInt16(rx_message.data)), 0/*precision*/, millis());
-            _stats->_stateOfHealth = this->readUnsignedInt16(rx_message.data + 2);
+            _stats->setSoC(static_cast<float>(this->readUnsignedInt16(rx_message.data)), 0/*precision*/, millis());
+            _stats->stateOfHealth = this->readUnsignedInt16(rx_message.data + 2);
 
             if (_verboseLogging) {
-                MessageOutput.printf("%s soc: %d soh: %d\r\n", _providerName, _stats->getSoC(), _stats->_stateOfHealth);
+                MessageOutput.printf("%s soc: %.1f soh: %d\r\n", _providerName, _stats->getSoC(), _stats->stateOfHealth);
             }
             break;
         }
 
         case 0x356: {
-            _stats->setVoltage(this->scaleValue(this->readSignedInt16(rx_message.data), 0.01, millis());
-            _stats->_current = this->scaleValue(this->readSignedInt16(rx_message.data + 2), 0.1);
-            _stats->_temperature = this->scaleValue(this->readSignedInt16(rx_message.data + 4), 0.1);
+            _stats->setVoltage(this->scaleValue(this->readSignedInt16(rx_message.data), 0.01), millis());
+            _stats->current = this->scaleValue(this->readSignedInt16(rx_message.data + 2), 0.1);
+            _stats->temperature = this->scaleValue(this->readSignedInt16(rx_message.data + 4), 0.1);
 
             if (_verboseLogging) {
                 MessageOutput.printf("%s voltage: %f current: %f temperature: %f\r\n", _providerName,
-                        _stats->getVoltage(), _stats->_current, _stats->_temperature);
+                        _stats->getVoltage(), _stats->current, _stats->temperature);
             }
             break;
         }
 
         case 0x359: {
             uint16_t alarmBits = rx_message.data[0];
-            _stats->_alarmOverCurrentDischarge = this->getBit(alarmBits, 7);
-            _stats->_alarmUnderTemperature = this->getBit(alarmBits, 4);
-            _stats->_alarmOverTemperature = this->getBit(alarmBits, 3);
-            _stats->_alarmUnderVoltage = this->getBit(alarmBits, 2);
-            _stats->_alarmOverVoltage= this->getBit(alarmBits, 1);
+            _stats->Alarm.overCurrentDischarge = this->getBit(alarmBits, 7);
+            _stats->Alarm.underTemperature = this->getBit(alarmBits, 4);
+            _stats->Alarm.overTemperature = this->getBit(alarmBits, 3);
+            _stats->Alarm.underVoltage = this->getBit(alarmBits, 2);
+            _stats->Alarm.overVoltage= this->getBit(alarmBits, 1);
 
             alarmBits = rx_message.data[1];
-            _stats->_alarmBmsInternal= this->getBit(alarmBits, 3);
-            _stats->_alarmOverCurrentCharge = this->getBit(alarmBits, 0);
+            _stats->Alarm.bmsInternal = this->getBit(alarmBits, 3);
+            _stats->Alarm.overCurrentCharge = this->getBit(alarmBits, 0);
 
             if (_verboseLogging) {
                 MessageOutput.printf("%s Alarms: %d %d %d %d %d %d %d\r\n", _providerName,
-                        _stats->_alarmOverCurrentDischarge,
-                        _stats->_alarmUnderTemperature,
-                        _stats->_alarmOverTemperature,
-                        _stats->_alarmUnderVoltage,
-                        _stats->_alarmOverVoltage,
-                        _stats->_alarmBmsInternal,
-                        _stats->_alarmOverCurrentCharge);
+                        _stats->Alarm.overCurrentDischarge,
+                        _stats->Alarm.underTemperature,
+                        _stats->Alarm.overTemperature,
+                        _stats->Alarm.underVoltage,
+                        _stats->Alarm.overVoltage,
+                        _stats->Alarm.bmsInternal,
+                        _stats->Alarm.overCurrentCharge);
             }
 
             uint16_t warningBits = rx_message.data[2];
-            _stats->_warningHighCurrentDischarge = this->getBit(warningBits, 7);
-            _stats->_warningLowTemperature = this->getBit(warningBits, 4);
-            _stats->_warningHighTemperature = this->getBit(warningBits, 3);
-            _stats->_warningLowVoltage = this->getBit(warningBits, 2);
-            _stats->_warningHighVoltage = this->getBit(warningBits, 1);
+            _stats->Warning.highCurrentDischarge = this->getBit(warningBits, 7);
+            _stats->Warning.lowTemperature = this->getBit(warningBits, 4);
+            _stats->Warning.highTemperature = this->getBit(warningBits, 3);
+            _stats->Warning.lowVoltage = this->getBit(warningBits, 2);
+            _stats->Warning.highVoltage = this->getBit(warningBits, 1);
 
             warningBits = rx_message.data[3];
-            _stats->_warningBmsInternal= this->getBit(warningBits, 3);
-            _stats->_warningHighCurrentCharge = this->getBit(warningBits, 0);
+            _stats->Warning.bmsInternal= this->getBit(warningBits, 3);
+            _stats->Warning.highCurrentCharge = this->getBit(warningBits, 0);
 
             if (_verboseLogging) {
                 MessageOutput.printf("%s Warnings: %d %d %d %d %d %d %d\r\n", _providerName,
-                        _stats->_warningHighCurrentDischarge,
-                        _stats->_warningLowTemperature,
-                        _stats->_warningHighTemperature,
-                        _stats->_warningLowVoltage,
-                        _stats->_warningHighVoltage,
-                        _stats->_warningBmsInternal,
-                        _stats->_warningHighCurrentCharge);
+                        _stats->Warning.highCurrentDischarge,
+                        _stats->Warning.lowTemperature,
+                        _stats->Warning.highTemperature,
+                        _stats->Warning.lowVoltage,
+                        _stats->Warning.highVoltage,
+                        _stats->Warning.bmsInternal,
+                        _stats->Warning.highCurrentCharge);
             }
             break;
         }
@@ -114,15 +114,15 @@ void PylontechCanReceiver::onMessage(twai_message_t rx_message)
 
         case 0x35C: {
             uint16_t chargeStatusBits = rx_message.data[0];
-            _stats->_chargeEnabled = this->getBit(chargeStatusBits, 7);
-            _stats->_dischargeEnabled = this->getBit(chargeStatusBits, 6);
-            _stats->_chargeImmediately = this->getBit(chargeStatusBits, 5);
+            _stats->chargeEnabled = this->getBit(chargeStatusBits, 7);
+            _stats->dischargeEnabled = this->getBit(chargeStatusBits, 6);
+            _stats->chargeImmediately = this->getBit(chargeStatusBits, 5);
 
             if (_verboseLogging) {
                 MessageOutput.printf("%s chargeStatusBits: %d %d %d\r\n", _providerName,
-                    _stats->_chargeEnabled,
-                    _stats->_dischargeEnabled,
-                    _stats->_chargeImmediately);
+                    _stats->chargeEnabled,
+                    _stats->dischargeEnabled,
+                    _stats->chargeImmediately);
             }
 
             break;
@@ -153,60 +153,60 @@ void PylontechCanReceiver::dummyData()
 
     _stats->setManufacturer("Pylontech US3000C");
     _stats->setSoC(42, 0, millis());
-    _stats->_chargeVoltage = dummyFloat(50);
-    _stats->_chargeCurrentLimitation = dummyFloat(33);
-    _stats->_dischargeCurrentLimitation = dummyFloat(12);
-    _stats->_stateOfHealth = 99;
+    _stats->chargeVoltage = dummyFloat(50);
+    _stats->chargeCurrentLimit = dummyFloat(33);
+    _stats->dischargeCurrentLimit = dummyFloat(12);
+    _stats->stateOfHealth = 99;
     _stats->setVoltage(48.67, millis());
-    _stats->_current = dummyFloat(-1);
-    _stats->_temperature = dummyFloat(20);
+    _stats->current = dummyFloat(-1);
+    _stats->temperature = dummyFloat(20);
 
-    _stats->_chargeEnabled = true;
-    _stats->_dischargeEnabled = true;
-    _stats->_chargeImmediately = false;
+    _stats->chargeEnabled = true;
+    _stats->dischargeEnabled = true;
+    _stats->chargeImmediately = false;
 
-    _stats->_warningHighCurrentDischarge = false;
-    _stats->_warningHighCurrentCharge = false;
-    _stats->_warningLowTemperature = false;
-    _stats->_warningHighTemperature = false;
-    _stats->_warningLowVoltage = false;
-    _stats->_warningHighVoltage = false;
-    _stats->_warningBmsInternal = false;
+    _stats->Warning.highCurrentDischarge = false;
+    _stats->Warning.highCurrentCharge = false;
+    _stats->Warning.lowTemperature = false;
+    _stats->Warning.highTemperature = false;
+    _stats->Warning.lowVoltage = false;
+    _stats->Warning.highVoltage = false;
+    _stats->Warning.bmsInternal = false;
 
-    _stats->_alarmOverCurrentDischarge = false;
-    _stats->_alarmOverCurrentCharge = false;
-    _stats->_alarmUnderTemperature = false;
-    _stats->_alarmOverTemperature = false;
-    _stats->_alarmUnderVoltage = false;
-    _stats->_alarmOverVoltage = false;
-    _stats->_alarmBmsInternal = false;
+    _stats->Alarm.overCurrentDischarge = false;
+    _stats->Alarm.overCurrentCharge = false;
+    _stats->Alarm.underTemperature = false;
+    _stats->Alarm.overTemperature = false;
+    _stats->Alarm.underVoltage = false;
+    _stats->Alarm.overVoltage = false;
+    _stats->Alarm.bmsInternal = false;
 
     if (issues == 1 || issues == 3) {
-        _stats->_warningHighCurrentDischarge = true;
-        _stats->_warningHighCurrentCharge = true;
-        _stats->_warningLowTemperature = true;
-        _stats->_warningHighTemperature = true;
-        _stats->_warningLowVoltage = true;
-        _stats->_warningHighVoltage = true;
-        _stats->_warningBmsInternal = true;
+        _stats->Warning.highCurrentDischarge = true;
+        _stats->Warning.highCurrentCharge = true;
+        _stats->Warning.lowTemperature = true;
+        _stats->Warning.highTemperature = true;
+        _stats->Warning.lowVoltage = true;
+        _stats->Warning.highVoltage = true;
+        _stats->Warning.bmsInternal = true;
     }
 
     if (issues == 2 || issues == 3) {
-        _stats->_alarmOverCurrentDischarge = true;
-        _stats->_alarmOverCurrentCharge = true;
-        _stats->_alarmUnderTemperature = true;
-        _stats->_alarmOverTemperature = true;
-        _stats->_alarmUnderVoltage = true;
-        _stats->_alarmOverVoltage = true;
-        _stats->_alarmBmsInternal = true;
+        _stats->Alarm.overCurrentDischarge = true;
+        _stats->Alarm.overCurrentCharge = true;
+        _stats->Alarm.underTemperature = true;
+        _stats->Alarm.overTemperature = true;
+        _stats->Alarm.underVoltage = true;
+        _stats->Alarm.overVoltage = true;
+        _stats->Alarm.bmsInternal = true;
     }
 
     if (issues == 4) {
-        _stats->_warningHighCurrentCharge = true;
-        _stats->_warningLowTemperature = true;
-        _stats->_alarmUnderVoltage = true;
-        _stats->_dischargeEnabled = false;
-        _stats->_chargeImmediately = true;
+        _stats->Warning.highCurrentCharge = true;
+        _stats->Warning.lowTemperature = true;
+        _stats->Alarm.underVoltage = true;
+        _stats->dischargeEnabled = false;
+        _stats->chargeImmediately = true;
     }
 
     issues = (issues + 1) % 5;

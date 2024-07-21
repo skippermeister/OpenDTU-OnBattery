@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #pragma once
 
-#include "Configuration.h"
-#include <Arduino.h>
 #include <Hoymiles.h>
 #include <TaskSchedulerDeclarations.h>
 #include <TimeoutHelper.h>
@@ -73,9 +71,6 @@ public:
     void setMode(Mode m) { _mode = m; }
     Mode getMode() const { return _mode; }
     void calcNextInverterRestart();
-
-    bool getVerboseLogging(void) { return _verboseLogging; };
-    void setVerboseLogging(bool logging) { _verboseLogging = logging; };
 
 private:
     void loop();

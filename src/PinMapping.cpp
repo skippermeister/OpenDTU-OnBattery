@@ -703,14 +703,14 @@ void PinMappingClass::createPinMappingJson() const
     battery_connected_inverter["pre_charge"] = _pinMapping.pre_charge;
     battery_connected_inverter["full_power"] = _pinMapping.full_power;
 
-    PowerMeterClass::Source source = static_cast<PowerMeterClass::Source>(Configuration.get().PowerMeter.Source);
+    PowerMeterProvider::Type source = static_cast<PowerMeterProvider::Type>(Configuration.get().PowerMeter.Source);
     JsonObject powermeter = doc["powermeter"].to<JsonObject>();
-    if (source == PowerMeterClass::Source::SML)
+    if (source == PowerMeterProvider::Type::SERIAL_SML)
     {
         powermeter["sml_rs232_rx"] = _pinMapping.powermeter_rx;
         if (_pinMapping.powermeter_tx >= 0) powermeter["sml_rs232_tx"] = _pinMapping.powermeter_tx;
-    } else if (   source == PowerMeterClass::Source::SDM1PH
-               || source == PowerMeterClass::Source::SDM3PH)
+    } else if (   source == PowerMeterProvider::Type::SDM1PH
+               || source == PowerMeterProvider::Type::SDM3PH)
     {
         powermeter["sdm_rs485_rx"] = _pinMapping.powermeter_rx;
         powermeter["sdm_rs485_tx"] = _pinMapping.powermeter_tx;

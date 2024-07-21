@@ -9,8 +9,6 @@
 
 bool MqttBattery::init()
 {
-    _verboseLogging = Battery._verboseLogging;
-
     auto const& config = Configuration.get();
 
     _socTopic = config.Battery.Mqtt.SocTopic;
@@ -43,6 +41,8 @@ bool MqttBattery::init()
         }
     }
 
+    _initialized = true;
+
     return true;
 }
 
@@ -55,6 +55,8 @@ void MqttBattery::deinit()
     if (!_socTopic.isEmpty()) {
         MqttSettings.unsubscribe(_socTopic);
     }
+
+    _initialized = false;
 }
 
 std::optional<float> MqttBattery::getFloat(std::string const& src, char const* topic) {

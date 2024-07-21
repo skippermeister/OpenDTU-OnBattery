@@ -74,8 +74,11 @@
                                                     <tr v-for="(prop, key) in batteryData.values" v-bind:key="key">
                                                         <th scope="row">{{ $t('battery.' + key) }}</th>
                                                         <td style="text-align: right; padding-right: 0;">
-                                                            <template v-if="typeof prop === 'string'">
-                                                                {{ $t('battery.' + prop) }}
+                                                            <template v-if="isStringValue(prop) && prop.translate">
+                                                                {{ $t('battery.' + prop.value) }}
+                                                            </template>
+                                                            <template v-else-if="isStringValue(prop)">
+                                                                {{ prop.value }}
                                                             </template>
                                                             <template v-else>
                                                                 {{ $n(prop.v, 'decimal', {
@@ -83,9 +86,12 @@
                                                                     maximumFractionDigits: prop.d})
                                                                 }}
                                                             </template>
-                                                       </td>
-                                                        <td v-if="typeof prop === 'string'"></td>
-                                                        <td v-else>{{prop.u}}</td>
+                                                        </td>
+                                                        <td>
+                                                            <template v-if="!isStringValue(prop)">
+                                                                {{prop.u}}
+                                                            </template>
+                                                        </td>
                                                     </tr>
                                                 </tbody>
                                             </table>
@@ -141,8 +147,11 @@
                                                     <tr v-for="(prop, key) in pack.values" v-bind:key="key">
                                                         <th scope="row">{{ $t('battery.' + key) }}</th>
                                                         <td style="text-align: right; padding-right: 0;">
-                                                            <template v-if="typeof prop === 'string'">
-                                                                {{ $t('battery.' + prop) }}
+                                                            <template v-if="isStringValue(prop) && prop.translate">
+                                                                {{ $t('battery.' + prop.value) }}
+                                                            </template>
+                                                            <template v-else-if="isStringValue(prop)">
+                                                                {{ prop.value }}
                                                             </template>
                                                             <template v-else>
                                                                 {{ $n(prop.v, 'decimal', {
@@ -151,8 +160,11 @@
                                                                 }}
                                                             </template>
                                                         </td>
-                                                        <td v-if="typeof prop === 'string'"></td>
-                                                        <td v-else>{{prop.u}}</td>
+                                                        <td>
+                                                            <template v-if="!isStringValue(prop)">
+                                                                {{prop.u}}
+                                                            </template>
+                                                        </td>
                                                     </tr>
                                                 </tbody>
                                             </table>
@@ -242,8 +254,11 @@
                                                     <tr v-for="(prop, key) in pack.parameters" v-bind:key="key">
                                                         <th scope="row">{{ $t('battery.' + key) }}</th>
                                                         <td style="text-align: right; padding-right: 0;">
-                                                            <template v-if="typeof prop === 'string'">
-                                                                {{ $t('battery.' + prop) }}
+                                                            <template v-if="isStringValue(prop) && prop.translate">
+                                                                {{ $t('battery.' + prop.value) }}
+                                                            </template>
+                                                            <template v-else-if="isStringValue(prop)">
+                                                                {{ prop.value }}
                                                             </template>
                                                             <template v-else>
                                                                 {{ $n(prop.v, 'decimal', {
@@ -252,8 +267,11 @@
                                                                 }}
                                                             </template>
                                                         </td>
-                                                        <td v-if="typeof prop === 'string'"></td>
-                                                        <td v-else>{{prop.u}}</td>
+                                                        <td>
+                                                            <template v-if="!isStringValue(prop)">
+                                                                {{prop.u}}
+                                                            </template>
+                                                        </td>
                                                     </tr>
                                                 </tbody>
                                             </table>
@@ -278,7 +296,8 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import type { Pack, BatteryData } from '@/types/BatteryDataStatus';
+import type { Pack, BatteryData, StringValue } from '@/types/BatteryDataStatus';
+import type { ValueObject } from '@/types/LiveDataStatus';
 import { handleResponse, authHeader, authUrl } from '@/utils/authentication';
 import * as bootstrap from 'bootstrap';
 
@@ -339,6 +358,9 @@ export default defineComponent({
         }
   },
   methods: {
+    isStringValue(value: ValueObject | StringValue) : value is StringValue {
+      return value && typeof value === 'object' && 'translate' in value;
+    },
     getInitialData() {
       console.log("Get initalData for Battery");
       this.dataLoading = true;

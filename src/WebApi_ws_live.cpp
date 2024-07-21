@@ -74,9 +74,7 @@ void WebApiWsLiveClass::generateOnBatteryJsonResponse(JsonVariant& root, bool al
             addTotalField(totalVeObj, "YieldTotal", VictronMppt.getYieldTotal(), "kWh", 2);
         }
 
-        if (!all) {
-            _lastPublishVictron = millis();
-        }
+        if (!all) { _lastPublishVictron = millis(); }
     }
 
 #ifdef CHARGER_HUAWEI
@@ -98,9 +96,7 @@ void WebApiWsLiveClass::generateOnBatteryJsonResponse(JsonVariant& root, bool al
         }
 #endif
 
-        if (!all) {
-            _lastPublishCharger = millis();
-        }
+        if (!all) { _lastPublishCharger = millis(); }
     }
 
     auto spStats = Battery.getStats();
@@ -112,23 +108,19 @@ void WebApiWsLiveClass::generateOnBatteryJsonResponse(JsonVariant& root, bool al
             addTotalField(batteryObj, "soc", spStats->getSoC(), "%", 1);
         }
 
-        if (!all) {
-            _lastPublishBattery = millis();
-        }
+        if (!all) { _lastPublishBattery = millis(); }
     }
 
-    if (all || (PowerMeter.getLastPowerMeterUpdate() - _lastPublishPowerMeter) < halfOfAllMillis) {
+    if (all || (PowerMeter.getLastUpdate() - _lastPublishPowerMeter) < halfOfAllMillis) {
         auto powerMeterObj = root["power_meter"].to<JsonObject>();
         powerMeterObj["enabled"] = Configuration.get().PowerMeter.Enabled;
 
         if (config.PowerMeter.Enabled) {
-            addTotalField(powerMeterObj, "GridPower", PowerMeter.getPowerTotal(false), "W", 1);
+            addTotalField(powerMeterObj, "GridPower", PowerMeter.getPowerTotal(), "W", 1);
             addTotalField(powerMeterObj, "HousePower", PowerMeter.getHousePower(), "W", 1);
         }
 
-        if (!all) {
-            _lastPublishPowerMeter = millis();
-        }
+        if (!all) { _lastPublishPowerMeter = millis(); }
     }
 
     auto refusolObj = root["refusol"].to<JsonObject>();

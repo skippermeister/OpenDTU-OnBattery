@@ -20,6 +20,7 @@ public:
     void unsubscribe(const String& topic);
 
     String getPrefix() const;
+    String getClientId();
 
     bool getVerboseLogging(void) { return _verboseLogging; };
     void setVerboseLogging(bool logging) { _verboseLogging = logging; };

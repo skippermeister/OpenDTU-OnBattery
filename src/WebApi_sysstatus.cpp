@@ -75,11 +75,18 @@ void WebApiSysstatusClass::onSystemStatus(AsyncWebServerRequest* request)
     root["nrf_configured"] = PinMapping.isValidNrf24Config();
     root["nrf_connected"] = Hoymiles.getRadioNrf()->isConnected();
     root["nrf_pvariant"] = Hoymiles.getRadioNrf()->isPVariant();
+#else
+    root["nrf_configured"] = false;
+    root["nrf_connected"] = false;
+    root["nrf_pvariant"] = false;
 #endif
 
 #ifdef USE_RADIO_CMT
     root["cmt_configured"] = PinMapping.isValidCmt2300Config();
     root["cmt_connected"] = Hoymiles.getRadioCmt()->isConnected();
+#else
+    root["cmt_configured"] = false;
+    root["cmt_connected"] = false;
 #endif
 
     WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);

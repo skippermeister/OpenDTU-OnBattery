@@ -6,7 +6,6 @@
 
 #include "WebApi_ws_MeanWell.h"
 #include "AsyncJson.h"
-#include "Configuration.h"
 #include "MeanWell_can.h"
 #include "MessageOutput.h"
 #include "Utils.h"

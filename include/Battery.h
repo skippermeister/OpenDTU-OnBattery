@@ -16,7 +16,10 @@ public:
     virtual void deinit() = 0;
     virtual void loop() = 0;
     virtual std::shared_ptr<BatteryStats> getStats() const = 0;
-    virtual bool usesHwPort2() const { return false; }
+
+    virtual bool initialized() const = 0;
+
+    bool _verboseLogging = false;
 };
 
 class BatteryClass {
@@ -27,14 +30,19 @@ public:
 
     std::shared_ptr<BatteryStats const> getStats() const;
 
-    bool _verboseLogging = false;
+    bool initialized() {
+            if (_upProvider)
+                return _upProvider->initialized();
+            else
+                return false;
+    }
 
 private:
     void loop();
 
     Task _loopTask;
 
-     mutable std::mutex _mutex;
+    mutable std::mutex _mutex;
     std::unique_ptr<BatteryProvider> _upProvider = nullptr;
 };
 

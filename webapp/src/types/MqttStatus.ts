@@ -2,6 +2,7 @@ export interface MqttStatus {
     enabled: boolean;
     hostname: string;
     port: number;
+    clientid: string;
     username: string;
     topic: string;
     publish_interval: number;

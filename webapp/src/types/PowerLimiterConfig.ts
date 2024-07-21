@@ -21,7 +21,7 @@ export interface PowerLimiterMetaData {
 
 export interface PowerLimiterConfig {
     enabled: boolean;
-    pollinterval: number;
+    interval: number;
     updatesonly: boolean;
     verbose_logging: boolean;
     solar_passthrough_enabled: boolean;
@@ -29,6 +29,7 @@ export interface PowerLimiterConfig {
     battery_always_use_at_night: boolean;
     is_inverter_behind_powermeter: boolean;
     is_inverter_solar_powered: boolean;
+    use_overscaling_to_compensate_shading: boolean;
     inverter_id: number;
     inverter_serial: string;
     inverter_channel_id: number;
