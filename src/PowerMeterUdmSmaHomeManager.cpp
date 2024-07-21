@@ -19,7 +19,7 @@ constexpr uint32_t interval = 1000;
 void PowerMeterUdpSmaHomeManager::Soutput(int kanal, int index, int art, int tarif,
         char const* name, float value, uint32_t timestamp)
 {
-    if (PowerMeter.getVerboseLogging()) {
+    if (_verboseLogging) {
         MessageOutput.printf("%s %s = %.1f (timestamp %d)\r\n", TAG, name, value, timestamp);
     }
 }

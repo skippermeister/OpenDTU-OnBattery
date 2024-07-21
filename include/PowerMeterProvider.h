@@ -29,8 +29,12 @@ public:
     uint32_t getLastUpdate() const { return _lastUpdate; }
     void mqttLoop() const;
 
+    bool _verboseLogging = false;
+
 protected:
     PowerMeterProvider() {
+        auto const& config = Configuration.get();
+        _verboseLogging = config.PowerMeter.VerboseLogging;
     }
 
     void gotUpdate() { _lastUpdate = millis(); }

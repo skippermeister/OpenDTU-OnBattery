@@ -54,7 +54,7 @@ void PowerMeterSml::processSmlByte(uint8_t byte)
                 float helper = 0.0;
                 handler.decoder(helper);
 
-                if (PowerMeter.getVerboseLogging()) {
+                if (_verboseLogging) {
                     MessageOutput.printf("[%s] decoded %s to %.2f\r\n",
                             _user.c_str(), handler.name, helper);
                 }

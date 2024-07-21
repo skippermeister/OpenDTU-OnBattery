@@ -16,8 +16,6 @@ public:
     float getHousePower() const;
     uint32_t getLastUpdate() const;
     bool isDataValid() const;
-    bool getVerboseLogging() {return _verboseLogging; };
-    void setVerboseLogging(bool val) { _verboseLogging = val; };
 
 private:
     void loop();

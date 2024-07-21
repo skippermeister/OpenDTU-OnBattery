@@ -57,9 +57,7 @@ void PowerMeterClass::updateSettings()
             break;
     }
 
-    if (!_upProvider->init()) {
-        _upProvider = nullptr;
-    }
+    if (!_upProvider->init()) { MessageOutput.println("Error powermeter provider"); _upProvider = nullptr; }
 }
 
 float PowerMeterClass::getHousePower() const

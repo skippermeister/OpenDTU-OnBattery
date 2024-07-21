@@ -186,6 +186,7 @@ struct Ntp_CONFIG_T {
 
 struct PowerMeter_CONFIG_T {
     bool Enabled;
+    bool VerboseLogging;
     bool UpdatesOnly;
     uint32_t Source;
     PowerMeterMqttConfig Mqtt;

@@ -231,6 +231,7 @@ bool ConfigurationClass::write()
 
     JsonObject powermeter = doc["powermeter"].to<JsonObject>();
     powermeter["enabled"] = config.PowerMeter.Enabled;
+    powermeter["verbose_logging"] = config.PowerMeter.VerboseLogging;
     powermeter["updatesonly"] = config.PowerMeter.UpdatesOnly;
     powermeter["source"] = config.PowerMeter.Source;
 
@@ -248,6 +249,7 @@ bool ConfigurationClass::write()
 
     JsonObject powerlimiter = doc["powerlimiter"].to<JsonObject>();
     powerlimiter["enabled"] = config.PowerLimiter.Enabled;
+    powerlimiter["verbose_logging"] = config.PowerLimiter.VerboseLogging;
     powerlimiter["updatesonly"] = config.PowerLimiter.UpdatesOnly;
     powerlimiter["interval"] = config.PowerLimiter.Interval;
     powerlimiter["solar_passthrough_enabled"] = config.PowerLimiter.SolarPassThroughEnabled;
@@ -609,6 +611,7 @@ bool ConfigurationClass::read()
 
     JsonObject powermeter = doc["powermeter"];
     config.PowerMeter.Enabled = powermeter["enabled"] | POWERMETER_ENABLED;
+    config.PowerMeter.VerboseLogging = powermeter["verbose_logging"] | false;
     config.PowerMeter.UpdatesOnly = powermeter["updatesonly"] | POWERMETER_UPDATESONLY;
     config.PowerMeter.Source = powermeter["source"] | POWERMETER_SOURCE;
 

@@ -37,7 +37,7 @@ void WebApiPowerMeterClass::onStatus(AsyncWebServerRequest* request)
 
     root["enabled"] = cPM.Enabled;
     root["updatesonly"] = cPM.UpdatesOnly;
-    root["verbose_logging"] = PowerMeter.getVerboseLogging();
+    root["verbose_logging"] = cPM.VerboseLogging;
     root["source"] = cPM.Source;
     auto mqtt = root["mqtt"].to<JsonObject>();
     Configuration.serializePowerMeterMqttConfig(cPM.Mqtt, mqtt);
@@ -147,7 +147,7 @@ void WebApiPowerMeterClass::onAdminPost(AsyncWebServerRequest* request)
 
     CONFIG_T& config = Configuration.get();
     config.PowerMeter.Enabled = root["enabled"].as<bool>();
-    PowerMeter.setVerboseLogging(root["verbose_logging"].as<bool>());
+    config.PowerMeter.VerboseLogging = root["verbose_logging"].as<bool>();
     config.PowerMeter.Source = root["source"].as<uint8_t>();
     config.PowerMeter.UpdatesOnly = root["updatesonly"].as<uint32_t>();
 

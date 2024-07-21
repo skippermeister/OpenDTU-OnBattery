@@ -93,7 +93,7 @@ void PowerMeterMqtt::onMessage(PowerMeterMqtt::MsgProperties const& properties,
 
     if (cfg->SignInverted) { *targetVariable *= -1; }
 
-    if (PowerMeter.getVerboseLogging()) {
+    if (_verboseLogging) {
         log("new value: %5.2f, total: %5.2f", *targetVariable, getPowerTotal());
     }
 

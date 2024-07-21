@@ -140,7 +140,7 @@ bool PowerMeterSerialSdm::readValue(std::unique_lock<std::mutex>& lock, uint16_t
 
     switch (err) {
         case SDM_ERR_NO_ERROR:
-            if (PowerMeter.getVerboseLogging()) {
+            if (_verboseLogging) {
                 MessageOutput.printf("%s: read register %d "
                         "(0x%04x) successfully\r\n", TAG, reg, reg);
             }
@@ -225,7 +225,7 @@ void PowerMeterSerialSdm::pollingLoop()
             _energyImport = static_cast<float>(energyImport);
             _energyExport = static_cast<float>(energyExport);
 
-            if (PowerMeter.getVerboseLogging()) {
+            if (_verboseLogging) {
                 MessageOutput.printf("%s%s Round trip %lu ms\r\n", TAG, "task", millis() - _lastPoll);
                 MessageOutput.printf("%s TotalPower: %.2f\r\n", TAG, getPowerTotal());
             }

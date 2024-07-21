@@ -95,7 +95,7 @@ void PowerMeterHttpJson::pollingLoop()
         auto res = poll();
         lock.lock();
 
-        if (PowerMeter.getVerboseLogging()) {
+        if (_verboseLogging) {
             MessageOutput.printf("%s%s Round trip %lu ms\r\n", TAG, "task", millis() - _lastPoll);
         }
 
@@ -104,7 +104,7 @@ void PowerMeterHttpJson::pollingLoop()
             continue;
         }
 
-        if (PowerMeter.getVerboseLogging()) MessageOutput.printf("%s New total: %.2fW\r\n", TAG, getPowerTotal());
+        if (_verboseLogging) MessageOutput.printf("%s New total: %.2fW\r\n", TAG, getPowerTotal());
 
         gotUpdate();
     }
