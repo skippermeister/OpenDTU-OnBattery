@@ -1029,6 +1029,42 @@ void MeanWellCanClass::loop()
         if (_verboseLogging) MessageOutput.println();
 
     } else { // not automatic mode
+
+        // Full charge or immediately charge requests handling in "non Automatic" mode
+        static bool _FullChargeRequest = false;
+        static bool _ChargeImmediately = false;
+        if (Battery.getStats()->getFullChargeRequest()) _FullChargeRequest = true;
+        if (Battery.getStats()->getChargeImmediately()) _ChargeImmediately = true;
+        if ( (Battery.getStats()->getFullChargeRequest() || _FullChargeRequest
+              || Battery.getStats()->getChargeImmediately() || _ChargeImmediately)
+            && !Battery.getStats()->getAlarm().overVoltage
+            && Battery.getStats()->getAlarm().underTemperature
+            && Battery.getStats()->getAlarm().overTemperature
+            && Battery.getStats()->isChargeTemperatureValid()
+            && SunPosition.isDayPeriod()
+            && Battery.getStats()->getChargeEnabled())
+        {
+            if (!_rp.operation) {
+                if (_verboseLogging) MessageOutput.printf("%s charge request\r\n", _FullChargeRequest?"Full":"Immediately");
+
+                setPower(true);
+                setValue(cMeanWell.MaxCurrent, MEANWELL_SET_CURRENT); // set maximum current to start charging
+                setValue(cMeanWell.MaxCurrent, MEANWELL_SET_CURVE_CC); // set maximum current to start charging
+                setValue(Battery.getStats()->getRecommendedChargeVoltageLimit() - 0.25f, MEANWELL_SET_CURVE_CV); // set to battery recommended charge voltage according to BMS value and user manual
+                setValue(Battery.getStats()->getRecommendedChargeVoltageLimit() - 0.30f, MEANWELL_SET_CURVE_FV); // set to battery recommended charge voltage according to BMS value and user manual
+                setValue(Battery.getStats()->getRecommendedChargeVoltageLimit() - 0.25f, MEANWELL_SET_VOLTAGE); // set to battery recommended charge voltage according to BMS value and user manual
+            }
+
+            if (_ChargeImmediately && !_FullChargeRequest && Battery.getStats()->getSoC() >= Configuration.get().Battery.Stop_Charging_BatterySoC_Threshold ) {
+                switchChargerOff("Battery immediately charge completed");
+                _ChargeImmediately = false;
+            }
+            if (_FullChargeRequest && Battery.getStats()->getSoC() >= 99.9 ) {
+                switchChargerOff("Battery full charge completed");
+                _FullChargeRequest = false;
+            }
+        }
+
         /*
                         if (_rp.Operation) {
                                 if (GridPower < -(180-_rp.output_power)) {
