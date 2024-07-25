@@ -243,6 +243,11 @@ struct Battery_CONFIG_T {
         char VoltageTopic[MQTT_MAX_TOPIC_STRLEN + 1];
     } Mqtt;
 #endif
+#if defined(USE_MQTT_BATTERY) || defined(USE_VICTRON_SMART_SHUNT)
+    float RecommendedChargeVoltage;
+    float RecommendedDischargeVoltage;
+#endif
+
     bool UpdatesOnly;
     int8_t MinChargeTemperature;
     int8_t MaxChargeTemperature;
@@ -303,6 +308,10 @@ struct MeanWell_CONFIG_T {
     float MaxVoltage;
     float MinCurrent;
     float MaxCurrent;
+    float VoltageLimitMin;
+    float VoltageLimitMax;
+    float CurrentLimitMin;
+    float CurrentLimitMax;
     float Hysteresis;
     bool mustInverterProduce;
 };

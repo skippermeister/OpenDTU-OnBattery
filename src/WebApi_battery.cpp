@@ -59,6 +59,15 @@ void WebApiBatteryClass::onStatus(AsyncWebServerRequest* request)
     root["min_discharge_temp"] = cBattery.MinDischargeTemperature;
     root["max_discharge_temp"] = cBattery.MaxDischargeTemperature;
     root["stop_charging_soc"] = cBattery.Stop_Charging_BatterySoC_Threshold;
+
+#if defined(USE_MQTT_BATTERY) || defined(USE_VICTRON_SMART_SHUNT)
+    root["recommended_charge_voltage"] = cBattery.RecommendedChargeVoltage;
+    root["recommended_discharge_voltage"] = cBattery.RecommendedDischargeVoltage;
+#else
+    root["recommended_charge_voltage"] = 0;
+    root["recommended_discharge_voltage"] = 0;
+#endif
+
     root["verbose_logging"] = cBattery.VerboseLogging;
 
     WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
@@ -130,6 +139,11 @@ void WebApiBatteryClass::onAdminPost(AsyncWebServerRequest* request)
     strlcpy(cBattery.Mqtt.VoltageTopic, root["mqtt_voltage_topic"].as<String>().c_str(), sizeof(cBattery.Mqtt.VoltageTopic));
 #endif
     cBattery.Stop_Charging_BatterySoC_Threshold = root["stop_charging_soc"].as<uint8_t>();
+
+#if defined(USE_MQTT_BATTERY) || defined(USE_VICTRON_SMART_SHUNT)
+    cBattery.RecommendedChargeVoltage = root["recommended_charge_voltage"].as<float>();
+    cBattery.RecommendedDischargeVoltage = root["recommended_discharge_voltage"].as<float>();
+#endif
 
     cBattery.VerboseLogging = root["verbose_logging"].as<bool>();
 

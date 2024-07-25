@@ -8,6 +8,7 @@
 #include "Configuration.h"
 #include "MqttSettings.h"
 #include "NetworkSettings.h"
+#include "MqttHandleHass.h"
 #include "MessageOutput.h"
 #include "VictronMppt.h"
 #include "Utils.h"
@@ -210,10 +211,11 @@ void MqttHandleVedirectHassClass::createDeviceInfo(JsonObject& object,
     String serial = mpptData.serialNr_SER;
     object["name"] = "Victron(" + serial + ")";
     object["ids"] = serial;
-    object["cu"] = String("http://") + NetworkSettings.localIP().toString();
+    object["cu"] = MqttHandleHass.getDtuUrl();
     object["mf"] = "OpenDTU";
     object["mdl"] = mpptData.getPidAsString();
     object["sw"] = __COMPILED_GIT_HASH__;
+    object["via_device"] = MqttHandleHass.getDtuUniqueId();
 }
 
 void MqttHandleVedirectHassClass::publish(const String& subtopic, const String& payload)

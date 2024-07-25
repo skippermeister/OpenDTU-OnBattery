@@ -178,16 +178,15 @@ void WebApiMeanWellClass::onLimitPost(AsyncWebServerRequest* request)
 
     if (root.containsKey("voltageValid")) {
         if (root["voltageValid"].as<bool>()) {
-            if (root["voltage"].as<float>() < cMeanWell.MinVoltage
-                || root["voltage"].as<float>() > cMeanWell.MaxVoltage) {
-                retMsg["message"] = "voltage not in range between " + String(cMeanWell.MinVoltage,0) + "V and " + String(cMeanWell.MaxVoltage,0) + "V !";
+            value = root["voltage"].as<float>();
+            if (value < cMeanWell.VoltageLimitMin || value > cMeanWell.VoltageLimitMax) {
+                retMsg["message"] = "voltage not in range between " + String(cMeanWell.VoltageLimitMin,0) + "V and " + String(cMeanWell.VoltageLimitMax,0) + "V !";
                 retMsg["code"] = WebApiError::LimitInvalidLimit;
-                retMsg["param"]["max"] = cMeanWell.MaxVoltage;
-                retMsg["param"]["min"] = cMeanWell.MinVoltage;
+                retMsg["param"]["max"] = cMeanWell.VoltageLimitMax;
+                retMsg["param"]["min"] = cMeanWell.VoltageLimitMin;
                 WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
                 return;
             } else {
-                value = root["voltage"].as<float>();
                 MeanWellCan.setValue(value, MEANWELL_SET_VOLTAGE);
             }
         }
@@ -195,16 +194,15 @@ void WebApiMeanWellClass::onLimitPost(AsyncWebServerRequest* request)
 
     if (root.containsKey("currentValid")) {
         if (root["currentValid"].as<bool>()) {
-            if (root["current"].as<float>() < cMeanWell.MinCurrent
-                || root["current"].as<float>() > cMeanWell.MaxCurrent) {
-                retMsg["message"] = "current must be in range between " + String(cMeanWell.MinCurrent,2) + "A and " + String(cMeanWell.MaxCurrent,2) + "A !";
+            value = root["current"].as<float>();
+            if (value < cMeanWell.CurrentLimitMin || value > cMeanWell.CurrentLimitMax) {
+                retMsg["message"] = "current must be in range between " + String(cMeanWell.CurrentLimitMin,2) + "A and " + String(cMeanWell.CurrentLimitMax,2) + "A !";
                 retMsg["code"] = WebApiError::LimitInvalidLimit;
-                retMsg["param"]["max"] = cMeanWell.MaxCurrent;
-                retMsg["param"]["min"] = cMeanWell.MinCurrent;
+                retMsg["param"]["max"] = cMeanWell.CurrentLimitMax;
+                retMsg["param"]["min"] = cMeanWell.CurrentLimitMin;
                 WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
                 return;
             } else {
-                value = root["current"].as<float>();
                 MeanWellCan.setValue(value, MEANWELL_SET_CURRENT);
             }
         }
@@ -212,16 +210,15 @@ void WebApiMeanWellClass::onLimitPost(AsyncWebServerRequest* request)
 
     if (root.containsKey("curveCVvalid")) {
         if (root["curveCVvalid"].as<bool>()) {
-            if (root["curveCV"].as<float>() < cMeanWell.MinVoltage
-                || root["curveCV"].as<float>() > cMeanWell.MaxVoltage) {
-                retMsg["message"] = "voltage not in range between " + String(cMeanWell.MinVoltage,0) + "V and " + String(cMeanWell.MaxVoltage,0) +"V !";
+            value = root["curveCV"].as<float>();
+            if (value < cMeanWell.VoltageLimitMin || value > cMeanWell.VoltageLimitMax) {
+                retMsg["message"] = "voltage not in range between " + String(cMeanWell.VoltageLimitMin,0) + "V and " + String(cMeanWell.VoltageLimitMax,0) +"V !";
                 retMsg["code"] = WebApiError::LimitInvalidLimit;
-                retMsg["param"]["max"] = cMeanWell.MaxVoltage;
-                retMsg["param"]["min"] = cMeanWell.MinVoltage;
+                retMsg["param"]["max"] = cMeanWell.VoltageLimitMax;
+                retMsg["param"]["min"] = cMeanWell.VoltageLimitMin;
                 WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
                 return;
             } else {
-                value = root["curveCV"].as<float>();
                 MeanWellCan.setValue(value, MEANWELL_SET_CURVE_CV);
             }
         }
@@ -229,16 +226,15 @@ void WebApiMeanWellClass::onLimitPost(AsyncWebServerRequest* request)
 
     if (root.containsKey("curveCCvalid")) {
         if (root["curveCCvalid"].as<bool>()) {
-            if (root["curveCC"].as<float>() < cMeanWell.MinCurrent
-                || root["curveCC"].as<float>() > cMeanWell.MaxCurrent) {
-                retMsg["message"] = "Curve constant current must be in range between " + String(cMeanWell.MinCurrent,2) + "A and " + String(cMeanWell.MaxCurrent,2) + "A !";
+            value = root["curveCC"].as<float>();
+            if (value < cMeanWell.CurrentLimitMin || value > cMeanWell.CurrentLimitMax) {
+                retMsg["message"] = "Curve constant current must be in range between " + String(cMeanWell.CurrentLimitMin,2) + "A and " + String(cMeanWell.CurrentLimitMax,2) + "A !";
                 retMsg["code"] = WebApiError::LimitInvalidLimit;
-                retMsg["param"]["max"] = cMeanWell.MaxCurrent;
-                retMsg["param"]["min"] = cMeanWell.MinCurrent;
+                retMsg["param"]["max"] = cMeanWell.CurrentLimitMax;
+                retMsg["param"]["min"] = cMeanWell.CurrentLimitMin;
                 WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
                 return;
             } else {
-                value = root["curveCC"].as<float>();
                 MeanWellCan.setValue(value, MEANWELL_SET_CURVE_CC);
             }
         }
@@ -246,16 +242,15 @@ void WebApiMeanWellClass::onLimitPost(AsyncWebServerRequest* request)
 
     if (root.containsKey("curveFVvalid")) {
         if (root["curveFVvalid"].as<bool>()) {
-            if (root["curveFV"].as<float>() < cMeanWell.MinVoltage
-                || root["curveFV"].as<float>() > cMeanWell.MaxVoltage) {
-                retMsg["message"] = "Curve float voltage not in range between " + String(cMeanWell.MinVoltage,0) + "V and " + String(cMeanWell.MaxVoltage,0) + "V !";
+            value = root["curveFV"].as<float>();
+            if (value < cMeanWell.VoltageLimitMin || value > cMeanWell.VoltageLimitMax) {
+                retMsg["message"] = "Curve float voltage not in range between " + String(cMeanWell.VoltageLimitMin,0) + "V and " + String(cMeanWell.VoltageLimitMax,0) + "V !";
                 retMsg["code"] = WebApiError::LimitInvalidLimit;
-                retMsg["param"]["max"] = cMeanWell.MaxVoltage;
-                retMsg["param"]["min"] = cMeanWell.MinVoltage;
+                retMsg["param"]["max"] = cMeanWell.VoltageLimitMax;
+                retMsg["param"]["min"] = cMeanWell.VoltageLimitMin;
                 WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
                 return;
             } else {
-                value = root["curveFV"].as<float>();
                 MeanWellCan.setValue(value, MEANWELL_SET_CURVE_FV);
             }
         }
@@ -263,16 +258,15 @@ void WebApiMeanWellClass::onLimitPost(AsyncWebServerRequest* request)
 
     if (root.containsKey("curveTCvalid")) {
         if (root["curveTCvalid"].as<bool>()) {
-            if (root["curveTC"].as<float>() < cMeanWell.MinCurrent / 10.0
-                || root["curveTC"].as<float>() > cMeanWell.MaxCurrent / 3.33333333) {
-                retMsg["message"] = "Taper constant current must be in range between " + String(cMeanWell.MinCurrent/10,2) + "A and " + String(cMeanWell.MaxCurrent/3.3333,2) + "A !";
+            value = root["curveTC"].as<float>();
+            if (value < cMeanWell.CurrentLimitMin / 10.0 || value > cMeanWell.CurrentLimitMax / 3.33333333) {
+                retMsg["message"] = "Taper constant current must be in range between " + String(cMeanWell.CurrentLimitMin/10,2) + "A and " + String(cMeanWell.CurrentLimitMax/3.3333,2) + "A !";
                 retMsg["code"] = WebApiError::LimitInvalidLimit;
-                retMsg["param"]["max"] = cMeanWell.MaxCurrent / 3.33333333;
-                retMsg["param"]["min"] = cMeanWell.MinCurrent / 10.0;
+                retMsg["param"]["max"] = cMeanWell.CurrentLimitMax / 3.33333333;
+                retMsg["param"]["min"] = cMeanWell.CurrentLimitMin / 10.0;
                 WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
                 return;
             } else {
-                value = root["curveTC"].as<float>();
                 MeanWellCan.setValue(value, MEANWELL_SET_CURVE_TC);
             }
         }

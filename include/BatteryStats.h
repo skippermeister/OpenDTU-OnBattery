@@ -797,6 +797,37 @@ class VictronSmartShuntStats : public BatteryStats {
 
         void updateFrom(VeDirectShuntController::data_t const& shuntData);
 
+        float getRecommendedChargeVoltageLimit() const final {
+            // FIXME
+            return Configuration.get().Battery.RecommendedChargeVoltage;
+        };
+        float getRecommendedDischargeVoltageLimit() const final {
+            // FIXME
+            return Configuration.get().Battery.RecommendedDischargeVoltage;
+        };
+        float getRecommendedChargeCurrentLimit() const final { return 50.0; }; // FIXME
+        float getRecommendedDischargeCurrentLimit() const final { return 50.0; }; // FIXME
+
+        bool getChargeImmediately() const final { return ( getSoC() < 5.0); };  // FIXME below 5%
+        bool getFullChargeRequest() const final { return _lastFullCharge > 24*60*45; }; // FIXME 45 days
+
+        bool isChargeTemperatureValid() const final
+        {
+            if (!_tempPresent) return true; // if temperature sensor not present always return true
+
+            const Battery_CONFIG_T& cBattery = Configuration.get().Battery;
+            return (_temperature >= static_cast<float>(cBattery.MinChargeTemperature))
+                && (_temperature <= static_cast<float>(cBattery.MaxChargeTemperature));
+        };
+        bool isDischargeTemperatureValid() const final
+        {
+            if (!_tempPresent) return true; // if temperature sensor not present always return true
+
+            const Battery_CONFIG_T& cBattery = Configuration.get().Battery;
+            return (_temperature >= static_cast<float>(cBattery.MinDischargeTemperature))
+                && (_temperature <= static_cast<float>(cBattery.MaxDischargeTemperature));
+        };
+
     private:
         float _voltage;
         float _current;

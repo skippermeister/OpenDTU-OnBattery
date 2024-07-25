@@ -81,6 +81,7 @@ void BatteryClass::updateSettings()
             _upProvider = std::make_unique<DalyBmsController>();
             break;
 #endif
+
 #ifdef USE_MQTT_BATTERY
         case 6:
             _upProvider = std::make_unique<MqttBattery>();

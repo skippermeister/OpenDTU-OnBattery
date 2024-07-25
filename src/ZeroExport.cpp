@@ -105,6 +105,7 @@ void ZeroExportClass::loop()
         if (_invID >= INV_MAX_COUNT) _invID = 0;    // switch back to first inverter serial no in list
         if (cZeroExport.serials[_invID] == 0) {
             if (_invID == 0) {
+                if (!cZeroExport.Enabled) { return; }
                 // list is empty, no inverters are selected
                 announceStatus(Status::InverterInvalid, true);
                 return;

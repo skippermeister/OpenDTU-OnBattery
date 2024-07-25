@@ -392,14 +392,14 @@ void PinMappingClass::init(const String& deviceMapping)
 #if defined(USE_LED_STRIP)
                 _pinMapping.led_rgb = doc[i]["led"]["rgb"] | LED_RGB;
 #endif
-                _pinMapping.victron_rx = doc[i]["victron"]["rs323_rx"] | VICTRON_PIN_RX;
-                _pinMapping.victron_tx = doc[i]["victron"]["rs323_tx"] | VICTRON_PIN_TX;
+                _pinMapping.victron_rx = doc[i]["victron"]["rs232_rx"] | VICTRON_PIN_RX;
+                _pinMapping.victron_tx = doc[i]["victron"]["rs232_tx"] | VICTRON_PIN_TX;
 
-                _pinMapping.victron_rx2 = doc[i]["victron"]["rs323_rx2"] | VICTRON_PIN_RX2;
-                _pinMapping.victron_tx2 = doc[i]["victron"]["rs323_tx2"] | VICTRON_PIN_TX2;
+                _pinMapping.victron_rx2 = doc[i]["victron"]["rs232_rx2"] | VICTRON_PIN_RX2;
+                _pinMapping.victron_tx2 = doc[i]["victron"]["rs232_tx2"] | VICTRON_PIN_TX2;
 
-                _pinMapping.victron_rx3 = doc[i]["victron"]["rs323_rx3"] | VICTRON_PIN_RX3;
-                _pinMapping.victron_tx3 = doc[i]["victron"]["rs323_tx3"] | VICTRON_PIN_TX3;
+                _pinMapping.victron_rx3 = doc[i]["victron"]["rs232_rx3"] | VICTRON_PIN_RX3;
+                _pinMapping.victron_tx3 = doc[i]["victron"]["rs232_tx3"] | VICTRON_PIN_TX3;
 
 #if defined(USE_REFUsol_INVERTER)
                 _pinMapping.REFUsol_rx = doc[i]["refusol"]["rs485_rx"] | REFUSOL_PIN_RX;

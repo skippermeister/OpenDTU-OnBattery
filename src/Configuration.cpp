@@ -296,6 +296,10 @@ bool ConfigurationClass::write()
     battery["min_discharge_temp"] = config.Battery.MinDischargeTemperature;
     battery["max_discharge_temp"] = config.Battery.MaxDischargeTemperature;
     battery["stop_charging_soc"] = config.Battery.Stop_Charging_BatterySoC_Threshold;
+#if defined(USE_MQTT_BATTERY) || defined(USE_VICTRON_SMART_SHUNT)
+    battery["recommended_charge_voltage"] = config.Battery.RecommendedChargeVoltage;
+    battery["recommended_discharge_voltage"] = config.Battery.RecommendedDischargeVoltage;
+#endif
 
     JsonObject mcp2515 = doc["mcp2515"].to<JsonObject>();
     mcp2515["can_controller_frequency"] = config.MCP2515.Controller_Frequency;
@@ -721,6 +725,11 @@ bool ConfigurationClass::read()
     config.Battery.MaxDischargeTemperature = battery["max_discharge_temp"] | BATTERY_MAX_DISCHARGE_TEMPERATURE;
     config.Battery.Stop_Charging_BatterySoC_Threshold = battery["stop_charging_soc"] | 100;
 
+#if defined(USE_MQTT_BATTERY) || defined(USE_VICTRON_SMART_SHUNT)
+    config.Battery.RecommendedChargeVoltage = battery["recommended_charge_voltage"] | 28.4;
+    config.Battery.RecommendedDischargeVoltage = battery["recommended_discharge_voltage"] | 21.0;
+#endif
+
     JsonObject mcp2515 = doc["mcp2515"];
     config.MCP2515.Controller_Frequency = mcp2515["can_controller_frequency"] | MCP2515_CAN_CONTROLLER_FREQUENCY;
 
@@ -742,6 +751,10 @@ bool ConfigurationClass::read()
     config.MeanWell.MinCurrent = meanwell["min_current"] | MEANWELL_MINCURRENT;
     config.MeanWell.MaxCurrent = meanwell["max_current"] | MEANWELL_MAXCURRENT;
     config.MeanWell.Hysteresis = meanwell["hystersis"] | MEANWELL_HYSTERESIS;
+    config.MeanWell.CurrentLimitMin = 0.0;
+    config.MeanWell.CurrentLimitMax = 50.0;
+    config.MeanWell.VoltageLimitMin = 21.0;
+    config.MeanWell.VoltageLimitMax = 80.0;
     config.MeanWell.mustInverterProduce = meanwell["mustInverterProduce"] | true;
 #endif
 

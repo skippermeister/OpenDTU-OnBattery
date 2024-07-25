@@ -427,59 +427,66 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
         MeanWell_CONFIG_T& cMeanWell = Configuration.get().MeanWell;
         if (strcmp(_rp.ManufacturerModelName, "NPB-450-48") == 0) {
             _model = NPB_Model_t::NPB_450_48;
-            cMeanWell.MinCurrent = 1.36f; // 1.36A
-            cMeanWell.MaxCurrent = 6.8f; // 6.8A
-            cMeanWell.MinVoltage = 42.0f;
-            cMeanWell.MaxVoltage = 80.0f;
+            cMeanWell.CurrentLimitMin = 1.36f; // 1.36A
+            cMeanWell.CurrentLimitMax = 6.8f; // 6.8A
+            cMeanWell.VoltageLimitMin = 42.0f;
+            cMeanWell.VoltageLimitMax = 80.0f;
         } else if (strcmp(_rp.ManufacturerModelName, "NPB-750-48") == 0) {
             _model = NPB_Model_t::NPB_750_48;
-            cMeanWell.MinCurrent = 2.26f; // 2.26A
-            cMeanWell.MaxCurrent = 11.3f; // 11.3A
-            cMeanWell.MinVoltage = 42.0f;
-            cMeanWell.MaxVoltage = 80.0f;
+            cMeanWell.CurrentLimitMin = 2.26f; // 2.26A
+            cMeanWell.CurrentLimitMax = 11.3f; // 11.3A
+            cMeanWell.VoltageLimitMin = 42.0f;
+            cMeanWell.VoltageLimitMax = 80.0f;
         } else if (strcmp(_rp.ManufacturerModelName, "NPB-1200-48") == 0) {
             _model = NPB_Model_t::NPB_1200_48;
-            cMeanWell.MinCurrent = 3.6f; // 3.6A
-            cMeanWell.MaxCurrent = 18.0f; // 18.0A
-            cMeanWell.MinVoltage = 42.0f;
-            cMeanWell.MaxVoltage = 80.0f;
+            cMeanWell.CurrentLimitMin = 3.6f; // 3.6A
+            cMeanWell.CurrentLimitMax = 18.0f; // 18.0A
+            cMeanWell.VoltageLimitMin = 42.0f;
+            cMeanWell.VoltageLimitMax = 80.0f;
         } else if (strcmp(_rp.ManufacturerModelName, "NPB-1700-48") == 0) {
             _model = NPB_Model_t::NPB_1700_48;
-            cMeanWell.MinCurrent = 5.0f; // 5.0A
-            cMeanWell.MaxCurrent = 25.0f; // 25.0A
-            cMeanWell.MinVoltage = 42.0f;
-            cMeanWell.MaxVoltage = 80.0f;
+            cMeanWell.CurrentLimitMin = 5.0f; // 5.0A
+            cMeanWell.CurrentLimitMax = 25.0f; // 25.0A
+            cMeanWell.VoltageLimitMin = 42.0f;
+            cMeanWell.VoltageLimitMax = 80.0f;
         } else if (strcmp(_rp.ManufacturerModelName, "NPB-450-24") == 0) {
             _model = NPB_Model_t::NPB_450_24;
-            cMeanWell.MinCurrent = 2.7f; // 2.7A
-            cMeanWell.MaxCurrent = 13.5f; // 13.5A
-            cMeanWell.MinVoltage = 21.0f;
-            cMeanWell.MaxVoltage = 42.0f;
+            cMeanWell.CurrentLimitMin = 2.7f; // 2.7A
+            cMeanWell.CurrentLimitMax = 13.5f; // 13.5A
+            cMeanWell.VoltageLimitMin = 21.0f;
+            cMeanWell.VoltageLimitMax = 42.0f;
         } else if (strcmp(_rp.ManufacturerModelName, "NPB-750-24") == 0) {
             _model = NPB_Model_t::NPB_750_24;
-            cMeanWell.MinCurrent = 4.5f; // 4.5A
-            cMeanWell.MaxCurrent = 22.5f; // 22.5A
-            cMeanWell.MinVoltage = 21.0f;
-            cMeanWell.MaxVoltage = 42.0f;
+            cMeanWell.CurrentLimitMin = 4.5f; // 4.5A
+            cMeanWell.CurrentLimitMax = 22.5f; // 22.5A
+            cMeanWell.VoltageLimitMin = 21.0f;
+            cMeanWell.VoltageLimitMax = 42.0f;
         } else if (strcmp(_rp.ManufacturerModelName, "NPB-1200-24") == 0) {
             _model = NPB_Model_t::NPB_1200_24;
-            cMeanWell.MinCurrent = 7.2f; // 7.2A
-            cMeanWell.MaxCurrent = 36.0f; // 36.0A
-            cMeanWell.MinVoltage = 21.0f;
-            cMeanWell.MaxVoltage = 42.0f;
+            cMeanWell.CurrentLimitMin = 7.2f; // 7.2A
+            cMeanWell.CurrentLimitMax = 36.0f; // 36.0A
+            cMeanWell.VoltageLimitMin = 21.0f;
+            cMeanWell.VoltageLimitMax = 42.0f;
         } else if (strcmp(_rp.ManufacturerModelName, "NPB-1700-24") == 0) {
             _model = NPB_Model_t::NPB_1700_24;
-            cMeanWell.MinCurrent = 10.0f; // 10.0A
-            cMeanWell.MaxCurrent = 50.0f; // 50.0A
-            cMeanWell.MinVoltage = 21.0f;
-            cMeanWell.MaxVoltage = 42.0f;
+            cMeanWell.CurrentLimitMin = 10.0f; // 10.0A
+            cMeanWell.CurrentLimitMax = 50.0f; // 50.0A
+            cMeanWell.VoltageLimitMin = 21.0f;
+            cMeanWell.VoltageLimitMax = 42.0f;
         } else {
+            /* we didn't recognize the charge and set it to NPB-450-48 as default*/
             _model = NPB_Model_t::NPB_450_48;
-            cMeanWell.MinCurrent = 1.36f; // 1.36A
-            cMeanWell.MaxCurrent = 6.8f; // 6.8A
-            cMeanWell.MinVoltage = 42.0f;
-            cMeanWell.MaxVoltage = 80.0f;
+            cMeanWell.CurrentLimitMin = 1.36f; // 1.36A
+            cMeanWell.CurrentLimitMax = 6.8f; // 6.8A
+            cMeanWell.VoltageLimitMin = 42.0f;
+            cMeanWell.VoltageLimitMax = 80.0f;
         }
+        // check if min/max current and voltage is in range of Meanwell charger (Limits)
+        if (cMeanWell.MinCurrent < cMeanWell.CurrentLimitMin || cMeanWell.MinCurrent > cMeanWell.CurrentLimitMax) cMeanWell.MinCurrent = cMeanWell.CurrentLimitMin;
+        if (cMeanWell.MaxCurrent < cMeanWell.CurrentLimitMin || cMeanWell.MaxCurrent > cMeanWell.CurrentLimitMax) cMeanWell.MaxCurrent = cMeanWell.CurrentLimitMax;
+        if (cMeanWell.MinVoltage < cMeanWell.VoltageLimitMin || cMeanWell.MinVoltage > cMeanWell.VoltageLimitMax) cMeanWell.MinVoltage = cMeanWell.VoltageLimitMin;
+        if (cMeanWell.MaxVoltage < cMeanWell.VoltageLimitMin || cMeanWell.MaxVoltage > cMeanWell.VoltageLimitMax) cMeanWell.MaxVoltage = cMeanWell.VoltageLimitMax;
+
         _lastUpdate = millis();
 
 #ifdef MEANWELL_DEBUG_ENABLED

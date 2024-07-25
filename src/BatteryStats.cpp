@@ -1349,10 +1349,10 @@ void VictronSmartShuntStats::getLiveViewData(JsonVariant& root) const
 
     // values go into the "Status" card of the web application
     addLiveViewValue(root, "current", _current, "A", 1);
-    addLiveViewValue(root, "chargeCycles", _chargeCycles, "", 0);
+    addLiveViewValue(root, "cycles", _chargeCycles, "", 0);
     addLiveViewValue(root, "chargedEnergy", _chargedEnergy, "KWh", 1);
     addLiveViewValue(root, "dischargedEnergy", _dischargedEnergy, "KWh", 1);
-    addLiveViewValue(root, "instantaneousPower", _instantaneousPower, "W", 0);
+    addLiveViewValue(root, "power", _instantaneousPower, "W", 0);
     addLiveViewValue(root, "consumedAmpHours", _consumedAmpHours, "Ah", 3);
     addLiveViewValue(root, "midpointVoltage", _midpointVoltage, "V", 2);
     addLiveViewValue(root, "midpointDeviation", _midpointDeviation, "%", 1);
