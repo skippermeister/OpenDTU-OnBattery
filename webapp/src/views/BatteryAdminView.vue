@@ -79,9 +79,21 @@
                                 :tooltip="$t('batteryadmin.StopChargingSoCHint')"
                                 :postfix="$t('batteryadmin.Percent')"/>
 
+                    <InputElement v-show="batteryConfigList.provider == 4 ||
+                                          batteryConfigList.provider == 6"
+                                :label="$t('batteryadmin.RecommendedChargeVoltage')"
+                                v-model="batteryConfigList.recommended_charge_voltage"
+                                type="number" min="21" max="80" step="0.1" wide4_2
+                                :postfix="$t('batteryadmin.Volts')"/>
+
+                    <InputElement v-show="batteryConfigList.provider == 4 ||
+                                          batteryConfigList.provider == 6"
+                                :label="$t('batteryadmin.RecommendedDischargeVoltage')"
+                                v-model="batteryConfigList.recommended_discharge_voltage"
+                                type="number" min="21" max="80" step="0.1" wide4_2
+                                :postfix="$t('batteryadmin.Volts')"/>
+
                 </CardElement>
-
-
 
                 <CardElement v-show="batteryConfigList.provider == 2 || batteryConfigList.provider == 8"
                              :text="$t('batteryadmin.CanControllerConfiguration')"

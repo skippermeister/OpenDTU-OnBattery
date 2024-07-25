@@ -811,7 +811,10 @@
         "Percent": "@:zeroexportadmin.Percent",
         "Celsius": "°C",
         "UpdatesOnly": "@:base.UpdatesOnly",
-        "Seconds": "@:dtuadmin.Seconds"
+        "Seconds": "@:dtuadmin.Seconds",
+        "Volts": "@:acchargeradmin.Volts",
+        "RecommendedChargeVoltage": "Recommended maximum charge voltage",
+        "RecommendedDischargeVoltage": "Recommended minimum discharge voltage"
     },
     "inverteradmin": {
         "InverterSettings": "Inverter Settings",
@@ -1054,6 +1057,14 @@
         "SoC": "State of charge (SOC)",
         "stateOfHealth": "State of health (SOH)",
         "cycles": "Battery cycles",
+
+        "chargedEnergy": "Charged energy",
+        "dischargedEnergy": "Discharged energy",
+        "consumedAmpHours": "Consumed Amp Hours",
+        "midpointVoltage": "Midpoint Voltage",
+        "midpointDeviation": "Midpoint Deviation",
+        "lastFullCharge": "Last full Charge",
+
         "voltage": "@:inverterchannelproperty.Voltage",
         "current": "@:inverterchannelproperty.Current",
         "power": "Current Power usage",
@@ -1100,6 +1111,7 @@
         "underTemperature": "Undertemperature",
         "highTemperature": "High temperature",
         "overTemperature": "Overtemperature",
+        "lowSOC": "Low state of charge",
         "lowVoltage": "Low voltage",
         "underVoltage": "Undervoltage",
         "highVoltage": "High voltage",

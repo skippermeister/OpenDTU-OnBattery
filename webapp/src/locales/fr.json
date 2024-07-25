@@ -693,7 +693,10 @@
         "Percent": "@:zeroexportadmin.Percent",
         "Celsius": "°C",
         "UpdatesOnly": "@:base.UpdatesOnly",
-        "Seconds": "@:dtuadmin.Seconds"
+        "Seconds": "@:dtuadmin.Seconds",
+        "Volts": "@:acchargeradmin.Volts",
+        "RecommendedChargeVoltage": "Tension de charge maximale recommandée",
+        "RecommendedDischargeVoltage": "Tension de décharge minimale recommandée"
     },
     "inverteradmin": {
         "InverterSettings": "Paramètres des onduleurs",
@@ -1052,6 +1055,14 @@
         "SoC": "État de charge (SOC)",
         "stateOfHealth": "État de la batterie (SOH)",
         "cycles": "Cycles de batterie",
+
+        "chargedEnergy": "Énergie chargée",
+        "dischargedEnergy": "Énergie déchargée",
+        "consumedAmpHours": "Ampères-heures consommées",
+        "midpointVoltage": "Tension médiane",
+        "midpointDeviation": "Déviation médiane",
+        "lastFullCharge": "Dernière charge complète",
+
         "voltage": "@:inverterchannelproperty.Voltage",
         "current": "@:inverterchannelproperty.Current",
         "power": "Puissance actuelle ",
@@ -1098,6 +1109,7 @@
         "underTemperature": "Température extrêmement basse",
         "highTemperature": "Haute températur",
         "overTemperature": "Haute extrêmement températur",
+        "lowSOC": "Faible état de charge",
         "lowVoltage": "Basse tension",
         "underVoltage": "Basse extrêmement tension",
         "highVoltage": "Haute tension",

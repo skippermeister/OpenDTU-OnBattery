@@ -15,4 +15,6 @@ export interface BatteryConfig {
     min_discharge_temp: number;
     max_discharge_temp: number;
     stop_charging_soc: number;
+    recommended_charge_voltage: number;
+    recommended_discharge_voltage: number;
 }

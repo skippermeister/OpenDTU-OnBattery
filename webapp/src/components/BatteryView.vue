@@ -52,7 +52,7 @@
                                       {{ $t('battery.HwVersion') }}: {{ batteryData.hwversion }}
                                     </div>
 
-                                    <div style="padding-right: 2em;" v-if="batteryData.numberOfPacks <= 1">
+                                    <div style="padding-right: 2em;" v-if="'numberOfPacks' in batteryData && batteryData.numberOfPacks <= 1">
                                         {{ pack.moduleName }} {{ pack.device_name }} (S/N: {{ pack.moduleSerialNumber }}) Software Version: {{ pack.software_version }}
                                     </div>
                                     <div style="padding-right: 2em;">
@@ -135,7 +135,7 @@
                                 <div class="card-body">
                                 <div class="row flex-row flex-wrap align-items-start g-3">
 
-                                <div class="col order-0" v-if="batteryData.numberOfPacks > 1">
+                                <div class="col order-0" v-if="'numberOfPacks' in batteryData && batteryData.numberOfPacks > 1">
 
                                     <div class="card" :class="{ 'border-info': true }" style="overflow: hidden">
                                         <div class="card-header bg-info">
