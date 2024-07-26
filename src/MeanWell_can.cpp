@@ -18,6 +18,7 @@
 #include <Hoymiles.h>
 #include <math.h>
 #include <AsyncJson.h>
+#include "SPIPortManager.h"
 
 #include <Preferences.h>
 Preferences preferences;
@@ -120,9 +121,11 @@ void MeanWellCanClass::updateSettings()
         if (!enable())
             return;
 #else
-        MessageOutput.printf("MCP2515 CAN miso = %d, mosi = %d, clk = %d, irq = %d, cs = %d, power_pin = %d. ", pin.mcp2515_miso, pin.mcp2515_mosi, pin.mcp2515_clk, pin.mcp2515_irq, pin.mcp2515_cs;
+        MessageOutput.printf("MCP2515 CAN: miso = %d, mosi = %d, clk = %d, irq = %d, cs = %d, power_pin = %d. ", pin.mcp2515_miso, pin.mcp2515_mosi, pin.mcp2515_clk, pin.mcp2515_irq, pin.mcp2515_cs;
+        auto oSPInum = SPIPortManager.allocatePort("MCP2515");
+        if (!oSPInum) { return; }
 
-	    spi = new SPIClass(HSPI);
+	    spi = new SPIClass(*oSPInum);
     	spi->begin(pin.mcp2515_clk, pin.mcp2515_miso, pin.mcp2515_mosi, pin.mcp2515_cs);
 	    pinMode(pin.mcp2515_cs, OUTPUT);
     	digitalWrite(pin.mcp2515_cs, HIGH);
@@ -359,7 +362,7 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
 
     case 0x0050: // READ_VIN	2 bytes Input voltage read value (format: value, F=0.1)
         _rp.inputVoltage = scaleValue(readUnsignedInt16(frame + 2), 0.1f);
-        if (_model == NPB_Model_t::NPB_450_48) _rp.inputVoltage = 230.0;
+        if (_model < NPB_Model_t::NPB_1200_24) _rp.inputVoltage = 230.0;
         _lastUpdate = millis();
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging) MessageOutput.printf("%s InputVoltage: %.1fV\r\n", TAG, _rp.inputVoltage);

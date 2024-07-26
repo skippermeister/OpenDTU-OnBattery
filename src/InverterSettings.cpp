@@ -8,6 +8,7 @@
 #include "PinMapping.h"
 #include "SunPosition.h"
 #include <Hoymiles.h>
+#include "SPIPortManager.h"
 
 // the NRF shall use the second externally usable HW SPI controller
 // for ESP32 that is the so-called VSPI, for ESP32-S2/S3 it is now called implicitly
@@ -42,23 +43,36 @@ void InverterSettingsClass::init(Scheduler& scheduler)
     const PinMapping_t& pin = PinMapping.get();
 
     // Initialize inverter communication
-    MessageOutput.print("Initialize Hoymiles interface... ");
-    if (PinMapping.isValidNrf24Config()
-#ifdef USE_RADIO_CMT
-        || PinMapping.isValidCmt2300Config()
+    if (
+#ifdef USE_RADIO_NRF
+        PinMapping.isValidNrf24Config()
 #endif
-    ) {
+#if defined(USE_RADIO_NRF) && defined(USE_RADIO_CMT)
+        ||
+#endif
+#ifdef USE_RADIO_CMT
+        PinMapping.isValidCmt2300Config()
+#endif
+      )
+    {
+#ifdef USE_RADIO_NRF
         if (PinMapping.isValidNrf24Config()) {
-            SPIClass* spiClass = new SPIClass(SPI_NRF);
-            spiClass->begin(pin.nrf24_clk, pin.nrf24_miso, pin.nrf24_mosi, pin.nrf24_cs);
-            Hoymiles.initNRF(spiClass, pin.nrf24_en, pin.nrf24_irq);
+            auto oSPInum = SPIPortManager.allocatePort("NRF24");
+            if (oSPInum) {
+                SPIClass* spiClass = new SPIClass(*oSPInum);
+                spiClass->begin(pin.nrf24_clk, pin.nrf24_miso, pin.nrf24_mosi, pin.nrf24_cs);
+                Hoymiles.initNRF(spiClass, pin.nrf24_en, pin.nrf24_irq);
+            }
         }
-
+#endif
 #ifdef USE_RADIO_CMT
         if (PinMapping.isValidCmt2300Config()) {
-            Hoymiles.initCMT(pin.cmt_sdio, pin.cmt_clk, pin.cmt_cs, pin.cmt_fcs, pin.cmt_gpio2, pin.cmt_gpio3);
-            MessageOutput.println("  Setting CMT target frequency... ");
-            Hoymiles.getRadioCmt()->setInverterTargetFrequency(config.Dtu.Cmt.Frequency);
+            auto oSPInum = SPIPortManager.allocatePort("CMT2300A");
+            if (oSPInum) { // SPInum_HOST is SPInum-1
+                Hoymiles.initCMT(*oSPInum - 1, pin.cmt_sdio, pin.cmt_clk, pin.cmt_cs, pin.cmt_fcs, pin.cmt_gpio2, pin.cmt_gpio3);
+                MessageOutput.println("  Setting CMT target frequency... ");
+                Hoymiles.getRadioCmt()->setInverterTargetFrequency(config.Dtu.Cmt.Frequency);
+            }
         }
 #endif
         MessageOutput.println("  Setting radio PA level... ");

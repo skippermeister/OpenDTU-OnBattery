@@ -210,14 +210,14 @@ private:
 #endif
 
     enum class NPB_Model_t {
-        NPB_450_48,
-        NPB_750_48,
-        NPB_1200_48,
-        NPB_1700_48,
         NPB_450_24,
+        NPB_450_48,
         NPB_750_24,
+        NPB_750_48,
         NPB_1200_24,
+        NPB_1200_48,
         NPB_1700_24,
+        NPB_1700_48,
         NPB_unknown
     };
     NPB_Model_t _model = NPB_Model_t::NPB_450_48;

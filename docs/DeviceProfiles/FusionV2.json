@@ -44,7 +44,7 @@
     "bms_wakeup": -1
   },
   "charger":{
-    "can0_rx": 12,
+    "can0_rx": 13,
     "can0_tx": 14
   },
   "mcp2515":{

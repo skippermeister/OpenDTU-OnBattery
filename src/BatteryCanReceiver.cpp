@@ -5,6 +5,7 @@
 #include "MessageOutput.h"
 #include "PinMapping.h"
 #include <driver/twai.h>
+#include "SPIPortManager.h"
 
 bool BatteryCanReceiver::init(char const* providerName)
 {
@@ -26,8 +27,10 @@ bool BatteryCanReceiver::init(char const* providerName)
 
         _mcp2515_irq = pin.mcp2515_irq;
 
+        auto oSPInum = SPIPortManager.allocatePort("MCP2515");
+        if (!oSPInum) { return false; }
         MessageOutput.printf(", init SPI... ");
-        SPI = new SPIClass(HSPI);
+        SPI = new SPIClass(*oSPInum);
         SPI->begin(pin.mcp2515_clk, pin.mcp2515_miso, pin.mcp2515_mosi, pin.mcp2515_cs);
         MessageOutput.printf("done");
 

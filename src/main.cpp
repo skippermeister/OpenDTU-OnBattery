@@ -11,6 +11,7 @@
 #include "Led_Strip.h"
 #include "MessageOutput.h"
 #include "SerialPortManager.h"
+#include "SPIPortManager.h"
 #include "REFUsolRS485Receiver.h"
 #include "VictronMppt.h"
 #include "Huawei_can.h"
@@ -101,6 +102,7 @@ void setup()
     PinMapping.init(String(Configuration.get().Dev_PinMapping)); // Load PinMapping
 
     SerialPortManager.init();
+    SPIPortManager.init();
 
     // Initialize WiFi
     NetworkSettings.init(scheduler);
