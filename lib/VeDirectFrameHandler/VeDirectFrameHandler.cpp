@@ -64,7 +64,8 @@ VeDirectFrameHandler<T>::VeDirectFrameHandler() :
 }
 
 template<typename T>
-void VeDirectFrameHandler<T>::init(char const* who, int8_t rx, int8_t tx, Print* msgOut, bool verboseLogging, uint8_t hwSerialPort)
+void VeDirectFrameHandler<T>::init(char const* who, int8_t rx, int8_t tx,
+        Print* msgOut, bool verboseLogging, uint8_t hwSerialPort)
 {
 	_vedirectSerial = std::make_unique<HardwareSerial>(hwSerialPort);
     _vedirectSerial->setRxBufferSize(512); // increased from default (256) to 512 Byte to avoid overflow

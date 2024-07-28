@@ -373,7 +373,7 @@ private:
     uint8_t _number_of_packs = 0;
 
     struct Totals_t {
-        float moduleVoltage;
+        float voltage;
         float current;
         float power;
         float capacity;
@@ -401,7 +401,7 @@ private:
         String manufacturerVersion;
         String mainLineVersion;
 
-        float moduleVoltage;
+        float voltage;
         float current;
         float power;
         float capacity;
@@ -434,7 +434,7 @@ private:
     Pack_t Pack[MAX_BATTERIES];
 
     struct {
-        float moduleVoltage;
+        float voltage;
         float current;
         float power;
         float capacity;
@@ -462,7 +462,7 @@ private:
         String softwareVersion;
         String deviceName;
 
-        float moduleVoltage;
+        float voltage;
         float current;
         float power;
         float capacity;

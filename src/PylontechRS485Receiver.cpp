@@ -537,8 +537,8 @@ void PylontechRS485Receiver::get_analog_value(const PylontechRS485Receiver::Func
     }
     Pack.averageCellTemperature /= (Pack.numberOfTemperatures - 1);
     Pack.current = to_Amp(info);
-    Pack.moduleVoltage = to_Volt(info);
-    Pack.power = _stats->totals.current * Pack.moduleVoltage / 1000.0; // kW
+    Pack.voltage = to_Volt(info);
+    Pack.power = Pack.current * Pack.voltage / 1000.0; // kW
     Pack.remainingCapacity = DivideUint16By1000(info); // DivideBy1000(Int16ub),
     uint8_t _UserDefinedItems = *info++;
     Pack.capacity = DivideUint16By1000(info);
@@ -552,7 +552,7 @@ void PylontechRS485Receiver::get_analog_value(const PylontechRS485Receiver::Func
     // point to battery totals structure of selected battery
     PylontechRS485BatteryStats::Totals_t& totals = _stats->totals;
 
-    totals.moduleVoltage = -99999.0;
+    totals.voltage = -99999.0;
     totals.power = 0.0f;
     totals.current = 0.0f;
     totals.capacity = 0.0f;
@@ -567,7 +567,7 @@ void PylontechRS485Receiver::get_analog_value(const PylontechRS485Receiver::Func
 
     // build total values over the battery pack
     for (uint8_t i = 0; i < _stats->_number_of_packs; i++) {
-        totals.moduleVoltage = max(totals.moduleVoltage, _stats->Pack[i].moduleVoltage);
+        totals.voltage = max(totals.voltage, _stats->Pack[i].voltage);
         totals.power += _stats->Pack[i].power;
         totals.current += _stats->Pack[i].current;
         totals.capacity += _stats->Pack[i].capacity;
@@ -582,11 +582,10 @@ void PylontechRS485Receiver::get_analog_value(const PylontechRS485Receiver::Func
         totals.minCellTemperature = min(totals.minCellTemperature, _stats->Pack[i].minCellTemperature);
         totals.maxCellTemperature = max(totals.maxCellTemperature, _stats->Pack[i].maxCellTemperature);
     }
-    _stats->setVoltage(totals.moduleVoltage, millis());
+    _stats->setVoltage(totals.voltage, millis());
     _stats->setCurrent(totals.current, 1/*precision*/, millis());
     totals.cellDiffVoltage = (totals.cellMaxVoltage - totals.cellMinVoltage) * 1000.0; // in mV
     totals.SoC = (100.0 * totals.remainingCapacity) / totals.capacity;
-
     _stats->setSoC(totals.SoC, 1 /*precision*/, millis());
 
     if (_verboseLogging) {
