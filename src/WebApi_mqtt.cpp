@@ -327,9 +327,9 @@ void WebApiMqttClass::onMqttAdminPost(AsyncWebServerRequest* request)
 
     MqttSettings.setVerboseLogging(root["verbose_logging"].as<bool>());
     // Check if base topic was changed
-    if (strcmp(cMqtt.Topic, root["mqtt_topic"].as<String>().c_str())) {
+    if (strcmp(cMqtt.Topic, root["topic"].as<String>().c_str())) {
         MqttHandleInverter.unsubscribeTopics();
-        strlcpy(cMqtt.Topic, root["mqtt_topic"].as<String>().c_str(), sizeof(cMqtt.Topic));
+        strlcpy(cMqtt.Topic, root["topic"].as<String>().c_str(), sizeof(cMqtt.Topic));
         MqttHandleInverter.subscribeTopics();
     }
 
