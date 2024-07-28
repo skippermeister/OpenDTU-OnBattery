@@ -70,13 +70,21 @@ void MqttHandleBatteryHassClass::publishConfig()
         case 0: // Pylontech Battery RS485
             publishSensor("Battery voltage", NULL, "voltage", "voltage", "measurement", "V");
             publishSensor("Battery current", NULL, "current", "current", "measurement", "A");
-            publishSensor("Temperature", NULL, "temperature", "temperature", "measurement", "°C");
+            publishSensor("Total Capacity", NULL, "capacity", "capacity", "measurement", "Ah");
+            publishSensor("Remaining Capacity", NULL, "remainingCapacity", "capacity", "measurement", "Ah");
+            publishSensor("Charge Cycles",     "mdi:counter",     "cycles");
+            publishSensor("Cell voltage (diff)", NULL, "cellVoltages/cellDiffVoltage", "voltage", "measurement", "V");
+            publishSensor("Cell voltage (max)",  NULL, "cellVoltages/cellMaxVoltage", "voltage", "measurement", "V");
+            publishSensor("Cell voltage (min)",  NULL, "cellVoltages/cellMinVoltage", "voltage", "measurement", "V");
+            publishSensor("Temperature (BMS)",      NULL, "temperatures/averageBMSTemperature", "temperature", "measurement", "°C");
+            publishSensor("Cell Temperature (max)", NULL, "temperatures/maxCellTemperature", "temperature", "measurement", "°C");
+            publishSensor("Cell Temperature (min)", NULL, "temperatures/minCellTemperature", "temperature", "measurement", "°C");
             publishSensor("Charge voltage (BMS)", NULL, "settings/chargeVoltage", "voltage", "measurement", "V");
             publishSensor("Charge current limit", NULL, "settings/chargeCurrentLimit", "current", "measurement", "A");
             publishSensor("Discharge current limit", NULL, "settings/dischargeCurrentLimit", "current", "measurement", "A");
 
-#define PBSA(a, b, c) publishBinarySensor("Alarm: " a, "mdi:" b, "alarm/" c, "1", "0")
-#define PBSW(a, b, c) publishBinarySensor("Warning: " a, "mdi:" b, "warning/" c, "1", "0")
+#define PBSA(a, b, c) publishBinarySensor("Alarm: " a, "mdi:" b, "alarms/" c, "1", "0")
+#define PBSW(a, b, c) publishBinarySensor("Warning: " a, "mdi:" b, "warnings/" c, "1", "0")
 #define PBSC(a, b, c) publishBinarySensor(a, "mdi:" b, "charging/" c, "1", "0")
             PBSA("Discharge current",   "alert",            "overCurrentDischarge");
             PBSW("Discharge current",   "alert-outline",    "highCurrentDischarge");
@@ -95,6 +103,7 @@ void MqttHandleBatteryHassClass::publishConfig()
             PBSC("Charge enabled",      "battery-arrow-up",   "chargeEnabled");
             PBSC("Discharge enabled",   "battery-arrow-down", "dischargeEnabled");
             PBSC("Charge immediately",  "alert",              "chargeImmediately");
+            PBSC("Full charge request", "alert",              "fullChargeRequest");
 #undef PBSC
 #undef PBSW
 #undef PBSA
@@ -131,6 +140,16 @@ void MqttHandleBatteryHassClass::publishConfig()
 #endif
 #ifdef USE_VICTRON_SMART_SHUNT
         case 4: // Victron SmartShunt
+            publishSensor("Voltage", "mdi:battery-charging", "voltage", "voltage", "measurement", "V");
+            publishSensor("Current", "mdi:current-dc", "current", "current", "measurement", "A");
+            publishSensor("Instantaneous Power", NULL, "instantaneousPower", "power", "measurement", "W");
+            publishSensor("Charged Energy", NULL, "chargedEnergy", "energy", "total_increasing", "kWh");
+            publishSensor("Discharged Energy", NULL, "dischargedEnergy", "energy", "total_increasing", "kWh");
+            publishSensor("Charge Cycles", "mdi:counter", "chargeCycles");
+            publishSensor("Consumed Amp Hours", NULL, "consumedAmpHours", NULL, "measurement", "Ah");
+            publishSensor("Last Full Charge", "mdi:timelapse", "lastFullCharge", NULL, NULL, "min");
+            publishSensor("Midpoint Voltage", NULL, "midpointVoltage", "voltage", "measurement", "V");
+            publishSensor("Midpoint Deviation", NULL, "midpointDeviation", "battery", "measurement", "%");
             break;
 #endif
 #ifdef USE_DALYBMS_CONTROLLER

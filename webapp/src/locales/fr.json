@@ -464,7 +464,8 @@
         "MpptTotalYieldTotal": "MPPT rendement total",
         "MpptTotalYieldDay": "MPPT rendement du jour",
         "MpptTotalPower": "MPPT puissance de l'installation",
-        "BatterySoc": "État de charge",
+        "BatteryCharge": "Charge de la batterie",
+        "BatteryPower": "Puissance de la batterie",
         "GridPower": "Puissance / Réseau",
         "HousePower": "Puissance / maison",
         "MeanWellPower": "Puissance / chargeur secteur"

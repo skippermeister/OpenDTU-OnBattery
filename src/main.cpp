@@ -29,6 +29,7 @@
 #include "MqttHandleHuawei.h"
 #else
 #include "MqttHandleMeanWell.h"
+#include "MqttHandleMeanWellHass.h"
 #endif
 #include "MqttHandlePowerLimiter.h"
 #include "MqttHandlePowerLimiterHass.h"
@@ -128,6 +129,10 @@ void setup()
     MqttHandleHass.init(scheduler);
     MqttHandleVedirectHass.init(scheduler);
     MqttHandleBatteryHass.init(scheduler);
+    MqttHandlePowerLimiterHass.init(scheduler);
+#ifndef CHARGER_HUAWEI
+    MqttHandleMeanWellHass.init(scheduler);
+#endif
 #endif
 
 #ifdef CHARGER_HUAWEI

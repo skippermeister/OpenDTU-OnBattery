@@ -583,6 +583,7 @@ void PylontechRS485Receiver::get_analog_value(const PylontechRS485Receiver::Func
         totals.maxCellTemperature = max(totals.maxCellTemperature, _stats->Pack[i].maxCellTemperature);
     }
     _stats->setVoltage(totals.moduleVoltage, millis());
+    _stats->setCurrent(totals.current, 1/*precision*/, millis());
     totals.cellDiffVoltage = (totals.cellMaxVoltage - totals.cellMinVoltage) * 1000.0; // in mV
     totals.SoC = (100.0 * totals.remainingCapacity) / totals.capacity;
 
@@ -882,8 +883,8 @@ void PylontechRS485Receiver::get_charge_discharge_management_info(const Pylontec
             ChargeDischargeManagementInfo.dischargeVoltageLimit,
             ChargeDischargeManagementInfo.chargeCurrentLimit,
             ChargeDischargeManagementInfo.dischargeCurrentLimit,
-            ChargeDischargeManagementInfo.chargeEnable,
-            ChargeDischargeManagementInfo.dischargeEnable,
+            ChargeDischargeManagementInfo.chargeEnabled,
+            ChargeDischargeManagementInfo.dischargeEnabled,
             ChargeDischargeManagementInfo.chargeImmediately1,
             ChargeDischargeManagementInfo.chargeImmediately2,
             ChargeDischargeManagementInfo.fullChargeRequest);

@@ -49,14 +49,16 @@ class BatteryStats {
     public:
         String const& getManufacturer() const { return _manufacturer; }
 
-        // the last time *any* datum was updated
+        // the last time *any* data was updated
         uint32_t getAgeSeconds() const { return (millis() - _lastUpdate) / 1000; }
         bool updateAvailable(uint32_t since) const;
 
         float getSoC() const { return _SoC; }
         uint32_t getSoCAgeSeconds() const { return (millis() - _lastUpdateSoC) / 1000; }
+        uint8_t getSoCPrecision() const { return _socPrecision; }
 
-        // convert stats to JSON for web application live view
+        // we don't need a card in the liveview, since the SoC and
+        // voltage (if available) is already displayed at the top.
         virtual void getLiveViewData(JsonVariant& root) const;
         virtual void generatePackCommonJsonResponse(JsonObject& packObject, const uint8_t m) const;
 
@@ -64,7 +66,7 @@ class BatteryStats {
 
         void mqttLoop();
 
-        // the interval at which all battery datums will be re-published, even
+        // the interval at which all battery data will be re-published, even
         // if they did not change. used to calculate Home Assistent expiration.
         virtual uint32_t getMqttFullPublishIntervalMs() const;
 
@@ -74,8 +76,12 @@ class BatteryStats {
         virtual bool getDischargeEnabled() const { return true; };
         virtual bool getChargeImmediately() const { return false; };
         virtual bool getFullChargeRequest() const { return false; };
+
         float getVoltage() const { return _voltage; };
         uint32_t getVoltageAgeSeconds() const { return (millis() - _lastUpdateVoltage) / 1000; }
+
+        float getChargeCurrent() const { return _current; };
+        uint8_t getChargeCurrentPrecision() const { return _currentPrecision; }
 
         virtual float getTemperature() const { return 0.0; };
 
@@ -92,6 +98,7 @@ class BatteryStats {
 
         bool isSoCValid() const { return _lastUpdateSoC > 0; }
         bool isVoltageValid() const { return _lastUpdateVoltage > 0; }
+        bool isCurrentValid() const { return _lastUpdateCurrent > 0; }
 
     protected:
         virtual void mqttPublish() /*const*/;
@@ -107,6 +114,12 @@ class BatteryStats {
             _lastUpdateVoltage = _lastUpdate = timestamp;
         }
 
+        void setCurrent(float current, uint8_t precision, uint32_t timestamp) {
+            _current = current;
+            _currentPrecision = precision;
+            _lastUpdateCurrent = _lastUpdate = timestamp;
+        }
+
         String _manufacturer = "unknown";
         String _hwversion = "";
         String _fwversion = "";
@@ -115,12 +128,17 @@ class BatteryStats {
 
     private:
         uint32_t _lastMqttPublish = 0;
-
-        float _SoC = 0.0;
+        float _SoC = 0;
         uint8_t _socPrecision = 0; // decimal places
         uint32_t _lastUpdateSoC = 0;
-        float _voltage = 0.0; // total battery pack voltage
+        float _voltage = 0; // total battery pack voltage
         uint32_t _lastUpdateVoltage = 0;
+
+        // total current into (positive) or from (negative)
+        // the battery, i.e., the charging current
+        float _current = 0;
+        uint8_t _currentPrecision = 0; // decimal places
+        uint32_t _lastUpdateCurrent = 0;
 };
 
 typedef struct {
@@ -214,8 +232,8 @@ typedef struct {
             unsigned fullChargeRequest : 1; // if SOC never higher than 97% in 30 days, will set this flag to 1. And when the SOC is ≥ 97%, the flag will be 0.
             unsigned chargeImmediately2 : 1; // 9-13%
             unsigned chargeImmediately1 : 1; // 5-9%
-            unsigned dischargeEnable : 1; // 1: yes；0: request stop discharge
-            unsigned chargeEnable : 1; // 1: yes；0: request stop charge
+            unsigned dischargeEnabled : 1; // 1: yes；0: request stop discharge
+            unsigned chargeEnabled : 1; // 1: yes；0: request stop charge
         };
     };
 } ChargeDischargeManagementInfo_t;
@@ -242,6 +260,7 @@ public:
     bool isDischargeTemperatureValid() const final { return true; }; // FIXME: to be done
 
     void mqttPublish() /*const*/ final;
+    float getChargeCurrentLimitation() const { return _chargeCurrentLimitation; } ;
 
     uint32_t getMqttFullPublishIntervalMs() const final { return 60 * 1000; }
 
@@ -260,7 +279,6 @@ private:
 //    float voltage; // total voltage of the battery pack
     // total current into (positive) or from (negative)
     // the battery, i.e., the charging current
-    float current;
     float temperature;
     float power;
 
@@ -314,8 +332,8 @@ public:
 
     const Alarm_t& getAlarm() const final { return totals.Alarm; };
     const Warning_t& getWarning() const final { return totals.Warning; };
-    bool getChargeEnabled() const final { return totals.ChargeDischargeManagementInfo.chargeEnable; };
-    bool getDischargeEnabled() const final { return totals.ChargeDischargeManagementInfo.dischargeEnable; };
+    bool getChargeEnabled() const final { return totals.ChargeDischargeManagementInfo.chargeEnabled; };
+    bool getDischargeEnabled() const final { return totals.ChargeDischargeManagementInfo.dischargeEnabled; };
     bool getChargeImmediately() const final {
         return (   totals.ChargeDischargeManagementInfo.chargeImmediately1
                 || totals.ChargeDischargeManagementInfo.chargeImmediately2
@@ -476,7 +494,6 @@ class PytesBatteryStats : public BatteryStats {
         void getLiveViewData(JsonVariant& root) const final;
         void generatePackCommonJsonResponse(JsonObject& packObject, const uint8_t m) const final;
         void mqttPublish() /* const */ final;
-        float getChargeCurrent() const { return _current; } ;
         float getChargeCurrentLimitation() const { return _chargeCurrentLimit; } ;
 
     private:
@@ -501,7 +518,6 @@ class PytesBatteryStats : public BatteryStats {
 
         // total current into (positive) or from (negative)
         // the battery, i.e., the charging current
-        float _current;
         float _temperature;
 
         uint16_t _cellMinMilliVolt;
@@ -544,8 +560,8 @@ public:
     const Alarm_t& getAlarm() const final { return Alarm; };
     const Warning_t& getWarning() const final { return Warning; };
 
-    bool getChargeEnabled() const final { return ChargeDischargeManagementInfo.chargeEnable; };
-    bool getDischargeEnabled() const final { return ChargeDischargeManagementInfo.dischargeEnable; };
+    bool getChargeEnabled() const final { return ChargeDischargeManagementInfo.chargeEnabled; };
+    bool getDischargeEnabled() const final { return ChargeDischargeManagementInfo.dischargeEnabled; };
     bool getChargeImmediately() const final { return ChargeDischargeManagementInfo.chargeImmediately1; };
 
     float getRecommendedChargeVoltageLimit() const final { return ChargeDischargeManagementInfo.chargeVoltageLimit; };
@@ -829,8 +845,6 @@ class VictronSmartShuntStats : public BatteryStats {
         };
 
     private:
-        float _voltage;
-        float _current;
         float _temperature;
         bool _tempPresent;
         uint8_t _chargeCycles;

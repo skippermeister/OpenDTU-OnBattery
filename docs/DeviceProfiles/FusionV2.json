@@ -63,5 +63,71 @@
     "sdm_rs485_rx": 39,
     "sdm_rs485_rts": -1
   }
+},
+{
+  "name":"FusionV2 Pylon+1xMPPT+Meanwell",
+  "nrf24":{
+    "miso": 48,
+    "mosi": 35,
+    "clk": 36,
+    "irq": 47,
+    "en": 38,
+    "cs": 37
+  },
+  "cmt":{
+    "clk": 6,
+    "cs": 4,
+    "fcs": 21,
+    "sdio": 5,
+    "gpio2": 3,
+    "gpio3": 8
+  },
+  "display":{
+    "type": 0,
+    "data": -1,
+    "clk": -1,
+    "cs": -1,
+    "reset": -1,
+    "busy": 255,
+    "dc": 255
+  },
+  "led":{
+    "led0":17,
+    "led1":18
+  },
+  "victron":{
+    "rs232_rx": 11,
+    "rs232_tx": 12,
+    "rs232_rx2": -1,
+    "rs232_tx2": -1,
+    "rs232_rx3": -1,
+    "rs232_tx3": -1
+  },
+  "battery":{
+    "rs485_rx": 16,
+    "rs485_tx": 45,
+    "rs485_rts": 46,
+    "bms_wakeup": -1
+  },
+  "charger":{
+    "can0_rx": 13,
+    "can0_tx": 14
+  },
+  "mcp2515":{
+    "miso":-1,
+    "mosi":-1,
+    "clk":-1,
+    "irq":-1,
+    "cs":-1
+  },
+  "batteryConnectedInverter":{
+    "pre_charge": -1,
+    "full_power": -1
+  },
+  "powermeter":{
+    "sdm_rs485_tx": 40,
+    "sdm_rs485_rx": 39,
+    "sdm_rs485_rts": -1
+  }
 }
 ]

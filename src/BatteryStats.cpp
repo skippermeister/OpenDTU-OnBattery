@@ -151,6 +151,7 @@ void BatteryStats::getLiveViewData(JsonVariant& root) const
 
     addLiveViewValue(root, "SoC", _SoC, "%", _socPrecision);
     addLiveViewValue(root, "voltage", _voltage, "V", 3);
+    addLiveViewValue(root, "current", _current, "A", _currentPrecision);
 }
 
 #define ISSUE(token, value) addLiveView##token(root, #value, token.value > 0);
@@ -166,8 +167,6 @@ void PylontechCanBatteryStats::getLiveViewData(JsonVariant& root) const
     addLiveViewValue(root, "chargeCurrentLimit", chargeCurrentLimit, "A", 1);
     addLiveViewValue(root, "dischargeCurrentLimit", dischargeCurrentLimit, "A", 1);
     addLiveViewValue(root, "stateOfHealth", stateOfHealth, "%", 0);
-//    addLiveViewValue(root, "voltage", voltage, "V", 2);
-    addLiveViewValue(root, "current", current, "A", 1);
     addLiveViewValue(root, "temperature", temperature, "°C", 1);
 
     addLiveViewText(root, "chargeEnabled", (chargeEnabled ? "yes" : "no"));
@@ -251,10 +250,9 @@ void PylontechRS485BatteryStats::getLiveViewData(JsonVariant& root) const
 
     addLiveViewValue(root, "cycles", totals.cycles, "", 0);
 
-    //    // angeforderte Ladespannung
-    //    addLiveViewValue(root, "chargeVoltage", totals.chargeVoltage, "V", 3);
+    // angeforderte Ladespannung
+    // addLiveViewValue(root, "chargeVoltage", totals.chargeVoltage, "V", 3);
 
-    addLiveViewValue(root, "current", totals.current, "A", 1);
     addLiveViewValue(root, "power", totals.power, "kW", 3);
     addLiveViewValue(root, "BMSTemperature", totals.averageBMSTemperature, "°C", 1);
     //    addLiveViewValue(root, "CellTemperature", totals.averageCellTemperature, "°C", 1);
@@ -271,8 +269,8 @@ void PylontechRS485BatteryStats::getLiveViewData(JsonVariant& root) const
     addLiveViewValue(root, "maxChargeCurrentLimit", totals.SystemParameters.chargeCurrentLimit, "A", 1);
     addLiveViewValue(root, "maxDischargeCurrentLimit", totals.SystemParameters.dischargeCurrentLimit, "A", 1);
 
-    addLiveViewText(root, "chargeEnabled", (totals.ChargeDischargeManagementInfo.chargeEnable ? "yes" : "no"));
-    addLiveViewText(root, "dischargeEnabled", (totals.ChargeDischargeManagementInfo.dischargeEnable ? "yes" : "no"));
+    addLiveViewText(root, "chargeEnabled", (totals.ChargeDischargeManagementInfo.chargeEnabled ? "yes" : "no"));
+    addLiveViewText(root, "dischargeEnabled", (totals.ChargeDischargeManagementInfo.dischargeEnabled ? "yes" : "no"));
     addLiveViewText(root, "chargeImmediately1", (totals.ChargeDischargeManagementInfo.chargeImmediately1 ? "yes" : "no"));
     addLiveViewText(root, "chargeImmediately2", (totals.ChargeDischargeManagementInfo.chargeImmediately2 ? "yes" : "no"));
     addLiveViewText(root, "fullChargeRequest", (totals.ChargeDischargeManagementInfo.fullChargeRequest ? "yes" : "no"));
@@ -337,7 +335,6 @@ void PytesBatteryStats::getLiveViewData(JsonVariant& root) const
     BatteryStats::getLiveViewData(root);
 
     // values go into the "Status" card of the web application
-    addLiveViewValue(root, "current", _current, "A", 1);
     addLiveViewValue(root, "chargeVoltage", _chargeVoltageLimit, "V", 1);
     addLiveViewValue(root, "chargeCurrentLimit", _chargeCurrentLimit, "A", 1);
     addLiveViewValue(root, "dischargeVoltageLimit", _dischargeVoltageLimit, "V", 1);
@@ -473,15 +470,11 @@ void JkBmsBatteryStats::getLiveViewData(JsonVariant& root) const
     using Label = JkBms::DataPointLabel;
 
     auto oCurrent = _dataPoints.get<Label::BatteryCurrentMilliAmps>();
-    if (oCurrent.has_value()) {
-        addLiveViewValue(root, "current", static_cast<float>(*oCurrent) / 1000, "A", 2);
-    }
-
     auto oVoltage = _dataPoints.get<Label::BatteryVoltageMilliVolt>();
     if (oVoltage.has_value() && oCurrent.has_value()) {
         auto current = static_cast<float>(*oCurrent) / 1000;
         auto voltage = static_cast<float>(*oVoltage) / 1000;
-        addLiveViewValue(root, "power", current * voltage, "W", 2);
+        addLiveViewValue(root, "power", current * voltage , "W", 2);
     }
 
     auto oActualBatteryCapacityAmpHours = _dataPoints.get<Label::ActualBatteryCapacityAmpHours>();
@@ -527,12 +520,8 @@ void JkBmsBatteryStats::getLiveViewData(JsonVariant& root) const
         auto balancingActive = *oStatus & static_cast<uint16_t>(Bits::BalancingActive);
         //addLiveViewTextInSection(root, "cells", "balancingActive", (balancingActive ? "yes" : "no"));
         addLiveViewText(root, "balancingActive", (balancingActive ? "yes" : "no"));
-
     }
     addLiveViewText(root, "chargeImmediately1", (ChargeDischargeManagementInfo.chargeImmediately1 ? "yes" : "no"));
-
-//ChargeOvercurrentThresholdAmps
-//DischargeOvercurrentThresholdAmperes
 
     auto oAlarms = _dataPoints.get<Label::AlarmsBitmask>();
     if (oAlarms.has_value()) {
@@ -609,7 +598,6 @@ void DalyBmsBatteryStats::getLiveViewData(JsonVariant& root) const
 
     addLiveViewValue(root, "cycles", batteryCycles, "", 0);
     addLiveViewValue(root, "gatherVoltage", gatherVoltage, "V", 1);
-    addLiveViewValue(root, "current", current, "A", 1);
     addLiveViewValue(root, "power", power, "kW", 3);
     addLiveViewValue(root, "currentSamplingResistance", currentSamplingResistance, "mΩ", 0);
 
@@ -743,8 +731,15 @@ void BatteryStats::mqttPublish() /* const */
     String subtopic = "battery/";
     MqttSettings.publish(subtopic + "manufacturer", _manufacturer);
     MqttSettings.publish(subtopic + "dataAge", String(getAgeSeconds()));
-    MqttSettings.publish(subtopic + "stateOfCharge", String(_SoC));
-    MqttSettings.publish(subtopic + "voltage", String(_voltage));
+    if (isSoCValid()) {
+        MqttSettings.publish(subtopic + "stateOfCharge", String(_SoC));
+    }
+    if (isVoltageValid()) {
+        MqttSettings.publish(subtopic + "voltage", String(_voltage));
+    }
+    if (isCurrentValid()) {
+        MqttSettings.publish(subtopic + "current", String(_current));
+    }
 }
 
 #define MQTTpublish(value, digits)                     \
@@ -808,7 +803,7 @@ void PylontechCanBatteryStats::mqttPublish() /* const */
 
     subtopic = "battery/";
     MQTTpublishInt(stateOfHealth);
-    MQTTpublish(current, 2);
+//    MQTTpublish(current, 2);
     MQTTpublish(temperature, 1);
     MQTTpublish(power, 3);
 
@@ -846,7 +841,7 @@ void PylontechRS485BatteryStats::mqttPublish() /*const*/
 
     const String topic = "battery/";
     String subtopic = topic;
-    MQTTpublishTotals(current, 2);
+//    MQTTpublishTotals(current, 2);
     MQTTpublishTotals(power, 3);
     MQTTpublishTotals(remainingCapacity, 3);
     MQTTpublishTotals(capacity, 3);
@@ -883,8 +878,8 @@ void PylontechRS485BatteryStats::mqttPublish() /*const*/
     MQTTpublishTotalsIntStruct(Warning, bmsInternal);
 
     subtopic = topic + "charging/";
-    MQTTpublishTotalsIntStruct(ChargeDischargeManagementInfo, chargeEnable);
-    MQTTpublishTotalsIntStruct(ChargeDischargeManagementInfo, dischargeEnable);
+    MQTTpublishTotalsIntStruct(ChargeDischargeManagementInfo, chargeEnabled);
+    MQTTpublishTotalsIntStruct(ChargeDischargeManagementInfo, dischargeEnabled);
     MQTTpublishTotalsIntStruct(ChargeDischargeManagementInfo, chargeImmediately1);
     MQTTpublishTotalsIntStruct(ChargeDischargeManagementInfo, chargeImmediately2);
     MQTTpublishTotalsIntStruct(ChargeDischargeManagementInfo, fullChargeRequest);
@@ -907,20 +902,20 @@ void PylontechRS485BatteryStats::mqttPublish() /*const*/
         MQTTpublishPackInt(module, cycles);
 
         String subtopic = moduleTopic + "settings/";
-        //        MQTTpublishPack(module, chargeVoltage, 2);
+        // MQTTpublishPack(module, chargeVoltage, 2);
         MQTTpublishPackStruct(module, ChargeDischargeManagementInfo, chargeCurrentLimit, 2)
-            MQTTpublishPackStruct(module, ChargeDischargeManagementInfo, dischargeCurrentLimit, 2);
+        MQTTpublishPackStruct(module, ChargeDischargeManagementInfo, dischargeCurrentLimit, 2);
 
         subtopic = moduleTopic + "charging/";
-        MQTTpublishPackIntStruct(module, ChargeDischargeManagementInfo, chargeEnable);
-        MQTTpublishPackIntStruct(module, ChargeDischargeManagementInfo, dischargeEnable);
+        MQTTpublishPackIntStruct(module, ChargeDischargeManagementInfo, chargeEnabled);
+        MQTTpublishPackIntStruct(module, ChargeDischargeManagementInfo, dischargeEnabled);
         MQTTpublishPackIntStruct(module, ChargeDischargeManagementInfo, chargeImmediately1);
         MQTTpublishPackIntStruct(module, ChargeDischargeManagementInfo, chargeImmediately2);
         MQTTpublishPackIntStruct(module, ChargeDischargeManagementInfo, fullChargeRequest);
 
         subtopic = moduleTopic + "parameters/";
         MQTTpublishPackStruct(module, SystemParameters, chargeCurrentLimit, 2)
-            MQTTpublishPackStruct(module, SystemParameters, dischargeCurrentLimit, 2);
+        MQTTpublishPackStruct(module, SystemParameters, dischargeCurrentLimit, 2);
         MQTTpublishPackStruct(module, SystemParameters, cellHighVoltageLimit, 2);
         MQTTpublishPackStruct(module, SystemParameters, cellLowVoltageLimit, 2);
         MQTTpublishPackStruct(module, SystemParameters, cellUnderVoltageLimit, 2);
@@ -985,7 +980,7 @@ void DalyBmsBatteryStats::mqttPublish() /* const */
 
     String subtopic = "battery/";
     MQTTpublishInt(batteryCycles);
-    MQTTpublish(current, 2);
+//    MQTTpublish(current, 2);
     MQTTpublish(power, 3);
     MQTTpublish(remainingCapacity, 3);
     MQTTpublish(ratedCapacity, 3);
@@ -1066,7 +1061,6 @@ void PytesBatteryStats::mqttPublish() /* const */
     MqttSettings.publish("battery/settings/dischargeVoltageLimitation", String(_dischargeVoltageLimit));
 
     MqttSettings.publish("battery/stateOfHealth", String(_stateOfHealth));
-    MqttSettings.publish("battery/current", String(_current));
     MqttSettings.publish("battery/temperature", String(_temperature));
 
     if (_chargedEnergy != -1) {
@@ -1117,7 +1111,6 @@ void PytesBatteryStats::mqttPublish() /* const */
     MqttSettings.publish("battery/warning/bmsInternal", String(Warning.bmsInternal));
     MqttSettings.publish("battery/warning/cellImbalance", String(Warning.cellImbalance));
 }
-
 #endif
 
 #ifdef USE_JKBMS_CONTROLLER
@@ -1144,14 +1137,10 @@ void JkBmsBatteryStats::mqttPublish() /* const */
 
     for (auto iter = _dataPoints.cbegin(); iter != _dataPoints.cend(); ++iter) {
         // skip data points that did not change since last published
-        if (!fullPublish && iter->second.getTimestamp() < _lastMqttPublish) {
-            continue;
-        }
+        if (!fullPublish && iter->second.getTimestamp() < _lastMqttPublish) { continue; }
 
         auto skipMatch = std::find(mqttSkip.begin(), mqttSkip.end(), iter->first);
-        if (skipMatch != mqttSkip.end()) {
-            continue;
-        }
+        if (skipMatch != mqttSkip.end()) { continue; }
 
         String topic((std::string("battery/") + iter->second.getLabelText()).c_str());
         MqttSettings.publish(topic, iter->second.getValueText().c_str());
@@ -1195,9 +1184,7 @@ void JkBmsBatteryStats::mqttPublish() /* const */
     }
 
     _lastMqttPublish = millis();
-    if (fullPublish) {
-        _lastFullMqttPublish = _lastMqttPublish;
-    }
+    if (fullPublish) { _lastFullMqttPublish = _lastMqttPublish; }
 }
 
 void JkBmsBatteryStats::updateFrom(JkBms::DataPointContainer const& dp)
@@ -1207,7 +1194,12 @@ void JkBmsBatteryStats::updateFrom(JkBms::DataPointContainer const& dp)
     _manufacturer = "JKBMS";
     auto oProductId = dp.get<Label::ProductId>();
     if (oProductId.has_value()) {
-        _manufacturer = oProductId->c_str();
+        // the first twelve chars are expected to be the "User Private Data"
+        // setting (see smartphone app). the remainder is expected be the BMS
+        // name, which can be changed at will using the smartphone app. so
+        // there is not always a "JK" in this string. if there is, we still cut
+        // the string there to avoid possible regressions.
+        _manufacturer = oProductId->substr(12).c_str();
         auto pos = oProductId->rfind("JK");
         if (pos != std::string::npos) {
             _manufacturer = oProductId->substr(pos).c_str();
@@ -1226,6 +1218,13 @@ void JkBmsBatteryStats::updateFrom(JkBms::DataPointContainer const& dp)
         auto oVoltageDataPoint = dp.getDataPointFor<Label::BatteryVoltageMilliVolt>();
         BatteryStats::setVoltage(static_cast<float>(*oVoltage) / 1000,
             oVoltageDataPoint->getTimestamp());
+    }
+
+    auto oCurrent = dp.get<Label::BatteryCurrentMilliAmps>();
+    if (oCurrent.has_value()) {
+        auto oCurrentDataPoint = dp.getDataPointFor<Label::BatteryCurrentMilliAmps>();
+        BatteryStats::setCurrent(static_cast<float>(*oCurrent) / 1000, 2/*precision*/,
+                oCurrentDataPoint->getTimestamp());
     }
 
     _dataPoints.updateFrom(dp);
@@ -1262,11 +1261,6 @@ void JkBmsBatteryStats::updateFrom(JkBms::DataPointContainer const& dp)
         }
     }
 
-    auto oCurrent = _dataPoints.get<Label::BatteryCurrentMilliAmps>();
-    if (oCurrent.has_value()) {
-        current = static_cast<float>(*oCurrent) / 1000;
-    }
-
     auto oAlarms = _dataPoints.get<Label::AlarmsBitmask>();
     if (oAlarms.has_value()) {
         using Bits = JkBms::AlarmBits;
@@ -1281,8 +1275,8 @@ void JkBmsBatteryStats::updateFrom(JkBms::DataPointContainer const& dp)
     auto oStatus = _dataPoints.get<Label::StatusBitmask>();
     if (oStatus.has_value()) {
         using Bits = JkBms::StatusBits;
-        ChargeDischargeManagementInfo.chargeEnable = *oStatus & static_cast<uint16_t>(Bits::ChargingActive);
-        ChargeDischargeManagementInfo.dischargeEnable = *oStatus & static_cast<uint16_t>(Bits::DischargingActive);
+        ChargeDischargeManagementInfo.chargeEnabled = *oStatus & static_cast<uint16_t>(Bits::ChargingActive);
+        ChargeDischargeManagementInfo.dischargeEnabled = *oStatus & static_cast<uint16_t>(Bits::DischargingActive);
     }
 
     auto oTemperatureBms = _dataPoints.get<Label::BmsTempCelsius>();
@@ -1305,10 +1299,6 @@ void JkBmsBatteryStats::updateFrom(JkBms::DataPointContainer const& dp)
         _maxTemperature = max(*oTemperatureTwo, _maxTemperature);
     }
 
-//TotalOvervoltageThresholdMilliVolt;
-//TotalUndervoltageThresholdMilliVolt;
-//ChargeOvercurrentThresholdAmps;
-
     _lastUpdate = millis();
 }
 #endif
@@ -1317,9 +1307,9 @@ void JkBmsBatteryStats::updateFrom(JkBms::DataPointContainer const& dp)
 void VictronSmartShuntStats::updateFrom(VeDirectShuntController::data_t const& shuntData) {
     BatteryStats::setVoltage(shuntData.batteryVoltage_V_mV / 1000.0, millis());
     BatteryStats::setSoC(static_cast<float>(shuntData.SOC) / 10, 1 /*precision*/, millis());
+    BatteryStats::setCurrent(static_cast<float>(shuntData.batteryCurrent_I_mA) / 1000, 2/*precision*/, millis());
     _fwversion = shuntData.getFwVersionFormatted();
 
-    _current = static_cast<float>(shuntData.batteryCurrent_I_mA) / 1000;
     _chargeCycles = shuntData.H4;
     _timeToGo = shuntData.TTG / 60;
     _chargedEnergy = shuntData.H18 / 100;
@@ -1332,7 +1322,6 @@ void VictronSmartShuntStats::updateFrom(VeDirectShuntController::data_t const& s
     _instantaneousPower = shuntData.P;
     _consumedAmpHours = static_cast<float>(shuntData.CE) / 1000;
     _lastFullCharge = shuntData.H9 / 60;
-
     // shuntData.AR is a bitfield, so we need to check each bit individually
     _alarmLowVoltage = shuntData.alarmReason_AR & 1;
     _alarmHighVoltage = shuntData.alarmReason_AR & 2;
@@ -1348,7 +1337,6 @@ void VictronSmartShuntStats::getLiveViewData(JsonVariant& root) const
     BatteryStats::getLiveViewData(root);
 
     // values go into the "Status" card of the web application
-    addLiveViewValue(root, "current", _current, "A", 1);
     addLiveViewValue(root, "cycles", _chargeCycles, "", 0);
     addLiveViewValue(root, "chargedEnergy", _chargedEnergy, "KWh", 1);
     addLiveViewValue(root, "dischargedEnergy", _dischargedEnergy, "KWh", 1);
@@ -1372,7 +1360,6 @@ void VictronSmartShuntStats::mqttPublish() /* const */
 {
     BatteryStats::mqttPublish();
 
-    MqttSettings.publish("battery/current", String(_current));
     MqttSettings.publish("battery/chargeCycles", String(_chargeCycles));
     MqttSettings.publish("battery/chargedEnergy", String(_chargedEnergy));
     MqttSettings.publish("battery/dischargedEnergy", String(_dischargedEnergy));

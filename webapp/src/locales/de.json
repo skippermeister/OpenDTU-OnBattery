@@ -464,7 +464,8 @@
         "MpptTotalYieldTotal": "MPPT Gesamtertrag Insgesamt",
         "MpptTotalYieldDay": "MPPT Gesamtertrag Heute",
         "MpptTotalPower": "MPPT Gesamtleistung",
-        "BatterySoc": "Ladezustand",
+        "BatteryCharge": "Batterie Ladezustand",
+        "BatteryPower": "Batterie Leistung",
         "GridPower": "Leistung / Netz",
         "HousePower": "Leistung / Haus",
         "MeanWellPower": "Leistung / AC Ladegerät"

@@ -105,7 +105,21 @@ void WebApiWsLiveClass::generateOnBatteryJsonResponse(JsonVariant& root, bool al
         batteryObj["enabled"] = Configuration.get().Battery.Enabled;
 
         if (config.Battery.Enabled) {
-            addTotalField(batteryObj, "soc", spStats->getSoC(), "%", 1);
+            if (spStats->isSoCValid()) {
+                addTotalField(batteryObj, "soc", spStats->getSoC(), "%", spStats->getSoCPrecision());
+            }
+
+            if (spStats->isVoltageValid()) {
+                addTotalField(batteryObj, "voltage", spStats->getVoltage(), "V", 2);
+            }
+
+            if (spStats->isCurrentValid()) {
+                addTotalField(batteryObj, "current", spStats->getChargeCurrent(), "A", spStats->getChargeCurrentPrecision());
+            }
+
+            if (spStats->isVoltageValid() && spStats->isCurrentValid()) {
+                addTotalField(batteryObj, "power", spStats->getVoltage() * spStats->getChargeCurrent(), "W", 1);
+            }
         }
 
         if (!all) { _lastPublishBattery = millis(); }

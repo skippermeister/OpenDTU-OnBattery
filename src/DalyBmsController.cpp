@@ -452,7 +452,7 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer)
                 case Command::REQUEST_BATTERY_LEVEL:
                     _stats->setVoltage(to_Volt_1(&it[4]), millis()); // in Volt 0.1
                     _stats->gatherVoltage = to_Volt_1(&it[6]); // in Volt 0.1
-                    _stats->current = -to_Amp_1(&it[8]); // in Amp 0.1
+                    _stats->setCurrent(-to_Amp_1(&it[8]), 1/*precision*/, millis()); // in Amp 0.1
                     _stats->power = _stats->current * _stats->getVoltage() / 1000.0; // in kW
                     _stats->batteryLevel = ToFloat(&it[10]) / 10.0;
                     _stats->setSoC((100.0 * _stats->remainingCapacity) / _stats->ratedCapacity, 1 /*precision*/, millis());

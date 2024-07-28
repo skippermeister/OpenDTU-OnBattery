@@ -492,9 +492,10 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
 
         _lastUpdate = millis();
 
-#ifdef MEANWELL_DEBUG_ENABLED
-        if (_verboseLogging) MessageOutput.printf("%s Manufacturer Model Name: '%s' %d\r\n", TAG, _rp.ManufacturerModelName, static_cast<int>(_model));
-#endif
+//#ifdef MEANWELL_DEBUG_ENABLED
+        //if (_verboseLogging)
+            MessageOutput.printf("%s Manufacturer Model Name: '%s' %d\r\n", TAG, _rp.ManufacturerModelName, static_cast<int>(_model));
+//#endif
         }
         break;
 

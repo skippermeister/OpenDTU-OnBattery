@@ -84,7 +84,10 @@ export interface MeanWell {
 
 export interface Battery {
   enabled: boolean;
-  soc: ValueObject;
+  soc?: ValueObject;
+  voltage?: ValueObject;
+  power?: ValueObject;
+  current?: ValueObject;
 }
 
 export interface PowerMeter {

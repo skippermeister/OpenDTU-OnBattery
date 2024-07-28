@@ -464,7 +464,8 @@
         "MpptTotalYieldTotal": "MPPT Total Yield Total",
         "MpptTotalYieldDay": "MPPT Total Yield Day",
         "MpptTotalPower": "MPPT Total Power",
-        "BatterySoc": "State of charge",
+        "BatteryCharge": "Battery Charge",
+        "BatteryPower": "Battery Power",
         "GridPower": "Power / Grid",
         "HousePower": "Power / House",
         "MeanWellPower": "Power / AC Charger"
