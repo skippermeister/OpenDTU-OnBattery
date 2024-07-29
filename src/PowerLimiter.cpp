@@ -180,7 +180,6 @@ void PowerLimiterClass::loop()
 
     if (!config.PowerLimiter.Enabled) {
         shutdown(Status::DisabledByConfig);
-        //        _lastDCState = false;
         return;
     }
 
@@ -285,7 +284,7 @@ void PowerLimiterClass::loop()
     // arrives. this can be the case for readings provided by networked meter
     // readers, where a packet needs to travel through the network for some
     // time after the actual measurement was done by the reader.
-    if (PowerMeter.isDataValid() && PowerMeter.getLastUpdate() <= (*_oInverterStatsMillis + 2000)) {
+    if (PowerMeter.isDataValid() && (PowerMeter.getLastUpdate() - *_oInverterStatsMillis) <= 2000) {
         return announceStatus(Status::PowerMeterPending);
     }
 
@@ -351,8 +350,8 @@ void PowerLimiterClass::loop()
     _batteryDischargeEnabled = getBatteryPower();
 
     if (_verboseLogging && !config.PowerLimiter.IsInverterSolarPowered) {
-        MessageOutput.printf("%s%s: battery interface %s, SoC: %.1f%%, StartTH: %d %%, StopTH: %d %%, SoC age: %d s, ignore: %s\r\n", TAG, __FUNCTION__,
-            (Configuration.get().Battery.Enabled ? "enabled" : "disabled"),
+        MessageOutput.printf("%s%s: battery interface %sabled, SoC: %.1f%%, StartTH: %d %%, StopTH: %d %%, SoC age: %d s, ignore: %s\r\n", TAG, __FUNCTION__,
+            (Configuration.get().Battery.Enabled ? "en" : "dis"),
             Battery.getStats()->getSoC(),
             config.PowerLimiter.BatterySocStartThreshold,
             config.PowerLimiter.BatterySocStopThreshold,
@@ -374,6 +373,8 @@ void PowerLimiterClass::loop()
 
     // Calculate and set Power Limit (NOTE: might reset _inverter to nullptr!)
     bool limitUpdated = calcPowerLimit(_inverter, getSolarPower(), _batteryDischargeEnabled);
+
+    _lastCalculation = millis();
 
     if (!limitUpdated) {
         // increase polling backoff if system seems to be stable
@@ -547,7 +548,7 @@ bool PowerLimiterClass::calcPowerLimit(std::shared_ptr<InverterAbstract> inverte
 
     auto const& config = Configuration.get();
     auto targetConsumption = config.PowerLimiter.TargetPowerConsumption;
-    auto baseLoad = config.PowerLimiter.LowerPowerLimit;
+    auto baseLoad = config.PowerLimiter.BaseLoadLimit;
     bool meterIncludesInv = config.PowerLimiter.IsInverterBehindPowerMeter;
 
     if (_verboseLogging) {
@@ -1068,6 +1069,9 @@ void PowerLimiterClass::calcNextInverterRestart()
 bool PowerLimiterClass::useFullSolarPassthrough()
 {
     auto const& config = Configuration.get();
+
+    // solar passthrough only applies to setups with battery-powered inverters
+    if (config.PowerLimiter.IsInverterSolarPowered) { return false; }
 
     // We only do full solar PT if general solar PT is enabled
     if (!config.PowerLimiter.SolarPassThroughEnabled) { return false; }
