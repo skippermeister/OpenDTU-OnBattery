@@ -1,0 +1,132 @@
+[
+    {
+        "name": "ESP32S3USB CMT+NRF24+SH1106",
+        "nrf24":{
+            "miso": 9,
+            "mosi": 10,
+            "clk": 11,
+            "irq": 12,
+            "en": 13,
+            "cs": 14
+        },
+        "cmt":{
+            "clk": 4,
+            "cs": 5,
+            "fcs": 6,
+            "sdio": 7,
+            "gpio2": 15,
+            "gpio3": 16
+        },
+        "victron": {
+            "rs232_rx": 17,
+            "rs232_tx": 18,
+            "rs232_rx2": 8,
+            "rs232_tx2": 3
+        },
+        "battery": {
+            "rs485_rx": 1,
+            "rs485_tx": 2,
+            "rs485_rts": 42,
+            "wakeup": -1
+        },
+        "charger":{
+            "can0_rx":41,
+            "can0_tx":40
+        },
+        "mcp2515": {
+            "miso": -1,
+            "mosi": -1,
+            "clk": -1,
+            "irq": -1,
+            "cs": -1
+        },
+        "led": {
+            "led0": -1,
+            "led1": -1,
+            "rgb": 38
+        },
+        "display": {
+            "type": 0,
+            "data": -1,
+            "clk": -1,
+            "cs": -1,
+            "reset": -1,
+            "busy": -1,
+            "dc": -1
+        },
+        "powermeter": {
+            "sdm_rs485_rx": 48,
+            "sdm_rs485_tx": 47,
+            "sdm_rs485_rts": 45
+        },
+        "batteryConnectedInverter":{
+            "pre_charge":39,
+            "full_power":21
+        }
+    },
+    {
+        "name": "ESP32S3USB CMT+NRF24+disabled",
+        "nrf24":{
+            "miso": 13,
+            "mosi": 12,
+            "clk": 11,
+            "irq": 14,
+            "en": 9,
+            "cs": 10
+        },
+        "cmt":{
+            "clk": 4,
+            "cs": 5,
+            "fcs": 6,
+            "sdio": 7,
+            "gpio2": 15,
+            "gpio3": 16
+        },
+        "victron": {
+            "rs232_rx": 17,
+            "rs232_tx": 18,
+            "rs232_rx2": 8,
+            "rs232_tx2": 3
+        },
+        "battery": {
+            "rs485_rx": 1,
+            "rs485_tx": 2,
+            "rs485_rts": 42,
+            "wakeup": -1
+        },
+        "charger":{
+            "can0_rx":41,
+            "can0_tx":40
+        },
+        "mcp2515": {
+            "miso": -1,
+            "mosi": -1,
+            "clk": -1,
+            "irq": -1,
+            "cs": -1
+        },
+        "led": {
+            "led0": -1,
+            "led1": -1,
+            "rgb": 38
+        },
+        "display": {
+            "type": 0,
+            "data": -1,
+            "clk": -1,
+            "cs": -1,
+            "reset": -1,
+            "busy": -1,
+            "dc": -1
+        },
+        "powermeter": {
+            "sdm_rs485_rx": 48,
+            "sdm_rs485_tx": 47,
+            "sdm_rs485_rts": 45
+        },
+        "batteryConnectedInverter":{
+            "pre_charge":39,
+            "full_power":21
+        }
+    }
+]

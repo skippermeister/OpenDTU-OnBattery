@@ -68,8 +68,8 @@ void InverterSettingsClass::init(Scheduler& scheduler)
 #ifdef USE_RADIO_CMT
         if (PinMapping.isValidCmt2300Config()) {
             auto oSPInum = SPIPortManager.allocatePort("CMT2300A");
-            if (oSPInum) { // SPInum_HOST is SPInum-1
-                Hoymiles.initCMT(*oSPInum - 1, pin.cmt_sdio, pin.cmt_clk, pin.cmt_cs, pin.cmt_fcs, pin.cmt_gpio2, pin.cmt_gpio3);
+            if (oSPInum) {
+                Hoymiles.initCMT(*oSPInum + SPIPortManagerClass::_offset_spi_num, pin.cmt_sdio, pin.cmt_clk, pin.cmt_cs, pin.cmt_fcs, pin.cmt_gpio2, pin.cmt_gpio3);
                 MessageOutput.println("  Setting CMT target frequency... ");
                 Hoymiles.getRadioCmt()->setInverterTargetFrequency(config.Dtu.Cmt.Frequency);
             }

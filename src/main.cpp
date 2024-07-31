@@ -60,7 +60,7 @@ void setup()
     Serial.begin(SERIAL_BAUDRATE);
 #if ARDUINO_USB_CDC_ON_BOOT
     Serial.setTxTimeoutMs(0);
-    delay(100);
+    delay(5000);
 #else
     while (!Serial)
         yield();
