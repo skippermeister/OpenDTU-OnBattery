@@ -679,6 +679,7 @@
         "MqttConfiguration": "Paramètres MQT",
         "MqttSocTopic": "Sujet sur la valeur du SoC",
         "MqttVoltageTopic": "Sujet sur la valeur de tension",
+        "MqttVoltageUnit": "@:powermeteradmin.valueUnit",
         "JkBmsConfiguration": "Paramètres JK BMS",
         "JkBmsInterface": "Type d'interface",
         "JkBmsInterfaceUart": "TTL-UART on MCU",

@@ -49,9 +49,11 @@ void WebApiBatteryClass::onStatus(AsyncWebServerRequest* request)
 #ifdef USE_MQTT_BATTERY
     root["mqtt_soc_topic"] = cBattery.Mqtt.SocTopic;
     root["mqtt_voltage_topic"] = cBattery.Mqtt.VoltageTopic;
+    root["mqtt_voltage_unit"] = cBattery.Mqtt.VoltageUnit;
 #else
     root["mqtt_soc_topic"] = "";
     root["mqtt_voltage_topic"] = "";
+    root["mqtt_voltage_unit"] = 0;
 #endif
     root["updatesonly"] = cBattery.UpdatesOnly;
     root["min_charge_temp"] = cBattery.MinChargeTemperature;
@@ -137,6 +139,7 @@ void WebApiBatteryClass::onAdminPost(AsyncWebServerRequest* request)
 #ifdef USE_MQTT_BATTERY
     strlcpy(cBattery.Mqtt.SocTopic, root["mqtt_soc_topic"].as<String>().c_str(), sizeof(cBattery.Mqtt.SocTopic));
     strlcpy(cBattery.Mqtt.VoltageTopic, root["mqtt_voltage_topic"].as<String>().c_str(), sizeof(cBattery.Mqtt.VoltageTopic));
+    cBattery.Mqtt.VoltageUnit = static_cast<BatteryVoltageUnit>(root["mqtt_voltage_unit"].as<uint8_t>());
 #endif
     cBattery.Stop_Charging_BatterySoC_Threshold = root["stop_charging_soc"].as<uint8_t>();
 

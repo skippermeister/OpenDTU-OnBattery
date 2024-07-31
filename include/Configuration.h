@@ -225,6 +225,8 @@ struct PowerLimiter_CONFIG_T {
     float FullSolarPassThroughStopVoltage;
 };
 
+enum BatteryVoltageUnit { Volts = 0, DeciVolts = 1, CentiVolts = 2, MilliVolts = 3 };
+
 struct Battery_CONFIG_T {
     bool Enabled;
     bool VerboseLogging;
@@ -241,6 +243,7 @@ struct Battery_CONFIG_T {
     struct {
         char SocTopic[MQTT_MAX_TOPIC_STRLEN + 1];
         char VoltageTopic[MQTT_MAX_TOPIC_STRLEN + 1];
+        BatteryVoltageUnit VoltageUnit;
     } Mqtt;
 #endif
 #if defined(USE_MQTT_BATTERY) || defined(USE_VICTRON_SMART_SHUNT)

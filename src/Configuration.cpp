@@ -290,6 +290,7 @@ bool ConfigurationClass::write()
 #ifdef USE_MQTT_BATTERY
     battery["mqtt_topic"] = config.Battery.Mqtt.SocTopic;
     battery["mqtt_voltage_topic"] = config.Battery.Mqtt.VoltageTopic;
+    battery["mqtt_voltage_unit"] = config.Battery.Mqtt.VoltageUnit;
 #endif
     battery["min_charge_temp"] = config.Battery.MinChargeTemperature;
     battery["max_charge_temp"] = config.Battery.MaxChargeTemperature;
@@ -718,6 +719,7 @@ bool ConfigurationClass::read()
 #ifdef USE_MQTT_BATTERY
     strlcpy(config.Battery.Mqtt.SocTopic, battery["mqtt_topic"] | "", sizeof(config.Battery.Mqtt.SocTopic));
     strlcpy(config.Battery.Mqtt.VoltageTopic, battery["mqtt_voltage_topic"] | "", sizeof(config.Battery.Mqtt.VoltageTopic));
+    config.Battery.Mqtt.VoltageUnit = battery["mqtt_voltage_unit"] | BatteryVoltageUnit::Volts;
 #endif
     config.Battery.MinChargeTemperature = battery["min_charge_temp"] | BATTERY_MIN_CHARGE_TEMPERATURE;
     config.Battery.MaxChargeTemperature = battery["max_charge_temp"] | BATTERY_MAX_CHARGE_TEMPERATURE;

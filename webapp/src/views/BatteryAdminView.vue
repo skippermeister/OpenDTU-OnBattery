@@ -139,18 +139,31 @@
                         </label>
                         <div class="col-sm-10">
                             <div class="input-group">
-                                <input type="text" class="form-control" v-model="batteryConfigList.mqtt_soc_topic" />
+                                <input type="text" class="form-control" maxlength="256" v-model="batteryConfigList.mqtt_soc_topic" />
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div class="row mb-3">
-                    <label class="col-sm-2 col-form-label">
-                        {{ $t('batteryadmin.MqttVoltageTopic') }}
-                    </label>
-                    <div class="col-sm-10">
-                        <div class="input-group">
-                            <input type="text" class="form-control" v-model="batteryConfigList.mqtt_voltage_topic" />
+                    <div class="row mb-3">
+                        <label class="col-sm-2 col-form-label">
+                            {{ $t('batteryadmin.MqttVoltageTopic') }}
+                        </label>
+                        <div class="col-sm-10">
+                            <div class="input-group">
+                                <input type="text" class="form-control" maxlength="128" v-model="batteryConfigList.mqtt_voltage_topic" />
                             </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label for="mqtt_voltage_unit" class="col-sm-2 col-form-label">
+                            {{ $t('batteryadmin.MqttVoltageUnit') }}
+                        </label>
+                        <div class="col-sm-10">
+                            <select id="mqtt_voltage_unit" class="form-select" v-model="batteryConfigList.mqtt_voltage_unit">
+                                <option v-for="u in voltageUnitTypeList" :key="u.key" :value="u.key">
+                                    {{ u.value }}
+                                </option>
+                            </select>
                         </div>
                     </div>
                 </CardElement>
@@ -205,6 +218,12 @@ export default defineComponent({
                 { key:  8, value:  8000000 },
                 { key: 16, value: 16000000 },
                 { key: 20, value: 20000000 },
+            ],
+            voltageUnitTypeList: [
+                { key: 3, value: "mV" },
+                { key: 2, value: "cV" },
+                { key: 1, value: "dV" },
+                { key: 0, value: "V" },
             ],
         };
     },
