@@ -25,9 +25,11 @@ class MqttBattery : public BatteryProvider {
 
         std::optional<float> getFloat(std::string const& src, char const* topic);
         void onMqttMessageSoC(espMqttClientTypes::MessageProperties const& properties,
-                char const* topic, uint8_t const* payload, size_t len, size_t index, size_t total);
+                char const* topic, uint8_t const* payload, size_t len, size_t index, size_t total,
+                char const* jsonPath);
         void onMqttMessageVoltage(espMqttClientTypes::MessageProperties const& properties,
-                char const* topic, uint8_t const* payload, size_t len, size_t index, size_t total);
+                char const* topic, uint8_t const* payload, size_t len, size_t index, size_t total,
+                char const* jsonPath);
 
         bool _initialized = false;
 };

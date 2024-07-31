@@ -131,42 +131,50 @@
                     </div>
                 </CardElement>
 
-                <CardElement v-show="batteryConfigList.enabled && batteryConfigList.provider == 6"
-                         :text="$t('batteryadmin.MqttConfiguration')" textVariant="text-bg-primary" addSpace>
-                    <div class="row mb-3">
-                        <label class="col-sm-2 col-form-label">
-                            {{ $t('batteryadmin.MqttSocTopic') }}
-                        </label>
-                        <div class="col-sm-10">
-                            <div class="input-group">
-                                <input type="text" class="form-control" maxlength="256" v-model="batteryConfigList.mqtt_soc_topic" />
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row mb-3">
-                        <label class="col-sm-2 col-form-label">
-                            {{ $t('batteryadmin.MqttVoltageTopic') }}
-                        </label>
-                        <div class="col-sm-10">
-                            <div class="input-group">
-                                <input type="text" class="form-control" maxlength="128" v-model="batteryConfigList.mqtt_voltage_topic" />
-                            </div>
-                        </div>
-                    </div>
+                <template v-if="batteryConfigList.enabled && batteryConfigList.provider == 6">
+                    <CardElement :text="$t('batteryadmin.MqttSocConfiguration')" textVariant="text-bg-primary" addSpace>
 
-                    <div class="row mb-3">
-                        <label for="mqtt_voltage_unit" class="col-sm-2 col-form-label">
-                            {{ $t('batteryadmin.MqttVoltageUnit') }}
-                        </label>
-                        <div class="col-sm-10">
-                            <select id="mqtt_voltage_unit" class="form-select" v-model="batteryConfigList.mqtt_voltage_unit">
-                                <option v-for="u in voltageUnitTypeList" :key="u.key" :value="u.key">
-                                    {{ u.value }}
-                                </option>
-                            </select>
+
+                        <InputElement :label="$t('batteryadmin.MqttSocTopic')"
+                            v-model="batteryConfigList.mqtt_soc_topic"
+                            type="text"
+                            maxlength="256" />
+
+                        <InputElement :label="$t('batteryadmin.MqttJsonPath')"
+                            v-model="batteryConfigList.mqtt_soc_json_path"
+                            type="text"
+                            maxlength="128"
+                            :tooltip="$t('batteryadmin.MqttJsonPathDescription')" />
+
+                    </CardElement>
+
+                    <CardElement :text="$t('batteryadmin.MqttVoltageConfiguration')" textVariant="text-bg-primary" addSpace>
+
+                        <InputElement :label="$t('batteryadmin.MqttVoltageTopic')"
+                            v-model="batteryConfigList.mqtt_voltage_topic"
+                            type="text"
+                            maxlength="256" />
+
+                        <InputElement :label="$t('batteryadmin.MqttJsonPath')"
+                            v-model="batteryConfigList.mqtt_voltage_json_path"
+                            type="text"
+                            maxlength="128"
+                            :tooltip="$t('batteryadmin.MqttJsonPathDescription')" />
+
+                        <div class="row mb-3">
+                            <label for="mqtt_voltage_unit" class="col-sm-2 col-form-label">
+                                {{ $t('batteryadmin.MqttVoltageUnit') }}
+                            </label>
+                            <div class="col-sm-10">
+                                <select id="mqtt_voltage_unit" class="form-select" v-model="batteryConfigList.mqtt_voltage_unit">
+                                    <option v-for="u in voltageUnitTypeList" :key="u.key" :value="u.key">
+                                        {{ u.value }}
+                                    </option>
+                                </select>
+                            </div>
                         </div>
-                    </div>
-                </CardElement>
+                    </CardElement>
+                </template>
             </div>
 
             <FormFooter @reload="getBatteryConfig"/>

@@ -288,8 +288,10 @@ bool ConfigurationClass::write()
     battery["jkbms_polling_interval"] = config.Battery.JkBms.PollingInterval;
 #endif
 #ifdef USE_MQTT_BATTERY
-    battery["mqtt_topic"] = config.Battery.Mqtt.SocTopic;
+    battery["mqtt_soc_topic"] = config.Battery.Mqtt.SocTopic;
+    battery["mqtt_soc_json_path"] = config.Battery.Mqtt.SocJsonPath;
     battery["mqtt_voltage_topic"] = config.Battery.Mqtt.VoltageTopic;
+    battery["mqtt_voltage_json_path"] = config.Battery.Mqtt.VoltageJsonPath;
     battery["mqtt_voltage_unit"] = config.Battery.Mqtt.VoltageUnit;
 #endif
     battery["min_charge_temp"] = config.Battery.MinChargeTemperature;
@@ -717,8 +719,10 @@ bool ConfigurationClass::read()
     config.Battery.JkBms.PollingInterval = battery["jkbms_polling_interval"] | BATTERY_JKBMS_POLLING_INTERVAL;
 #endif
 #ifdef USE_MQTT_BATTERY
-    strlcpy(config.Battery.Mqtt.SocTopic, battery["mqtt_topic"] | "", sizeof(config.Battery.Mqtt.SocTopic));
+    strlcpy(config.Battery.Mqtt.SocTopic, battery["mqtt_soc_topic"] | "", sizeof(config.Battery.Mqtt.SocTopic));
+    strlcpy(config.Battery.Mqtt.SocJsonPath, battery["mqtt_soc_json_path"] | "", sizeof(config.Battery.Mqtt.SocJsonPath));
     strlcpy(config.Battery.Mqtt.VoltageTopic, battery["mqtt_voltage_topic"] | "", sizeof(config.Battery.Mqtt.VoltageTopic));
+    strlcpy(config.Battery.Mqtt.VoltageJsonPath, battery["mqtt_voltage_json_path"] | "", sizeof(config.Battery.Mqtt.VoltageJsonPath));
     config.Battery.Mqtt.VoltageUnit = battery["mqtt_voltage_unit"] | BatteryVoltageUnit::Volts;
 #endif
     config.Battery.MinChargeTemperature = battery["min_charge_temp"] | BATTERY_MIN_CHARGE_TEMPERATURE;

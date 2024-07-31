@@ -43,6 +43,7 @@
 #define POWERMETER_MQTT_MAX_VALUES 3
 #define POWERMETER_HTTP_JSON_MAX_VALUES 3
 #define POWERMETER_HTTP_JSON_MAX_PATH_STRLEN 256
+#define BATTERY_JSON_MAX_PATH_STRLEN 128
 
 #ifdef USE_LED_SINGLE
     #define LED_COUNT   PINMAPPING_LED_COUNT
@@ -242,7 +243,9 @@ struct Battery_CONFIG_T {
 #ifdef USE_MQTT_BATTERY
     struct {
         char SocTopic[MQTT_MAX_TOPIC_STRLEN + 1];
+        char SocJsonPath[BATTERY_JSON_MAX_PATH_STRLEN + 1];
         char VoltageTopic[MQTT_MAX_TOPIC_STRLEN + 1];
+        char VoltageJsonPath[BATTERY_JSON_MAX_PATH_STRLEN + 1];
         BatteryVoltageUnit VoltageUnit;
     } Mqtt;
 #endif

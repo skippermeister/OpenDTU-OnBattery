@@ -247,12 +247,11 @@ void REFUsolRS485ReceiverClass::loop()
 
 void REFUsolRS485ReceiverClass::debugRawTelegram(TELEGRAM_t* t, uint8_t len)
 {
-    char buffer[1024];
     if (DebugRawTelegram) {
         for (uint8_t i = 0; i < len; i++) {
-            snprintf(&buffer[i * 3], 4, "%02X ", t->buffer[i]);
+            MessageOutput.printf("%02X ", t->buffer[i]);
         }
-        MessageOutput.println(buffer);
+        MessageOutput.println();
     }
 }
 

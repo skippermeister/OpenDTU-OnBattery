@@ -122,7 +122,7 @@ private:
 
     uint16_t get_frame_checksum(char* frame);
     uint16_t get_info_length(const char* info);
-    void _encode_cmd(char *frame, uint8_t address, uint8_t cid2, const char* info);
+    //void _encode_cmd(char *frame, uint8_t address, uint8_t cid2, const char* info);
     void send_cmd(uint8_t address, uint8_t cmnd, uint8_t InfoCommand = 1);
     size_t readline(void);
     uint32_t hex2binary(char* s, int len);

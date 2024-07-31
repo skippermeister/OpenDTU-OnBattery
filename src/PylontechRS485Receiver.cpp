@@ -724,21 +724,20 @@ void PylontechRS485Receiver::get_alarm_info(const PylontechRS485Receiver::Functi
     Warning.lowVoltage = 0;
     Warning.highVoltage = 0;
 
-    char buffer[AlarmInfo.numberOfCells * 3 + 1];
+    if (_verboseLogging) MessageOutput.printf("%s DataFlag: %02X, CommandValue: %02X, Number of Cell: %d, Status: ", TAG,
+                            DataFlag,
+                            CommandValue,
+                            AlarmInfo.numberOfCells);
+
     for (int i = 0; i < AlarmInfo.numberOfCells; i++) {
         AlarmInfo.cellVoltages[i] = *info++;
 
         if (AlarmInfo.cellVoltages[i] & 0x01) Warning.lowVoltage = 1;
         if (AlarmInfo.cellVoltages[i] & 0x02) Warning.highVoltage = 1;
 
-        if (_verboseLogging)
-            snprintf(&buffer[i * 3], 4, "%02X ", AlarmInfo.cellVoltages[i]);
+        if (_verboseLogging) MessageOutput.printf("%02X ", AlarmInfo.cellVoltages[i]);
     }
-    if (_verboseLogging)
-        MessageOutput.printf("%s DataFlag: %02X, CommandValue: %02X, Number of Cell: %d, Status: %s\r\n", TAG,
-            DataFlag,
-            CommandValue,
-            AlarmInfo.numberOfCells, buffer);
+    if (_verboseLogging) MessageOutput.println();
 
     AlarmInfo.numberOfTemperatures = min(*info++, static_cast<uint8_t>(6));
     Warning.lowTemperature = 0; // set to normal
@@ -748,16 +747,19 @@ void PylontechRS485Receiver::get_alarm_info(const PylontechRS485Receiver::Functi
     if (AlarmInfo.BMSTemperature & 0x01) Warning.lowTemperature = 1;
     if (AlarmInfo.BMSTemperature & 0x02) Warning.highTemperature = 1;
 
+#ifdef PYLONTECH_RS485_DEBUG_ENABLED
+    MessageOutput.printf("%s Number of Temperature Sensors: %d,  Status: ", TAG, AlarmInfo.NumberOfTemperatures);
+#endif
     for (int i = 0; i < _stats->Pack[module].numberOfTemperatures - 1; i++) {
         AlarmInfo.Temperatures[i] = *info++;
 #ifdef PYLONTECH_RS485_DEBUG_ENABLED
-        snprintf(&buffer[i * 3], 4, "%02X ", AlarmInfo.Temperatures[i]);
+        MessageOutput.printf("%02X ", AlarmInfo.Temperatures[i]);
 #endif
         if (AlarmInfo.Temperatures[i] & 0x01) Warning.lowTemperature = 1;
         if (AlarmInfo.Temperatures[i] & 0x02) Warning.highTemperature = 1;
     }
 #ifdef PYLONTECH_RS485_DEBUG_ENABLED
-    MessageOutput.printf("%s Number of Temperature Sensors: %d,  Status: %s\r\n", TAG, AlarmInfo.NumberOfTemperatures, buffer);
+    MessageOutput.println();
 #endif
 
     AlarmInfo.chargeCurrent = *info++;
@@ -989,7 +991,7 @@ uint16_t PylontechRS485Receiver::get_info_length(const char* info)
 
     return length;
 }
-
+/*
 void PylontechRS485Receiver::_encode_cmd(char* frame, uint8_t address, uint8_t cid2, const char* info)
 {
     char subframe[26];
@@ -998,6 +1000,7 @@ void PylontechRS485Receiver::_encode_cmd(char* frame, uint8_t address, uint8_t c
     snprintf(subframe, sizeof(subframe), "%02X%02X%02X%02X%04X%s", 0x20, address, cid1, cid2, get_info_length(info), info);
     snprintf(frame, 32, "%c%s%04X%c", 0x7E, subframe, get_frame_checksum(subframe), 0x0D);
 }
+*/
 
 void PylontechRS485Receiver::send_cmd(uint8_t address, uint8_t cmnd, uint8_t InfoCommand)
 {
@@ -1005,11 +1008,15 @@ void PylontechRS485Receiver::send_cmd(uint8_t address, uint8_t cmnd, uint8_t Inf
     char bdevid[3] = "";
 
     if (InfoCommand) snprintf(bdevid, sizeof(bdevid), "%02X", InfoCommand == 1 ? address : 0xFF);
-    _encode_cmd(raw_frame, address, cmnd, bdevid);
+//    _encode_cmd(raw_frame, address, cmnd, bdevid);
+
+    char subframe[26];
+    snprintf(subframe, sizeof(subframe), "%02X%02X%02X%02X%04X%s", 0x20, address, 0x46, cmnd, get_info_length(bdevid), bdevid);
+    snprintf(raw_frame, sizeof(raw_frame), "%c%s%04X%c", 0x7E, subframe, get_frame_checksum(subframe), 0x0D);
+
     size_t length = strlen(raw_frame);
 
-    if (_verboseLogging)
-        MessageOutput.printf("%s:%s frame=%s\r\n", TAG, __FUNCTION__, raw_frame);
+    if (_verboseLogging) MessageOutput.printf("%s:%s frame=%s\r\n", TAG, __FUNCTION__, raw_frame);
 
     if (_upSerial->write(raw_frame, length) != length) {
         MessageOutput.printf("%s Send data critical failure.\r\n", TAG);
@@ -1054,7 +1061,7 @@ size_t PylontechRS485Receiver::readline(void)
                 _received_frame = reinterpret_cast<char*>(realloc(prev = _received_frame, _receivedFrameSize + 32));
                 _receivedFrameSize += 32;
                 MessageOutput.printf("%s %s realloc location: %p. Size: %d bytes.\r\n", TAG,
-                    prev != _received_frame ? "New" : "Old", (void*)_received_frame, _receivedFrameSize);
+                    prev != _received_frame ? "New" : "Old", reinterpret_cast<void*>(_received_frame), _receivedFrameSize);
             }
             _received_frame[idx++] = c;
 

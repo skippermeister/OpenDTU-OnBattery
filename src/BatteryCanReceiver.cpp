@@ -176,12 +176,12 @@ void BatteryCanReceiver::loop()
         {
             twai_message_t rx_message;
 
-            _CAN->readMsgBuf((long unsigned int*)&rx_message.identifier, &rx_message.data_length_code, rx_message.data);      // Read data: len = data length, buf = data byte(s)
+            _CAN->readMsgBuf(&rx_message.identifier, &rx_message.data_length_code, rx_message.data);      // Read data: len = data length, buf = data byte(s)
 
             if((rx_message.identifier & 0x80000000) == 0x80000000)     // Determine if ID is standard (11 bits) or extended (29 bits)
-                MessageOutput.printf("Extended ID: 0x%.8lX  DLC: %1d  Data:", (long unsigned int)(rx_message.identifier & 0x1FFFFFFF), rx_message.data_length_code);
+                MessageOutput.printf("Extended ID: 0x%.8" PRIx32 " DLC: %1d  Data:", rx_message.identifier & 0x1FFFFFFF, rx_message.data_length_code);
             else
-                MessageOutput.printf("Standard ID: 0x%.3lX  DLC: %1d  Data:", (long unsigned int)rx_message.identifier, rx_message.data_length_code);
+                MessageOutput.printf("Standard ID: 0x%.3" PRIx32 " DLC: %1d  Data:", rx_message.identifier, rx_message.data_length_code);
 
             if((rx_message.identifier & 0x40000000) == 0x40000000){    // Determine if message is a remote request frame.
                 MessageOutput.printf(" REMOTE REQUEST FRAME %s\r\n", rx_message.data);

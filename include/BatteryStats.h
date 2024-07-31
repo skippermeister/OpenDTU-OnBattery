@@ -587,8 +587,8 @@ private:
     JkBms::DataPointContainer _dataPoints;
 
     float current;
-    short _minTemperature = 100;
-    short _maxTemperature = -100;
+    int16_t _minTemperature = 100;
+    int16_t _maxTemperature = -100;
     Alarm_t Alarm;
     Warning_t Warning;
     ChargeDischargeManagementInfo_t ChargeDischargeManagementInfo;
