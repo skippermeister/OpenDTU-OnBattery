@@ -122,8 +122,7 @@ export default defineComponent({
             get(): any {
                 if (this.type === 'checkbox') return !!this.modelValue;
                 else if(this.type === 'number') {
-                    var p;
-                    p = this.modelValue?.toString();
+                    let p = this.modelValue?.toString();
                     if (p == undefined) p = "0.0";
                     if (this.step == '1') return parseFloat(p).toFixed(0);
                     if (this.step == '0.1') return parseFloat(p).toFixed(1);

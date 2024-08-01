@@ -165,7 +165,7 @@
                             <label for="mqtt_voltage_unit" class="col-sm-2 col-form-label">
                                 {{ $t('batteryadmin.MqttVoltageUnit') }}
                             </label>
-                            <div class="col-sm-10">
+                            <div class="col-sm-1">
                                 <select id="mqtt_voltage_unit" class="form-select" v-model="batteryConfigList.mqtt_voltage_unit">
                                     <option v-for="u in voltageUnitTypeList" :key="u.key" :value="u.key">
                                         {{ u.value }}

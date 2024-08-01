@@ -99,7 +99,7 @@
                                     </div>
                                 </div>
 
-                                <div class="col order-1"  v-if="batteryData.issues" != "null">
+                                <div class="col order-1"  v-if="batteryData.issues != null">
                                     <div class="card" style="overflow: hidden">
                                         <div :class="{'card-header': true, 'border-bottom-0': maxIssueValue === 0}">
                                             <div class="d-flex flex-row justify-content-between align-items-baseline">
@@ -207,7 +207,7 @@
                                                         <td>{{ pack.cell.cellDiffVoltage.u }}</td>
                                                     </tr>
 
-                                                    <template v-for="i in Math.floor((pack.cell.voltage.length+2) / 3)">
+                                                    <template v-for="i in Math.floor((pack.cell.voltage.length+2) / 3)" v-bind:key="i">
                                                         <tr>
                                                             <template v-for="(voltage, index) in pack.cell.voltage.slice((i-1)*3,(i-1)*3+3)" v-bind:key="index">
                                                                 <th scope="row">{{ $t('battery.cell') }} {{(i-1)*3+index+1}}</th>
@@ -229,7 +229,7 @@
                                         <div class="table-responsive">
                                             <table class="table table-striped table-hover" style="margin: 0">
                                                 <tbody>
-                                                    <template v-for="i in Math.floor((pack.tempSensor.length+2) / 3)">
+                                                    <template v-for="i in Math.floor((pack.tempSensor.length+2) / 3)" v-bind:key="i">
                                                         <tr>
                                                             <template v-for="(tempSensor, index) in pack.tempSensor.slice((i-1)*3,(i-1)*3+3)" v-bind:key="index">
                                                                 <th scope="row">{{ $t('battery.tempSensor') }} {{(i-1)*3+index+1}}</th>

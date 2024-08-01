@@ -134,9 +134,9 @@ export default defineComponent({
         saveZeroExportConfig(e: Event) {
             e.preventDefault();
 
-            var cfg = this.zeroExportConfigList;
-            var meta = this.zeroExportMetaData;
-            var idx=0;
+            const cfg = this.zeroExportConfigList;
+            const meta = this.zeroExportMetaData;
+            let idx=0;
 
             cfg.serials = [];
             for (const [serial, inverter] of Object.entries(meta.inverters)) {
