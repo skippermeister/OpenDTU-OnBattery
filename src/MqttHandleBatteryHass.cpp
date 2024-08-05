@@ -46,7 +46,10 @@ void MqttHandleBatteryHassClass::loop()
 void MqttHandleBatteryHassClass::publishConfig()
 {
     CONFIG_T& config = Configuration.get();
-    if (!config.Mqtt.Hass.Enabled || !config.Battery.Enabled || !MqttSettings.getConnected()) {
+    if (!config.Mqtt.Hass.Enabled ||
+        !config.Battery.Enabled ||
+        !MqttSettings.getConnected())
+    {
         return;
     }
 

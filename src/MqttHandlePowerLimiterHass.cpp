@@ -2,7 +2,6 @@
 /*
  * Copyright (C) 2022 Thomas Basler and others
  */
-
 #ifdef USE_HASS
 
 #include "MqttHandlePowerLimiterHass.h"
@@ -55,16 +54,10 @@ void MqttHandlePowerLimiterHassClass::forceUpdate()
 void MqttHandlePowerLimiterHassClass::publishConfig()
 {
     auto const& config = Configuration.get();
-
-    if (!config.Mqtt.Hass.Enabled) {
-        return;
-    }
-
-    if (!MqttSettings.getConnected()) {
-        return;
-    }
-
-    if (!config.PowerLimiter.Enabled) {
+    if (!config.Mqtt.Hass.Enabled ||
+        !MqttSettings.getConnected() ||
+        !config.PowerLimiter.Enabled)
+    {
         return;
     }
 

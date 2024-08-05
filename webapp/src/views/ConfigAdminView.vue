@@ -88,7 +88,8 @@
         </CardElement>
     </BasePage>
 
-    <ModalDialog modalId="factoryReset" small :title="$t('configadmin.FactoryReset')" :closeText="$t('configadmin.Cancel')">
+    <ModalDialog modalId="factoryReset" small :title="$t('configadmin.FactoryReset')"
+        :closeText="$t('configadmin.Cancel')">
         {{ $t('configadmin.ResetMsg') }}
         <template #footer>
             <button type="button" class="btn btn-danger" @click="onFactoryResetPerform">
@@ -100,17 +101,13 @@
 
 <script lang="ts">
 import BasePage from '@/components/BasePage.vue';
-import BootstrapAlert from "@/components/BootstrapAlert.vue";
+import BootstrapAlert from '@/components/BootstrapAlert.vue';
 import CardElement from '@/components/CardElement.vue';
 import ModalDialog from '@/components/ModalDialog.vue';
 import type { ConfigFileList } from '@/types/Config';
 import { authHeader, handleResponse } from '@/utils/authentication';
 import * as bootstrap from 'bootstrap';
-import {
-    BIconArrowLeft,
-    BIconCheckCircle,
-    BIconExclamationCircleFill
-} from 'bootstrap-icons-vue';
+import { BIconArrowLeft, BIconCheckCircle, BIconExclamationCircleFill } from 'bootstrap-icons-vue';
 import { defineComponent } from 'vue';
 
 export default defineComponent({
@@ -126,18 +123,18 @@ export default defineComponent({
     data() {
         return {
             modalFactoryReset: {} as bootstrap.Modal,
-            alertMessage: "",
-            alertType: "info",
+            alertMessage: '',
+            alertType: 'info',
             showAlert: false,
             loading: true,
             uploading: false,
             progress: 0,
-            UploadError: "",
+            UploadError: '',
             UploadSuccess: false,
             file: {} as Blob,
             fileList: {} as ConfigFileList,
-            backupFileSelect: "",
-            restoreFileSelect: "config.json",
+            backupFileSelect: '',
+            restoreFileSelect: 'config.json',
         };
     },
     mounted() {
@@ -155,10 +152,10 @@ export default defineComponent({
         },
         onFactoryResetPerform() {
             const formData = new FormData();
-            formData.append("data", JSON.stringify({ delete: true }));
+            formData.append('data', JSON.stringify({ delete: true }));
 
-            fetch("/api/config/delete", {
-                method: "POST",
+            fetch('/api/config/delete', {
+                method: 'POST',
                 headers: authHeader(),
                 body: formData,
             })
@@ -174,7 +171,7 @@ export default defineComponent({
         },
         getFileList() {
             this.loading = true;
-            fetch("/api/config/list", { headers: authHeader() })
+            fetch('/api/config/list', { headers: authHeader() })
                 .then((response) => handleResponse(response, this.$emitter, this.$router))
                 .then((data) => {
                     this.fileList = data;
@@ -185,7 +182,7 @@ export default defineComponent({
                 });
         },
         downloadConfig() {
-            fetch("/api/config/get?file=" + this.backupFileSelect, { headers: authHeader() })
+            fetch('/api/config/get?file=' + this.backupFileSelect, { headers: authHeader() })
                 .then(res => res.blob())
                 .then(blob => {
                     const file = window.URL.createObjectURL(blob);
@@ -204,13 +201,13 @@ export default defineComponent({
             if (target.files !== null && target.files?.length > 0) {
                 this.file = target.files[0];
             } else {
-                this.UploadError = this.$t("configadmin.NoFileSelected");
+                this.UploadError = this.$t('configadmin.NoFileSelected');
                 this.uploading = false;
                 this.progress = 0;
                 return;
             }
             const request = new XMLHttpRequest();
-            request.addEventListener("load", () => {
+            request.addEventListener('load', () => {
                 // request.response will hold the response from the server
                 if (request.status === 200) {
                     this.UploadSuccess = true;
@@ -223,20 +220,20 @@ export default defineComponent({
                 this.progress = 0;
             });
             // Upload progress
-            request.upload.addEventListener("progress", (e) => {
+            request.upload.addEventListener('progress', (e) => {
                 this.progress = Math.trunc((e.loaded / e.total) * 100);
             });
             request.withCredentials = true;
 
-            formData.append("config", this.file, "config");
-            request.open("post", "/api/config/upload?file=" + this.restoreFileSelect);
+            formData.append('config', this.file, 'config');
+            request.open('post', '/api/config/upload?file=' + this.restoreFileSelect);
             authHeader().forEach((value, key) => {
                 request.setRequestHeader(key, value);
             });
             request.send(formData);
         },
         clear() {
-            this.UploadError = "";
+            this.UploadError = '';
             this.UploadSuccess = false;
             this.getFileList();
         },

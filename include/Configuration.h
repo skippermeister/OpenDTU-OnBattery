@@ -203,7 +203,6 @@ struct PowerLimiter_CONFIG_T {
     uint8_t SolarPassThroughLosses;
     bool BatteryAlwaysUseAtNight;
     bool UpdatesOnly;
-    uint32_t Interval;
     bool IsInverterBehindPowerMeter;
     bool IsInverterSolarPowered;
     bool UseOverscalingToCompensateShading;

@@ -12,11 +12,12 @@
         </CardElement>
     </BasePage>
 
-    <ModalDialog modalId="performReboot" small :title="$t('maintenancereboot.RebootOpenDTU')" :closeText="$t('maintenancereboot.Cancel')">
+    <ModalDialog modalId="performReboot" small :title="$t('maintenancereboot.RebootOpenDTU')"
+        :closeText="$t('maintenancereboot.Cancel')">
         {{ $t('maintenancereboot.RebootQuestion') }}
         <template #footer>
             <button type="button" class="btn btn-danger" @click="onReboot">
-                        {{ $t('maintenancereboot.Reboot') }}
+                {{ $t('maintenancereboot.Reboot') }}
             </button>
         </template>
     </ModalDialog>
@@ -24,7 +25,7 @@
 
 <script lang="ts">
 import BasePage from '@/components/BasePage.vue';
-import BootstrapAlert from "@/components/BootstrapAlert.vue";
+import BootstrapAlert from '@/components/BootstrapAlert.vue';
 import CardElement from '@/components/CardElement.vue';
 import ModalDialog from '@/components/ModalDialog.vue';
 import { authHeader, handleResponse, isLoggedIn } from '@/utils/authentication';
@@ -44,14 +45,14 @@ export default defineComponent({
 
             dataLoading: false,
 
-            alertMessage: "",
-            alertType: "info",
+            alertMessage: '',
+            alertType: 'info',
             showAlert: false,
         };
     },
     mounted() {
         if (!isLoggedIn()) {
-            this.$router.push({ path: "/login", query: { returnUrl: this.$router.currentRoute.value.fullPath } });
+            this.$router.push({ path: '/login', query: { returnUrl: this.$router.currentRoute.value.fullPath } });
         }
 
         this.performReboot = new bootstrap.Modal('#performReboot');
@@ -59,10 +60,10 @@ export default defineComponent({
     methods: {
         onReboot() {
             const formData = new FormData();
-            formData.append("data", JSON.stringify({ reboot: true }));
+            formData.append('data', JSON.stringify({ reboot: true }));
 
-            fetch("/api/maintenance/reboot", {
-                method: "POST",
+            fetch('/api/maintenance/reboot', {
+                method: 'POST',
                 headers: authHeader(),
                 body: formData,
             })

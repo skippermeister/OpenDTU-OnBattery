@@ -19,11 +19,14 @@
                                     meanwellData.manufacturerModelName }}</div>
                                 <div style="padding-right: 2em;">
                                     <template v-if="meanwellData.automatic">{{ $t('meanwell.AutomaticCharging')
-                                    }}</template>
+                                        }}</template>
                                     <template v-else>{{ $t('meanwell.ManualCharging') }}</template>
                                 </div>
                                 <div style="padding-right: 2em;">
-                                    {{ $t('meanwell.DataAge') }} {{ $t('meanwell.Seconds', { 'val': meanwellData.data_age })
+                                    {{ $t('meanwell.DataAge') }} {{ $t('meanwell.Seconds', {
+                                        'val':
+                                            meanwellData.data_age
+                                    })
                                     }}
                                 </div>
                             </div>
@@ -32,14 +35,16 @@
 
                             <div class="btn-group me-2" role="group">
                                 <button :disabled="!isLogged" type="button" class="btn btn-sm btn-danger"
-                                    @click="onShowMeanwellLimitSettings()" v-tooltip :title="$t('meanwell.ShowSetLimit')">
+                                    @click="onShowMeanwellLimitSettings()" v-tooltip
+                                    :title="$t('meanwell.ShowSetLimit')">
                                     <BIconSpeedometer style="font-size:24px;" />
                                 </button>
                             </div>
 
                             <div class="btn-group me-2" role="group">
                                 <button :disabled="!isLogged" type="button" class="btn btn-sm btn-danger"
-                                    @click="onShowMeanwellPowerSettings()" v-tooltip :title="$t('meanwell.TurnOnOffAuto')">
+                                    @click="onShowMeanwellPowerSettings()" v-tooltip
+                                    :title="$t('meanwell.TurnOnOffAuto')">
                                     <BIconPower style="font-size:24px;" />
                                 </button>
                             </div>
@@ -79,9 +84,9 @@
                                                         <span class="badge" :class="{
                                                             'text-bg-danger': !meanwellData.operation,
                                                             'text-bg-success': meanwellData.operation
-                                                            }">
+                                                        }">
                                                             <template v-if="meanwellData.operation">{{ $t('meanwell.on')
-                                                            }}</template>
+                                                                }}</template>
                                                             <template v-else>{{ $t('meanwell.off') }}</template>
                                                         </span>
                                                     </td>
@@ -94,11 +99,11 @@
                                                         <span class="badge" :class="{
                                                             'text-bg-danger': !meanwellData.cuve,
                                                             'text-bg-success': meanwellData.cuve
-                                                            }">
+                                                        }">
                                                             <template v-if="meanwellData.cuve">{{
                                                                 $t('meanwell.charger_mode') }}</template>
                                                             <template v-else>{{ $t('meanwell.power_supply_mode')
-                                                            }}</template>
+                                                                }}</template>
                                                         </span>
                                                     </td>
                                                     <td></td>
@@ -110,11 +115,11 @@
                                                         <span class="badge" :class="{
                                                             'text-bg-danger': meanwellData.stgs,
                                                             'text-bg-success': !meanwellData.stgs
-                                                            }">
+                                                        }">
                                                             <template v-if="meanwellData.stgs">{{
                                                                 $t('meanwell.two_stage_charge') }}</template>
                                                             <template v-else>{{ $t('meanwell.three_stage_charge')
-                                                            }}</template>
+                                                                }}</template>
                                                         </span>
                                                     </td>
                                                     <td></td>
@@ -198,10 +203,10 @@
                                     </div>
 
                                     <div class="col-sm-2">
-                                        <input type="number" step="0.01" name="inputVoltageTargetLimit" class="form-control"
-                                            id="inputVoltageTargetLimit" :min="targetVoltageLimitMin"
-                                            :max="targetVoltageLimitMax" v-model="targetLimitList.voltage"
-                                            :disabled=!targetLimitList.voltageValid>
+                                        <input type="number" step="0.01" name="inputVoltageTargetLimit"
+                                            class="form-control" id="inputVoltageTargetLimit"
+                                            :min="targetVoltageLimitMin" :max="targetVoltageLimitMax"
+                                            v-model="targetLimitList.voltage" :disabled=!targetLimitList.voltageValid>
                                     </div>
                                 </div>
 
@@ -217,10 +222,10 @@
                                     </div>
 
                                     <div class="col-sm-2">
-                                        <input type="number" step="0.01" name="inputCurrentTargetLimit" class="form-control"
-                                            id="inputCurrentTargetLimit" :min="targetCurrentLimitMin"
-                                            :max="targetCurrentLimitMax" v-model="targetLimitList.current"
-                                            :disabled=!targetLimitList.currentValid>
+                                        <input type="number" step="0.01" name="inputCurrentTargetLimit"
+                                            class="form-control" id="inputCurrentTargetLimit"
+                                            :min="targetCurrentLimitMin" :max="targetCurrentLimitMax"
+                                            v-model="targetLimitList.current" :disabled=!targetLimitList.currentValid>
                                     </div>
                                 </div>
 
@@ -313,7 +318,8 @@
                         <div class="modal-footer">
                             <button type="submit" class="btn btn-danger" @click="onSetMeanwellLimitSettings()">{{
                                 $t('meanwell.SetLimit') }}</button>
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ $t('meanwell.Close')
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{
+                                $t('meanwell.Close')
                             }}</button>
                         </div>
                     </form>
@@ -361,7 +367,8 @@
                                     <BIconToggleOff class="fs-4" />&nbsp;{{ $t('meanwell.TurnOff') }}
                                 </button>
                                 <button type="button" class="btn btn-warning" @click="onSetMeanwellPowerSettings(2)">
-                                    <BIconArrowCounterclockwise class="fs-4" />&nbsp;{{ $t('meanwell.AutomaticCharging') }}
+                                    <BIconArrowCounterclockwise class="fs-4" />&nbsp;{{ $t('meanwell.AutomaticCharging')
+                                    }}
                                 </button>
                             </div>
                         </template>
@@ -369,7 +376,7 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ $t('meanwell.Close')
-                        }}</button>
+                            }}</button>
                     </div>
                 </div>
             </div>
@@ -613,7 +620,6 @@ export default defineComponent({
                     }
                 )
         },
-
     },
 });
 </script>

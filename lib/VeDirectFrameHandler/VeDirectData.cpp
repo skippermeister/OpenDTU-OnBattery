@@ -187,7 +187,7 @@ String veStruct::getFwVersionFormatted() const
  */
 frozen::string const& veMpptStruct::getCsAsString() const
 {
-	static constexpr frozen::map<uint8_t, frozen::string, 9> values = {
+	static constexpr frozen::map<uint8_t, frozen::string, 10> values = {
 		{ 0,   "OFF" },
 		{ 2,   "Fault" },
 		{ 3,   "Bulk" },
@@ -196,7 +196,8 @@ frozen::string const& veMpptStruct::getCsAsString() const
 		{ 7,   "Equalize (manual)" },
 		{ 245, "Starting-up" },
 		{ 247, "Auto equalize / Recondition" },
-		{ 252, "External Control" }
+		{ 252, "External Control" },
+        { 255, "Unavailable" }
 	};
 
 	return getAsString(values, currentState_CS);
@@ -221,27 +222,34 @@ frozen::string const& veMpptStruct::getMpptAsString() const
  */
 frozen::string const& veMpptStruct::getErrAsString() const
 {
-	static constexpr frozen::map<uint8_t, frozen::string, 20> values = {
+	static constexpr frozen::map<uint8_t, frozen::string, 27> values = {
 		{ 0,   "No error" },
 		{ 2,   "Battery voltage too high" },
+        { 14,  "Battery temperature too low (charging not allowed)" },
 		{ 17,  "Charger temperature too high" },
 		{ 18,  "Charger over current" },
 		{ 19,  "Charger current reversed" },
 		{ 20,  "Bulk time limit exceeded" },
 		{ 21,  "Current sensor issue(sensor bias/sensor broken)" },
+        { 22,  "Charger internal temperature sensor issue" },
+        { 23,  "Charger internal temperature sensor issue" },
 		{ 26,  "Terminals overheated" },
+        { 27,  "Charger short-circuit " },
 		{ 28,  "Converter issue (dual converter models only)" },
+        { 29,  "Battery over-charge protection" },
 		{ 33,  "Input voltage too high (solar panel)" },
 		{ 34,  "Input current too high (solar panel)" },
 		{ 38,  "Input shutdown (due to excessive battery voltage)" },
 		{ 39,  "Input shutdown (due to current flow during off mode)" },
 		{ 40,  "Input" },
 		{ 65,  "Lost communication with one of devices" },
-		{ 67,  "Synchronisedcharging device configuration issue" },
-		{ 68,  "BMS connection lost" },
+        { 66,  "Incompatible device in the network (for synchronized charging)" },
+		{ 67,  "BMS connection lost" },
+		{ 68,  "Network misconfigured (e.g. combining ESS with ve.smart networking)" },
 		{ 116, "Factory calibration data lost" },
-		{ 117, "Invalid/incompatible firmware" },
-		{ 118, "User settings invalid" }
+		{ 117, "Incompatible firmware (i.e. not for this model)" },
+		{ 118, "User settings invalid" },
+        { 119, "Settings data invalid / corrupted (use restore to defaults and reset to recover)" }
 	};
 
 	return getAsString(values, errorCode_ERR);
@@ -288,29 +296,46 @@ frozen::string const& VeDirectHexData::getResponseAsString() const
 frozen::string const& VeDirectHexData::getRegisterAsString() const
 {
 	using Register = VeDirectHexRegister;
-	static constexpr frozen::map<Register, frozen::string, 19> values = {
+	static constexpr frozen::map<Register, frozen::string, 25> values = {
 		{ Register::Capabilities, "Capabilities" },
 		{ Register::DeviceMode, "Device Mode" },
 		{ Register::DeviceState, "Device State" },
 		{ Register::RemoteControlUsed, "Remote Control Used" },
 		{ Register::PanelVoltage, "Panel Voltage" },
+		{ Register::PanelPower, "Panel Power" },
 		{ Register::ChargerVoltage, "Charger Voltage" },
 		{ Register::ChargerCurrent, "Charger Current" },
 		{ Register::ChargerMaximumCurrent, "Charger maximum Current" },
         { Register::VoltageSettingsRange, "Voltage Settings Range" },
 		{ Register::NetworkTotalDcInputPower, "Network Total DC Input Power" },
-        { Register::LoadOutputState, "Load Output State" },
-        { Register::LoadOutputVoltage, "Load Output Voltage" },
-        { Register::LoadOutputControl, "Load Output Control" },
-        { Register::LoadCurrent, "Load Current" },
 		{ Register::ChargeControllerTemperature, "Charger Controller Temperature" },
 		{ Register::SmartBatterySenseTemperature, "Smart Battery Sense Temperature" },
 		{ Register::NetworkInfo, "Network Info" },
 		{ Register::NetworkMode, "Network Mode" },
-		{ Register::NetworkStatus, "Network Status" }
+		{ Register::NetworkStatus, "Network Status" },
+		{ Register::BatteryAbsorptionVoltage, "Battery Absorption Voltage" },
+		{ Register::BatteryFloatVoltage, "Battery Float Voltage" },
+		{ Register::TotalChargeCurrent, "Total Charge Current" },
+		{ Register::ChargeStateElapsedTime, "Charge State Elapsed Time" },
+		{ Register::BatteryVoltageSense, "Battery Voltage Sense" },
+        { Register::LoadOutputState, "Load Output State" },
+        { Register::LoadOutputControl, "Load Output Control" },
+        { Register::LoadCurrent, "Load Current" },
+        { Register::LoadOutputVoltage, "Load Output Voltage" }
 	};
 
 	return getAsString(values, addr);
+}
+
+frozen::string const& VeDirectHexData::getFlagsAsString() const
+{
+    static constexpr frozen::map<uint8_t, frozen::string, 3> values = {
+        {  1, "Specified id does not exist"},
+        {  2, "Attempting to write to a read only value" },
+        {  4, "Value out of range or inconsistent" }
+    };
+
+	return getAsString(values, flags);
 }
 
 frozen::string const& veMpptStruct::getCapabilitiesAsString(uint8_t bit) const
@@ -362,4 +387,18 @@ frozen::string const& veMpptStruct::getBatteryTypeAsString() const
     };
 
     return getAsString(values, BatteryType.second);
+}
+
+frozen::string const& veMpptStruct::getBatteryVoltageSettingAsString() const
+{
+
+    static constexpr frozen::map<uint8_t, frozen::string, 5> values = {
+        {  0, "Auto detection at startup"},
+        { 12, "12V battery" },
+        { 24, "24V battery" },
+        { 36, "36V battery" },
+        { 48, "48V battery" }
+    };
+
+    return getAsString(values, BatteryVoltageSetting.second);
 }

@@ -10,11 +10,10 @@
         <div class="row gy-3">
             <div class="tab-content col-sm-12 col-md-12" id="v-pills-tabContent">
                 <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center"
-                        :class="{
-                            'text-bg-danger': refusolData.age_critical,
-                            'text-bg-primary': !refusolData.age_critical,
-                        }">
+                    <div class="card-header d-flex justify-content-between align-items-center" :class="{
+                        'text-bg-danger': refusolData.age_critical,
+                        'text-bg-primary': !refusolData.age_critical,
+                    }">
                         <div class="p-1 flex-grow-1">
                             <div class="d-flex flex-wrap">
                                 <div style="padding-right: 2em;">
@@ -24,10 +23,12 @@
                                     {{ $t('refusolhome.SerialNumber') }} {{ refusolData.serNo }}
                                 </div>
                                 <div style="padding-right: 2em;">
-                                    {{ $t('refusolhome.FirmwareNumber') }}  {{ refusolData.firmware }}
+                                    {{ $t('refusolhome.FirmwareNumber') }} {{ refusolData.firmware }}
                                 </div>
                                 <div style="padding-right: 2em;">
-                                    {{ $t('refusolhome.DataAge') }} {{ $t('refusolhome.Seconds', {'val': refusolData.data_age }) }}
+                                    {{ $t('refusolhome.DataAge') }} {{ $t('refusolhome.Seconds', {
+                                        'val':
+                                    refusolData.data_age }) }}
                                 </div>
                             </div>
                         </div>
@@ -41,7 +42,8 @@
                                         <div class="table-responsive">
                                             <table class="table table-striped table-hover" style="margin: 0">
                                                 <tbody>
-                                                    <tr v-for="(prop, key) in refusolData.deviceValues" v-bind:key="key">
+                                                    <tr v-for="(prop, key) in refusolData.deviceValues"
+                                                        v-bind:key="key">
                                                         <th scope="row">{{ $t('refusolhome.' + key) }}</th>
                                                         <td style="text-align: right; padding-right: 0;">
                                                             <template v-if="typeof prop === 'string'">
@@ -50,12 +52,13 @@
                                                             <template v-else>
                                                                 {{ $n(prop.v, 'decimal', {
                                                                     minimumFractionDigits: prop.d,
-                                                                    maximumFractionDigits: prop.d})
+                                                                    maximumFractionDigits: prop.d
+                                                                })
                                                                 }}
                                                             </template>
                                                         </td>
                                                         <td v-if="typeof prop === 'string'"></td>
-                                                        <td v-else>{{prop.u}}</td>
+                                                        <td v-else>{{ prop.u }}</td>
                                                     </tr>
                                                 </tbody>
                                             </table>
@@ -79,12 +82,13 @@
                                                             <template v-else>
                                                                 {{ $n(prop.v, 'decimal', {
                                                                     minimumFractionDigits: prop.d,
-                                                                    maximumFractionDigits: prop.d})
+                                                                    maximumFractionDigits: prop.d
+                                                                })
                                                                 }}
                                                             </template>
                                                         </td>
                                                         <td v-if="typeof prop === 'string'"></td>
-                                                        <td v-else>{{prop.u}}</td>
+                                                        <td v-else>{{ prop.u }}</td>
                                                     </tr>
                                                 </tbody>
                                             </table>
@@ -108,12 +112,13 @@
                                                             <template v-else>
                                                                 {{ $n(prop.v, 'decimal', {
                                                                     minimumFractionDigits: prop.d,
-                                                                    maximumFractionDigits: prop.d})
+                                                                    maximumFractionDigits: prop.d
+                                                                })
                                                                 }}
                                                             </template>
                                                         </td>
                                                         <td v-if="typeof prop === 'string'"></td>
-                                                        <td v-else>{{prop.u}}</td>
+                                                        <td v-else>{{ prop.u }}</td>
                                                     </tr>
                                                 </tbody>
                                             </table>
@@ -137,12 +142,13 @@
                                                             <template v-else>
                                                                 {{ $n(prop.v, 'decimal', {
                                                                     minimumFractionDigits: prop.d,
-                                                                    maximumFractionDigits: prop.d})
+                                                                    maximumFractionDigits: prop.d
+                                                                })
                                                                 }}
                                                             </template>
                                                         </td>
                                                         <td v-if="typeof prop === 'string'"></td>
-                                                        <td v-else>{{prop.u}}</td>
+                                                        <td v-else>{{ prop.u }}</td>
                                                     </tr>
                                                 </tbody>
                                             </table>

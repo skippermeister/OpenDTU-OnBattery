@@ -33,14 +33,10 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import {
-    BIconCircleHalf,
-    BIconSunFill,
-    BIconMoonStarsFill,
-} from 'bootstrap-icons-vue';
+import { BIconCircleHalf, BIconSunFill, BIconMoonStarsFill } from 'bootstrap-icons-vue';
 
 export default defineComponent({
-    name: "ThemeSwitcher",
+    name: 'ThemeSwitcher',
     components: {
         BIconCircleHalf,
         BIconSunFill,
@@ -92,15 +88,14 @@ export default defineComponent({
             }
         });
 
-        document.querySelectorAll('[data-bs-theme-value]')
-            .forEach(toggle => {
-                toggle.addEventListener('click', () => {
-                    const theme = toggle.getAttribute('data-bs-theme-value') || 'auto';
-                    localStorage.setItem('theme', theme);
-                    this.setTheme(theme);
-                    this.showActiveTheme(theme);
-                })
+        document.querySelectorAll('[data-bs-theme-value]').forEach(toggle => {
+            toggle.addEventListener('click', () => {
+                const theme = toggle.getAttribute('data-bs-theme-value') || 'auto';
+                localStorage.setItem('theme', theme);
+                this.setTheme(theme);
+                this.showActiveTheme(theme);
             });
+        });
     },
 });
 </script>

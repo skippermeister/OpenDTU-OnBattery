@@ -6,10 +6,8 @@
 
         <form @submit="saveNtpConfig">
             <CardElement :text="$t('ntpadmin.NtpConfiguration')" textVariant="text-bg-primary">
-                <InputElement :label="$t('ntpadmin.TimeServer')"
-                              v-model="ntpConfigList.ntp_server"
-                              type="text" maxlength="32" wide2_4
-                              :tooltip="$t('ntpadmin.TimeServerHint')"/>
+                <InputElement :label="$t('ntpadmin.TimeServer')" v-model="ntpConfigList.ntp_server" type="text"
+                    maxlength="32" wide2_4 :tooltip="$t('ntpadmin.TimeServerHint')" />
 
                 <div class="row mb-3">
                     <label for="inputTimezone" class="col-sm-2 col-form-label">{{ $t('ntpadmin.Timezone') }}</label>
@@ -23,19 +21,16 @@
                     </div>
                 </div>
 
-                <InputElement :label="$t('ntpadmin.TimezoneConfig')"
-                              v-model="ntpConfigList.ntp_timezone"
-                              type="text" maxlength="32" disabled wide2_4/>
+                <InputElement :label="$t('ntpadmin.TimezoneConfig')" v-model="ntpConfigList.ntp_timezone" type="text"
+                    maxlength="32" disabled wide2_4 />
             </CardElement>
 
             <CardElement :text="$t('ntpadmin.LocationConfiguration')" textVariant="text-bg-primary" add-space>
-                <InputElement :label="$t('ntpadmin.Latitude')"
-                              v-model="ntpConfigList.latitude"
-                              type="number" min="-90" max="90" step="any" wide2_3/>
+                <InputElement :label="$t('ntpadmin.Latitude')" v-model="ntpConfigList.latitude" type="number" min="-90"
+                    max="90" step="any" wide2_3 />
 
-                <InputElement :label="$t('ntpadmin.Longitude')"
-                              v-model="ntpConfigList.longitude"
-                              type="number" min="-180" max="180" step="any" wide2_3/>
+                <InputElement :label="$t('ntpadmin.Longitude')" v-model="ntpConfigList.longitude" type="number"
+                    min="-180" max="180" step="any" wide2_3 />
 
                 <div class="row mb-3">
                     <label class="col-sm-2 col-form-label">
@@ -50,29 +45,21 @@
                         </select>
                     </div>
                 </div>
-                <InputElement v-show="ntpConfigList.sunsettype == 4"
-                                :label="$t('ntpadmin.Sunrise')"
-                                v-model="ntpConfigList.sunrise"
-                                type="number" min="60" max="110" wide3_2
-                                :postfix="$t('ntpadmin.Angle')"/>
-                <InputElement v-show="ntpConfigList.sunsettype == 4"
-                                :label="$t('ntpadmin.Sunset')"
-                                v-model="ntpConfigList.sunset"
-                                type="number" min="60" max="110" wide3_2
-                                :postfix="$t('ntpadmin.Angle')"/>
+                <InputElement v-show="ntpConfigList.sunsettype == 4" :label="$t('ntpadmin.Sunrise')"
+                    v-model="ntpConfigList.sunrise" type="number" min="60" max="110" wide3_2
+                    :postfix="$t('ntpadmin.Angle')" />
+                <InputElement v-show="ntpConfigList.sunsettype == 4" :label="$t('ntpadmin.Sunset')"
+                    v-model="ntpConfigList.sunset" type="number" min="60" max="110" wide3_2
+                    :postfix="$t('ntpadmin.Angle')" />
             </CardElement>
 
-            <FormFooter @reload="getNtpConfig"/>
+            <FormFooter @reload="getNtpConfig" />
         </form>
 
         <CardElement :text="$t('ntpadmin.ManualTimeSynchronization')" textVariant="text-bg-primary" add-space>
-            <InputElement :label="$t('ntpadmin.CurrentOpenDtuTime')"
-                           v-model="mcuTime"
-                           type="text" disabled wide2_9/>
+            <InputElement :label="$t('ntpadmin.CurrentOpenDtuTime')" v-model="mcuTime" type="text" disabled wide2_9 />
 
-            <InputElement :label="$t('ntpadmin.CurrentLocalTime')"
-                          v-model="localTime"
-                          type="text" disabled wide2_9/>
+            <InputElement :label="$t('ntpadmin.CurrentLocalTime')" v-model="localTime" type="text" disabled wide2_9 />
 
             <div class="text-center mb-2">
                 <button type="button" class="btn btn-danger" @click="setCurrentTime()">
@@ -86,11 +73,11 @@
 
 <script lang="ts">
 import BasePage from '@/components/BasePage.vue';
-import BootstrapAlert from "@/components/BootstrapAlert.vue";
+import BootstrapAlert from '@/components/BootstrapAlert.vue';
 import FormFooter from '@/components/FormFooter.vue';
 import CardElement from '@/components/CardElement.vue';
 import InputElement from '@/components/InputElement.vue';
-import type { NtpConfig } from "@/types/NtpConfig";
+import type { NtpConfig } from '@/types/NtpConfig';
 import { authHeader, handleResponse } from '@/utils/authentication';
 import { defineComponent } from 'vue';
 import { BIconInfoCircle } from 'bootstrap-icons-vue';
@@ -110,26 +97,26 @@ export default defineComponent({
             timezoneLoading: true,
             ntpConfigList: {} as NtpConfig,
             timezoneList: {},
-            timezoneSelect: "",
+            timezoneSelect: '',
             mcuTime: new Date(),
             localTime: new Date(),
             dataAgeInterval: 0,
-            alertMessage: "",
-            alertType: "info",
+            alertMessage: '',
+            alertType: 'info',
             showAlert: false,
             sunsetTypeList: [
                 { key: 0, value: 'OFFICIAL' },
                 { key: 1, value: 'NAUTICAL' },
                 { key: 2, value: 'CIVIL' },
                 { key: 3, value: 'ASTONOMICAL' },
-                { key: 4, value: 'SPECIAL'},
+                { key: 4, value: 'SPECIAL' },
             ],
         };
     },
     watch: {
         timezoneSelect: function (newValue) {
-            this.ntpConfigList.ntp_timezone = newValue.split("---")[1];
-            this.ntpConfigList.ntp_timezone_descr = newValue.split("---")[0];
+            this.ntpConfigList.ntp_timezone = newValue.split('---')[1];
+            this.ntpConfigList.ntp_timezone_descr = newValue.split('---')[0];
         },
     },
     created() {
@@ -147,7 +134,7 @@ export default defineComponent({
         },
         getTimezoneList() {
             this.timezoneLoading = true;
-            fetch("/zones.json")
+            fetch('/zones.json')
                 .then((response) => response.json())
                 .then((data) => {
                     this.timezoneList = data;
@@ -156,14 +143,14 @@ export default defineComponent({
         },
         getNtpConfig() {
             this.dataLoading = true;
-            fetch("/api/ntp/config", { headers: authHeader() })
+            fetch('/api/ntp/config', { headers: authHeader() })
                 .then((response) => handleResponse(response, this.$emitter, this.$router))
                 .then(
                     (data) => {
                         this.ntpConfigList = data;
                         this.timezoneSelect =
                             this.ntpConfigList.ntp_timezone_descr +
-                            "---" +
+                            '---' +
                             this.ntpConfigList.ntp_timezone;
                         this.dataLoading = false;
                     }
@@ -171,7 +158,7 @@ export default defineComponent({
         },
         getCurrentTime() {
             this.dataLoading = true;
-            fetch("/api/ntp/time", { headers: authHeader() })
+            fetch('/api/ntp/time', { headers: authHeader() })
                 .then((response) => handleResponse(response, this.$emitter, this.$router))
                 .then(
                     (data) => {
@@ -193,10 +180,10 @@ export default defineComponent({
                 second: this.localTime.getSeconds(),
             };
             console.log(time);
-            formData.append("data", JSON.stringify(time));
+            formData.append('data', JSON.stringify(time));
 
-            fetch("/api/ntp/time", {
-                method: "POST",
+            fetch('/api/ntp/time', {
+                method: 'POST',
                 headers: authHeader(),
                 body: formData,
             })
@@ -216,10 +203,10 @@ export default defineComponent({
             e.preventDefault();
 
             const formData = new FormData();
-            formData.append("data", JSON.stringify(this.ntpConfigList));
+            formData.append('data', JSON.stringify(this.ntpConfigList));
 
-            fetch("/api/ntp/config", {
-                method: "POST",
+            fetch('/api/ntp/config', {
+                method: 'POST',
                 headers: authHeader(),
                 body: formData,
             })

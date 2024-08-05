@@ -664,7 +664,6 @@
         "PowerMeterEnable": "Enable Power Meter",
         "VerboseLogging": "@:base.VerboseLogging",
         "PowerMeterSource": "Power Meter Parameter",
-        "pollingInterval": "@:dtuadmin.PollInterval",
         "seconds": "@:dtuadmin.Seconds",
         "UpdatesOnly": "@:base.UpdatesOnly",
         "typeMQTT": "MQTT",
@@ -901,6 +900,7 @@
     "firmwareupgrade": {
         "FirmwareUpgrade": "Firmware Upgrade",
         "Loading": "@:base.Loading",
+        "NoOtaSupport": "This platform does not support OTA updates. New firmware can be written to flash memory using the USB interface.",
         "OtaError": "OTA Error",
         "Back": "Back",
         "Retry": "Retry",
@@ -1002,8 +1002,8 @@
         "inputPower": "Input power",
         "efficiency": "@:inverterchannelproperty.Efficiency",
         "operation": "Operation",
-        "cuve": "Charge curve ",
-        "stgs": "Stage charging",
+        "cuve": "Charge curve function",
+        "stgs": "Charge curve",
         "outputVoltage": "Output voltage",
         "outputCurrent": "Output current",
         "outputPower": "Output power",
@@ -1026,8 +1026,8 @@
         "off": "Off",
         "charger_mode": "Charger",
         "power_supply_mode": "Power Supply",
-        "two_stage_charge": "CC/CV Charge",
-        "three_stage_charge": "CC/CV/FV Charge",
+        "two_stage_charge": "2 steps CC/CV",
+        "three_stage_charge": "3 steps CC/CV/FV",
         "EEPROMwrites": "EEPROM writes"
     },
     "acchargeradmin": {

@@ -9,7 +9,7 @@
         </div>
 
         <CardElement :text="$t('firmwareupgrade.OtaError')" textVariant="text-bg-danger" center-content
-                     v-if="!loading && !uploading && OTAError != ''">
+            v-if="!loading && !uploading && OTAError != ''">
             <p class="h1 mb-2">
                 <BIconExclamationCircleFill />
             </p>
@@ -28,7 +28,7 @@
         </CardElement>
 
         <CardElement :text="$t('firmwareupgrade.OtaStatus')" textVariant="text-bg-success" center-content
-                     v-else-if="!loading && !uploading && OTASuccess">
+            v-else-if="!loading && !uploading && OTASuccess">
             <span class="h1 mb-2">
                 <BIconCheckCircle />
             </span>
@@ -42,15 +42,23 @@
             </div>
         </CardElement>
 
+        <CardElement
+            :text="$t('firmwareupgrade.OtaError')"
+            textVariant="text-bg-warning"
+            v-else-if="!loading && firmwareStatus.ota_supported === false"
+        >
+            {{ $t('firmwareupgrade.NoOtaSupport') }}
+        </CardElement>
+
         <CardElement :text="$t('firmwareupgrade.FirmwareUpload')" textVariant="text-bg-primary" center-content
-                     v-else-if="!loading && !uploading">
+            v-else-if="!loading && !uploading">
             <div class="form-group pt-2 mt-3">
                 <input class="form-control" type="file" ref="file" accept=".bin,.bin.gz" @change="uploadOTA" />
             </div>
         </CardElement>
 
         <CardElement :text="$t('firmwareupgrade.UploadProgress')" textVariant="text-bg-primary" center-content
-                     v-else-if="!loading && uploading">
+            v-else-if="!loading && uploading">
             <div class="progress">
                 <div class="progress-bar" role="progressbar" :style="{ width: progress + '%' }"
                     v-bind:aria-valuenow="progress" aria-valuemin="0" aria-valuemax="100">
@@ -64,14 +72,10 @@
 
 <script lang="ts">
 import BasePage from '@/components/BasePage.vue';
+import type { FirmwareStatus } from '@/types/FirmwareStatus';
 import CardElement from '@/components/CardElement.vue';
-import { authHeader, isLoggedIn } from '@/utils/authentication';
-import {
-    BIconArrowLeft,
-    BIconArrowRepeat,
-    BIconCheckCircle,
-    BIconExclamationCircleFill
-} from 'bootstrap-icons-vue';
+import { authHeader, isLoggedIn, handleResponse } from '@/utils/authentication';
+import { BIconArrowLeft, BIconArrowRepeat, BIconCheckCircle, BIconExclamationCircleFill } from 'bootstrap-icons-vue';
 import SparkMD5 from "spark-md5";
 import { defineComponent } from 'vue';
 
@@ -89,11 +93,12 @@ export default defineComponent({
             loading: true,
             uploading: false,
             progress: 0,
-            OTAError: "",
+            OTAError: '',
             OTASuccess: false,
-            type: "firmware",
+            type: 'firmware',
             file: {} as Blob,
-            hostCheckInterval: 0
+            hostCheckInterval: 0,
+            firmwareStatus: {} as FirmwareStatus,
         };
     },
     methods: {
@@ -137,7 +142,7 @@ export default defineComponent({
                 }
             }
             const request = new XMLHttpRequest();
-            request.addEventListener("load", () => {
+            request.addEventListener('load', () => {
                 // request.response will hold the response from the server
                 if (request.status === 200) {
                     this.OTASuccess = true;
@@ -151,40 +156,39 @@ export default defineComponent({
                 this.progress = 0;
             });
             // Upload progress
-            request.upload.addEventListener("progress", (e) => {
+            request.upload.addEventListener('progress', (e) => {
                 this.progress = Math.trunc((e.loaded / e.total) * 100);
             });
             request.withCredentials = true;
             this.fileMD5(this.file)
                 .then((md5) => {
                     formData.append("MD5", (md5 as string));
-                    formData.append("firmware", this.file, "firmware");
-                    request.open("post", "/api/firmware/update");
+                    formData.append("firmware", this.file, 'firmware');
+                    request.open('post', '/api/firmware/update');
                     authHeader().forEach((value, key) => {
                         request.setRequestHeader(key, value);
                     });
                     request.send(formData);
                 })
                 .catch(() => {
-                    this.OTAError =
-                        "Unknown error while upload, check the console for details.";
+                    this.OTAError = 'Unknown error while upload, check the console for details.';
                     this.uploading = false;
                     this.progress = 0;
                 });
         },
         retryOTA() {
-            this.OTAError = "";
+            this.OTAError = '';
             this.OTASuccess = false;
             this.uploadOTA(null);
         },
         clear() {
-            this.OTAError = "";
+            this.OTAError = '';
             this.OTASuccess = false;
         },
         checkRemoteHostAndReload(): void {
             // Check if the browser is online
             if (navigator.onLine) {
-                const remoteHostUrl = "/api/system/status";
+                const remoteHostUrl = '/api/system/status';
 
                 // Use a simple fetch request to check if the remote host is reachable
                 fetch(remoteHostUrl, { method: 'GET' })
@@ -195,7 +199,7 @@ export default defineComponent({
                             clearInterval(this.hostCheckInterval);
                             this.hostCheckInterval = 0;
                             // Perform a page reload
-                            window.location.replace("/");
+                            window.location.replace('/');
                         } else {
                             console.log('Remote host is not reachable. Do something else if needed.');
                         }
@@ -207,10 +211,18 @@ export default defineComponent({
                 console.log('Browser is offline. Cannot check remote host.');
             }
         },
+        getFirmwareStatus() {
+            fetch('/api/firmware/status', { headers: authHeader() })
+                .then((response) => handleResponse(response, this.$emitter, this.$router))
+                .then((data) => {
+                    this.firmwareStatus = data;
+                    this.loading = false;
+                });
+        },
     },
     mounted() {
         if (!isLoggedIn()) {
-            this.$router.push({ path: "/login", query: { returnUrl: this.$router.currentRoute.value.fullPath } });
+            this.$router.push({ path: '/login', query: { returnUrl: this.$router.currentRoute.value.fullPath } });
         }
         this.loading = false;
     },

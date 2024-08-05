@@ -1,11 +1,11 @@
-import type { Emitter, EventType } from "mitt";
-import type { Router } from "vue-router";
+import type { Emitter, EventType } from 'mitt';
+import type { Router } from 'vue-router';
 
 export function authHeader(): Headers {
     // return authorization header with basic auth credentials
     let user = null;
     try {
-        user = JSON.parse(localStorage.getItem('user') || "");
+        user = JSON.parse(localStorage.getItem('user') || '');
     } catch {
         // continue regardless of error
     }
@@ -21,15 +21,15 @@ export function authHeader(): Headers {
 export function authUrl(): string {
     let user = null;
     try {
-        user = JSON.parse(localStorage.getItem('user') || "");
+        user = JSON.parse(localStorage.getItem('user') || '');
     } catch {
         // continue regardless of error
     }
 
     if (user && user.authdata) {
-        return encodeURIComponent(atob(user.authdata)).replace("%3A", ":") + '@';
+        return encodeURIComponent(atob(user.authdata)).replace('%3A', ':') + '@';
     }
-    return "";
+    return '';
 }
 
 export function logout() {

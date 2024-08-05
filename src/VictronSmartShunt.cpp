@@ -25,8 +25,8 @@ bool VictronSmartShunt::init()
     const PinMapping_t& pin = PinMapping.get();
     MessageOutput.printf(" rx = %d, tx = %d", pin.battery_rx, pin.battery_tx);
 
-    if (pin.battery_rx < 0) {
-        MessageOutput.println(" Invalid pin config");
+    if (pin.battery_rx < 0 || pin.battery_rx == pin.battery_tx) {
+        MessageOutput.println(", invalid pin config");
         return false;
     }
     MessageOutput.println();

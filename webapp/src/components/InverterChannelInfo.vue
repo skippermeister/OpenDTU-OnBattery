@@ -26,8 +26,7 @@
                                 {{ $n(property.v, 'decimal', {
                                     minimumFractionDigits: property.d,
                                     maximumFractionDigits: property.d
-                                })
-                                }}
+                                }) }}
                             </td>
                             <td>{{ property.u }}</td>
                         </template>

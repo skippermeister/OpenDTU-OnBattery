@@ -10,11 +10,10 @@
         <div class="row gy-3 mt-0" v-for="(item, serial) in vedirect.instances" :key="serial">
             <div class="tab-content col-sm-12 col-md-12" id="v-pills-tabContent">
                 <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center"
-                        :class="{
-                            'text-bg-danger': item.data_age_ms >= 10000,
-                            'text-bg-primary': item.data_age_ms < 10000,
-                        }">
+                    <div class="card-header d-flex justify-content-between align-items-center" :class="{
+                        'text-bg-danger': item.data_age_ms >= 10000,
+                        'text-bg-primary': item.data_age_ms < 10000,
+                    }">
                         <div class="p-1 flex-grow-1">
                             <div class="d-flex flex-wrap">
                                 <div style="padding-right: 2em;">
@@ -24,16 +23,18 @@
                                     {{ $t('vedirecthome.SerialNumber') }} {{ serial }}
                                 </div>
                                 <div style="padding-right: 2em;">
-                                    {{ $t('vedirecthome.FirmwareNumber') }}  {{ item.firmware_version }}
+                                    {{ $t('vedirecthome.FirmwareNumber') }} {{ item.firmware_version }}
                                 </div>
                                 <div style="padding-right: 2em;">
-                                    {{ $t('vedirecthome.DataAge') }} {{ $t('vedirecthome.Seconds', {'val': Math.floor(item.data_age_ms / 1000)}) }}
+                                    {{ $t('vedirecthome.DataAge') }} {{ $t('vedirecthome.Seconds', {
+                                        'val':
+                                            Math.floor(item.data_age_ms / 1000)}) }}
                                 </div>
                             </div>
                         </div>
                         <div class="btn-group me-2" role="group">
-                            <button type="button"
-                                class="btn btn-sm" v-tooltip :title="$t('vedirecthome.PowerLimiterState')">
+                            <button type="button" class="btn btn-sm" v-tooltip
+                                :title="$t('vedirecthome.PowerLimiterState')">
                                 <div v-if="dplData.PLSTATE == 0">
                                     <BIconXCircleFill style="font-size:24px;" />
                                 </div>
@@ -57,26 +58,29 @@
                         <div class="row flex-row flex-wrap align-items-start g-3">
                             <div v-for="(values, section) in item.values" v-bind:key="section" class="col order-0">
                                 <div class="card" :class="{ 'border-info': (section === 'device') }">
-                                    <div :class="(section === 'device')?'card-header text-bg-info':'card-header'">{{ $t('vedirecthome.section_' + section) }}</div>
+                                    <div :class="(section === 'device') ? 'card-header text-bg-info' : 'card-header'">{{
+                                        $t('vedirecthome.section_' + section) }}</div>
                                     <div class="card-body">
                                         <div class="table-responsive">
                                             <table class="table table-striped table-hover">
                                                 <tbody>
                                                     <tr v-for="(prop, key) in values" v-bind:key="key">
-                                                        <th scope="row">{{ $t('vedirecthome.' + section + '.' + key) }}</th>
+                                                        <th scope="row">{{ $t('vedirecthome.' + section + '.' + key) }}
+                                                        </th>
                                                         <td style="text-align: right">
                                                             <template v-if="typeof prop === 'string'">
                                                                 {{ prop }}
                                                             </template>
                                                             <template v-else>
                                                                 {{ $n(prop.v, 'decimal', {
-                                                                minimumFractionDigits: prop.d,
-                                                                maximumFractionDigits: prop.d})
-                                                            }}
+                                                                    minimumFractionDigits: prop.d,
+                                                                    maximumFractionDigits: prop.d
+                                                                })
+                                                                }}
                                                             </template>
                                                         </td>
                                                         <td v-if="typeof prop === 'string'"></td>
-                                                        <td v-else>{{prop.u}}</td>
+                                                        <td v-else>{{ prop.u }}</td>
                                                     </tr>
                                                 </tbody>
                                             </table>

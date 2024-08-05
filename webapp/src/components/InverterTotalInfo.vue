@@ -1,7 +1,8 @@
 <template>
     <div class="row row-cols-1 row-cols-md-3 g-3">
         <div class="col" v-if="totalREFUsolData.enabled">
-            <CardElement centerContent textVariant="text-bg-success" :text="$t('invertertotalinfo.REFUsolTotalDeliveredTotal')">
+            <CardElement centerContent textVariant="text-bg-success"
+                :text="$t('invertertotalinfo.REFUsolTotalDeliveredTotal')">
                 <h2>
                     {{ $n(totalREFUsolData.total.YieldTotal.v, 'decimal', {
                         minimumFractionDigits: totalREFUsolData.total.YieldTotal.d,
@@ -12,7 +13,8 @@
             </CardElement>
         </div>
         <div class="col" v-if="totalREFUsolData.enabled">
-            <CardElement centerContent textVariant="text-bg-success" :text="$t('invertertotalinfo.REFUsolTotalDeliveredDay')">
+            <CardElement centerContent textVariant="text-bg-success"
+                :text="$t('invertertotalinfo.REFUsolTotalDeliveredDay')">
                 <h2>
                     {{ $n(totalREFUsolData.total.YieldDay.v, 'decimal', {
                         minimumFractionDigits: totalREFUsolData.total.YieldDay.d,
@@ -35,7 +37,8 @@
         </div>
 
         <div class="col" v-if="totalVeData.enabled">
-            <CardElement centerContent textVariant="text-bg-success" :text="$t('invertertotalinfo.MpptTotalYieldTotal')">
+            <CardElement centerContent textVariant="text-bg-success"
+                :text="$t('invertertotalinfo.MpptTotalYieldTotal')">
                 <h2>
                     {{ $n(totalVeData.total.YieldTotal.v, 'decimal', {
                         minimumFractionDigits: totalVeData.total.YieldTotal.d,
@@ -56,7 +59,7 @@
                 </h2>
             </CardElement>
         </div>
-        <div class="col"  v-if="totalVeData.enabled">
+        <div class="col" v-if="totalVeData.enabled">
             <CardElement centerContent textVariant="text-bg-success" :text="$t('invertertotalinfo.MpptTotalPower')">
                 <h2>
                     {{ $n(totalVeData.total.Power.v, 'decimal', {
@@ -69,7 +72,8 @@
         </div>
 
         <div class="col">
-            <CardElement centerContent textVariant="text-bg-success" :text="$t('invertertotalinfo.InverterTotalYieldTotal')">
+            <CardElement centerContent textVariant="text-bg-success"
+                :text="$t('invertertotalinfo.InverterTotalYieldTotal')">
                 <h2>
                     {{ $n(totalData.YieldTotal.v, 'decimal', {
                         minimumFractionDigits: totalData.YieldTotal.d,
@@ -80,7 +84,8 @@
             </CardElement>
         </div>
         <div class="col">
-            <CardElement centerContent textVariant="text-bg-success" :text="$t('invertertotalinfo.InverterTotalYieldDay')">
+            <CardElement centerContent textVariant="text-bg-success"
+                :text="$t('invertertotalinfo.InverterTotalYieldDay')">
                 <h2>
                     {{ $n(totalData.YieldDay.v, 'decimal', {
                         minimumFractionDigits: totalData.YieldDay.d,
@@ -138,7 +143,8 @@
 
         <template v-if="totalBattData.enabled">
             <div class="col">
-                <CardElement centerContent flexChildren textVariant="text-bg-success" :text="$t('invertertotalinfo.BatteryCharge')">
+                <CardElement centerContent flexChildren textVariant="text-bg-success"
+                    :text="$t('invertertotalinfo.BatteryCharge')">
                     <div class="flex-fill" v-if="totalBattData.soc">
                         <h2>
                             {{ $n(totalBattData.soc.v, 'decimal', {
@@ -161,7 +167,8 @@
                 </CardElement>
             </div>
             <div class="col" v-if="totalBattData.power || totalBattData.current">
-                <CardElement centerContent flexChildren textVariant="text-bg-success" :text="$t('invertertotalinfo.BatteryPower')">
+                <CardElement centerContent flexChildren textVariant="text-bg-success"
+                    :text="$t('invertertotalinfo.BatteryPower')">
                     <div class="flex-fill" v-if="totalBattData.power">
                         <h2>
                             {{ $n(totalBattData.power.v, 'decimal', {

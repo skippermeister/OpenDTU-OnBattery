@@ -111,50 +111,27 @@ void VeDirectMpptController::frameValidEvent() {
 	// For firmware version v1.52 and below, when no VE.Direct queries are sent to the device, the
 	// charger periodically sends human readable (TEXT) data to the serial port. For firmware
 	// versions v1.53 and above, the charger always periodically sends TEXT data to the serial port.
-	// --> We just use hex commandes for firmware >= 1.53 to keep text messages alive
+	// --> We just use hex commands for firmware >= 1.53 to keep text messages alive
 	if (_tmpFrame.getFwVersionAsInteger() < 153) { return; }
 
-	using Command = VeDirectHexCommand;
-	using Register = VeDirectHexRegister;
-
-    static uint8_t registerIdx = 0;
-    static VeDirectHexRegister registerTbl[] = {
-        Register::Capabilities,
-        Register::BatteryType,
-        Register::ChargeControllerTemperature,
-        Register::SmartBatterySenseTemperature,
-        Register::ChargerVoltage,
-        Register::ChargerCurrent,
-        Register::ChargerMaximumCurrent,
-        Register::LoadOutputVoltage,
-        Register::LoadOutputState,
-        Register::LoadOutputControl,
-        Register::LoadCurrent,
-        Register::BatteryType,
-        Register::BatteryAbsorptionVoltage,
-        Register::BatteryFloatVoltage,
-        Register::BatteryMaximumCurrent,
-        Register::NetworkTotalDcInputPower,
-        Register::VoltageSettingsRange
-#ifdef PROCESS_NETWORK_STATE
-        ,
-    	Register::NetworkInfo,
-	    Register::NetworkMode,
-	    Register::NetworkStatus,
-#endif // PROCESS_NETWORK_STATE
-    };
-
-    if (registerIdx >= sizeof(registerTbl)/sizeof(VeDirectHexRegister)) registerIdx = 0;
-    VeDirectHexRegister thisRegister = registerTbl[registerIdx++];
+	// It seems some commands get lost if we send to fast the next command.
+	// Maybe we produce an overflow on the MPPT receive buffer or we have to wait for the MPPT answer
+	// before we can send the next command.
+	// Now we send only one command after every text-mode-frame.
+	// We need a better solution if we add more commands
+	// Don't worry about the NetworkTotalDcInputPower. We get anyway asynchronous messages on every value change
+	VeDirectHexRegister thisRegister = _slotRegister[_slotNr++];
+	if (_slotNr >= _slotRegister.size())
+		_slotNr = 0;
 
     // do not request if device has no Load output
-    if ((thisRegister == Register::LoadOutputVoltage ||
-         thisRegister == Register::LoadCurrent ||
-         thisRegister == Register::LoadOutputState ||
-         thisRegister == Register::LoadOutputControl) &&
+    if ((thisRegister == VeDirectHexRegister::LoadOutputVoltage ||
+         thisRegister == VeDirectHexRegister::LoadCurrent ||
+         thisRegister == VeDirectHexRegister::LoadOutputState ||
+         thisRegister == VeDirectHexRegister::LoadOutputControl) &&
         (!(_tmpFrame.Capabilities.second & (1<<0)))) return;
 
-  	sendHexCommand(Command::GET, thisRegister);
+  	sendHexCommand(VeDirectHexCommand::GET, thisRegister);
 }
 
 void VeDirectMpptController::loop()
@@ -179,12 +156,16 @@ void VeDirectMpptController::loop()
 	    resetTimestamp(_tmpFrame.LoadOutputControl);
     }
 	resetTimestamp(_tmpFrame.BatteryType);
-	resetTimestamp(_tmpFrame.BatteryAbsorptionVoltage);
-	resetTimestamp(_tmpFrame.BatteryFloatVoltage);
 	resetTimestamp(_tmpFrame.BatteryMaximumCurrent);
 	resetTimestamp(_tmpFrame.MpptTemperatureMilliCelsius);
 	resetTimestamp(_tmpFrame.SmartBatterySenseTemperatureMilliCelsius);
 	resetTimestamp(_tmpFrame.NetworkTotalDcInputPowerMilliWatts);
+	resetTimestamp(_tmpFrame.BatteryFloatMilliVolt);
+	resetTimestamp(_tmpFrame.BatteryAbsorptionMilliVolt);
+	resetTimestamp(_tmpFrame.PanelPowerMilliWatt);
+	resetTimestamp(_tmpFrame.PanelVoltageMilliVolt);
+	resetTimestamp(_tmpFrame.PanelCurrent);
+	resetTimestamp(_tmpFrame.BatteryVoltageSetting);
 
 #ifdef PROCESS_NETWORK_STATE
 	resetTimestamp(_tmpFrame.NetworkInfo);
@@ -196,8 +177,8 @@ void VeDirectMpptController::loop()
 
 /*
  * hexDataHandler()
- * analyse the content of VE.Direct hex messages
- * Handels the received hex data from the MPPT
+ * analyze the content of VE.Direct hex messages
+ * handel's the received hex data from the MPPT
  */
 bool VeDirectMpptController::hexDataHandler(VeDirectHexData const &data) {
 	if (data.rsp != VeDirectHexResponse::GET &&
@@ -208,10 +189,21 @@ bool VeDirectMpptController::hexDataHandler(VeDirectHexData const &data) {
 boolean forceLogging = false;
 
 	switch (data.addr) {
+        case VeDirectHexRegister::BatteryVoltageSetting:
+			_tmpFrame.BatteryVoltageSetting = { millis(), static_cast<uint8_t>(data.value) };
+
+			if (_verboseLogging || forceLogging) {
+				_msgOut->printf("%s%sBattery Voltage Setting (0x%04X): (%u) %s\r\n",
+                    _logId, TAG, regLog,
+                    data.value,
+                    _tmpFrame.getBatteryVoltageSettingAsString().data());
+            }
+            return true;
+
         case VeDirectHexRegister::Capabilities:
 			_tmpFrame.Capabilities = { millis(), static_cast<uint32_t>(data.value) };
 
-			if (_verboseLogging || forceLogging) {
+			if (_verboseLogging) {
 				_msgOut->printf("%s%sCapabilities (0x%04X): 0x%X\r\n", _logId, TAG, regLog, data.value);
                 for (uint8_t bit=0; bit <=21; bit++)
     				_msgOut->printf("%s %s: %s\r\n", _logId,
@@ -232,8 +224,8 @@ boolean forceLogging = false;
 			return true;
 
 		case VeDirectHexRegister::SmartBatterySenseTemperature:
-			if (data.value == 0xFFFF) {
-				if (_verboseLogging || forceLogging) {
+			if ((data.value &0xFFFF) == 0xFFFF || data.flags != 0) {
+				if (_verboseLogging) {
 					_msgOut->printf("%s%sSmart Battery Sense Temperature is not available\r\n", _logId, TAG);
 				}
 				return true; // we know what to do with it, and we decided to ignore the value
@@ -241,7 +233,7 @@ boolean forceLogging = false;
 
 			_tmpFrame.SmartBatterySenseTemperatureMilliCelsius = { millis(), static_cast<int32_t>(data.value) * 10 - 272150 };
 
-			if (_verboseLogging || forceLogging) {
+			if (_verboseLogging) {
 				_msgOut->printf("%s%sSmart Battery Sense Temperature (0x%04X): %.2f°C\r\n", _logId, TAG, regLog,
 						_tmpFrame.SmartBatterySenseTemperatureMilliCelsius.second / 1000.0);
 			}
@@ -250,7 +242,7 @@ boolean forceLogging = false;
 		case VeDirectHexRegister::LoadOutputState:
 			_tmpFrame.LoadOutputState = { millis(), static_cast<uint8_t>(data.value) };
 
-			if (_verboseLogging || forceLogging) {
+			if (_verboseLogging) {
 				_msgOut->printf("%s%sLoad output state (0x%04X): 0x%X\r\n", _logId, TAG, regLog, data.value);
 			}
 			return true;
@@ -258,14 +250,14 @@ boolean forceLogging = false;
 		case VeDirectHexRegister::LoadOutputControl:
 			_tmpFrame.LoadOutputControl = { millis(), static_cast<uint8_t>(data.value) };
 
-			if (_verboseLogging || forceLogging) {
+			if (_verboseLogging) {
 				_msgOut->printf("%s%sLoad output control (0x%04X): 0x%X\r\n", _logId, TAG, regLog, data.value);
 			}
 			return true;
 
         case VeDirectHexRegister::LoadOutputVoltage:
-			if (data.value == 0xFFFF) {
-				if (_verboseLogging || forceLogging) {
+			if ((data.value & 0xFFFF) == 0xFFFF || data.flags != 0) {
+				if (_verboseLogging) {
 					_msgOut->printf("%s%sLoad output voltage is not available\r\n", _logId, TAG);
 				}
 				_tmpFrame.LoadOutputVoltage = { 0, 0 };
@@ -274,15 +266,15 @@ boolean forceLogging = false;
 
 			_tmpFrame.LoadOutputVoltage = { millis(), data.value * 10 };
 
-			if (_verboseLogging || forceLogging) {
+			if (_verboseLogging) {
 				_msgOut->printf("%s%sLoad output voltage (0x%04X): %.2fV\r\n", _logId, TAG, regLog,
 						_tmpFrame.LoadOutputVoltage.second / 1000.0);
 			}
 			return true;
 
         case VeDirectHexRegister::LoadCurrent:
-			if (data.value == 0xFFFF) {
-				if (_verboseLogging || forceLogging) {
+			if ((data.value & 0xFFFF) == 0xFFFF || data.flags != 0) {
+				if (_verboseLogging) {
 					_msgOut->printf("%s%sLoad current is not available\r\n", _logId, TAG);
 				}
 				_tmpFrame.LoadCurrent = { 0, 0 };
@@ -291,15 +283,15 @@ boolean forceLogging = false;
 
 			_tmpFrame.LoadCurrent = { millis(), data.value * 100 };
 
-			if (_verboseLogging || forceLogging) {
-				_msgOut->printf("%s%sLoad current (0x%04X): %.2fA\r\n", _logId, TAG, regLog,
+			if (_verboseLogging) {
+				_msgOut->printf("%s%sLoad current (0x%04X): %.1fA\r\n", _logId, TAG, regLog,
 						_tmpFrame.LoadCurrent.second / 1000.0);
 			}
 			return true;
 
         case VeDirectHexRegister::ChargerVoltage:
-			if (data.value == 0xFFFF) {
-				if (_verboseLogging || forceLogging) {
+			if (data.value == 0xFFFF || data.flags != 0) {
+				if (_verboseLogging) {
 					_msgOut->printf("%s%sCharger voltage is not available\r\n", _logId, TAG);
 				}
 				_tmpFrame.ChargerVoltage = { 0, 0 };
@@ -308,15 +300,15 @@ boolean forceLogging = false;
 
 			_tmpFrame.ChargerVoltage = { millis(), data.value * 10 };
 
-			if (_verboseLogging || forceLogging) {
+			if (_verboseLogging) {
 				_msgOut->printf("%s%sCharger voltage (0x%04X): %.2fV\r\n", _logId, TAG, regLog,
 						_tmpFrame.ChargerVoltage.second / 1000.0);
 			}
 			return true;
 
         case VeDirectHexRegister::ChargerCurrent:
-			if (data.value == 0xFFFF) {
-				if (_verboseLogging || forceLogging) {
+			if ((data.value & 0xFFFF)== 0xFFFF || data.flags != 0) {
+				if (_verboseLogging) {
 					_msgOut->printf("%s%sCharger current is not available\r\n", _logId, TAG);
 				}
 				_tmpFrame.ChargerCurrent = { 0, 0 };
@@ -325,15 +317,15 @@ boolean forceLogging = false;
 
 			_tmpFrame.ChargerCurrent = { millis(), data.value * 100 };
 
-			if (_verboseLogging || forceLogging) {
+			if (_verboseLogging) {
 				_msgOut->printf("%s%sCharger current (0x%04X): %.1fA\r\n", _logId, TAG, regLog,
 						_tmpFrame.ChargerCurrent.second / 1000.0);
 			}
 			return true;
 
         case VeDirectHexRegister::ChargerMaximumCurrent:
-			if (data.value == 0xFFFF) {
-				if (_verboseLogging || forceLogging) {
+			if ((data.value & 0xffff) == 0xFFFF || data.flags != 0) {
+				if (_verboseLogging) {
 					_msgOut->printf("%s%sCharger maximum current is not available\r\n", _logId, TAG);
 				}
 				_tmpFrame.ChargerMaximumCurrent = { 0, 0 };
@@ -342,7 +334,7 @@ boolean forceLogging = false;
 
 			_tmpFrame.ChargerMaximumCurrent = { millis(), data.value * 100 };
 
-			if (_verboseLogging || forceLogging) {
+			if (_verboseLogging) {
 				_msgOut->printf("%s%sCharger maximum current (0x%04X): %.1fA\r\n", _logId, TAG, regLog,
 						_tmpFrame.ChargerMaximumCurrent.second / 1000.0);
 			}
@@ -351,15 +343,15 @@ boolean forceLogging = false;
         case VeDirectHexRegister::VoltageSettingsRange:
 			_tmpFrame.VoltageSettingsRange = { millis(), data.value };
 
-			if (_verboseLogging || forceLogging) {
+			if (_verboseLogging) {
 				_msgOut->printf("%s%sVoltage Settings Range (0x%04X): min %uV, max %uV\r\n", _logId, TAG, regLog,
 						_tmpFrame.VoltageSettingsRange.second & 0xFF, (_tmpFrame.VoltageSettingsRange.second >> 8) & 0xFF);
 			}
 			return true;
 
 		case VeDirectHexRegister::NetworkTotalDcInputPower:
-			if (data.value == 0xFFFFFFFF) {
-				if (_verboseLogging || forceLogging) {
+			if (data.value == 0xFFFFFFFF || data.flags != 0) {
+				if (_verboseLogging) {
 					_msgOut->printf("%s%sNetwork total DC power value indicates non-networked controller\r\n", _logId, TAG);
 				}
 				_tmpFrame.NetworkTotalDcInputPowerMilliWatts = { 0, 0 };
@@ -375,8 +367,8 @@ boolean forceLogging = false;
 			return true;
 
         case VeDirectHexRegister::BatteryMaximumCurrent:
-			if (data.value == 0xFFFF) {
-				if (_verboseLogging || forceLogging) {
+			if ((data.value &0xFFFF) == 0xFFFF || data.flags != 0) {
+				if (_verboseLogging) {
 					_msgOut->printf("%s%sBattery maximum current is not available\r\n", _logId, TAG);
 				}
 				_tmpFrame.BatteryMaximumCurrent = { 0, 0 };
@@ -385,43 +377,45 @@ boolean forceLogging = false;
 
 			_tmpFrame.BatteryMaximumCurrent = { millis(), data.value * 100 };
 
-			if (_verboseLogging || forceLogging) {
+			if (_verboseLogging) {
 				_msgOut->printf("%s%sBattery maximum current (0x%04X): %.1fA\r\n", _logId, TAG, regLog,
 						_tmpFrame.BatteryMaximumCurrent.second / 1000.0);
 			}
 			return true;
 
         case VeDirectHexRegister::BatteryAbsorptionVoltage:
-			if (data.value == 0xFFFF) {
-				if (_verboseLogging || forceLogging) {
+			if ((data.value & 0xFFFF) == 0xFFFF || data.flags != 0) {
+				if (_verboseLogging) {
 					_msgOut->printf("%s%sBattery absorption voltage is not available\r\n", _logId, TAG);
 				}
-				_tmpFrame.BatteryAbsorptionVoltage = { 0, 0 };
+				_tmpFrame.BatteryAbsorptionMilliVolt = { 0, 0 };
 				return true; // we know what to do with it, and we decided to ignore the value
 			}
 
-			_tmpFrame.BatteryAbsorptionVoltage = { millis(), data.value * 10 };
+			_tmpFrame.BatteryAbsorptionMilliVolt = { millis(), static_cast<uint32_t>(data.value) * 10 };
 
-			if (_verboseLogging || forceLogging) {
-				_msgOut->printf("%s%sBattery absorption voltage (0x%04X): %.2fV\r\n", _logId, TAG, regLog,
-						_tmpFrame.BatteryAbsorptionVoltage.second / 1000.0);
+			if (_verboseLogging) {
+				_msgOut->printf("%s%sMPPT Absorption Voltage (0x%04X): %.2fV\r\n",
+						_logId, TAG, regLog,
+						_tmpFrame.BatteryAbsorptionMilliVolt.second / 1000.0);
 			}
 			return true;
 
         case VeDirectHexRegister::BatteryFloatVoltage:
-			if (data.value == 0xFFFF) {
-				if (_verboseLogging || forceLogging) {
+			if ((data.value & 0xFFFF) == 0xFFFF || data.flags != 0) {
+				if (_verboseLogging) {
 					_msgOut->printf("%s%sBattery float voltage is not available\r\n", _logId, TAG);
 				}
-				_tmpFrame.BatteryFloatVoltage = { 0, 0 };
+				_tmpFrame.BatteryFloatMilliVolt = { 0, 0 };
 				return true; // we know what to do with it, and we decided to ignore the value
 			}
 
-			_tmpFrame.BatteryFloatVoltage = { millis(), data.value * 10 };
+			_tmpFrame.BatteryFloatMilliVolt = { millis(), static_cast<uint32_t>(data.value) * 10 };
 
-			if (_verboseLogging || forceLogging) {
-				_msgOut->printf("%s%sBattery float voltage (0x%04X): %.2fV\r\n", _logId, TAG, regLog,
-						_tmpFrame.BatteryFloatVoltage.second / 1000.0);
+			if (_verboseLogging) {
+				_msgOut->printf("%s%sMPPT Float Voltage (0x%04X): %.2fV\r\n",
+						_logId, TAG, regLog,
+						_tmpFrame.BatteryFloatMilliVolt.second / 1000.0);
 			}
 			return true;
 
@@ -429,14 +423,14 @@ boolean forceLogging = false;
 			_tmpFrame.BatteryType = { millis(), static_cast<uint8_t>(data.value) };
 
 			if (_verboseLogging || forceLogging) {
-				_msgOut->printf("%s%sBattery type (0x%04X): 0x%X\r\n", _logId, TAG, regLog, data.value);
+				_msgOut->printf("%s%sBattery type (0x%04X): %s\r\n", _logId, TAG, regLog, _tmpFrame.getBatteryTypeAsString().data());
 			}
 			return true;
 
 		case VeDirectHexRegister::DeviceMode:
 			_tmpFrame.DeviceMode = { millis(), static_cast<uint8_t>(data.value) };
 
-			if (_verboseLogging || forceLogging) {
+			if (_verboseLogging) {
 				_msgOut->printf("%s%sDevice Mode (0x%04X): 0x%X\r\n", _logId, TAG, regLog, data.value);
 			}
 			return true;
@@ -444,7 +438,7 @@ boolean forceLogging = false;
 		case VeDirectHexRegister::DeviceState:
 			_tmpFrame.DeviceState = { millis(), static_cast<uint8_t>(data.value) };
 
-			if (_verboseLogging || forceLogging) {
+			if (_verboseLogging) {
 				_msgOut->printf("%s%sDevice State (0x%04X): 0x%X\r\n", _logId, TAG, regLog, data.value);
 			}
 			return true;
@@ -452,7 +446,7 @@ boolean forceLogging = false;
 		case VeDirectHexRegister::RemoteControlUsed:
 			_tmpFrame.RemoteControlUsed = { millis(), static_cast<uint8_t>(data.value) };
 
-			if (_verboseLogging || forceLogging) {
+			if (_verboseLogging) {
 				_msgOut->printf("%s%sRemote Control Used (0x%04X): 0x%X\r\n", _logId, TAG, regLog, data.value);
 			}
 			return true;
@@ -461,7 +455,7 @@ boolean forceLogging = false;
 		case VeDirectHexRegister::NetworkInfo:
 			_tmpFrame.NetworkInfo = { millis(), static_cast<uint8_t>(data.value) };
 
-			if (_verboseLogging) {
+			if (_verboseLogging || forceLogging) {
 				_msgOut->printf("%s%sNetwork Info (0x%04X): 0x%X\r\n", _logId, TAG, regLog, data.value);
 			}
 			return true;
@@ -469,7 +463,7 @@ boolean forceLogging = false;
 		case VeDirectHexRegister::NetworkMode:
 			_tmpFrame.NetworkMode = { millis(), static_cast<uint8_t>(data.value) };
 
-			if (_verboseLogging) {
+			if (_verboseLogging || forceLogging) {
 				_msgOut->printf("%s%sNetwork Mode (0x%04X): 0x%X\r\n", _logId, TAG, regLog, data.value);
 			}
 			return true;
@@ -477,15 +471,74 @@ boolean forceLogging = false;
 		case VeDirectHexRegister::NetworkStatus:
 			_tmpFrame.NetworkStatus = { millis(), static_cast<uint8_t>(data.value) };
 
-			if (_verboseLogging) {
+			if (_verboseLogging || forceLogging) {
 				_msgOut->printf("%s%sNetwork Status (0x%04X): 0x%X\r\n", _logId, TAG, regLog, data.value);
 			}
 			return true;
 #endif // PROCESS_NETWORK_STATE
 
+		case VeDirectHexRegister::PanelPower:
+			if (data.value == 0xFFFFFFFF || data.flags != 0) {
+				if (_verboseLogging || forceLogging) {
+					_msgOut->printf("%s%sPanel Power is not available\r\n", _logId, TAG);
+				}
+				_tmpFrame.PanelPowerMilliWatt = { 0, 0 };
+				return true; // we know what to do with it, and we decided to ignore the value
+			}
+            _tmpFrame.PanelPowerMilliWatt = { millis(), static_cast<uint32_t>(data.value) * 10 };
+
+			if (_verboseLogging || forceLogging) {
+				_msgOut->printf("%s%sPanel Power (0x%04X): %.2fW\r\n",
+						_logId, TAG, regLog,
+						_tmpFrame.PanelPowerMilliWatt.second / 1000.0);
+			}
+			return true;
+
+        case VeDirectHexRegister::PanelVoltage:
+			if (data.value == 0xFFFF || data.flags != 0) {
+				if (_verboseLogging || forceLogging) {
+					_msgOut->printf("%s%sPanel Voltage is not available\r\n", _logId, TAG);
+				}
+				_tmpFrame.PanelVoltageMilliVolt = { 0, 0 };
+				return true; // we know what to do with it, and we decided to ignore the value
+			}
+            _tmpFrame.PanelVoltageMilliVolt = { millis(), static_cast<uint32_t>(data.value) * 10 };
+
+			if (_verboseLogging || forceLogging) {
+				_msgOut->printf("%s%sPanel voltage (0x%04X): %.2fV\r\n",
+						_logId, TAG, regLog,
+						_tmpFrame.PanelVoltageMilliVolt.second / 1000.0);
+			}
+			return true;
+
+        case VeDirectHexRegister::PanelCurrent:
+			if ((data.value & 0xFFFF) == 0xFFFF || data.flags != 0) {
+				if (_verboseLogging || forceLogging) {
+					_msgOut->printf("%s%sPanel current is not available. Flags: (%02x) %s\r\n",
+                        _logId, TAG,
+                        data.flags, data.getFlagsAsString().data());
+				}
+				_tmpFrame.PanelCurrent = { 0, 0 };
+				return true; // we know what to do with it, and we decided to ignore the value
+			}
+
+			_tmpFrame.PanelCurrent = { millis(), static_cast<uint32_t>(data.value) * 100 };
+
+			if (_verboseLogging || forceLogging) {
+				_msgOut->printf("%s%sPanel current (0x%04X): %.1fA\r\n", _logId, TAG, regLog,
+						_tmpFrame.PanelCurrent.second / 1000.0);
+			}
+			return true;
+
 		default:
+            if (data.addr >= VeDirectHexRegister::HistoryTotal && data.addr <= VeDirectHexRegister::HistoryMPPTD30) {
+    			if (_verboseLogging || forceLogging) {
+	    			_msgOut->printf("%s%sHistorical Data (0x%04X)\r\n", _logId, TAG, regLog);
+    			}
+                return true;
+            }
+
 			return false;
-			break;
 	}
 
 	return false;

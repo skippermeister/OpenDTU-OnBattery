@@ -6,34 +6,31 @@
 
         <form @submit="saveVedirectConfig">
             <CardElement :text="$t('vedirectadmin.VedirectConfiguration')" textVariant="text-bg-primary">
-                <InputElement :label="$t('vedirectadmin.EnableVedirect')"
-                              v-model="vedirectConfigList.enabled"
-                              type="checkbox" wide2_1/>
+                <InputElement :label="$t('vedirectadmin.EnableVedirect')" v-model="vedirectConfigList.enabled"
+                    type="checkbox" wide2_1 />
             </CardElement>
 
             <CardElement :text="$t('vedirectadmin.VedirectParameter')" textVariant="text-bg-primary" add-space
-                         v-show="vedirectConfigList.enabled">
-                <InputElement :label="$t('vedirectadmin.UpdatesOnly')"
-                              v-model="vedirectConfigList.updatesonly"
-                              type="checkbox" wide4_1/>
+                v-show="vedirectConfigList.enabled">
+                <InputElement :label="$t('vedirectadmin.UpdatesOnly')" v-model="vedirectConfigList.updatesonly"
+                    type="checkbox" wide4_1 />
 
-                <InputElement :label="$t('vedirectadmin.VerboseLogging')"
-                              v-model="vedirectConfigList.verbose_logging"
-                              type="checkbox" wide4_1/>
+                <InputElement :label="$t('vedirectadmin.VerboseLogging')" v-model="vedirectConfigList.verbose_logging"
+                    type="checkbox" wide4_1 />
             </CardElement>
 
-            <FormFooter @reload="getVedirectConfig"/>
+            <FormFooter @reload="getVedirectConfig" />
         </form>
     </BasePage>
 </template>
 
 <script lang="ts">
 import BasePage from '@/components/BasePage.vue';
-import BootstrapAlert from "@/components/BootstrapAlert.vue";
+import BootstrapAlert from '@/components/BootstrapAlert.vue';
 import CardElement from '@/components/CardElement.vue';
 import FormFooter from '@/components/FormFooter.vue';
 import InputElement from '@/components/InputElement.vue';
-import type { VedirectConfig } from "@/types/VedirectConfig";
+import type { VedirectConfig } from '@/types/VedirectConfig';
 import { authHeader, handleResponse } from '@/utils/authentication';
 import { defineComponent } from 'vue';
 
@@ -49,8 +46,8 @@ export default defineComponent({
         return {
             dataLoading: true,
             vedirectConfigList: {} as VedirectConfig,
-            alertMessage: "",
-            alertType: "info",
+            alertMessage: '',
+            alertType: 'info',
             showAlert: false,
         };
     },
@@ -60,7 +57,7 @@ export default defineComponent({
     methods: {
         getVedirectConfig() {
             this.dataLoading = true;
-            fetch("/api/vedirect/config", { headers: authHeader() })
+            fetch('/api/vedirect/config', { headers: authHeader() })
                 .then((response) => handleResponse(response, this.$emitter, this.$router))
                 .then((data) => {
                     this.vedirectConfigList = data;
@@ -71,10 +68,10 @@ export default defineComponent({
             e.preventDefault();
 
             const formData = new FormData();
-            formData.append("data", JSON.stringify(this.vedirectConfigList));
+            formData.append('data', JSON.stringify(this.vedirectConfigList));
 
-            fetch("/api/vedirect/config", {
-                method: "POST",
+            fetch('/api/vedirect/config', {
+                method: 'POST',
                 headers: authHeader(),
                 body: formData,
             })

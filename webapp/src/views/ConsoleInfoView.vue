@@ -41,7 +41,7 @@ export default defineComponent({
             socket: {} as WebSocket,
             heartInterval: 0,
             dataLoading: true,
-            consoleBuffer: "",
+            consoleBuffer: '',
             isAutoScroll: true,
             endWithNewline: false,
         };
@@ -56,7 +56,7 @@ export default defineComponent({
     watch: {
         consoleBuffer() {
             if (this.isAutoScroll) {
-                const textarea = this.$el.querySelector("#console");
+                const textarea = this.$el.querySelector('#console');
                 setTimeout(() => {
                     textarea.scrollTop = textarea.scrollHeight;
                 }, 0);
@@ -65,11 +65,11 @@ export default defineComponent({
     },
     methods: {
         initSocket() {
-            console.log("Starting connection to WebSocket Server");
+            console.log('Starting connection to WebSocket Server');
 
             const { protocol, host } = location;
             const authString = authUrl();
-            const webSocketUrl = `${protocol === "https:" ? "wss" : "ws"
+            const webSocketUrl = `${protocol === 'https:' ? 'wss' : 'ws'
                 }://${authString}${host}/console`;
 
             this.closeSocket();
@@ -84,14 +84,14 @@ export default defineComponent({
                     outstr = outstr.substring(0, outstr.length - 1);
                     removedNewline = true;
                 }
-                this.consoleBuffer += (this.endWithNewline ? this.getOutDate() : '') + outstr.replaceAll("\n", "\n" + this.getOutDate());
+                this.consoleBuffer += (this.endWithNewline ? this.getOutDate() : '') + outstr.replaceAll('\n', '\n' + this.getOutDate());
                 this.endWithNewline = removedNewline;
                 this.heartCheck(); // Reset heartbeat detection
             };
 
             this.socket.onopen = function (event) {
                 console.log(event);
-                console.log("Successfully connected to the echo websocket server...");
+                console.log('Successfully connected to the echo websocket server...');
             };
 
             // Listen to window events , When the window closes , Take the initiative to disconnect websocket Connect
@@ -105,7 +105,7 @@ export default defineComponent({
             this.heartInterval = setInterval(() => {
                 if (this.socket.readyState === 1) {
                     // Connection status
-                    this.socket.send("ping");
+                    this.socket.send('ping');
                 } else {
                     this.initSocket(); // Breakpoint reconnection 5 Time
                 }
@@ -129,7 +129,7 @@ export default defineComponent({
                 (u.getMilliseconds() / 1000).toFixed(3).slice(2, 5) + ' > ';
         },
         clearConsole() {
-            this.consoleBuffer = "";
+            this.consoleBuffer = '';
         },
         copyConsole() {
             const input = document.createElement('textarea');

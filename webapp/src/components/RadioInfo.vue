@@ -4,27 +4,30 @@
             <table class="table table-hover table-condensed">
                 <tbody>
                     <tr v-if="systemStatus.nrf_connected != undefined">
-                        <th>{{ $t('radioinfo.Status', { module: "nRF24" }) }}</th>
+                        <th>{{ $t('radioinfo.Status', { module: 'nRF24' }) }}</th>
                         <td>
-                            <StatusBadge :status="systemStatus.nrf_configured" true_text="radioinfo.Configured" false_text="radioinfo.NotConfigured" false_class="text-bg-secondary" />
+                            <StatusBadge :status="systemStatus.nrf_configured" true_text="radioinfo.Configured"
+                                false_text="radioinfo.NotConfigured" false_class="text-bg-secondary" />
                         </td>
                     </tr>
                     <tr v-if="systemStatus.nrf_connected != undefined">
-                        <th>{{ $t('radioinfo.ChipStatus', { module: "nRF24" }) }}</th>
+                        <th>{{ $t('radioinfo.ChipStatus', { module: 'nRF24' }) }}</th>
                         <td>
                             <span class="badge" :class="{
                                 'text-bg-danger': systemStatus.nrf_configured && !systemStatus.nrf_connected,
                                 'text-bg-success': systemStatus.nrf_configured && systemStatus.nrf_connected,
                             }">
-                                <template
-                                    v-if="systemStatus.nrf_configured && systemStatus.nrf_connected">{{ $t('radioinfo.Connected') }}</template>
-                                <template
-                                    v-else-if="systemStatus.nrf_configured && !systemStatus.nrf_connected">{{ $t('radioinfo.NotConnected') }}</template>
+                                <template v-if="systemStatus.nrf_configured && systemStatus.nrf_connected">{{
+                                    $t('radioinfo.Connected') }}
+                                </template>
+                                <template v-else-if="systemStatus.nrf_configured && !systemStatus.nrf_connected">{{
+                                    $t('radioinfo.NotConnected') }}
+                                </template>
                             </span>
                         </td>
                     </tr>
                     <tr v-if="systemStatus.nrf_connected != undefined">
-                        <th>{{ $t('radioinfo.ChipType', { module: "nRF24" }) }}</th>
+                        <th>{{ $t('radioinfo.ChipType', { module: 'nRF24' }) }}</th>
                         <td>
                             <span class="badge" :class="{
                                 'text-bg-danger': systemStatus.nrf_connected && !systemStatus.nrf_pvariant,
@@ -40,22 +43,23 @@
                         </td>
                     </tr>
                     <tr v-if="systemStatus.cmt_connected != undefined">
-                        <th>{{ $t('radioinfo.Status', { module: "CMT2300A" }) }}</th>
+                        <th>{{ $t('radioinfo.Status', { module: 'CMT2300A' }) }}</th>
                         <td>
-                            <StatusBadge :status="systemStatus.cmt_configured" true_text="radioinfo.Configured" false_text="radioinfo.NotConfigured" false_class="text-bg-secondary" />
+                            <StatusBadge :status="systemStatus.cmt_configured" true_text="radioinfo.Configured"
+                                false_text="radioinfo.NotConfigured" false_class="text-bg-secondary" />
                         </td>
                     </tr>
                     <tr v-if="systemStatus.cmt_connected != undefined">
-                        <th>{{ $t('radioinfo.ChipStatus', { module: "CMT2300A" }) }}</th>
+                        <th>{{ $t('radioinfo.ChipStatus', { module: 'CMT2300A' }) }}</th>
                         <td>
                             <span class="badge" :class="{
                                 'text-bg-danger': systemStatus.cmt_configured && !systemStatus.cmt_connected,
                                 'text-bg-success': systemStatus.cmt_configured && systemStatus.cmt_connected,
                             }">
-                                <template
-                                    v-if="systemStatus.cmt_configured && systemStatus.cmt_connected">{{ $t('radioinfo.Connected') }}</template>
-                                <template
-                                    v-else-if="systemStatus.cmt_configured && !systemStatus.cmt_connected">{{ $t('radioinfo.NotConnected') }}</template>
+                                <template v-if="systemStatus.cmt_configured && systemStatus.cmt_connected">{{
+                                    $t('radioinfo.Connected') }}</template>
+                                <template v-else-if="systemStatus.cmt_configured && !systemStatus.cmt_connected">{{
+                                    $t('radioinfo.NotConnected') }}</template>
                             </span>
                         </td>
                     </tr>

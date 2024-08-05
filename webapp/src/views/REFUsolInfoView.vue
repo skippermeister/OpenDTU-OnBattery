@@ -7,19 +7,22 @@
                         <tr>
                             <th>{{ $t('refusolinfo.Status') }}</th>
                             <td>
-                                <StatusBadge :status="refusolDataList.enabled" true_text="refusolinfo.Enabled" false_text="refusolinfo.Disabled" />
+                                <StatusBadge :status="refusolDataList.enabled" true_text="refusolinfo.Enabled"
+                                    false_text="refusolinfo.Disabled" />
                             </td>
                         </tr>
                         <tr>
                             <th>{{ $t('refusolinfo.UpdatesOnly') }}</th>
                             <td>
-                                <StatusBadge :status="refusolDataList.updatesonly" true_text="refusolinfo.Enabled" false_text="refusolinfo.Disabled" />
+                                <StatusBadge :status="refusolDataList.updatesonly" true_text="refusolinfo.Enabled"
+                                    false_text="refusolinfo.Disabled" />
                             </td>
                         </tr>
                         <tr>
                             <th>{{ $t('refusolinfo.VerboseLogging') }}</th>
                             <td>
-                                <StatusBadge :status="refusolDataList.verbose_logging" true_text="refusolinfo.Enabled" false_text="refusolinfo.Disabled" />
+                                <StatusBadge :status="refusolDataList.verbose_logging" true_text="refusolinfo.Enabled"
+                                    false_text="refusolinfo.Disabled" />
                             </td>
                         </tr>
                     </tbody>
@@ -33,7 +36,7 @@
 import BasePage from '@/components/BasePage.vue';
 import CardElement from '@/components/CardElement.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
-import type { REFUsolStatus } from "@/types/REFUsolStatus";
+import type { REFUsolStatus } from '@/types/REFUsolStatus';
 import { authHeader, handleResponse } from '@/utils/authentication';
 import { defineComponent } from 'vue';
 
@@ -55,7 +58,7 @@ export default defineComponent({
     methods: {
         getREFUsolInfo() {
             this.dataLoading = true;
-            fetch("/api/refusol/status", { headers: authHeader() })
+            fetch('/api/refusol/status', { headers: authHeader() })
                 .then((response) => handleResponse(response, this.$emitter, this.$router))
                 .then((data) => {
                     this.refusolDataList = data;

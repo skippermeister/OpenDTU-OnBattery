@@ -58,12 +58,16 @@ struct veMpptStruct : veStruct {
     std::pair<uint32_t, uint8_t> RemoteControlUsed;
     std::pair<uint32_t, uint8_t> DeviceState;
     std::pair<uint32_t, uint32_t> BatteryMaximumCurrent;
-    std::pair<uint32_t, uint32_t> BatteryAbsorptionVoltage;
-    std::pair<uint32_t, uint32_t> BatteryFloatVoltage;
+    std::pair<uint32_t, uint32_t> BatteryAbsorptionMilliVolt;
+    std::pair<uint32_t, uint32_t> BatteryFloatMilliVolt;
     std::pair<uint32_t, uint8_t> BatteryType;
     std::pair<uint32_t, uint8_t> NetworkInfo;
     std::pair<uint32_t, uint8_t> NetworkMode;
     std::pair<uint32_t, uint8_t> NetworkStatus;
+    std::pair<uint32_t, uint32_t> PanelPowerMilliWatt;
+    std::pair<uint32_t, uint32_t> PanelVoltageMilliVolt;
+    std::pair<uint32_t, uint32_t> PanelCurrent;
+    std::pair<uint32_t, uint8_t> BatteryVoltageSetting;
 
     frozen::string const& getMpptAsString() const; // state of mppt as string
     frozen::string const& getCsAsString() const;   // current state as string
@@ -71,6 +75,7 @@ struct veMpptStruct : veStruct {
     frozen::string const& getOrAsString() const;   // off reason as string
     frozen::string const& getCapabilitiesAsString(uint8_t bit) const;   //
     frozen::string const& getBatteryTypeAsString() const;   //
+    frozen::string const& getBatteryVoltageSettingAsString() const;   //
 };
 
 struct veShuntStruct : veStruct {
@@ -141,26 +146,33 @@ enum class VeDirectHexRegister : uint16_t {
     DeviceState = 0x0201,
     RemoteControlUsed = 0x0202,
     PanelVoltage = 0xEDBB,
+    PanelPower = 0xEDBC,
+    PanelCurrent = 0xEDBD,
+    PanelMaximumVoltage = 0xED88,
     ChargerVoltage = 0xEDD5,
     ChargerCurrent = 0xEDD7,
     ChargerMaximumCurrent = 0xEDDF,
-    VoltageSettingsRange = 0xEDCE,  // union { uint16_t value; struct {uint8_t minSystemVoltage; uint8_t maxSystemVoltage;} }
     NetworkTotalDcInputPower = 0x2027,
-    LoadOutputState = 0xEDA8,
-    LoadOutputVoltage = 0xEDA9,
-    LoadOutputControl = 0xEDAB,
-    LoadCurrent = 0xEDAD,
-    BatteryMaximumCurrent = 0xEDF0,
-    BatteryAbsorptionVoltage = 0xEDF7,
-    BatteryFloatVoltage = 0xEDF6,
-    BatteryType = 0xEDF1,
     ChargeControllerTemperature = 0xEDDB,
     SmartBatterySenseTemperature = 0xEDEC,
     NetworkInfo = 0x200D,
     NetworkMode = 0x200E,
     NetworkStatus = 0x200F,
     HistoryTotal = 0x104F,
-    HistoryMPPTD30 = 0x10BE
+    HistoryMPPTD30 = 0x10BE,
+    BatteryAbsorptionVoltage = 0xEDF7,
+    BatteryFloatVoltage = 0xEDF6,
+    TotalChargeCurrent = 0x2013,
+    ChargeStateElapsedTime= 0x2007,
+    BatteryVoltageSense = 0x2002,
+    LoadCurrent = 0xEDAD,
+    LoadOutputVoltage = 0xEDA9,
+    LoadOutputControl = 0xEDAB,
+    LoadOutputState = 0xEDA8,
+    VoltageSettingsRange = 0xEDCE,  // union { uint16_t value; struct {uint8_t minSystemVoltage; uint8_t maxSystemVoltage;} }
+    BatteryMaximumCurrent = 0xEDF0,
+    BatteryType = 0xEDF1,
+    BatteryVoltageSetting = 0xEDEF
 };
 
 struct VeDirectHexData {
@@ -172,4 +184,5 @@ struct VeDirectHexData {
 
     frozen::string const& getResponseAsString() const;
     frozen::string const& getRegisterAsString() const;
+    frozen::string const& getFlagsAsString() const;
 };

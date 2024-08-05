@@ -37,19 +37,25 @@
                     </thead>
                     <tbody ref="invList">
                         <tr v-for="inverter in inverters" v-bind:key="inverter.id" :data-id="inverter.id">
-                            <td><BIconGripHorizontal class="drag-handle" /></td>
+                            <td>
+                                <BIconGripHorizontal class="drag-handle" />
+                            </td>
                             <td>
                                 <span class="badge" :title="$t('inverteradmin.Receive')" :class="{
                                     'text-bg-warning': inverter.poll_enable_day && !inverter.poll_enable_night,
                                     'text-bg-dark': !inverter.poll_enable_day && inverter.poll_enable_night,
-                                    'text-bg-primary': inverter.poll_enable_day && inverter.poll_enable_night}"
-                                    ><BIconArrowDown v-if="inverter.poll_enable_day || inverter.poll_enable_night"  /></span>
+                                    'text-bg-primary': inverter.poll_enable_day && inverter.poll_enable_night
+                                }">
+                                    <BIconArrowDown v-if="inverter.poll_enable_day || inverter.poll_enable_night" />
+                                </span>
 
                                 <span class="badge" :title="$t('inverteradmin.Send')" :class="{
                                     'text-bg-warning': inverter.command_enable_day && !inverter.command_enable_night,
                                     'text-bg-dark': !inverter.command_enable_day && inverter.command_enable_night,
-                                    'text-bg-primary': inverter.command_enable_day && inverter.command_enable_night}"
-                                    ><BIconArrowUp v-if="inverter.command_enable_day || inverter.command_enable_night" /></span>
+                                    'text-bg-primary': inverter.command_enable_day && inverter.command_enable_night
+                                }">
+                                    <BIconArrowUp v-if="inverter.command_enable_day || inverter.command_enable_night" />
+                                </span>
                             </td>
                             <td>{{ inverter.serial }}</td>
                             <td>{{ inverter.name }}</td>
@@ -72,15 +78,16 @@
         </CardElement>
     </BasePage>
 
-    <ModalDialog modalId="inverterEdit" :title="$t('inverteradmin.EditInverter')" :closeText="$t('inverteradmin.Cancel')">
+    <ModalDialog modalId="inverterEdit" :title="$t('inverteradmin.EditInverter')"
+        :closeText="$t('inverteradmin.Cancel')">
         <nav>
             <div class="nav nav-tabs" id="nav-tab" role="tablist">
                 <button class="nav-link active" id="nav-general-tab" data-bs-toggle="tab" data-bs-target="#nav-general"
                     type="button" role="tab" aria-controls="nav-general" aria-selected="true">{{
                         $t('inverteradmin.General')
                     }}</button>
-                <button class="nav-link" id="nav-string-tab" data-bs-toggle="tab" data-bs-target="#nav-string" type="button"
-                    role="tab" aria-controls="nav-string">{{ $t('inverteradmin.String') }}</button>
+                <button class="nav-link" id="nav-string-tab" data-bs-toggle="tab" data-bs-target="#nav-string"
+                    type="button" role="tab" aria-controls="nav-string">{{ $t('inverteradmin.String') }}</button>
                 <button class="nav-link" id="nav-advanced-tab" data-bs-toggle="tab" data-bs-target="#nav-advanced"
                     type="button" role="tab" aria-controls="nav-advanced">{{ $t('inverteradmin.Advanced') }}</button>
             </div>
@@ -114,7 +121,8 @@
                 </div>
             </div>
 
-            <div class="tab-pane fade show" id="nav-string" role="tabpanel" aria-labelledby="nav-string-tab" tabindex="0">
+            <div class="tab-pane fade show" id="nav-string" role="tabpanel" aria-labelledby="nav-string-tab"
+                tabindex="0">
                 <div v-for="(ch, index) in selectedInverterData.channel" :key="`${index}`">
                     <div class="row g-2">
                         <div class="col-md">
@@ -124,8 +132,8 @@
                             </label>
                             <div class="d-flex mb-2">
                                 <div class="input-group">
-                                    <input type="text" class="form-control" :id="`inverter-name_${index}`" maxlength="31"
-                                        v-model="ch.name" />
+                                    <input type="text" class="form-control" :id="`inverter-name_${index}`"
+                                        maxlength="31" v-model="ch.name" />
                                 </div>
                             </div>
                         </div>
@@ -156,7 +164,8 @@
                                     <input type="number" class="form-control" :id="`inverter-ytoffset_${index}`" min="0"
                                         v-model="ch.yield_total_offset"
                                         :aria-describedby="`inverter-ytoffsetDescription_${index} inverter-customizer`" />
-                                    <span class="input-group-text" :id="`inverter-ytoffsetDescription_${index}`">kWh</span>
+                                    <span class="input-group-text"
+                                        :id="`inverter-ytoffsetDescription_${index}`">kWh</span>
                                 </div>
                             </div>
                         </div>
@@ -175,10 +184,11 @@
                 <InputElement :label="$t('inverteradmin.ZeroRuntime')" v-model="selectedInverterData.zero_runtime"
                     type="checkbox" :tooltip="$t('inverteradmin.ZeroRuntimeHint')" wide5_1 />
 
-                <InputElement :label="$t('inverteradmin.ZeroDay')" v-model="selectedInverterData.zero_day" type="checkbox"
-                    :tooltip="$t('inverteradmin.ZeroDayHint')" wide5_1 />
+                <InputElement :label="$t('inverteradmin.ZeroDay')" v-model="selectedInverterData.zero_day"
+                    type="checkbox" :tooltip="$t('inverteradmin.ZeroDayHint')" wide5_1 />
 
-                <InputElement :label="$t('inverteradmin.ClearEventlog')" v-model="selectedInverterData.clear_eventlog" type="checkbox" wide5_1 />
+                <InputElement :label="$t('inverteradmin.ClearEventlog')" v-model="selectedInverterData.clear_eventlog"
+                    type="checkbox" wide5_1 />
 
                 <InputElement :label="$t('inverteradmin.YieldDayCorrection')"
                     v-model="selectedInverterData.yieldday_correction" type="checkbox"
@@ -207,7 +217,7 @@
 
 <script lang="ts">
 import BasePage from '@/components/BasePage.vue';
-import BootstrapAlert from "@/components/BootstrapAlert.vue";
+import BootstrapAlert from '@/components/BootstrapAlert.vue';
 import CardElement from '@/components/CardElement.vue';
 import InputElement from '@/components/InputElement.vue';
 import InputSerial from '@/components/InputSerial.vue';
@@ -270,7 +280,7 @@ export default defineComponent({
     methods: {
         getInverters() {
             this.dataLoading = true;
-            fetch("/api/inverter/list", { headers: authHeader() })
+            fetch('/api/inverter/list', { headers: authHeader() })
                 .then((response) => handleResponse(response, this.$emitter, this.$router))
                 .then((data) => {
                     this.inverters = data.inverter.slice().sort((a: Inverter, b: Inverter) => {
@@ -292,10 +302,10 @@ export default defineComponent({
         },
         callInverterApiEndpoint(endpoint: string, jsonData: string) {
             const formData = new FormData();
-            formData.append("data", jsonData);
+            formData.append('data', jsonData);
 
-            fetch("/api/inverter/" + endpoint, {
-                method: "POST",
+            fetch('/api/inverter/' + endpoint, {
+                method: 'POST',
                 headers: authHeader(),
                 body: formData,
             })
@@ -308,15 +318,15 @@ export default defineComponent({
                 });
         },
         onSubmit() {
-            this.callInverterApiEndpoint("add", JSON.stringify(this.newInverterData));
+            this.callInverterApiEndpoint('add', JSON.stringify(this.newInverterData));
             this.newInverterData = {} as Inverter;
         },
         onDelete() {
-            this.callInverterApiEndpoint("del", JSON.stringify({ id: this.selectedInverterData.id }));
+            this.callInverterApiEndpoint('del', JSON.stringify({ id: this.selectedInverterData.id }));
             this.onCloseModal(this.modalDelete);
         },
         onEditSubmit() {
-            this.callInverterApiEndpoint("edit", JSON.stringify(this.selectedInverterData));
+            this.callInverterApiEndpoint('edit', JSON.stringify(this.selectedInverterData));
             this.onCloseModal(this.modal);
         },
         onOpenModal(modal: bootstrap.Modal, inverter: Inverter) {
@@ -328,7 +338,7 @@ export default defineComponent({
             modal.hide();
         },
         onSaveOrder() {
-            this.callInverterApiEndpoint("order", JSON.stringify({ order: this.sortable.toArray() }));
+            this.callInverterApiEndpoint('order', JSON.stringify({ order: this.sortable.toArray() }));
         },
     },
 });

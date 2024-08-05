@@ -14,7 +14,7 @@ export interface Cmt2300 {
     sdio: number;
     gpio2: number;
     gpio3: number;
- }
+}
 
 export interface Ethernet {
     enabled: boolean;

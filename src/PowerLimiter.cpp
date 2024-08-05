@@ -320,6 +320,11 @@ void PowerLimiterClass::loop()
     auto getBatteryPower = [this,&config]() -> bool {
         if (config.PowerLimiter.IsInverterSolarPowered) { return false; }
 
+        if (_nighttimeDischarging && getSolarPower() > 0) {
+            _nighttimeDischarging = false;
+            return isStartThresholdReached();
+        }
+
         if (isStopThresholdReached()) {
             if (_verboseLogging) MessageOutput.printf("%s%s: Stop threshold reached (discharging not allowed)\r\n", TAG, __FUNCTION__);
             return false;
@@ -330,16 +335,15 @@ void PowerLimiterClass::loop()
             return true;
         }
 
-        // with solar passthrough, and the respective switch enabled, we
-        // may start discharging the battery when it is nighttime. we also
-        // stop the discharge cycle if it becomes daytime again.
         // TODO(schlimmchen): should be supported by sunrise and sunset, such
         // that a thunderstorm or other events that drastically lower the solar
         // power do not cause the start of a discharge cycle during the day.
         if (config.PowerLimiter.SolarPassThroughEnabled &&
-                config.PowerLimiter.BatteryAlwaysUseAtNight) {
+            config.PowerLimiter.BatteryAlwaysUseAtNight &&
+            getSolarPower() == 0 && !_batteryDischargeEnabled) {
+            _nighttimeDischarging = true;
             if (_verboseLogging) MessageOutput.printf("%s%s: Solar passthroug is enabled and use battery always at night\r\n", TAG, __FUNCTION__);
-            return getSolarPower() == 0;
+            return true;
         }
 
         // we are between start and stop threshold and keep the state that was

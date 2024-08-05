@@ -5,6 +5,7 @@
 #include <base64.h>
 #include <ESPmDNS.h>
 #include "PowerMeter.h"
+#include "NetworkSettings.h"
 
 static constexpr char TAG[] ="[PowerMeterHttpSml]";
 
@@ -41,6 +42,8 @@ bool PowerMeterHttpSml::init()
 void PowerMeterHttpSml::loop()
 {
     if (_taskHandle != nullptr) { return; }
+
+    if (!NetworkSettings.isConnected()) { return; }
 
     std::unique_lock<std::mutex> lock(_pollingMutex);
     _stopPolling = false;

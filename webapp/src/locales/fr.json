@@ -777,7 +777,6 @@
         "PowerMeterEnable": "Activer le compteur de puissance",
         "VerboseLogging": "@:base.VerboseLogging",
         "PowerMeterSource": "Power Meter Type",
-        "pollingInterval": "@:dtuadmin.PollInterval",
         "seconds": "@:dtuadmin.Seconds",
         "UpdatesOnly": "@:base.UpdatesOnly",
         "typeMQTT": "MQTT",
@@ -900,6 +899,7 @@
     "firmwareupgrade": {
         "FirmwareUpgrade": "Mise à jour du firmware",
         "Loading": "@:base.Loading",
+        "NoOtaSupport": "Cette plateforme ne prend pas en charge les mises à jour OTA. Les nouveaux microprogrammes peuvent être enregistrés dans la mémoire flash à l'aide de l'interface USB.",
         "OtaError": "Erreur OTA",
         "Back": "Retour",
         "Retry": "Réessayer",
@@ -1000,8 +1000,8 @@
         "inputPower": "La puissance d'entrée",
         "efficiency": "@:inverterchannelproperty.Efficiency",
         "operation": "Opération",
-        "cuve": "Courbe de charge ",
-        "stgs": "Chargement par étapes",
+        "cuve": "Fonction de courbe de charge",
+        "stgs": "Courbe de charge",
         "outputVoltage": "Output voltage",
         "outputCurrent": "Output current",
         "outputPower": "Puissance de sortie",
@@ -1024,8 +1024,8 @@
         "off": "désactivé",
         "charger_mode": "Chargeur",
         "power_supply_mode": "Adaptateur secteur",
-        "two_stage_charge": "CC/CV Charge",
-        "three_stage_charge": "CC/CV/FV Charge",
+        "two_stage_charge": "2 étapes CC/CV",
+        "three_stage_charge": "3 étapes CC/CV/FV",
         "EEPROMwrites": "EEPROM écrit"
       },
       "acchargeradmin": {

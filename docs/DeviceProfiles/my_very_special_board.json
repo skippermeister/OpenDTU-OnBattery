@@ -63,7 +63,7 @@
     "led":{},
     "victron":{
       "rs232_rx":22,
-      "rs232_tx":21
+      "rs232_tx":-1
     },
     "battery":{
       "rs232_rx":16,

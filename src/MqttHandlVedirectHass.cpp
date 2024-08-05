@@ -54,8 +54,9 @@ void MqttHandleVedirectHassClass::forceUpdate()
 
 void MqttHandleVedirectHassClass::publishConfig()
 {
-    if (!Configuration.get().Mqtt.Hass.Enabled ||
-       (!Configuration.get().Vedirect.Enabled) ||
+    CONFIG_T& config = Configuration.get();
+    if (!config.Mqtt.Hass.Enabled ||
+       (!config.Vedirect.Enabled) ||
        (!MqttSettings.getConnected()) ||
        (!VictronMppt.isDataValid())) // and ensure data is revieved from victron
     {

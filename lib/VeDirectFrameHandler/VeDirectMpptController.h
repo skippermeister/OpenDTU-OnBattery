@@ -51,4 +51,35 @@ private:
     bool processTextDataDerived(std::string const& name, std::string const& value) final;
     void frameValidEvent() final;
     MovingAverage<float, 5> _efficiency;
+    int8_t _slotNr = 0;
+#ifdef PROCESS_NETWORK_STATE
+    std::array<VeDirectHexRegister, 17> _slotRegister {
+#else
+    std::array<VeDirectHexRegister, 14> _slotRegister {
+#endif
+                                                        VeDirectHexRegister::Capabilities,
+                                                        VeDirectHexRegister::BatteryType,
+                                                        VeDirectHexRegister::ChargeControllerTemperature,
+                                                        VeDirectHexRegister::NetworkTotalDcInputPower,
+//                                                        VeDirectHexRegister::ChargerVoltage,
+//                                                        VeDirectHexRegister::ChargerCurrent,
+                                                        VeDirectHexRegister::ChargerMaximumCurrent,
+//                                                        VeDirectHexRegister::LoadOutputVoltage,
+                                                        VeDirectHexRegister::LoadOutputState,
+//                                                        VeDirectHexRegister::LoadOutputControl,
+                                                        VeDirectHexRegister::LoadCurrent,
+                                                        VeDirectHexRegister::PanelCurrent,
+                                                        VeDirectHexRegister::BatteryMaximumCurrent,
+                                                        VeDirectHexRegister::VoltageSettingsRange,
+                                                        VeDirectHexRegister::BatteryVoltageSetting,
+                                                        VeDirectHexRegister::SmartBatterySenseTemperature,
+                                                        VeDirectHexRegister::BatteryFloatVoltage,
+                                                        VeDirectHexRegister::BatteryAbsorptionVoltage
+#ifdef PROCESS_NETWORK_STATE
+                                                        ,
+    	                                                VeDirectHexRegister::NetworkInfo,
+	                                                    VeDirectHexRegister::NetworkMode,
+	                                                    VeDirectHexRegister::NetworkStatus,
+#endif
+                                                         };
 };

@@ -9,9 +9,11 @@
 <script lang="ts">
 import BasePage from '@/components/BasePage.vue';
 import { defineComponent } from 'vue';
+
 export default defineComponent({
     components: {
         BasePage,
     },
 });
+
 </script>

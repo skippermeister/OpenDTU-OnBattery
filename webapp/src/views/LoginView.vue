@@ -30,7 +30,7 @@
 
 <script lang="ts">
 import BasePage from '@/components/BasePage.vue';
-import BootstrapAlert from "@/components/BootstrapAlert.vue";
+import BootstrapAlert from '@/components/BootstrapAlert.vue';
 import CardElement from '@/components/CardElement.vue';
 import router from '@/router';
 import { login } from '@/utils';
@@ -45,8 +45,8 @@ export default defineComponent({
     data() {
         return {
             dataLoading: false,
-            alertMessage: "",
-            alertType: "info",
+            alertMessage: '',
+            alertType: 'info',
             showAlert: false,
             returnUrl: '',
             username: '',
@@ -72,11 +72,11 @@ export default defineComponent({
             login(username, password)
                 .then(
                     () => {
-                        this.$emitter.emit("logged-in");
+                        this.$emitter.emit('logged-in');
                         router.push(this.returnUrl);
                     },
                     error => {
-                        this.$emitter.emit("logged-out");
+                        this.$emitter.emit('logged-out');
                         this.alertMessage = error;
                         this.alertType = 'danger';
                         this.showAlert = true;

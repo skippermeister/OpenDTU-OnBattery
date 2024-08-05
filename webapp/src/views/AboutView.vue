@@ -4,14 +4,14 @@
             <div class="accordion-item">
                 <h2 class="accordion-header" id="headingDocumentation">
                     <button class="accordion-button" type="button" data-bs-toggle="collapse"
-                    data-bs-target="#collapseDocumentation" aria-expanded="true" aria-controls="collapseOne">
+                        data-bs-target="#collapseDocumentation" aria-expanded="true" aria-controls="collapseOne">
                         <span class="badge text-bg-secondary">
                             <BIconInfoCircle class="fs-4" />
                         </span>&nbsp;{{ $t('about.Documentation') }}
                     </button>
                 </h2>
-                <div id="collapseDocumentation" class="accordion-collapse collapse show" aria-labelledby="headingDocumentation"
-                    data-bs-parent="#accordionExample">
+                <div id="collapseDocumentation" class="accordion-collapse collapse show"
+                    aria-labelledby="headingDocumentation" data-bs-parent="#accordionExample">
                     <div class="accordion-body">
                         <p class="fw-normal" v-html="$t('about.DocumentationBody')"></p>
                     </div>
@@ -78,21 +78,13 @@
                     <div class="accordion-body" v-html="$t('about.DiscussionBody')"></div>
                 </div>
             </div>
-
         </div>
-
     </BasePage>
-
 </template>
 
 <script lang="ts">
 import BasePage from '@/components/BasePage.vue';
-import {
-    BIconActivity,
-    BIconBug,
-    BIconChat,
-    BIconInfoCircle
-} from 'bootstrap-icons-vue';
+import { BIconActivity, BIconBug, BIconChat, BIconInfoCircle } from 'bootstrap-icons-vue';
 import { defineComponent } from 'vue';
 
 export default defineComponent({

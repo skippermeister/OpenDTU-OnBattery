@@ -12,16 +12,16 @@ export default defineComponent({
         BootstrapAlert,
     },
     props: {
-        'modelValue': { type: [String, Number], required: true },
-        'id': String,
-        'inputClass': String,
-        'required': Boolean,
+        modelValue: { type: [String, Number], required: true },
+        id: String,
+        inputClass: String,
+        required: Boolean,
     },
     data() {
         return {
-            inputSerial: "",
-            formatHint: "",
-            formatShow: "info",
+            inputSerial: '',
+            formatHint: '',
+            formatShow: 'info',
         };
     },
     computed: {
@@ -42,12 +42,12 @@ export default defineComponent({
         },
         inputSerial: function (val) {
             const serial = val.toString().toUpperCase(); // Convert to lowercase for case-insensitivity
-            if (serial == "") {
-                this.formatHint = "";
-                this.model = "";
+            if (serial == '') {
+                this.formatHint = '';
+                this.model = '';
                 return;
             }
-            this.formatShow = "info";
+            this.formatShow = 'info';
             // Contains only numbers
             if (/^1{1}[\dA-F]{11}$/.test(serial)) {
                 this.model = serial;
@@ -67,22 +67,22 @@ export default defineComponent({
                     });
                 } else {
                     this.formatHint = this.$t('inputserial.format_herf_invalid');
-                    this.formatShow = "danger";
+                    this.formatShow = 'danger';
                 }
-            // Any other format
+                // Any other format
             } else {
                 this.formatHint = this.$t('inputserial.format_unknown');
-                this.formatShow = "danger";
+                this.formatShow = 'danger';
             }
         }
     },
     methods: {
         checkHerfChecksum(sn: string) {
             const chars64 = 'HMFLGW5XC301234567899Z67YRT2S8ABCDEFGHJKDVEJ4KQPUALMNPRSTUVWXYNB';
-            const checksum = sn.substring(sn.indexOf("-") + 1);
-            const serial = sn.substring(0, sn.indexOf("-"));
+            const checksum = sn.substring(sn.indexOf('-') + 1);
+            const serial = sn.substring(0, sn.indexOf('-'));
             const first_char = '1';
-            const i = chars32.indexOf(first_char)
+            const i = chars32.indexOf(first_char);
             const sum1: number = Array.from(serial).reduce((sum, c) => sum + c.charCodeAt(0), 0) & 31;
             const sum2: number = Array.from(serial).reduce((sum, c) => sum + chars32.indexOf(c), 0) & 31;
             const ext = first_char + chars64[sum1 + i] + chars64[sum2 + i];
@@ -93,10 +93,10 @@ export default defineComponent({
             for (let i = 0; i < 9; i++) {
                 const pos: bigint = BigInt(chars32.indexOf(sn[i].toUpperCase()));
                 const shift: bigint = BigInt(42 - 5 * i - (i <= 2 ? 0 : 2));
-                sn_int |= (pos << shift);
+                sn_int |= pos << shift;
             }
             return sn_int.toString(16);
-        }
+        },
     },
 });
 </script>

@@ -203,11 +203,11 @@ void WebApiWsVedirectLiveClass::populateJson(const JsonObject &root, const VeDir
     addOutputValue(output, "E", mpptData.mpptEfficiency_Percent, "%", 1);
     if (mpptData.BatteryType.first > 0)
         output["BatteryType"]   = mpptData.getBatteryTypeAsString();
-    if (mpptData.BatteryAbsorptionVoltage.first > 0)
-        addOutputValue(output, "BatteryAbsorptionVoltage", mpptData.BatteryAbsorptionVoltage.second / 1000.0, "V", 2);
-    if (mpptData.BatteryAbsorptionVoltage.first > 0)
-        addOutputValue(output, "BatteryFloatVoltage", mpptData.BatteryFloatVoltage.second / 1000.0, "V", 2);
-    if (mpptData.BatteryFloatVoltage.first > 0)
+    if (mpptData.BatteryAbsorptionMilliVolt.first > 0)
+        addOutputValue(output, "BatteryAbsorptionVoltage", mpptData.BatteryAbsorptionMilliVolt.second / 1000.0, "V", 2);
+    if (mpptData.BatteryAbsorptionMilliVolt.first > 0)
+        addOutputValue(output, "BatteryFloatVoltage", mpptData.BatteryFloatMilliVolt.second / 1000.0, "V", 2);
+    if (mpptData.BatteryFloatMilliVolt.first > 0)
         addOutputValue(output, "BatteryMaxCurrent", mpptData.BatteryMaximumCurrent.second / 1000.0, "A", 1);
     if (mpptData.SmartBatterySenseTemperatureMilliCelsius.first > 0)
         addOutputValue(output, "BatteryTemperature", mpptData.SmartBatterySenseTemperatureMilliCelsius.second / 1000.0, "°C", 1);

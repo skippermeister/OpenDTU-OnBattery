@@ -105,48 +105,42 @@ void MqttHandleVedirectClass::publish_mppt_data(const VeDirectMpptController::da
     topic.concat(currentData.serialNr_SER);
     topic.concat("/");
 
-    if (_PublishFull || currentData.productID_PID != previousData.productID_PID)
-        MqttSettings.publish(topic + "PID", currentData.getPidAsString().data());
-    if (_PublishFull || strcmp(currentData.serialNr_SER, previousData.serialNr_SER) != 0)
-        MqttSettings.publish(topic + "SER", currentData.serialNr_SER);
-    if (_PublishFull || strcmp(currentData.firmwareVer_FW, previousData.firmwareVer_FW) != 0)
-        MqttSettings.publish(topic + "FW", currentData.firmwareVer_FW);
-    if (_PublishFull || currentData.loadCurrent_IL_mA != previousData.loadCurrent_IL_mA)
-        MqttSettings.publish(topic + "I", String(currentData.loadCurrent_IL_mA/1000.0));
-    if (_PublishFull || currentData.loadOutputState_LOAD != previousData.loadOutputState_LOAD)
-        MqttSettings.publish(topic + "LOAD", currentData.loadOutputState_LOAD == true ? "ON" : "OFF");
-    if (_PublishFull || currentData.currentState_CS != previousData.currentState_CS)
-        MqttSettings.publish(topic + "CS", currentData.getCsAsString().data());
-    if (_PublishFull || currentData.errorCode_ERR != previousData.errorCode_ERR)
-        MqttSettings.publish(topic + "ERR", currentData.getErrAsString().data());
-    if (_PublishFull || currentData.offReason_OR != previousData.offReason_OR)
-        MqttSettings.publish(topic + "OR", currentData.getOrAsString().data());
-    if (_PublishFull || currentData.stateOfTracker_MPPT != previousData.stateOfTracker_MPPT)
-        MqttSettings.publish(topic + "MPPT", currentData.getMpptAsString().data());
-    if (_PublishFull || currentData.daySequenceNr_HSDS != previousData.daySequenceNr_HSDS)
-        MqttSettings.publish(topic + "HSDS", String(currentData.daySequenceNr_HSDS));
-    if (_PublishFull || currentData.batteryVoltage_V_mV != previousData.batteryVoltage_V_mV)
-        MqttSettings.publish(topic + "V", String(currentData.batteryVoltage_V_mV/1000.0));
-    if (_PublishFull || currentData.batteryCurrent_I_mA != previousData.batteryCurrent_I_mA)
-        MqttSettings.publish(topic + "I", String(currentData.batteryCurrent_I_mA/1000.0));
-    if (_PublishFull || currentData.batteryOutputPower_W != previousData.batteryOutputPower_W)
-        MqttSettings.publish(topic + "P", String(currentData.batteryOutputPower_W));
-    if (_PublishFull || currentData.panelVoltage_VPV_mV != previousData.panelVoltage_VPV_mV)
-        MqttSettings.publish(topic + "VPV", String(currentData.panelVoltage_VPV_mV/1000.0));
-    if (_PublishFull || currentData.panelCurrent_mA != previousData.panelCurrent_mA)
-        MqttSettings.publish(topic + "IPV", String(currentData.panelCurrent_mA/1000.0));
-    if (_PublishFull || currentData.panelPower_PPV_W != previousData.panelPower_PPV_W)
-        MqttSettings.publish(topic + "PPV", String(currentData.panelPower_PPV_W));
-    if (_PublishFull || currentData.mpptEfficiency_Percent != previousData.mpptEfficiency_Percent)
-        MqttSettings.publish(topic + "E", String(currentData.mpptEfficiency_Percent));
-    if (_PublishFull || currentData.yieldTotal_H19_Wh != previousData.yieldTotal_H19_Wh)
-        MqttSettings.publish(topic + "H19", String(currentData.yieldTotal_H19_Wh/1000.0));
-    if (_PublishFull || currentData.yieldToday_H20_Wh != previousData.yieldToday_H20_Wh)
-        MqttSettings.publish(topic + "H20", String(currentData.yieldToday_H20_Wh/1000.0));
-    if (_PublishFull || currentData.maxPowerToday_H21_W != previousData.maxPowerToday_H21_W)
-        MqttSettings.publish(topic + "H21", String(currentData.maxPowerToday_H21_W));
-    if (_PublishFull || currentData.yieldYesterday_H22_Wh != previousData.yieldYesterday_H22_Wh)
-        MqttSettings.publish(topic + "H22", String(currentData.yieldYesterday_H22_Wh/1000.0));
-    if (_PublishFull || currentData.maxPowerYesterday_H23_W != previousData.maxPowerYesterday_H23_W)
-        MqttSettings.publish(topic + "H23", String(currentData.maxPowerYesterday_H23_W));
+#define PUBLISH(sm, t, val) \
+    if (_PublishFull || currentData.sm != previousData.sm) { \
+        MqttSettings.publish(topic + t, String(val)); \
+    }
+
+    PUBLISH(productID_PID, "PID", currentData.getPidAsString().data());
+    PUBLISH(serialNr_SER, "SER", currentData.serialNr_SER);
+    PUBLISH(firmwareVer_FW, "FW", currentData.firmwareVer_FW);
+    PUBLISH(loadCurrent_IL_mA, "I", currentData.loadCurrent_IL_mA/1000.0);
+    PUBLISH(loadOutputState_LOAD, "LOAD", currentData.loadOutputState_LOAD ? "ON" : "OFF");
+    PUBLISH(currentState_CS, "CS", currentData.getCsAsString().data());
+    PUBLISH(errorCode_ERR, "ERR", currentData.getErrAsString().data());
+    PUBLISH(offReason_OR, "OR", currentData.getOrAsString().data());
+    PUBLISH(stateOfTracker_MPPT, "MPPT", currentData.getMpptAsString().data());
+    PUBLISH(daySequenceNr_HSDS, "HSDS", String(currentData.daySequenceNr_HSDS));
+    PUBLISH(batteryVoltage_V_mV, "V", currentData.batteryVoltage_V_mV/1000.0);
+    PUBLISH(batteryCurrent_I_mA, "I", currentData.batteryCurrent_I_mA/1000.0);
+    PUBLISH(batteryOutputPower_W, "P", currentData.batteryOutputPower_W);
+    PUBLISH(panelVoltage_VPV_mV, "VPV", currentData.panelVoltage_VPV_mV/1000.0);
+    PUBLISH(panelCurrent_mA, "IPV", currentData.panelCurrent_mA/1000.0);
+    PUBLISH(panelPower_PPV_W, "PPV", currentData.panelPower_PPV_W);
+    PUBLISH(mpptEfficiency_Percent, "E", currentData.mpptEfficiency_Percent);
+    PUBLISH(yieldTotal_H19_Wh, "H19", currentData.yieldTotal_H19_Wh/1000.0);
+    PUBLISH(yieldToday_H20_Wh, "H20", currentData.yieldToday_H20_Wh/1000.0);
+    PUBLISH(maxPowerToday_H21_W, "H21", currentData.maxPowerToday_H21_W);
+    PUBLISH(yieldYesterday_H22_Wh, "H22", currentData.yieldYesterday_H22_Wh/1000.0);
+    PUBLISH(maxPowerYesterday_H23_W, "H23", currentData.maxPowerYesterday_H23_W);
+#undef PUBLISH
+
+#define PUBLISH_OPT(sm, t, val) \
+    if (currentData.sm.first != 0 && (_PublishFull || currentData.sm.second != previousData.sm.second)) { \
+        MqttSettings.publish(topic + t, String(val)); \
+    }
+
+    PUBLISH_OPT(NetworkTotalDcInputPowerMilliWatts,       "NetworkTotalDcInputPower",     currentData.NetworkTotalDcInputPowerMilliWatts.second / 1000.0);
+    PUBLISH_OPT(MpptTemperatureMilliCelsius,              "MpptTemperature",              currentData.MpptTemperatureMilliCelsius.second / 1000.0);
+    PUBLISH_OPT(SmartBatterySenseTemperatureMilliCelsius, "SmartBatterySenseTemperature", currentData.SmartBatterySenseTemperatureMilliCelsius.second / 1000.0);
+#undef PUBLILSH_OPT
 }

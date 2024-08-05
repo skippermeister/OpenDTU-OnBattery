@@ -33,7 +33,6 @@ void WebApiPowerLimiterClass::onStatus(AsyncWebServerRequest* request)
     auto& root = response->getRoot();
 
     root["enabled"] = config.PowerLimiter.Enabled;
-    root["interval"] = config.PowerLimiter.Interval;
     root["updatesonly"] = config.PowerLimiter.UpdatesOnly;
     root["verbose_logging"] = config.PowerLimiter.VerboseLogging;
     root["solar_passthrough_enabled"] = config.PowerLimiter.SolarPassThroughEnabled;
@@ -153,7 +152,6 @@ void WebApiPowerLimiterClass::onAdminPost(AsyncWebServerRequest* request)
     CONFIG_T& config = Configuration.get();
     config.PowerLimiter.Enabled = root["enabled"].as<bool>();
     config.PowerLimiter.VerboseLogging = root["verbose_logging"].as<bool>();
-    config.PowerLimiter.Interval = root["interval"].as<uint16_t>();
     config.PowerLimiter.UpdatesOnly = root["updatesonly"].as<bool>();
     PowerLimiter.setMode(PowerLimiterClass::Mode::Normal); // User input sets PL to normal operation
 

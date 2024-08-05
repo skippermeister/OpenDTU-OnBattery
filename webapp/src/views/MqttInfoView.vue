@@ -1,5 +1,6 @@
 <template>
-    <BasePage :title="$t('mqttinfo.MqttInformation')" :isLoading="dataLoading" :show-reload="true" @reload="getMqttInfo">
+    <BasePage :title="$t('mqttinfo.MqttInformation')" :isLoading="dataLoading" :show-reload="true"
+        @reload="getMqttInfo">
         <CardElement :text="$t('mqttinfo.ConfigurationSummary')" textVariant="text-bg-primary">
             <div class="table-responsive">
                 <table class="table table-hover table-condensed">
@@ -7,7 +8,8 @@
                         <tr>
                             <th>{{ $t('mqttinfo.Status') }}</th>
                             <td>
-                                <StatusBadge :status="mqttDataList.enabled" true_text="mqttinfo.Enabled" false_text="mqttinfo.Disabled" />
+                                <StatusBadge :status="mqttDataList.enabled" true_text="mqttinfo.Enabled"
+                                    false_text="mqttinfo.Disabled" />
                             </td>
                         </tr>
                         <tr>
@@ -37,19 +39,22 @@
                         <tr>
                             <th>{{ $t('mqttinfo.CleanSession') }}</th>
                             <td>
-                                <StatusBadge :status="mqttDataList.clean_session" true_text="mqttinfo.Enabled" false_text="mqttinfo.Disabled" />
+                                <StatusBadge :status="mqttDataList.clean_session" true_text="mqttinfo.Enabled"
+                                    false_text="mqttinfo.Disabled" />
                             </td>
                         </tr>
                         <tr>
                             <th>{{ $t('mqttinfo.Retain') }}</th>
                             <td>
-                                <StatusBadge :status="mqttDataList.retain" true_text="mqttinfo.Enabled" false_text="mqttinfo.Disabled" />
+                                <StatusBadge :status="mqttDataList.retain" true_text="mqttinfo.Enabled"
+                                    false_text="mqttinfo.Disabled" />
                             </td>
                         </tr>
                         <tr>
                             <th>{{ $t('mqttinfo.Tls') }}</th>
                             <td>
-                                <StatusBadge :status="mqttDataList.tls" true_text="mqttinfo.Enabled" false_text="mqttinfo.Disabled" />
+                                <StatusBadge :status="mqttDataList.tls" true_text="mqttinfo.Enabled"
+                                    false_text="mqttinfo.Disabled" />
                             </td>
                         </tr>
                         <tr v-show="mqttDataList.tls">
@@ -59,7 +64,8 @@
                         <tr>
                             <th>{{ $t('mqttinfo.TlsCertLogin') }}</th>
                             <td>
-                                <StatusBadge :status="mqttDataList.tls_cert_login" true_text="mqttinfo.Enabled" false_text="mqttinfo.Disabled" />
+                                <StatusBadge :status="mqttDataList.tls_cert_login" true_text="mqttinfo.Enabled"
+                                    false_text="mqttinfo.Disabled" />
                             </td>
                         </tr>
                         <tr v-show="mqttDataList.tls_cert_login">
@@ -69,7 +75,8 @@
                         <tr>
                             <th>{{ $t('mqttinfo.VerboseLogging') }}</th>
                             <td>
-                                <StatusBadge :status="mqttDataList.verbose_logging" true_text="mqttinfo.Enabled" false_text="mqttinfo.Disabled" />
+                                <StatusBadge :status="mqttDataList.verbose_logging" true_text="mqttinfo.Enabled"
+                                    false_text="mqttinfo.Disabled" />
                             </td>
                         </tr>
                     </tbody>
@@ -84,7 +91,8 @@
                         <tr>
                             <th>{{ $t('mqttinfo.Status') }}</th>
                             <td>
-                                <StatusBadge :status="mqttDataList.hass_enabled" true_text="mqttinfo.Enabled" false_text="mqttinfo.Disabled" />
+                                <StatusBadge :status="mqttDataList.hass_enabled" true_text="mqttinfo.Enabled"
+                                    false_text="mqttinfo.Disabled" />
                             </td>
                         </tr>
                         <tr>
@@ -94,19 +102,22 @@
                         <tr>
                             <th>{{ $t('mqttinfo.Retain') }}</th>
                             <td>
-                                <StatusBadge :status="mqttDataList.hass_retain" true_text="mqttinfo.Enabled" false_text="mqttinfo.Disabled" />
+                                <StatusBadge :status="mqttDataList.hass_retain" true_text="mqttinfo.Enabled"
+                                    false_text="mqttinfo.Disabled" />
                             </td>
                         </tr>
                         <tr>
                             <th>{{ $t('mqttinfo.Expire') }}</th>
                             <td>
-                                <StatusBadge :status="mqttDataList.hass_expire" true_text="mqttinfo.Enabled" false_text="mqttinfo.Disabled" />
+                                <StatusBadge :status="mqttDataList.hass_expire" true_text="mqttinfo.Enabled"
+                                    false_text="mqttinfo.Disabled" />
                             </td>
                         </tr>
                         <tr>
                             <th>{{ $t('mqttinfo.IndividualPanels') }}</th>
                             <td>
-                                <StatusBadge :status="mqttDataList.hass_individualpanels" true_text="mqttinfo.Enabled" false_text="mqttinfo.Disabled" />
+                                <StatusBadge :status="mqttDataList.hass_individualpanels" true_text="mqttinfo.Enabled"
+                                    false_text="mqttinfo.Disabled" />
                             </td>
                         </tr>
                     </tbody>
@@ -121,7 +132,8 @@
                         <tr>
                             <th>{{ $t('mqttinfo.ConnectionStatus') }}</th>
                             <td>
-                                <StatusBadge :status="mqttDataList.connected" true_text="mqttinfo.Connected" false_text="mqttinfo.Disconnected" />
+                                <StatusBadge :status="mqttDataList.connected" true_text="mqttinfo.Connected"
+                                    false_text="mqttinfo.Disconnected" />
                             </td>
                         </tr>
                     </tbody>
@@ -157,7 +169,7 @@ export default defineComponent({
     methods: {
         getMqttInfo() {
             this.dataLoading = true;
-            fetch("/api/mqtt/status", { headers: authHeader() })
+            fetch('/api/mqtt/status', { headers: authHeader() })
                 .then((response) => handleResponse(response, this.$emitter, this.$router))
                 .then((data) => {
                     this.mqttDataList = data;

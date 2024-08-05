@@ -2,11 +2,11 @@
 
 #pragma once
 
-#include "Configuration.h"
-#include <Hoymiles.h>
-#include <ModbusIP_ESP8266.h>
 #include <TaskSchedulerDeclarations.h>
 #include <cstdint>
+#include "Configuration.h"
+#include <ModbusIP_ESP8266.h>
+#include <Hoymiles.h>
 
 class ModbusDtuClass {
 public:
@@ -15,17 +15,17 @@ public:
 
 private:
     void loop();
-    void mbloop();
-    void initModbus();
+    void setup();
+    void modbus();
 
     void setHRegs(uint16_t reg, float value);
     void addHString(uint16_t reg, const char* s, uint8_t len);
 
-    Task _loopTask;
-    Task _mbloopTask;
-
-    uint32_t _lastPublish = 0;
     bool _isstarted = false;
+    float _lasttotal = 0;
+
+    Task _loopTask;
+    Task _modbusTask;
 };
 
 extern ModbusDtuClass ModbusDtu;

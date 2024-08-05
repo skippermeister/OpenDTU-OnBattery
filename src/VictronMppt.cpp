@@ -49,17 +49,17 @@ void VictronMpptClass::updateSettings()
 
 bool VictronMpptClass::initController(int8_t rx, int8_t tx, bool logging, uint8_t instance)
 {
-    MessageOutput.printf("%s%s RS232 port rx = %d, tx = %d, instance = %d ", TAG, __FUNCTION__, rx, tx, instance);
+    MessageOutput.printf("%s%s RS232 port rx = %d, tx = %d, instance = %d", TAG, __FUNCTION__, rx, tx, instance);
 
     if (rx < 0 && tx < 0) {
-        MessageOutput.printf("not configued\r\n");
+        MessageOutput.printf(", not configued\r\n");
         return false;
     }
-    if (rx == tx || rx < 0 || tx < 0) {
-        MessageOutput.printf("invalid pin config\r\n");
+    if (rx == tx || rx < 0) {
+        MessageOutput.printf(", invalid pin config\r\n");
         return false;
     }
-    MessageOutput.println();
+    MessageOutput.printf(", %s messages%s\r\n", tx<0?"text":"text and HEX", tx<0?" only":"");
 
     String owner("Victron MPPT ");
     owner += String(instance);
@@ -233,4 +233,45 @@ float VictronMpptClass::getOutputVoltage() const
     }
 
     return min;
+}
+
+/*
+ * getStateOfOperation()
+ * return:  the state from the first available controller or
+ *          -1 if data is not available
+ */
+int16_t VictronMpptClass::getStateOfOperation() const
+{
+    for (const auto& upController : _controllers) {
+        if (upController->isDataValid())
+            return static_cast<int16_t>(upController->getData().currentState_CS);
+    }
+
+    return -1;
+}
+
+/*
+ * getVoltage()
+ * return:  the configured value from the first available controller in V or
+ *          -1V if data is not available
+ */
+float VictronMpptClass::getVoltage(MPPTVoltage kindOf) const
+{
+    std::pair<uint32_t, uint32_t> voltX {0,0};
+
+    for (const auto& upController : _controllers) {
+        switch (kindOf) {
+            case MPPTVoltage::ABSORPTION:
+                voltX = upController->getData().BatteryAbsorptionMilliVolt;
+                break;
+            case MPPTVoltage::FLOAT:
+                voltX = upController->getData().BatteryFloatMilliVolt;
+                break;
+        }
+        if (voltX.first > 0) {
+            return static_cast<float>(voltX.second / 1000.0);
+        }
+    }
+
+    return -1.0f;
 }

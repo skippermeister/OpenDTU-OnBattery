@@ -48,6 +48,7 @@ typedef union {
 class BatteryStats {
     public:
         String const& getManufacturer() const { return _manufacturer; }
+        String const& getFwVersion() const { return _fwversion; }
 
         // the last time *any* data was updated
         uint32_t getAgeSeconds() const { return (millis() - _lastUpdate) / 1000; }
