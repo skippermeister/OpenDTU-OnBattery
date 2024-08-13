@@ -41,6 +41,10 @@ void WebApiVedirectClass::onVedirectStatus(AsyncWebServerRequest* request)
 
 void WebApiVedirectClass::onVedirectAdminGet(AsyncWebServerRequest* request)
 {
+    if (!WebApi.checkCredentials(request)) {
+        return;
+    }
+
     this->onVedirectStatus(request);
 }
 
@@ -58,9 +62,10 @@ void WebApiVedirectClass::onVedirectAdminPost(AsyncWebServerRequest* request)
 
     auto& retMsg = response->getRoot();
 
-    if (!(root.containsKey("enabled")
-            && root.containsKey("updatesonly")
-            && root.containsKey("verbose_logging"))) {
+    if (!root.containsKey("enabled") ||
+        !root.containsKey("updatesonly") ||
+        !root.containsKey("verbose_logging"))
+    {
         retMsg["message"] = ValuesAreMissing;
         retMsg["code"] = WebApiError::GenericValueMissing;
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);

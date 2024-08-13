@@ -5,16 +5,20 @@
 #include <Wire.h>
 #include "I2C_CAN_dfs.h"
 
-#define MCP_CAN I2C_CAN
+//#define MCP_CAN I2C_CAN
 
 class I2C_CAN{
 
 private:
 
+    TwoWire* __wire;
     unsigned char IIC_ADDR;
     unsigned long m_ID;
     unsigned char m_RTR;
     unsigned char m_EXT;
+    int8_t m_scl;
+    int8_t m_sda;
+    uint32_t m_frequency;
 
     unsigned char makeCheckSum(unsigned char *dta, int len);
 
@@ -26,8 +30,7 @@ public:
     bool IIC_CAN_GetReg(unsigned char __reg, int len, unsigned char *__dta);
 
 public:
-
-    I2C_CAN(unsigned char __addr);
+    I2C_CAN(TwoWire* wire, unsigned char __addr, int8_t __scl = -1, int8_t __sda = -1, uint32_t __frequency = 100000UL);
     byte begin(byte speedset);                                      // init can
     byte init_Mask(byte num, byte ext, unsigned long ulData);       // init Masks
     byte init_Filt(byte num, byte ext, unsigned long ulData);       // init filters
@@ -40,8 +43,6 @@ public:
     unsigned long getCanId(void);                                   // get can id when receive
     byte isRemoteRequest(void);                                     // get RR flag when receive
     byte isExtendedFrame(void);                                     // did we recieve 29bit frame?
-
-
 };
 
 #endif

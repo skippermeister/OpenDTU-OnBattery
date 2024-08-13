@@ -9,7 +9,7 @@
 
 bool PytesCanReceiver::init()
 {
-    return _initialized = BatteryCanReceiver::init(_isCAN0 ? "[Pytes CAN0]" : "[Pytes MCP2515]");
+    return _initialized = BatteryCanReceiver::init("Pytes");
 }
 
 void PytesCanReceiver::onMessage(twai_message_t rx_message)

@@ -10,6 +10,73 @@
 
 #define MAPPING_NAME_STRLEN 31
 
+struct MCP2515_t {
+        int8_t miso;
+        int8_t mosi;
+        int8_t clk;
+        int8_t irq;
+        int8_t cs;
+};
+
+enum Charger_Provider_t { undefined=0, CAN0=1, MCP2515=2, I2C0=3, I2C1=4};
+struct CHARGER_t {
+    Charger_Provider_t provider;
+    union {
+        struct {
+            int8_t rx;
+            int8_t tx;
+        } can0;
+        MCP2515_t mcp2515;
+        struct {
+            int8_t scl;
+            int8_t sda;
+        } i2c0;
+        struct {
+            int8_t scl;
+            int8_t sda;
+        } i2c1;
+    };
+#if defined(USE_CHARGER_HUAWEI)
+    int8_t power;
+#endif
+};
+
+enum class Battery_Provider_t { undefined=0, CAN0=1, MCP2515=2, I2C0=3, I2C1=4, RS232=5, RS485=6};
+struct Battery_t {
+    Battery_Provider_t provider;
+    union {
+#if defined(USE_PYLONTECH_CAN_RECEIVER) || defined(USE_PYTES_CAN_RECEIVER)
+        struct {
+            int8_t rx;
+            int8_t tx;
+        } can0;
+        MCP2515_t mcp2515;
+        struct {
+            int8_t scl;
+            int8_t sda;
+        } i2c0;
+        struct {
+            int8_t scl;
+            int8_t sda;
+        } i2c1;
+#endif
+#if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER) || defined(USE_JKBMS_CONTROLLER)
+        struct {
+            int8_t rx;
+            int8_t tx;
+        } rs232;
+        struct {
+            int8_t rx;
+            int8_t tx;
+            int8_t rts;
+        } rs485;
+#endif
+    };
+#if defined(USE_DALYBMS_CONTROLLER)
+    int8_t wakeup;
+#endif
+};
+
 struct PinMapping_t {
     char name[MAPPING_NAME_STRLEN + 1];
 
@@ -29,6 +96,8 @@ struct PinMapping_t {
     int8_t cmt_gpio2;
     int8_t cmt_gpio3;
     int8_t cmt_sdio;
+    int8_t cmt_chip_int1gpio;
+    int8_t cmt_chip_int2gpio;
 #endif
 
 #if defined(OPENDTU_ETHERNET)
@@ -74,26 +143,15 @@ struct PinMapping_t {
     int8_t REFUsol_rts;
 #endif
 
-    int8_t battery_rx;
-    int8_t battery_tx;
-#if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER) || defined(USE_JKMS_CONTROLLER)
-    int8_t battery_rts;
-#if defined(USE_DALYBMS_CONTROLLER)
-    int8_t battery_wakeup;
-#endif
-#endif
+    Battery_t battery;
 
-    int8_t mcp2515_miso;
-    int8_t mcp2515_mosi;
-    int8_t mcp2515_clk;
-    int8_t mcp2515_irq;
-    int8_t mcp2515_cs;
+    CHARGER_t charger;
 
-#if defined(CHARGER_HUAWEI)
-    int8_t huawei_power;
-#endif
-    int8_t can0_rx;
-    int8_t can0_tx;
+    int8_t i2c0_scl;
+    int8_t i2c0_sda;
+
+    int8_t i2c1_scl;
+    int8_t i2c1_sda;
 
     int8_t pre_charge;
     int8_t full_power;
@@ -119,10 +177,8 @@ public:
     bool isValidEthConfig() const;
 #endif
     bool isValidBatteryConfig() const;
-#if defined(CHARGER_HUAWEI)
-    bool isValidHuaweiConfig() const;
-#else
-    bool isValidMeanWellConfig() const;
+#if defined(USE_CHARGER_MEANWELL) || defined(USE_CHARGER_HUAWEI)
+    bool isValidChargerConfig() const;
 #endif
 
     bool isValidPreChargeConfig() const;

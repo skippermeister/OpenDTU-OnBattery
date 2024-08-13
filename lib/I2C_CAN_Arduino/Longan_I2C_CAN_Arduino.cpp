@@ -1,46 +1,50 @@
 #include "Longan_I2C_CAN_Arduino.h"
 
 
-I2C_CAN::I2C_CAN(unsigned char __addr)
+I2C_CAN::I2C_CAN(TwoWire *wire, unsigned char __addr, int8_t __scl, int8_t __sda, uint32_t __frequency)
 {
     IIC_ADDR = __addr;
+    m_sda = __sda;
+    m_scl = __scl;
+    m_frequency = __frequency;
+    if (wire == NULL) wire = &Wire;
+    __wire = wire;
 }
 
 void I2C_CAN::begin()
 {
-    Wire.begin();
+    __wire->begin(m_scl, m_sda, m_frequency);
 }
 
 void I2C_CAN::IIC_CAN_SetReg(unsigned char __reg, unsigned char __len, unsigned char *__dta)
 {
-    Wire.beginTransmission(IIC_ADDR);
-    Wire.write(__reg);
+    __wire->beginTransmission(IIC_ADDR);
+    __wire->write(__reg);
     for(int i=0; i<__len; i++)
     {
-        Wire.write(__dta[i]);
+        __wire->write(__dta[i]);
     }
-    Wire.endTransmission();
-
+    __wire->endTransmission();
 }
 
 void I2C_CAN::IIC_CAN_SetReg(unsigned char __reg, unsigned char __dta)
 {
-    Wire.beginTransmission(IIC_ADDR);
-    Wire.write(__reg);
-    Wire.write(__dta);
-    Wire.endTransmission();
+    __wire->beginTransmission(IIC_ADDR);
+    __wire->write(__reg);
+    __wire->write(__dta);
+    __wire->endTransmission();
 }
 
 bool I2C_CAN::IIC_CAN_GetReg(unsigned char __reg, unsigned char *__dta)
 {
-    Wire.beginTransmission(IIC_ADDR);
-    Wire.write(__reg);
-    Wire.endTransmission();
-    Wire.requestFrom(IIC_ADDR, 1);
+    __wire->beginTransmission(IIC_ADDR);
+    __wire->write(__reg);
+    __wire->endTransmission();
+    __wire->requestFrom((int)IIC_ADDR, 1);
 
-    while(Wire.available())
+    while(__wire->available())
     {
-        *__dta = Wire.read();
+        *__dta = __wire->read();
         return 1;
     }
 
@@ -49,16 +53,16 @@ bool I2C_CAN::IIC_CAN_GetReg(unsigned char __reg, unsigned char *__dta)
 
 bool I2C_CAN::IIC_CAN_GetReg(unsigned char __reg, int len, unsigned char *__dta)
 {
-    Wire.beginTransmission(IIC_ADDR);
-    Wire.write(__reg);
-    Wire.endTransmission();
-    Wire.requestFrom(IIC_ADDR, len);
+    __wire->beginTransmission(IIC_ADDR);
+    __wire->write(__reg);
+    __wire->endTransmission();
+    __wire->requestFrom((int)IIC_ADDR, len);
 
     int __len = 0;
 
-    while(Wire.available())
+    while(__wire->available())
     {
-        __dta[__len++] = Wire.read();
+        __dta[__len++] = __wire->read();
     }
 
     return (len == __len);
@@ -67,7 +71,7 @@ bool I2C_CAN::IIC_CAN_GetReg(unsigned char __reg, int len, unsigned char *__dta)
 
 byte I2C_CAN::begin(byte speedset)                                      // init can
 {
-    Wire.begin();
+    __wire->begin(m_sda, m_scl, m_frequency);
 
     IIC_CAN_SetReg(REG_BAUD, speedset);
     delay(10);
@@ -98,6 +102,8 @@ byte I2C_CAN::init_Mask(byte num, byte ext, unsigned long ulData)       // init 
 
     IIC_CAN_SetReg(mask, 5, dta);
     delay(50);
+
+    return CAN_OK;
 }
 
 byte I2C_CAN::init_Filt(byte num, byte ext, unsigned long ulData)       // init filters
@@ -114,6 +120,8 @@ byte I2C_CAN::init_Filt(byte num, byte ext, unsigned long ulData)       // init 
 
     IIC_CAN_SetReg(filt, 5, dta);
     delay(50);
+
+    return CAN_OK;
 }
 
 byte I2C_CAN::sendMsgBuf(unsigned long id, byte ext, byte rtr, byte len, byte *buf)     // send buf
@@ -138,17 +146,19 @@ byte I2C_CAN::sendMsgBuf(unsigned long id, byte ext, byte rtr, byte len, byte *b
     dta[15] = makeCheckSum(dta, 15);
 
     IIC_CAN_SetReg(REG_SEND, 16, dta);
+
+    return CAN_OK;
 }
 
 byte I2C_CAN::sendMsgBuf(unsigned long id, byte ext, byte len, byte *buf)               // send buf
 {
-    sendMsgBuf(id, ext, 0, len, buf);
-
+    return sendMsgBuf(id, ext, 0, len, buf);
 }
 
 byte I2C_CAN::readMsgBuf(byte *len, byte *buf)                          // read buf
 {
-    readMsgBufID(&m_ID, len, buf);
+    if (readMsgBufID(&m_ID, len, buf)) return CAN_OK;
+    else return CAN_NOMSG;
 }
 
 byte I2C_CAN::readMsgBufID(unsigned long *ID, byte *len, byte *buf)     // read buf with object ID

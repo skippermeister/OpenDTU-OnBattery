@@ -2,7 +2,7 @@
 /*
  * Copyright (C) 2022 Thomas Basler and others
  */
-#ifndef CHARGER_HUAWEI
+#ifdef USE_CHARGER_MEANWELL
 
 #include "MqttHandleMeanWell.h"
 #include "MeanWell_can.h"
@@ -26,6 +26,18 @@ void MqttHandleMeanWellClass::init(Scheduler& scheduler)
     scheduler.addTask(_loopTask);
     _loopTask.enable();
 
+    subscribeTopics();
+
+    _lastPublish = millis();
+}
+
+void MqttHandleMeanWellClass::forceUpdate()
+{
+    _lastPublish = 0;
+}
+
+void MqttHandleMeanWellClass::subscribeTopics()
+{
     String const& prefix = MqttSettings.getPrefix();
 
     auto subscribe = [&prefix, this](char const* subTopic, Topic t) {
@@ -43,8 +55,18 @@ void MqttHandleMeanWellClass::init(Scheduler& scheduler)
     subscribe("limit_curveFV", Topic::LimitCurveFV);
     subscribe("limit_curveTC", Topic::LimitCurveTC);
     subscribe("mode", Topic::Mode);
+}
 
-    _lastPublish.set(Configuration.get().Mqtt.PublishInterval * 1000);
+void MqttHandleMeanWellClass::unsubscribeTopics()
+{
+    String const& prefix = MqttSettings.getPrefix() + "meanwell/cmd/";
+    MqttSettings.unsubscribe(String(prefix + "limit_voltage"));
+    MqttSettings.unsubscribe(String(prefix + "limit_current"));
+    MqttSettings.unsubscribe(String(prefix + "limit_curveCV"));
+    MqttSettings.unsubscribe(String(prefix + "limit_curveCC"));
+    MqttSettings.unsubscribe(String(prefix + "limit_curveFV"));
+    MqttSettings.unsubscribe(String(prefix + "limit_curveTC"));
+    MqttSettings.unsubscribe(String(prefix + "mode"));
 }
 
 #define MQTTpublish(value)                                              \
@@ -69,7 +91,7 @@ void MqttHandleMeanWellClass::loop()
 
     mqttLock.unlock();
 
-    if (!MqttSettings.getConnected() || !_lastPublish.occured()) {
+    if (!MqttSettings.getConnected() || (millis() - _lastPublish) < config.Mqtt.PublishInterval * 1000) {
         return;
     }
 
@@ -95,7 +117,7 @@ void MqttHandleMeanWellClass::loop()
     MQTTpublish(internalTemperature);
     MQTTpublish(efficiency);
 
-    _lastPublish.set(Configuration.get().Mqtt.PublishInterval * 1000);
+    _lastPublish = millis();
     yield();
 }
 

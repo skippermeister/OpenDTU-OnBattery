@@ -1,5 +1,162 @@
 [
    {
+        "name": "S3USB NRF CMT I2C-Charger",
+        "nrf24": {
+            "miso": 15,
+            "mosi": 7,
+            "clk": 6,
+            "irq": 16,
+            "cs": 5,
+            "en": 4
+        },
+        "cmt": {
+            "clk": 10,
+            "cs": 9,
+            "fcs": 11,
+            "sdio": 12,
+            "gpio2": 14,
+            "gpio3": 13,
+            "chip_int1gpio": 2,
+            "chip_int2gpio": 1
+        },
+        "victron": {
+            "rs232_rx": 40,
+            "rs232_tx": -1,
+            "rs232_rx2": -1,
+            "rs232_tx2": -1,
+            "rs232_rx3": -1,
+            "rs232_tx3": -1
+        },
+        "battery": {
+            "rs232_tx": 47,
+            "rs232_rx": 45,
+            "wakeup": 21
+        },
+        "charger": {
+            "i2c0_scl": 18,
+            "i2c0_sda": 17
+        },
+        "led": {
+            "rgb": 48
+        },
+        "display": {
+            "type": 3,
+            "data": 17,
+            "clk": 18
+        },
+        "powermeter": {
+            "rs485_tx": 37,
+            "rs485_rx": 36,
+            "rs485_rts": 35
+        }
+    },
+    {
+        "name": "S3USB NRF CMT CAN0-Charger",
+        "nrf24": {
+            "miso": 15,
+            "mosi": 7,
+            "clk": 6,
+            "irq": 16,
+            "cs": 5,
+            "en": 4
+        },
+        "cmt": {
+            "clk": 10,
+            "cs": 9,
+            "fcs": 11,
+            "sdio": 12,
+            "gpio2": 14,
+            "gpio3": 13,
+            "chip_int1gpio": 2,
+            "chip_int2gpio": 1
+        },
+        "victron": {
+            "rs232_rx": 40,
+            "rs232_tx": -1,
+            "rs232_rx2": -1,
+            "rs232_tx2": -1,
+            "rs232_rx3": -1,
+            "rs232_tx3": -1
+        },
+        "battery": {
+            "rs232_tx": 47,
+            "rs232_rx": 45,
+            "wakeup": 21
+        },
+        "charger": {
+            "can0_rx": 3,
+            "can0_tx": 8
+        },
+        "led": {
+            "rgb": 48
+        },
+        "display": {
+            "type": 3,
+            "data": 17,
+            "clk": 18
+        },
+        "powermeter": {
+            "rs485_tx": 37,
+            "rs485_rx": 36,
+            "rs485_rts": 35
+        }
+    },
+    {
+        "name": "S3USB CMT MCP2515-Charger",
+        "nrf24": {
+            "miso": -1,
+            "mosi": -1,
+            "clk": -1,
+            "irq": -1,
+            "cs": -1,
+            "en": -1
+        },
+        "cmt": {
+            "clk": 10,
+            "cs": 9,
+            "fcs": 11,
+            "sdio": 12,
+            "gpio2": 14,
+            "gpio3": 13,
+            "chip_int1gpio": 2,
+            "chip_int2gpio": 1
+        },
+        "victron": {
+            "rs232_rx": 40,
+            "rs232_tx": -1,
+            "rs232_rx2": -1,
+            "rs232_tx2": -1,
+            "rs232_rx3": -1,
+            "rs232_tx3": -1
+        },
+        "battery": {
+            "rs485_tx": 47,
+            "rs485_rx": 45,
+            "rs485_rts": 21
+        },
+        "charger": {
+            "mcp2515_irq": 4,
+            "mcp2515_clk": 5,
+            "mcp2515_miso": 6,
+            "mcp2515_mosi": 7,
+            "mcp2515_cs": 15,
+            "power": 16
+        },
+        "led": {
+            "rgb": 48
+        },
+        "display": {
+            "type": 3,
+            "data": 17,
+            "clk": 18
+        },
+        "powermeter": {
+            "rs485_tx": 37,
+            "rs485_rx": 36,
+            "rs485_rts": 35
+        }
+    },
+    {
         "name": "ESP32S3USB CMT+HUAWEI+SH1106",
         "nrf24": {
             "miso": -1,
@@ -41,8 +198,8 @@
             "tx2": 12
         },
         "battery": {
-            "rx": 13,
-            "tx": 14
+            "tx": 14,
+            "rx": 13
         },
         "led": {
             "led0": 17,

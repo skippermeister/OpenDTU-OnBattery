@@ -26,6 +26,7 @@ struct veMpptStruct : veStruct {
     uint32_t panelVoltage_VPV_mV;       // panel voltage in mV
     uint32_t panelCurrent_mA;           // panel current in mA (calculated)
     int16_t  batteryOutputPower_W;      // battery output power in W (calculated, can be negative if load output is used)
+    bool hasLoad;                       // indicate if MPPT has Load output. Set to true with first incomming message "LOAD" or "IL"
     uint32_t loadCurrent_IL_mA;         // Load current in mA (Available only for models with a load output)
     bool     loadOutputState_LOAD;      // virtual load output state (on if battery voltage reaches upper limit, off if battery reaches lower limit)
     uint8_t  currentState_CS;           // current state of operation e.g. OFF or Bulk
@@ -163,7 +164,7 @@ enum class VeDirectHexRegister : uint16_t {
     BatteryAbsorptionVoltage = 0xEDF7,
     BatteryFloatVoltage = 0xEDF6,
     TotalChargeCurrent = 0x2013,
-    ChargeStateElapsedTime= 0x2007,
+    ChargeStateElapsedTime = 0x2007,
     BatteryVoltageSense = 0x2002,
     LoadCurrent = 0xEDAD,
     LoadOutputVoltage = 0xEDA9,

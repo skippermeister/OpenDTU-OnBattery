@@ -91,10 +91,11 @@ private:
     WebApiWsREFUsolLiveClass _webApiWsREFUsolLive;
     WebApiREFUsolClass _webApiREFUsol;
 #endif
-#ifdef CHARGER_HUAWEI
+#ifdef USE_CHARGER_HUAWEI
     WebApiHuaweiClass _webApiHuaweiClass;
     WebApiWsHuaweiLiveClass _webApiWsHuaweiLive;
-#else
+#endif
+#ifdef USE_CHARGER_MEANWELL
     WebApiMeanWellClass _webApiMeanWellClass;
     WebApiWsMeanWellLiveClass _webApiWsMeanWellLive;
 #endif

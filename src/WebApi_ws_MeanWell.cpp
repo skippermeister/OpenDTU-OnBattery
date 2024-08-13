@@ -2,7 +2,7 @@
 /*
  * Copyright (C) 2022 Thomas Basler and others
  */
-#ifndef CHARGER_HUAWEI
+#ifdef USE_CHARGER_MEANWELL
 
 #include "WebApi_ws_MeanWell.h"
 #include "AsyncJson.h"

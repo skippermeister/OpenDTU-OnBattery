@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #pragma once
 
-#ifndef CHARGER_HUAWEI
+#ifdef USE_CHARGER_MEANWELL
 
 #include <AsyncJson.h>
 #include <ESPAsyncWebServer.h>
@@ -21,7 +21,6 @@ private:
 
     void onAdminGet(AsyncWebServerRequest* request);
     void onAdminPost(AsyncWebServerRequest* request);
-    //    void onPost(AsyncWebServerRequest* request);
 };
 
 #endif

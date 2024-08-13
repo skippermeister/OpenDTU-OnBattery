@@ -169,9 +169,9 @@ void WebApiWsVedirectLiveClass::populateJson(const JsonObject &root, const VeDir
     const JsonObject values = root["values"].to<JsonObject>();
 
     const JsonObject device = values["device"].to<JsonObject>();
-    if (mpptData.Capabilities.second & (1<<0)) {  // Load output present ?
+    if (mpptData.hasLoad || mpptData.Capabilities.second & (1<<0)) {  // Load output present ?
         device["LOAD"] = mpptData.loadOutputState_LOAD ? "ON" : "OFF";
-        if (mpptData.Capabilities.second & (1<<12) ) // Load current IL in Text protocol
+        if (mpptData.hasLoad || mpptData.Capabilities.second & (1<<12) ) // Load current IL in Text protocol
             addDeviceValue(device, "IL", mpptData.loadCurrent_IL_mA/1000.0, "A", 2);
         else if (mpptData.LoadCurrent.first > 0)
             addDeviceValue(device, "IL", mpptData.LoadCurrent.second / 1000.0, "A", 2);

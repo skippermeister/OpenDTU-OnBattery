@@ -31,6 +31,10 @@ void WebApiPowerMeterClass::init(AsyncWebServer& server, Scheduler& scheduler)
 
 void WebApiPowerMeterClass::onStatus(AsyncWebServerRequest* request)
 {
+    if (!WebApi.checkCredentialsReadonly(request)) {
+        return;
+    }
+
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& root = response->getRoot();
     const PowerMeter_CONFIG_T& cPM = Configuration.get().PowerMeter;
@@ -39,6 +43,7 @@ void WebApiPowerMeterClass::onStatus(AsyncWebServerRequest* request)
     root["updatesonly"] = cPM.UpdatesOnly;
     root["verbose_logging"] = cPM.VerboseLogging;
     root["source"] = cPM.Source;
+
     auto mqtt = root["mqtt"].to<JsonObject>();
     Configuration.serializePowerMeterMqttConfig(cPM.Mqtt, mqtt);
 
@@ -163,7 +168,6 @@ void WebApiPowerMeterClass::onAdminPost(AsyncWebServerRequest* request)
     Configuration.deserializePowerMeterHttpSmlConfig(root["http_sml"].as<JsonObject>(),
             config.PowerMeter.HttpSml);
 
-
     WebApi.writeConfig(retMsg);
 
     WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
@@ -195,7 +199,7 @@ void WebApiPowerMeterClass::onTestHttpJsonRequest(AsyncWebServerRequest* request
     auto res = upMeter->poll();
     using values_t = PowerMeterHttpJson::power_values_t;
     if (std::holds_alternative<values_t>(res)) {
-        retMsg["type"] = "success";
+        retMsg["type"] = Success;
         auto vals = std::get<values_t>(res);
         auto pos = snprintf(response, sizeof(response), "Result: %5.2fW", vals[0]);
         for (size_t i = 1; i < vals.size(); ++i) {
@@ -235,7 +239,7 @@ void WebApiPowerMeterClass::onTestHttpSmlRequest(AsyncWebServerRequest* request)
     upMeter->init();
     auto res = upMeter->poll();
     if (res.isEmpty()) {
-        retMsg["type"] = "success";
+        retMsg["type"] = Success;
         snprintf(response, sizeof(response), "Result: %5.2fW", upMeter->getPowerTotal());
     } else {
         snprintf(response, sizeof(response), "%s", res.c_str());

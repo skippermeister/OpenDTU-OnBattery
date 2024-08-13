@@ -10,7 +10,7 @@
 
 class PytesCanReceiver : public BatteryCanReceiver {
 public:
-    explicit PytesCanReceiver(bool isCAN0) { _isCAN0 = isCAN0; }
+    explicit PytesCanReceiver() {}
 
     bool init() final;
     void onMessage(twai_message_t rx_message) final;

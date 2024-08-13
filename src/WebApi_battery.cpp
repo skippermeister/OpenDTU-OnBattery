@@ -35,8 +35,8 @@ void WebApiBatteryClass::onStatus(AsyncWebServerRequest* request)
     const Battery_CONFIG_T& cBattery = Configuration.get().Battery;
 
     root["enabled"] = cBattery.Enabled;
-    root["numberOfBatteries"] = cBattery.numberOfBatteries;
-    root["pollinterval"] = cBattery.PollInterval;
+    root["verbose_logging"] = cBattery.VerboseLogging;
+    root["updatesonly"] = cBattery.UpdatesOnly;
     root["provider"] = cBattery.Provider;
     root["can_controller_frequency"] = Configuration.get().MCP2515.Controller_Frequency;
 #ifdef USE_JKBMS_CONTROLLER
@@ -46,6 +46,15 @@ void WebApiBatteryClass::onStatus(AsyncWebServerRequest* request)
     root["jkbms_interface"] = 0;
     root["jkbms_polling_interval"] = 0;
 #endif
+
+    root["pollinterval"] = cBattery.PollInterval;
+    root["min_charge_temp"] = cBattery.MinChargeTemperature;
+    root["max_charge_temp"] = cBattery.MaxChargeTemperature;
+    root["min_discharge_temp"] = cBattery.MinDischargeTemperature;
+    root["max_discharge_temp"] = cBattery.MaxDischargeTemperature;
+    root["stop_charging_soc"] = cBattery.Stop_Charging_BatterySoC_Threshold;
+    root["numberOfBatteries"] = cBattery.numberOfBatteries;
+
 #ifdef USE_MQTT_BATTERY
     root["mqtt_soc_topic"] = cBattery.Mqtt.SocTopic;
     root["mqtt_soc_json_path"] = cBattery.Mqtt.SocJsonPath;
@@ -59,13 +68,6 @@ void WebApiBatteryClass::onStatus(AsyncWebServerRequest* request)
     root["mqtt_voltage_json_path"] = "";
     root["mqtt_voltage_unit"] = 0;
 #endif
-    root["updatesonly"] = cBattery.UpdatesOnly;
-    root["min_charge_temp"] = cBattery.MinChargeTemperature;
-    root["max_charge_temp"] = cBattery.MaxChargeTemperature;
-    root["min_discharge_temp"] = cBattery.MinDischargeTemperature;
-    root["max_discharge_temp"] = cBattery.MaxDischargeTemperature;
-    root["stop_charging_soc"] = cBattery.Stop_Charging_BatterySoC_Threshold;
-
 #if defined(USE_MQTT_BATTERY) || defined(USE_VICTRON_SMART_SHUNT)
     root["recommended_charge_voltage"] = cBattery.RecommendedChargeVoltage;
     root["recommended_discharge_voltage"] = cBattery.RecommendedDischargeVoltage;
@@ -74,13 +76,15 @@ void WebApiBatteryClass::onStatus(AsyncWebServerRequest* request)
     root["recommended_discharge_voltage"] = 0;
 #endif
 
-    root["verbose_logging"] = cBattery.VerboseLogging;
-
     WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 }
 
 void WebApiBatteryClass::onAdminGet(AsyncWebServerRequest* request)
 {
+    if (!WebApi.checkCredentials(request)) {
+        return;
+    }
+
     onStatus(request);
 }
 
@@ -98,32 +102,30 @@ void WebApiBatteryClass::onAdminPost(AsyncWebServerRequest* request)
 
     auto& retMsg = response->getRoot();
 
-    if (!(root.containsKey("enabled")
-            && root.containsKey("pollinterval")
-            && root.containsKey("updatesonly")
-            && root.containsKey("provider")
-            && root.containsKey("min_charge_temp")
-            && root.containsKey("max_charge_temp")
-            && root.containsKey("min_discharge_temp")
-            && root.containsKey("max_discharge_temp")
-            && root.containsKey("verbose_logging"))) {
+    if (!root.containsKey("enabled") ||
+        !root.containsKey("pollinterval") ||
+        !root.containsKey("updatesonly") ||
+        !root.containsKey("provider") ||
+        !root.containsKey("verbose_logging"))
+    {
         retMsg["message"] = ValuesAreMissing;
         retMsg["code"] = WebApiError::GenericValueMissing;
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;
     }
 
-    if (root["pollinterval"].as<uint32_t>() == 0) {
-        retMsg["message"] = "Poll interval must be a number between 5 and 65535!";
+    if (root["pollinterval"].as<uint32_t>() < 1 || root["pollinterval"].as<uint32_t>() > 100) {
+        retMsg["message"] = "Poll interval must be a number between 1 and 100!";
         retMsg["code"] = WebApiError::MqttPublishInterval;
-        retMsg["param"]["min"] = 5;
-        retMsg["param"]["max"] = 65535;
+        retMsg["param"]["min"] = 1;
+        retMsg["param"]["max"] = 100;
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;
     }
 
     Battery_CONFIG_T& cBattery = Configuration.get().Battery;
     cBattery.Enabled = root["enabled"].as<bool>();
+    cBattery.VerboseLogging = root["verbose_logging"].as<bool>();
     cBattery.UpdatesOnly = root["updatesonly"].as<bool>();
     cBattery.Provider = root["provider"].as<uint8_t>();
     Configuration.get().MCP2515.Controller_Frequency = root["can_controller_frequency"].as<uint32_t>();
@@ -136,6 +138,7 @@ void WebApiBatteryClass::onAdminPost(AsyncWebServerRequest* request)
     cBattery.MaxChargeTemperature = root["max_charge_temp"].as<int8_t>();
     cBattery.MinDischargeTemperature = root["min_discharge_temp"].as<int8_t>();
     cBattery.MaxDischargeTemperature = root["max_discharge_temp"].as<int8_t>();
+    cBattery.Stop_Charging_BatterySoC_Threshold = root["stop_charging_soc"].as<uint8_t>();
     cBattery.numberOfBatteries = root["numberOfBatteries"].as<int8_t>();
     if (Configuration.get().Battery.numberOfBatteries > MAX_BATTERIES)
         Configuration.get().Battery.numberOfBatteries = MAX_BATTERIES;
@@ -147,14 +150,10 @@ void WebApiBatteryClass::onAdminPost(AsyncWebServerRequest* request)
     strlcpy(cBattery.Mqtt.VoltageJsonPath, root["mqtt_voltage_json_path"].as<String>().c_str(), sizeof(cBattery.Mqtt.VoltageJsonPath));
     cBattery.Mqtt.VoltageUnit = static_cast<BatteryVoltageUnit>(root["mqtt_voltage_unit"].as<uint8_t>());
 #endif
-    cBattery.Stop_Charging_BatterySoC_Threshold = root["stop_charging_soc"].as<uint8_t>();
-
 #if defined(USE_MQTT_BATTERY) || defined(USE_VICTRON_SMART_SHUNT)
     cBattery.RecommendedChargeVoltage = root["recommended_charge_voltage"].as<float>();
     cBattery.RecommendedDischargeVoltage = root["recommended_discharge_voltage"].as<float>();
 #endif
-
-    cBattery.VerboseLogging = root["verbose_logging"].as<bool>();
 
     WebApi.writeConfig(retMsg);
 

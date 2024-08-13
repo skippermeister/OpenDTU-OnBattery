@@ -9,33 +9,36 @@
 
 bool BatteryCanReceiver::init(char const* providerName)
 {
-    _providerName = providerName;
+    const char* help[7] = {"unknown", "CAN0", "MCP2515", "I2C0", "I2C1", "RS232", "RS485"};
+    static char helperString[32];
+    snprintf(helperString, 31, "[%s %s]", providerName, help[(int)PinMapping.get().battery.provider]);
+    _providerName = helperString;
 
     MessageOutput.printf("%s Initialize interface...", _providerName);
 
-    const PinMapping_t& pin = PinMapping.get();
+    const auto &pin = PinMapping.get().battery;
 
-    if (!_isCAN0)
+    if (pin.provider == Battery_Provider_t::MCP2515)
     {
         MessageOutput.printf(" clk = %d, miso = %d, mosi = %d, cs = %d, irq = %d",
-            pin.mcp2515_clk, pin.mcp2515_miso, pin.mcp2515_mosi, pin.mcp2515_cs, pin.mcp2515_irq);
+            pin.mcp2515.clk, pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.cs, pin.mcp2515.irq);
 
-        if (pin.mcp2515_clk < 0 || pin.mcp2515_miso < 0 || pin.mcp2515_mosi < 0 || pin.mcp2515_cs < 0 || pin.mcp2515_irq < 0) {
+        if (pin.mcp2515.clk < 0 || pin.mcp2515.miso < 0 || pin.mcp2515.mosi < 0 || pin.mcp2515.cs < 0 || pin.mcp2515.irq < 0) {
             MessageOutput.println(", Invalid pin config");
             return false;
         }
 
-        _mcp2515_irq = pin.mcp2515_irq;
+        _mcp2515_irq = pin.mcp2515.irq;
 
         auto oSPInum = SPIPortManager.allocatePort("MCP2515");
         if (!oSPInum) { return false; }
         MessageOutput.printf(", init SPI... ");
         SPI = new SPIClass(*oSPInum);
-        SPI->begin(pin.mcp2515_clk, pin.mcp2515_miso, pin.mcp2515_mosi, pin.mcp2515_cs);
+        SPI->begin(pin.mcp2515.clk, pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.cs);
         MessageOutput.printf("done");
 
-        pinMode(pin.mcp2515_cs, OUTPUT);
-        digitalWrite(pin.mcp2515_cs, HIGH);
+        pinMode(pin.mcp2515.cs, OUTPUT);
+        digitalWrite(pin.mcp2515.cs, HIGH);
 
         pinMode(_mcp2515_irq, INPUT_PULLUP);
 
@@ -52,7 +55,7 @@ bool BatteryCanReceiver::init(char const* providerName)
 
         if (!_CAN) {
             MessageOutput.printf(", init MCP_CAN... ");
-            _CAN = new MCP_CAN(SPI, pin.mcp2515_cs);
+            _CAN = new MCP_CAN(SPI, pin.mcp2515.cs);
             MessageOutput.printf("done");
         }
         if (!_CAN->begin(MCP_STDEXT, CAN_500KBPS, mcp_frequency) == CAN_OK) {
@@ -71,17 +74,17 @@ bool BatteryCanReceiver::init(char const* providerName)
         // Change to normal mode to allow messages to be transmitted
         _CAN->setMode(MCP_NORMAL);
 
-    } else {
+    } else if (pin.provider == Battery_Provider_t::CAN0) {
 
-        MessageOutput.printf(" rx = %d, tx = %d", pin.battery_rx, pin.battery_tx);
+        MessageOutput.printf(" rx = %d, tx = %d", pin.can0.rx, pin.can0.tx);
 
-        if (pin.battery_rx < 0 || pin.battery_tx < 0 || pin.battery_rx == pin.battery_tx) {
+        if (PinMapping.isValidBatteryConfig()) {
             MessageOutput.println(" Invalid pin config");
             return false;
         }
 
-        auto tx = static_cast<gpio_num_t>(pin.battery_tx);
-        auto rx = static_cast<gpio_num_t>(pin.battery_rx);
+        auto tx = static_cast<gpio_num_t>(pin.can0.tx);
+        auto rx = static_cast<gpio_num_t>(pin.can0.rx);
         twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(tx, rx, TWAI_MODE_NORMAL);
 
         // Initialize configuration structures using macro initializers
@@ -115,6 +118,9 @@ bool BatteryCanReceiver::init(char const* providerName)
                 MessageOutput.println(" Twai driver start - invalid state");
                 return false;
         }
+    } else if (pin.provider == Battery_Provider_t::I2C0 || pin.provider == Battery_Provider_t::I2C1) {
+        MessageOutput.println(" I2C CAN Bus Provider not yet implemented");
+        return false;
     }
 
     MessageOutput.println(" Done");
@@ -126,19 +132,20 @@ bool BatteryCanReceiver::init(char const* providerName)
 
 void BatteryCanReceiver::deinit()
 {
-    if (!_isCAN0){
+    const auto &pin = PinMapping.get().battery;
+
+    if (pin.provider == Battery_Provider_t::MCP2515){
         MessageOutput.printf("%s driver stopped", _providerName);
 
         if (SPI) SPI->end();
 /*
-        const PinMapping_t& pin = PinMapping.get();
         pinMode(pin.mcp2515_cs, INPUT);
         pinMode(pin.mcp2515_mosi, INPUT);
         pinMode(pin.mcp2515_miso, INPUT);
         pinMode(pin.mcp2515_clk, INPUT);
         pinMode(pin.mcp2515_irq, INPUT);
 */
-    } else {
+    } else if (pin.provider == Battery_Provider_t::CAN0){
         // Stop TWAI driver
         esp_err_t twaiLastResult = twai_stop();
         MessageOutput.printf("%s Twai driver ", _providerName);
@@ -170,12 +177,14 @@ void BatteryCanReceiver::deinit()
 
 void BatteryCanReceiver::loop()
 {
-    if (!_isCAN0)
+    const auto pin = PinMapping.get().battery;
+
+    twai_message_t rx_message;
+
+    if (pin.provider == Battery_Provider_t::MCP2515)
     {
         if(!digitalRead(_mcp2515_irq))                         // If CAN0_INT pin is low, read receive buffer
         {
-            twai_message_t rx_message;
-
             _CAN->readMsgBuf(&rx_message.identifier, &rx_message.data_length_code, rx_message.data);      // Read data: len = data length, buf = data byte(s)
 
             if((rx_message.identifier & 0x80000000) == 0x80000000)     // Determine if ID is standard (11 bits) or extended (29 bits)
@@ -201,30 +210,33 @@ void BatteryCanReceiver::loop()
             }
             return;
         }
-    }
-    // Check for messages. twai_receive is blocking when there is no data so we return if there are no frames in the buffer
-    twai_status_info_t status_info;
-    esp_err_t twaiLastResult = twai_get_status_info(&status_info);
-    if (twaiLastResult != ESP_OK) {
-        switch (twaiLastResult) {
+
+    } else if (pin.provider == Battery_Provider_t::CAN0) {
+
+        // Check for messages. twai_receive is blocking when there is no data so we return if there are no frames in the buffer
+        twai_status_info_t status_info;
+        esp_err_t twaiLastResult = twai_get_status_info(&status_info);
+        if (twaiLastResult != ESP_OK) {
+            switch (twaiLastResult) {
             case ESP_ERR_INVALID_ARG:
                 MessageOutput.printf("%s Twai driver get status - invalid arg\r\n", _providerName);
                 break;
             case ESP_ERR_INVALID_STATE:
                 MessageOutput.printf("%s Twai driver get status - invalid state\r\n", _providerName);
                 break;
+            }
+            return;
         }
-        return;
-    }
-    if (status_info.msgs_to_rx == 0) {
-        return;
-    }
+        if (status_info.msgs_to_rx == 0) {
+            return;
+        }
 
-    // Wait for message to be received, function is blocking
-    twai_message_t rx_message;
-    if (twai_receive(&rx_message, pdMS_TO_TICKS(100)) != ESP_OK) {
-        MessageOutput.printf("%s Failed to receive message\r\n", _providerName);
-        return;
+        // Wait for message to be received, function is blocking
+        twai_message_t rx_message;
+        if (twai_receive(&rx_message, pdMS_TO_TICKS(100)) != ESP_OK) {
+            MessageOutput.printf("%s Failed to receive message\r\n", _providerName);
+            return;
+        }
     }
 
     if (_verboseLogging) {

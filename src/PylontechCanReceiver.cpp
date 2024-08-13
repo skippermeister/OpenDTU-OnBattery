@@ -11,7 +11,7 @@
 
 bool PylontechCanReceiver::init()
 {
-    return _initialized = BatteryCanReceiver::init(_isCAN0 ? "[Pylontech CAN0]" : "[Pylontech MCP2515]");
+    return _initialized = BatteryCanReceiver::init("Pylontech");
 }
 
 void PylontechCanReceiver::onMessage(twai_message_t rx_message)

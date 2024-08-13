@@ -4,8 +4,13 @@
  */
 #include "WebApi_mqtt.h"
 #include "Configuration.h"
+#include "MqttHandleBatteryHass.h"
 #include "MqttHandleHass.h"
+#include "MqttHandlePowerLimiterHass.h"
 #include "MqttHandleInverter.h"
+#include "MqttHandleHuawei.h"
+#include "MqttHandleMeanWell.h"
+#include "MqttHandlePowerLimiter.h"
 #include "MqttHandleVedirectHass.h"
 #include "MqttHandleVedirect.h"
 #include "MqttSettings.h"
@@ -79,6 +84,7 @@ void WebApiMqttClass::onMqttAdminGet(AsyncWebServerRequest* request)
     const Mqtt_CONFIG_T& cMqtt = Configuration.get().Mqtt;
 
     root["enabled"] = cMqtt.Enabled;
+    root["verbose_logging"] = MqttSettings.getVerboseLogging();
     root["hostname"] = cMqtt.Hostname;
     root["port"] = cMqtt.Port;
     root["clientid"] = cMqtt.ClientId;
@@ -110,7 +116,6 @@ void WebApiMqttClass::onMqttAdminGet(AsyncWebServerRequest* request)
     root["hass_topic"] = "";
     root["hass_individualpanels"] = false;
 #endif
-    root["verbose_logging"] = MqttSettings.getVerboseLogging();
 
     WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);;
 }
@@ -130,6 +135,7 @@ void WebApiMqttClass::onMqttAdminPost(AsyncWebServerRequest* request)
     auto& retMsg = response->getRoot();
 
     if (!(root.containsKey("enabled")
+            && root.containsKey("verbose_logging")
             && root.containsKey("hostname")
             && root.containsKey("port")
             && root.containsKey("clientid")
@@ -154,7 +160,8 @@ void WebApiMqttClass::onMqttAdminPost(AsyncWebServerRequest* request)
             && root.containsKey("hass_topic")
             && root.containsKey("hass_individualpanels")
 #endif
-            && root.containsKey("verbose_logging"))) {
+            ))
+    {
         retMsg["message"] = ValuesAreMissing;
         retMsg["code"] = WebApiError::GenericValueMissing;
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
@@ -300,6 +307,7 @@ void WebApiMqttClass::onMqttAdminPost(AsyncWebServerRequest* request)
 
     Mqtt_CONFIG_T& cMqtt = Configuration.get().Mqtt;
     cMqtt.Enabled = root["enabled"].as<bool>();
+    MqttSettings.setVerboseLogging(root["verbose_logging"].as<bool>());
     cMqtt.Retain = root["retain"].as<bool>();
     cMqtt.Tls.Enabled = root["tls"].as<bool>();
     strlcpy(cMqtt.Tls.RootCaCert, root["root_ca_cert"].as<String>().c_str(), sizeof(cMqtt.Tls.RootCaCert));
@@ -325,12 +333,25 @@ void WebApiMqttClass::onMqttAdminPost(AsyncWebServerRequest* request)
     strlcpy(cMqtt.Hass.Topic, root["hass_topic"].as<String>().c_str(), sizeof(cMqtt.Hass.Topic));
 #endif
 
-    MqttSettings.setVerboseLogging(root["verbose_logging"].as<bool>());
     // Check if base topic was changed
     if (strcmp(cMqtt.Topic, root["topic"].as<String>().c_str())) {
         MqttHandleInverter.unsubscribeTopics();
+#ifdef USE_CHARGER_HUAWEI
+        MqttHandleHuawei.unsubscribeTopics();
+#endif
+#ifdef USE_CHARGER_MEANWELL
+        MqttHandleMeanWell.unsubscribeTopics();
+#endif
+        MqttHandlePowerLimiter.unsubscribeTopics();
+
         strlcpy(cMqtt.Topic, root["topic"].as<String>().c_str(), sizeof(cMqtt.Topic));
         MqttHandleInverter.subscribeTopics();
+#ifdef USE_CHARGER_HUAWEI
+        MqttHandleHuawei.subscribeTopics();
+#endif
+#ifdef USE_CHARGER_MEANWELL
+        MqttHandleMeanWell.subscribeTopics();
+#endif
     }
 
     WebApi.writeConfig(retMsg);
@@ -338,11 +359,22 @@ void WebApiMqttClass::onMqttAdminPost(AsyncWebServerRequest* request)
     WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 
     MqttSettings.performReconnect();
+
 #ifdef USE_HASS
+    MqttHandleBatteryHass.forceUpdate();
     MqttHandleHass.forceUpdate();
+    MqttHandlePowerLimiterHass.forceUpdate();
     MqttHandleVedirectHass.forceUpdate();
-    MqttHandleVedirect.forceUpdate();
 #endif
+
+#ifdef USE_CHARGER_HUAWEI
+    MqttHandleHuawei.forceUpdate();
+#endif
+#ifdef USE_CHARGER_MEANWELL
+    MqttHandleMeanWell.forceUpdate();
+#endif
+    MqttHandlePowerLimiter.forceUpdate();
+    MqttHandleVedirect.forceUpdate();
 }
 
 String WebApiMqttClass::getTlsCertInfo(const char* cert)

@@ -85,13 +85,14 @@ bool HoymilesRadio_CMT::cmtSwitchDtuFreq(const uint32_t to_frequency)
     return true;
 }
 
-void HoymilesRadio_CMT::init(const spi_host_device_t spi_host, const int8_t pin_sdio, const int8_t pin_clk, const int8_t pin_cs, const int8_t pin_fcs, const int8_t pin_gpio2, const int8_t pin_gpio3)
+void HoymilesRadio_CMT::init(const spi_host_device_t spi_host, const int8_t pin_sdio, const int8_t pin_clk, const int8_t pin_cs, const int8_t pin_fcs, const int8_t pin_gpio2, const int8_t pin_gpio3,
+    const int8_t chip_int1gpio, const int8_t chip_int2gpio)
 {
     _dtuSerial.u64 = 0;
 
     _radio.reset(new CMT2300A(spi_host, pin_sdio, pin_clk, pin_cs, pin_fcs));
 
-    _radio->begin();
+    _radio->begin(chip_int1gpio, chip_int2gpio);    // route Int1 to Gpio2 and Int2 to Gpio1
 
     setCountryMode(CountryModeId_t::MODE_EU);
     cmtSwitchDtuFreq(_inverterTargetFrequency); // start dtu at work freqency, for fast Rx if inverter is already on and frequency switched
@@ -146,6 +147,7 @@ void HoymilesRadio_CMT::loop()
             } else {
                 Hoymiles.getMessageOutput()->println("CMT: Buffer full");
                 _radio->flush_rx();
+                //break; // FIXME: skippermeister
             }
         }
         _radio->flush_rx();

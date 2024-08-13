@@ -81,7 +81,12 @@ void WebApiPowerLimiterClass::onMetaData(AsyncWebServerRequest* request)
     root["power_meter_enabled"] = config.PowerMeter.Enabled;
     root["battery_enabled"] = config.Battery.Enabled;
     root["charge_controller_enabled"] = config.Vedirect.Enabled;
+#ifdef USE_CHARGER_MEANWELL
     root["charger_enabled"] = config.MeanWell.Enabled;
+#endif
+#ifdef USE_CHARGER_HUAWEI
+    root["charger_enabled"] = config.Huawei.Enabled;
+#endif
 
     auto inverters = root["inverters"].to<JsonObject>();
     for (uint8_t i = 0; i < INV_MAX_COUNT; i++) {

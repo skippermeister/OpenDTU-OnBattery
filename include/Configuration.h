@@ -171,7 +171,13 @@ struct Mdns_CONFIG_T {
 };
 
 struct Modbus_CONFIG_T {
-    bool Fronius_SM_Simulation_Enabled;
+        bool modbus_tcp_enabled;
+        bool modbus_delaystart;
+        char mfrname[32];
+        char modelname[32];
+        char options[16];
+        char version[16];
+        char serial[16];
 };
 
 struct Ntp_CONFIG_T {
@@ -296,17 +302,26 @@ struct Mqtt_CONFIG_T {
     } Tls;
 };
 
+#ifdef USE_CHARGER_HUAWEI
 struct Huawei_CONFIG_T {
     bool Enabled;
+    bool VerboseLogging;
     bool Auto_Power_Enabled;
+    bool Auto_Power_BatterySoC_Limits_Enabled;
+    bool Emergency_Charge_Enabled;
     float Auto_Power_Voltage_Limit;
     float Auto_Power_Enable_Voltage_Limit;
     float Auto_Power_Lower_Power_Limit;
     float Auto_Power_Upper_Power_Limit;
+    uint8_t Auto_Power_Stop_BatterySoC_Threshold;
+    float Auto_Power_Target_Power_Consumption;
 };
+#endif
 
+#ifdef USE_CHARGER_MEANWELL
 struct MeanWell_CONFIG_T {
     bool Enabled;
+    bool VerboseLogging;
     bool UpdatesOnly;
     uint32_t PollInterval;
     float MinVoltage;
@@ -320,17 +335,20 @@ struct MeanWell_CONFIG_T {
     float Hysteresis;
     bool mustInverterProduce;
 };
+#endif
 
 struct Vedirect_CONFIG_T {
     bool Enabled;
     bool UpdatesOnly;
 };
 
+#ifdef USE_REFUsol_INVERTER
 struct REFUsol_CONFIG_T {
     bool Enabled;
     bool UpdatesOnly;
     uint32_t PollInterval;
 };
+#endif
 
 struct ZeroExport_CONFIG_T {
     bool Enabled;
@@ -404,9 +422,10 @@ struct CONFIG_T {
         uint32_t Controller_Frequency;
     } MCP2515;
 
-#ifdef CHARGER_HUAWEI
+#ifdef USE_CHARGER_HUAWEI
     Huawei_CONFIG_T Huawei;
-#else
+#endif
+#ifdef USE_CHARGER_MEANWELL
     MeanWell_CONFIG_T MeanWell;
 #endif
 

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-#ifdef CHARGER_HUAWEI
-
 #pragma once
+
+#ifdef USE_CHARGER_HUAWEI
 
 #include "Configuration.h"
 #include <Huawei_can.h>
@@ -15,6 +15,11 @@ class MqttHandleHuaweiClass {
 public:
     MqttHandleHuaweiClass();
     void init(Scheduler& scheduler);
+
+    void forceUpdate();
+
+    void subscribeTopics();
+    void unsubscribeTopics();
 
 private:
     void loop();

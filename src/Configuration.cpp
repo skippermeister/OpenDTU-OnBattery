@@ -109,7 +109,13 @@ bool ConfigurationClass::write()
 
 #ifdef USE_ModbusDTU
     JsonObject modbus = doc["modbus"].to<JsonObject>();
-    modbus["enabled"] = config.Modbus.Fronius_SM_Simulation_Enabled;
+    modbus["modbus_tcp_enabled"] = config.Modbus.modbus_tcp_enabled;
+    modbus["modbus_delaystart"] = config.Modbus.modbus_delaystart;
+    modbus["mfrname"] = config.Modbus.mfrname;
+    modbus["modelname"] = config.Modbus.modelname;
+    modbus["options"] = config.Modbus.options;
+    modbus["version"] = config.Modbus.version;
+    modbus["serial"] = config.Modbus.serial;
 #endif
 
     JsonObject ntp = doc["ntp"].to<JsonObject>();
@@ -306,17 +312,20 @@ bool ConfigurationClass::write()
     JsonObject mcp2515 = doc["mcp2515"].to<JsonObject>();
     mcp2515["can_controller_frequency"] = config.MCP2515.Controller_Frequency;
 
-#ifdef CHARGER_HUAWEI
+#ifdef USE_CHARGER_HUAWEI
     JsonObject huawei = doc["huawei"].to<JsonObject>();
     huawei["enabled"] = config.Huawei.Enabled;
     huawei["verbose_logging"] = config.Huawei.VerboseLogging;
     huawei["auto_power_enabled"] = config.Huawei.Auto_Power_Enabled;
+    huawei["auto_power_batterysoc_limits_enabled"] = config.Huawei.Auto_Power_BatterySoC_Limits_Enabled;
     huawei["voltage_limit"] = config.Huawei.Auto_Power_Voltage_Limit;
     huawei["enable_voltage_limit"] = config.Huawei.Auto_Power_Enable_Voltage_Limit;
     huawei["lower_power_limit"] = config.Huawei.Auto_Power_Lower_Power_Limit;
     huawei["upper_power_limit"] = config.Huawei.Auto_Power_Upper_Power_Limit;
     huawei["stop_batterysoc_threshold"] = config.Huawei.Auto_Power_Stop_BatterySoC_Threshold;
-#else
+    huawei["target_power_consumption"] = config.Huawei.Auto_Power_Target_Power_Consumption;
+#endif
+#ifdef USE_CHARGER_MEANWELL
     JsonObject meanwell = doc["meanwell"].to<JsonObject>();
     meanwell["enabled"] = config.MeanWell.Enabled;
     meanwell["pollinterval"] = config.MeanWell.PollInterval;
@@ -496,7 +505,13 @@ bool ConfigurationClass::read()
 
 #ifdef USE_ModbusDTU
     JsonObject modbus = doc["modbus"];
-    config.Modbus.Fronius_SM_Simulation_Enabled = modbus["enabled"] | FRONIUS_SM_SIMULATION_ENABLED;
+    config.modbus.Modbus_tcp_enabled = modbus["modbus_tcp_enabled"] | MODBUS_ENABLED;
+    config.modbus.Modbus_delaystart = modbus["modbus_delaystart"] | MODBUS_DELAY_START;
+    strlcpy(config.Modbus.mfrname, modbus["mfrname"] | MODBUS_MFRNAME, sizeof(config.Modbus.mfrname));
+    strlcpy(config.Modbus.modelname, modbus["modelname"] | MODBUS_MODELNAME, sizeof(config.Modbus.modelname));
+    strlcpy(config.Modbus.options, modbus["options"] | MODBUS_OPTIONS, sizeof(config.Modbus.options));
+    strlcpy(config.Modbus.version, modbus["version"] | MODBUS_VERSION, sizeof(config.Modbus.version));
+    strlcpy(config.Modbus.serial, modbus["serial"] | "", sizeof(config.Modbus.serial));
 #endif
 
     JsonObject ntp = doc["ntp"];
@@ -737,15 +752,21 @@ bool ConfigurationClass::read()
     JsonObject mcp2515 = doc["mcp2515"];
     config.MCP2515.Controller_Frequency = mcp2515["can_controller_frequency"] | MCP2515_CAN_CONTROLLER_FREQUENCY;
 
-#ifdef CHARGER_HUAWEI
+#ifdef USE_CHARGER_HUAWEI
     JsonObject huawei = doc["huawei"];
     config.Huawei.Enabled = huawei["enabled"] | HUAWEI_ENABLED;
+    config.Huawei.VerboseLogging = huawei["verbose_logging"] | false;
     config.Huawei.Auto_Power_Enabled = huawei["auto_power_enabled"] | false;
+    config.Huawei.Auto_Power_BatterySoC_Limits_Enabled = huawei["auto_power_batterysoc_limits_enabled"] | false;
+    config.Huawei.Emergency_Charge_Enabled = huawei["emergency_charge_enabled"] | false;
     config.Huawei.Auto_Power_Voltage_Limit = huawei["voltage_limit"] | HUAWEI_AUTO_POWER_VOLTAGE_LIMIT;
     config.Huawei.Auto_Power_Enable_Voltage_Limit = huawei["enable_voltage_limit"] | HUAWEI_AUTO_POWER_ENABLE_VOLTAGE_LIMIT;
     config.Huawei.Auto_Power_Lower_Power_Limit = huawei["lower_power_limit"] | HUAWEI_AUTO_POWER_LOWER_POWER_LIMIT;
     config.Huawei.Auto_Power_Upper_Power_Limit = huawei["upper_power_limit"] | HUAWEI_AUTO_POWER_UPPER_POWER_LIMIT;
-#else
+    config.Huawei.Auto_Power_Stop_BatterySoC_Threshold = huawei["stop_batterysoc_threshold"] | HUAWEI_AUTO_POWER_STOP_BATTERYSOC_THRESHOLD;
+    config.Huawei.Auto_Power_Target_Power_Consumption = huawei["target_power_consumption"] | HUAWEI_AUTO_POWER_TARGET_POWER_CONSUMPTION;
+#endif
+#ifdef USE_CHARGER_MEANWELL
     JsonObject meanwell = doc["meanwell"];
     config.MeanWell.Enabled = meanwell["enabled"] | MEANWELL_ENABLED;
     config.MeanWell.UpdatesOnly = meanwell["updatesonly"] | MEANWELL_UPDATESONLY;

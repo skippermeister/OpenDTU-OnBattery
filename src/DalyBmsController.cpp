@@ -19,9 +19,9 @@ bool DalyBmsController::init()
 
     _lastStatusPrinted.set(10 * 1000);
 
-    const PinMapping_t& pin = PinMapping.get();
+    const auto &pin = PinMapping.get();
 
-    if (pin.battery_rx < 0 || pin.battery_tx < 0 || (pin.battery_rx == pin.battery_tx) || (pin.battery_rts >= 0 && (pin.battery_rts == pin.battery_rx || pin.battery_rts == pin.battery_tx))) {
+    if (!PinMapping.isValidBatteryConfig()) {
         MessageOutput.println("Invalid TX/RX pin config");
         return false;
     }
@@ -31,8 +31,8 @@ bool DalyBmsController::init()
 
     _upSerial = std::make_unique<HardwareSerial>(*oHwSerialPort);
 
-    _upSerial->begin(9600, SERIAL_8N1, pin.battery_rx, pin.battery_tx);
-    if (pin.battery_rts >= -1) {
+    _upSerial->begin(9600, SERIAL_8N1, pin.battery.rs485.rx, pin.battery.rs485.tx);
+    if (pin.battery.provider == Battery_Provider_t::RS485) {
         /*
          * Daly BMS is connected via a RS485 module. Two different types of modules are supported.
          * Type 1: If a GPIO pin greater 0 is given, we have a MAX3485 or SP3485 module with external driven DE/RE pins
@@ -40,10 +40,10 @@ bool DalyBmsController::init()
          * Type 2: If the GPIO is -1, we assume that we have a RS485 TTL module with a self controlled DE/RE circuit.
          *         In this case we only need a TX and RX pin.
          */
-        MessageOutput.printf("RS485 module (Type %d) rx = %d, tx = %d", pin.battery_rts >= 0 ? 1 : 2, pin.battery_rx, pin.battery_tx);
-        if (pin.battery_rts >= 0) {
-            MessageOutput.printf(", rts = %d", pin.battery_rts);
-            _upSerial->setPins(pin.battery_rx, pin.battery_tx, UART_PIN_NO_CHANGE, pin.battery_rts);
+        MessageOutput.printf("RS485 module (Type %d) rx = %d, tx = %d", pin.battery.rs485.rts >= 0 ? 1 : 2, pin.battery.rs485.rx, pin.battery.rs485.tx);
+        if (pin.battery.rs485.rts >= 0) {
+            MessageOutput.printf(", rts = %d", pin.battery.rs485.rts);
+            _upSerial->setPins(pin.battery.rs485.rx, pin.battery.rs485.tx, UART_PIN_NO_CHANGE, pin.battery.rs485.rts);
         }
 
         // RS485 protocol is half duplex
@@ -51,7 +51,7 @@ bool DalyBmsController::init()
 
     } else {
         // pin.battery_rts is negativ and less -1, Daly BMS is connected via RS232
-        MessageOutput.printf("RS232 module rx = %d, tx = %d", pin.battery_rx, pin.battery_tx);
+        MessageOutput.printf("RS232 module rx = %d, tx = %d", pin.battery.rs232.rx, pin.battery.rs232.tx);
     }
     // Set read timeout of UART TOUT feature
     ESP_ERROR_CHECK(uart_set_rx_timeout(*oHwSerialPort, ECHO_READ_TOUT));
@@ -66,11 +66,11 @@ bool DalyBmsController::init()
     memset(_txBuffer, 0x00, XFER_BUFFER_LENGTH);
     clearGet();
 
-    if (PinMapping.get().battery_wakeup >= 0) {
-        pinMode(PinMapping.get().battery_wakeup, OUTPUT);
-        digitalWrite(PinMapping.get().battery_wakeup, HIGH);
+    if (PinMapping.get().battery.wakeup >= 0) {
+        pinMode(PinMapping.get().battery.wakeup, OUTPUT);
+        digitalWrite(PinMapping.get().battery.wakeup, HIGH);
         vTaskDelay(500);
-        digitalWrite(PinMapping.get().battery_wakeup, LOW);
+        digitalWrite(PinMapping.get().battery.wakeup, LOW);
     }
 
     MessageOutput.print(" initialized successfully.");
@@ -84,7 +84,8 @@ void DalyBmsController::deinit()
 {
     _upSerial->end();
 
-    if (PinMapping.get().battery_rts >= 0) { pinMode(PinMapping.get().battery_rts, INPUT); }
+    const auto &pin = PinMapping.get().battery;
+    if (pin.provider == Battery_Provider_t::RS485 && pin.rs485.rts >= 0) { pinMode(pin.rs485.rts, INPUT); }
 
     SerialPortManager.freePort(_serialPortOwner);
 
@@ -174,11 +175,11 @@ void DalyBmsController::sendRequest(uint8_t pollInterval)
 
     if (_nextRequest == 0) {
         if ((millis() - _lastRequest) < pollInterval * 1000) {
-            if (PinMapping.get().battery_wakeup >= 0) {
+            if (PinMapping.get().battery.wakeup >= 0) {
                 if ((millis() - _lastRequest) > 50 && (millis() - _lastRequest) < 600) { // 500ms High Impuls
-                    digitalWrite(PinMapping.get().battery_wakeup, HIGH);
+                    digitalWrite(PinMapping.get().battery.wakeup, HIGH);
                 } else {
-                    digitalWrite(PinMapping.get().battery_wakeup, LOW);
+                    digitalWrite(PinMapping.get().battery.wakeup, LOW);
                 }
             }
             return announceStatus(Status::WaitingForPollInterval);

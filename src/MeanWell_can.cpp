@@ -2,7 +2,7 @@
 /*
  * Copyright (C) 2023 - 2024 Andreas Högner
  */
-#ifndef CHARGER_HUAWEI
+#ifdef USE_CHARGER_MEANWELL
 
 #define MEANWELL_DEBUG_ENABLED
 // #define MEANWELL_DEBUG_ENABLED__
@@ -28,8 +28,6 @@ static constexpr char TAG[] = "[MEANWELL]";
 MeanWellCanClass MeanWellCan;
 
 SemaphoreHandle_t xSemaphore = NULL;
-
-#ifdef CHARGER_USE_CAN0
 
 MeanWellCanClass::MeanWellCanClass()
     : _loopTask(TASK_IMMEDIATE, TASK_FOREVER, std::bind(&MeanWellCanClass::loop, this))
@@ -58,7 +56,6 @@ bool MeanWellCanClass::enable(void)
     }
     return true;
 }
-#endif
 
 static constexpr char sEEPROMwrites[] = "EEPROMwrites";
 
@@ -95,23 +92,32 @@ void MeanWellCanClass::updateSettings()
 {
     preferences.putULong(sEEPROMwrites, EEPROMwrites);
 
-    if (!Configuration.get().MeanWell.Enabled) {
+    const MeanWell_CONFIG_T& meanwell = Configuration.get().MeanWell;
+    _verboseLogging = meanwell.VerboseLogging;
+
+    if (!meanwell.Enabled) {
         _loopTask.disable();
         return;
     }
 
     _loopTask.enable();
 
-    if (!_initialized) {
-        if (!PinMapping.isValidMeanWellConfig()) {
-            MessageOutput.println("Invalid pin config");
-            return;
-        }
+    if (_initialized) {
+        _setupParameter = true;
+        return;
+    }
 
-        const PinMapping_t& pin = PinMapping.get();
-#ifdef CHARGER_USE_CAN0
-        auto tx = static_cast<gpio_num_t>(pin.can0_tx);
-        auto rx = static_cast<gpio_num_t>(pin.can0_rx);
+    if (!PinMapping.isValidChargerConfig()) {
+        MessageOutput.println("Invalid pin config");
+        return;
+    }
+
+    const CHARGER_t& pin = PinMapping.get().charger;
+    if (pin.provider == Charger_Provider_t::CAN0) {
+        _provider = CAN_Provider_t::CAN0;
+
+        auto tx = static_cast<gpio_num_t>(pin.can0.tx);
+        auto rx = static_cast<gpio_num_t>(pin.can0.rx);
 
         MessageOutput.printf("CAN0 port rx = %d, tx = %d. ", rx, tx);
 
@@ -120,40 +126,65 @@ void MeanWellCanClass::updateSettings()
         g_config.bus_off_io = (gpio_num_t)-1;
         if (!enable())
             return;
-#else
-        MessageOutput.printf("MCP2515 CAN: miso = %d, mosi = %d, clk = %d, irq = %d, cs = %d, power_pin = %d. ", pin.mcp2515_miso, pin.mcp2515_mosi, pin.mcp2515_clk, pin.mcp2515_irq, pin.mcp2515_cs;
+
+    } else if (pin.provider == Charger_Provider_t::I2C0 || pin.provider == Charger_Provider_t::I2C1) {
+        _provider = CAN_Provider_t::I2C;
+
+        auto scl = pin.provider == Charger_Provider_t::I2C0?pin.i2c0.scl:pin.i2c1.scl;
+        auto sda = pin.provider == Charger_Provider_t::I2C1?pin.i2c0.sda:pin.i2c1.sda;
+
+        MessageOutput.printf("I2C CAN Bus @ I2C%d scl = %d, sda = %d. ", pin.i2c0.scl>=0?0:1, scl, sda);
+
+        i2c_can = new I2C_CAN(pin.provider == Charger_Provider_t::CAN0?&Wire:&Wire1, 0x25, scl, sda, 400000UL);     // Set I2C Address
+
+        int i = 10;
+        while (CAN_OK != i2c_can->begin(I2C_CAN_125KBPS))    // init can bus : baudrate = 125k
+        {
+            delay(200);
+            if (--i) continue;
+
+            MessageOutput.println("CAN Bus FAIL!");
+            return;
+        }
+
+        MessageOutput.println("I2C CAN Bus OK!");
+
+    } else if (pin.provider == Charger_Provider_t::MCP2515) {
+        _provider = CAN_Provider_t::MCP2515;
+
+        MessageOutput.printf("MCP2515 CAN: miso = %d, mosi = %d, clk = %d, irq = %d, cs = %d. ",
+                            pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.clk, pin.mcp2515.irq, pin.mcp2515.cs);
         auto oSPInum = SPIPortManager.allocatePort("MCP2515");
         if (!oSPInum) { return; }
 
 	    spi = new SPIClass(*oSPInum);
-    	spi->begin(pin.mcp2515_clk, pin.mcp2515_miso, pin.mcp2515_mosi, pin.mcp2515_cs);
-	    pinMode(pin.mcp2515_cs, OUTPUT);
-    	digitalWrite(pin.mcp2515_cs, HIGH);
+        spi->begin(pin.mcp2515.clk, pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.cs);
+	    pinMode(pin.mcp2515.cs, OUTPUT);
+    	digitalWrite(pin.mcp2515.cs, HIGH);
 
-	    pinMode(pin.mcp2515_irq, INPUT_PULLUP);
-    	_mcp2515_irq = pin.mcp2515_irq;
+	    pinMode(pin.mcp2515.irq, INPUT_PULLUP);
+    	_mcp2515_irq = pin.mcp2515.irq;
 
+        auto frequency = Configuration.get().MCP2515.Controller_Frequency;
 	    auto mcp_frequency = MCP_8MHZ;
-    	if (16000000UL == frequency) {
+	    if (16000000UL == frequency) {
             mcp_frequency = MCP_16MHZ; }
-    	else if (8000000UL != frequency) {
+        else if (8000000UL != frequency) {
             MessageOutput.printf("%s CAN: unknown frequency %d Hz, using 8 MHz\r\n", TAG, mcp_frequency);
-    	}
-	    CAN = new MCP_CAN(spi, mcp2515_cs);
+	    }
+    	CAN = new MCP_CAN(spi, pin.mcp2515.cs);
 	    if (!CAN->begin(MCP_ANY, CAN_125KBPS, mcp_frequency) == CAN_OK) {
             MessageOutput.println("Error Initializing MCP2515...");
             return;
-	    }
+    	}
 
 	    // Change to normal mode to allow messages to be transmitted
-    	CAN->setMode(MCP_NORMAL);
-#endif
-        _initialized = true;
-
-        MessageOutput.print("Initialized Successfully! ");
+	    CAN->setMode(MCP_NORMAL);
     }
 
-    _setupParameter = true;
+    _initialized = true;
+
+    MessageOutput.print("Initialized Successfully! ");
 }
 
 bool MeanWellCanClass::getCanCharger(void)
@@ -180,34 +211,76 @@ bool MeanWellCanClass::parseCanPackets(void)
     /* See if we can obtain the semaphore.  If the semaphore is not
        available wait 1000 ticks to see if it becomes free. */
     if (xSemaphoreTake(xSemaphore, (TickType_t)1000) == pdTRUE) {
-#ifdef CHARGER_USE_CAN0
-        // Check for messages. twai_recive is blocking when there is no data so we return if there are no frames in the buffer
-        twai_status_info_t status_info;
-        if (twai_get_status_info(&status_info) != ESP_OK) {
-            MessageOutput.printf("%s Failed to get Twai status info\r\n", TAG);
-            xSemaphoreGive(xSemaphore);
-            return false;
-        }
-        if (status_info.msgs_to_rx == 0) {
-            //  MessageOutput.printf("%s no message received\r\n", TAG);
-            xSemaphoreGive(xSemaphore);
-            return false;
+        twai_message_t rx_message;
+
+        if (_provider == CAN_Provider_t::CAN0) {
+            // Check for messages. twai_recive is blocking when there is no data so we return if there are no frames in the buffer
+            twai_status_info_t status_info;
+            if (twai_get_status_info(&status_info) != ESP_OK) {
+                MessageOutput.printf("%s Failed to get Twai status info\r\n", TAG);
+                xSemaphoreGive(xSemaphore);
+                return false;
+            }
+            if (status_info.msgs_to_rx == 0) {
+                //  MessageOutput.printf("%s no message received\r\n", TAG);
+                xSemaphoreGive(xSemaphore);
+                return false;
+            }
+
+            // Wait for message to be received, function is blocking
+            if (twai_receive(&rx_message, pdMS_TO_TICKS(100)) != ESP_OK) {
+                MessageOutput.printf("%s Failed to receive message\r\n", TAG);
+                xSemaphoreGive(xSemaphore);
+                return false;
+            }
+
+        } else if (_provider == CAN_Provider_t::I2C) {
+
+            if (CAN_MSGAVAIL != i2c_can->checkReceive()) {
+                xSemaphoreGive(xSemaphore);
+                return false;
+            }
+
+            if (CAN_OK != i2c_can->readMsgBuf(&rx_message.data_length_code, rx_message.data)) {    // read data,  len: data length, buf: data buf
+                MessageOutput.println("I2C CAN nothing received");
+                xSemaphoreGive(xSemaphore);
+                return false;
+            }
+
+            if (rx_message.data_length_code > 8) {
+                MessageOutput.printf("I2C CAN received %d bytes\r\n", rx_message.data_length_code);
+                xSemaphoreGive(xSemaphore);
+                return false;
+            }
+
+            if(rx_message.data_length_code == 0) {
+                xSemaphoreGive(xSemaphore);
+                return false;
+            }
+
+            rx_message.identifier = i2c_can->getCanId();
+            rx_message.extd = i2c_can->isExtendedFrame();
+            rx_message.rtr = i2c_can->isRemoteRequest();
+
+        } else if (_provider == CAN_Provider_t::MCP2515) {
+
+            if (digitalRead(_mcp2515_irq)) {
+                //  MessageOutput.printf("%s no message received\r\n", TAG);
+                xSemaphoreGive(xSemaphore);
+                return false;
+            }
+
+            // If CAN_INT pin is low, read receive buffer
+            CAN->readMsgBuf(&rx_message.identifier, &rx_message.data_length_code, rx_message.data); // Read data: len = data length, buf = data byte(s)
         }
 
-        // Wait for message to be received, function is blocking
-        twai_message_t rx_message;
-        if (twai_receive(&rx_message, pdMS_TO_TICKS(100)) != ESP_OK) {
-            MessageOutput.printf("%s Failed to receive message\r\n", TAG);
-            xSemaphoreGive(xSemaphore);
-            return false;
-        }
         _meanwellLastResponseTime = millis(); // save last response time
         yield();
 
-#ifdef MEANWELL_DEBUG_ENABLED__
         if (_verboseLogging)
-            MessageOutput.printf("%s id: 0x%08X, data len: %d bytes\r\n", TAG, rx_message.identifier, rx_message.data_length_code);
-#endif
+            MessageOutput.printf("%s id: 0x%08X, extd: %d, data len: %d bytes\r\n", TAG,
+                rx_message.identifier, rx_message.extd, rx_message.data_length_code);
+
         switch (rx_message.identifier & 0xFFFFFF00) {
         case 0x000C0100:
             // MessageOutput.printf("%s 0x%08X len: %d\r\n", TAG, rx_message.identifier, rx_message.data_length_code);
@@ -216,32 +289,7 @@ bool MeanWellCanClass::parseCanPackets(void)
         case 0x000C0000:
             onReceive(rx_message.data, rx_message.data_length_code);
         }
-#else
-        uint32_t rxId;
-        unsigned char len = 0;
-        unsigned char rxBuf[8];
 
-        if (digitalRead(_mcp2515_irq)) {
-            //  MessageOutput.printf("%s no message received\r\n", TAG);
-            xSemaphoreGive(xSemaphore);
-            return false;
-        }
-
-        // If CAN_INT pin is low, read receive buffer
-        CAN->readMsgBuf(&rxId, &len, rxBuf); // Read data: len = data length, buf = data byte(s)
-
-        // Determine if ID is standard (11 bits) or extended (29 bits)
-        // MessageOutput.printf("%s Extended ID: 0x%.8lX  DLC: %1d\r\n", TAG, (rxId & 0x1FFFFFFF), len);
-        //  MessageOutput.printf("%s id: 0x%08X, data len: %d bytes\r\n", TAG, rx_message.identifier, rx_message.data_length_code);
-        switch (rxId & 0xFFFFFF00) {
-        case 0x000C0100:
-            // MessageOutput.printf("%s 0x%08X len: %d\r\n", TAG, rx_message.identifier, rx_message.data_length_code);
-            xSemaphoreGive(xSemaphore);
-            return false;
-        case 0x000C0000:
-            onReceive(rxBuf, len);
-        }
-#endif
         xSemaphoreGive(xSemaphore);
         return true;
     }
@@ -819,9 +867,9 @@ void MeanWellCanClass::updateEEPROMwrites2NVS() {
 
 void MeanWellCanClass::loop()
 {
-    const MeanWell_CONFIG_T& cMeanWell = Configuration.get().MeanWell;
+    const CONFIG_T& config = Configuration.get();
 
-    if (!cMeanWell.Enabled || !_initialized) {
+    if (!config.MeanWell.Enabled || !_initialized) {
         return;
     }
 
@@ -833,7 +881,7 @@ void MeanWellCanClass::loop()
 
     updateEEPROMwrites2NVS();
 
-    if (t_start - _previousMillis < cMeanWell.PollInterval * 1000) { return; }
+    if (t_start - _previousMillis < config.MeanWell.PollInterval * 1000) { return; }
     _previousMillis = t_start;
 
     static int state = 0;
@@ -946,8 +994,8 @@ void MeanWellCanClass::loop()
                   )
         {
             if (!_rp.operation
-                 && (GridPower < -cMeanWell.MinCurrent * Battery.getStats()->getVoltage()
-                     || Battery.getStats()->getChargeImmediately()
+                 && (GridPower < -config.MeanWell.MinCurrent * Battery.getStats()->getVoltage()
+                     || Battery.getStats()->getImmediateChargingRequest()
                      || _fullChargeRequested
                     )
                )
@@ -956,8 +1004,8 @@ void MeanWellCanClass::loop()
                 // only start if charger is off and enough GridPower is available
                 setAutomaticChargeMode(true);
                 setPower(true);
-                setValue(cMeanWell.MinCurrent, MEANWELL_SET_CURRENT); // set minimum current to softstart charging
-                setValue(cMeanWell.MinCurrent, MEANWELL_SET_CURVE_CC); // set minimum current to softstart charging
+                setValue(config.MeanWell.MinCurrent, MEANWELL_SET_CURRENT); // set minimum current to softstart charging
+                setValue(config.MeanWell.MinCurrent, MEANWELL_SET_CURVE_CC); // set minimum current to softstart charging
                 setValue(Battery.getStats()->getRecommendedChargeVoltageLimit() - 0.25f, MEANWELL_SET_CURVE_CV); // set to battery recommended charge voltage according to BMS value and user manual
                 setValue(Battery.getStats()->getRecommendedChargeVoltageLimit() - 0.30f, MEANWELL_SET_CURVE_FV); // set to battery recommended charge voltage according to BMS value and user manual
                 setValue(Battery.getStats()->getRecommendedChargeVoltageLimit() - 0.25f, MEANWELL_SET_VOLTAGE); // set to battery recommended charge voltage according to BMS value and user manual
@@ -975,24 +1023,24 @@ void MeanWellCanClass::loop()
             }
 
             if (_fullChargeRequested
-                || (   (Battery.getStats()->getChargeImmediately() || _chargeImmediateRequested)
+                || (   (Battery.getStats()->getImmediateChargingRequest() || _chargeImmediateRequested)
                      && Battery.getStats()->getSoC() < (Configuration.get().Battery.Stop_Charging_BatterySoC_Threshold - 10)
                    )
                 )
             {
                 if (_verboseLogging) MessageOutput.printf("%s Immediate Charge requested", TAG);
-                setValue(cMeanWell.MaxCurrent, MEANWELL_SET_CURRENT);
-                setValue(cMeanWell.MaxCurrent, MEANWELL_SET_CURVE_CC);
+                setValue(config.MeanWell.MaxCurrent, MEANWELL_SET_CURRENT);
+                setValue(config.MeanWell.MaxCurrent, MEANWELL_SET_CURVE_CC);
                 _chargeImmediateRequested = true;
             } else {
                 // Zero Grid Export Charging Algorithm (Charger consums at operation minimum 180 Watt = 3.6A*50V)
                 if (_verboseLogging) MessageOutput.printf("%s Zero Grid Charger controller", TAG);
                 float pCharger = _rp.outputCurrentSet * Battery.getStats()->getVoltage();
                 if (_rp.outputPower > 0.0f) pCharger = _rp.outputPower;
-                if (GridPower - _rp.outputPower < -(pCharger + cMeanWell.Hysteresis)) { // 25 Watt Hysteresic
+                if (GridPower - _rp.outputPower < -(pCharger + config.MeanWell.Hysteresis)) { // 25 Watt Hysteresic
                     if (_verboseLogging) MessageOutput.printf(", increment");
                     // Solar Inverter produces enough power, we export to the Grid
-                    if (_rp.outputCurrent >= cMeanWell.MaxCurrent) {
+                    if (_rp.outputCurrent >= config.MeanWell.MaxCurrent) {
                         // do nothing, _OutputCurrentSetting && CurveCC is higher than actual OutputCurrent, the charger is regulating
                         if (_verboseLogging) MessageOutput.print(" not");
                     }
@@ -1009,10 +1057,10 @@ void MeanWellCanClass::loop()
                     float decrement = fabs(GridPower) / Battery.getStats()->getVoltage();
                     // check if Solar Inverter produces not enough power, then we have to reduce switch off the charger
                     // otherwise we have to reduce the OutputCurrent
-                    if ((_rp.outputCurrent < cMeanWell.MinCurrent - 0.01f
-                            && _rp.outputCurrentSet >= cMeanWell.MinCurrent - 0.01f
-                            && _rp.outputCurrentSet <= cMeanWell.MinCurrent + 0.024f)
-                        || (_rp.outputCurrentSet - decrement < cMeanWell.MinCurrent)) {
+                    if ((_rp.outputCurrent < config.MeanWell.MinCurrent - 0.01f
+                            && _rp.outputCurrentSet >= config.MeanWell.MinCurrent - 0.01f
+                            && _rp.outputCurrentSet <= config.MeanWell.MinCurrent + 0.024f)
+                        || (_rp.outputCurrentSet - decrement < config.MeanWell.MinCurrent)) {
                         // we have to switch off the charger, the charger consums with minimum OutputCurrent to much power.
                         // we can not reduce the power consumption and have to switch off the charger
                         // or battery is full and charger reduces output current via charge algorithm
@@ -1020,12 +1068,13 @@ void MeanWellCanClass::loop()
                         switchChargerOff(", not enough solar power");
                     }
                     // else if (_rp.OutputCurrent > _rp.CurveCC && _rp.OutputCurrent < _rp.OutputCurrentSetting) {
-                    else if (_rp.outputCurrent > cMeanWell.MinCurrent) {
+                    else if (_rp.outputCurrent > config.MeanWell.MinCurrent) {
                         if (_verboseLogging) MessageOutput.printf(" by %.2f A", decrement);
                         setValue(_rp.outputCurrentSet - decrement, MEANWELL_SET_CURRENT);
                         setValue(_rp.outputCurrentSet, MEANWELL_SET_CURVE_CC);
                     } else {
-                        if (_verboseLogging) MessageOutput.printf(", sorry I don't know, OutputCurrent: %.3f, MinCurrent: %.3f", _rp.outputCurrent, cMeanWell.MinCurrent);
+                        if (_verboseLogging) MessageOutput.printf(", sorry I don't know, OutputCurrent: %.3f, MinCurrent: %.3f",
+                                                                    _rp.outputCurrent, config.MeanWell.MinCurrent);
                     }
                 } else if (_rp.outputCurrent > 0.0f) {
                     if (_verboseLogging) MessageOutput.print(" constant");
@@ -1045,9 +1094,9 @@ void MeanWellCanClass::loop()
         static bool _FullChargeRequest = false;
         static bool _ChargeImmediately = false;
         if (Battery.getStats()->getFullChargeRequest()) _FullChargeRequest = true;
-        if (Battery.getStats()->getChargeImmediately()) _ChargeImmediately = true;
+        if (Battery.getStats()->getImmediateChargingRequest()) _ChargeImmediately = true;
         if ( (Battery.getStats()->getFullChargeRequest() || _FullChargeRequest
-              || Battery.getStats()->getChargeImmediately() || _ChargeImmediately)
+              || Battery.getStats()->getImmediateChargingRequest() || _ChargeImmediately)
             && !Battery.getStats()->getAlarm().overVoltage
             && Battery.getStats()->getAlarm().underTemperature
             && Battery.getStats()->getAlarm().overTemperature
@@ -1059,8 +1108,8 @@ void MeanWellCanClass::loop()
                 if (_verboseLogging) MessageOutput.printf("%s charge request\r\n", _FullChargeRequest?"Full":"Immediately");
 
                 setPower(true);
-                setValue(cMeanWell.MaxCurrent, MEANWELL_SET_CURRENT); // set maximum current to start charging
-                setValue(cMeanWell.MaxCurrent, MEANWELL_SET_CURVE_CC); // set maximum current to start charging
+                setValue(config.MeanWell.MaxCurrent, MEANWELL_SET_CURRENT); // set maximum current to start charging
+                setValue(config.MeanWell.MaxCurrent, MEANWELL_SET_CURVE_CC); // set maximum current to start charging
                 setValue(Battery.getStats()->getRecommendedChargeVoltageLimit() - 0.25f, MEANWELL_SET_CURVE_CV); // set to battery recommended charge voltage according to BMS value and user manual
                 setValue(Battery.getStats()->getRecommendedChargeVoltageLimit() - 0.30f, MEANWELL_SET_CURVE_FV); // set to battery recommended charge voltage according to BMS value and user manual
                 setValue(Battery.getStats()->getRecommendedChargeVoltageLimit() - 0.25f, MEANWELL_SET_VOLTAGE); // set to battery recommended charge voltage according to BMS value and user manual
@@ -1295,80 +1344,81 @@ bool MeanWellCanClass::sendCmd(uint8_t id, uint16_t cmd, uint8_t* data, int len)
     semaphore--;
     return rc;
 }
+
 bool MeanWellCanClass::_sendCmd(uint8_t id, uint16_t cmd, uint8_t* data, int len)
 {
-#ifdef CHARGER_USE_CAN0
     twai_message_t tx_message;
     memset(tx_message.data, 0, sizeof(tx_message.data));
     tx_message.data[0] = (uint8_t)cmd;
     tx_message.data[1] = (uint8_t)(cmd >> 8);
-#ifdef MEANWELL_DEBUG_ENABLED__
-    MessageOutput.printf("%s %d %04X %d", TAG, id, cmd, len);
-#endif
     if (len > 0 && data != reinterpret_cast<uint8_t*>(NULL)) {
-#ifdef MEANWELL_DEBUG_ENABLED__
-        MessageOutput.print(" [");
-#endif
         for (int i = 0; i < len; i++) {
             tx_message.data[2 + i] = data[i];
-#ifdef MEANWELL_DEBUG_ENABLED__
-            MessageOutput.printf("%02X ", data[i]);
-#endif
         }
-#ifdef MEANWELL_DEBUG_ENABLED__
-        MessageOutput.print("]");
-#endif
     }
-#ifdef MEANWELL_DEBUG_ENABLED__
-    MessageOutput.println();
-#endif
     tx_message.extd = 1;
     tx_message.data_length_code = len + 2;
     tx_message.identifier = 0x000C0100 | id;
-#ifdef MEANWELL_DEBUG_ENABLED__
-    MessageOutput.printf("%s %d %04X %d\r\n", TAG, id, cmd, len);
-#endif
-    // Queue message for transmission
+
+    if (_verboseLogging) {
+        char data[32];
+        int i, j=0;
+        for (i=0; i<tx_message.data_length_code; i++) {
+            if (i>0)data[j++] = ' ';
+            char c = tx_message.data[i]>>4;
+            c += c<=9?'0':'A'-10;
+            data[j++] = c;
+            c = tx_message.data[i]&0xF;
+            c += c<=9?'0':'A'-10;
+            data[j++] = c;
+        }
+        data[j]=0;
+        int i2cChannel = PinMapping.get().charger.i2c0.scl >= 0 ? 0 :
+                  PinMapping.get().charger.i2c1.scl >= 0 ? 1 : -1;
+        MessageOutput.printf("%s: id: %08X extd: %d len: %d data:[%s]\r\n",
+            _provider == CAN_Provider_t::CAN0 ? "CAN0":
+            _provider == CAN_Provider_t::I2C && i2cChannel == 0 ? "I2C0 CAN":
+            _provider == CAN_Provider_t::I2C && i2cChannel == 1 ? "I2C1 CAN":
+            _provider == CAN_Provider_t::MCP2515 ? "MCP2515 CAN":"MeanWell unknown CAN Bus provider",
+            tx_message.identifier, tx_message.extd, tx_message.data_length_code, data);
+    }
 
     yield();
     uint32_t packetMarginTime = millis() - _meanwellLastResponseTime;
     if (packetMarginTime < 5)
-        vTaskDelay(5 - packetMarginTime); // ensure minimum packet time  of 5ms between last response and new request
-    if (twai_transmit(&tx_message, pdMS_TO_TICKS(1000)) == ESP_OK) {
-        yield();
-#ifdef MEANWELL_DEBUG_ENABLED__
-        if (_verboseLogging)
-            MessageOutput.printf("%s Message queued for transmission cmnd %04X with %d data bytes\r\n", TAG, cmd, len + 2);
-#endif
-        if (len>0) EEPROMwrites++;
+    vTaskDelay(5 - packetMarginTime); // ensure minimum packet time  of 5ms between last response and new request
 
-    } else {
-        yield();
-        MessageOutput.printf("%s Failed to queue message for transmission\r\n", TAG);
-        return false;
-    }
-#else
-    char tx_message[8];
-    memset(tx_message, 0, sizeof(tx_message));
-    tx_message[0] = (uint8_t)cmd;
-    tx_message[1] = (uint8_t)(cmd >> 8);
-    //    MessageOutput.printf("%s %d %04X %d ", TAG, id, cmd, len);
-    if (len > 0 && data != reinterpret_cast<uint8_t*>(NULL)) {
-        //		MessageOutput.print(" [");
-        for (int i = 0; i < len; i++) {
-            tx_message[2 + i] = data[i];
-            //			MessageOutput.printf("%02X ", data[i]);
-        }
-        //		MessageOutput.print("]");
-    }
-    // MessageOutput.println();
-    uint8_t sndStat = CAN->sendMsgBuf(0x000C0100 | id, 1, len + 2, tx_message);
-    if (sndStat == CAN_OK) {
-        //        MessageOutput.printf("%s Message Sent Successfully!\r\n", TAG);
-    } else {
-        MessageOutput.printf("%s Error Sending Message... Status: %d\r\n", TAG, sndStat);
-    }
+    if (_provider == CAN_Provider_t::CAN0) {
+        // Queue message for transmission
+
+        if (twai_transmit(&tx_message, pdMS_TO_TICKS(1000)) == ESP_OK) {
+            yield();
+#ifdef MEANWELL_DEBUG_ENABLED__
+            if (_verboseLogging)
+                MessageOutput.printf("%s Message queued for transmission cmnd %04X with %d data bytes\r\n", TAG, cmd, len + 2);
 #endif
+            if (len>0) EEPROMwrites++;
+
+        } else {
+            yield();
+            MessageOutput.printf("%s Failed to queue message for transmission\r\n", TAG);
+            return false;
+        }
+
+    } else if (_provider == CAN_Provider_t::I2C) {
+        i2c_can->sendMsgBuf(tx_message.identifier, (uint8_t)tx_message.extd, tx_message.data_length_code, tx_message.data);
+
+    } else if (_provider == CAN_Provider_t::MCP2515) {
+
+        uint8_t sndStat = CAN->sendMsgBuf(tx_message.identifier, (uint8_t)tx_message.extd, tx_message.data_length_code, tx_message.data);
+        if (sndStat == CAN_OK) {
+            //        MessageOutput.printf("%s Message Sent Successfully!\r\n", TAG);
+        } else {
+            MessageOutput.printf("%s Error Sending Message... Status: %d\r\n", TAG, sndStat);
+        }
+
+    }
+
     yield();
 
     return true;

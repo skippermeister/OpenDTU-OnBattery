@@ -22,17 +22,17 @@ bool VictronSmartShunt::init()
 {
     MessageOutput.printf("Initialize Ve.Direct interface...");
 
-    const PinMapping_t& pin = PinMapping.get();
-    MessageOutput.printf(" rx = %d, tx = %d", pin.battery_rx, pin.battery_tx);
+    const auto &pin = PinMapping.get().battery;
+    MessageOutput.printf(" rx = %d, tx = %d", pin.rs232.rx, pin.rs232.tx);
 
-    if (pin.battery_rx < 0 || pin.battery_rx == pin.battery_tx) {
+    if (!PinMapping.isValidBatteryConfig()) {
         MessageOutput.println(", invalid pin config");
         return false;
     }
     MessageOutput.println();
 
-    auto tx = static_cast<gpio_num_t>(pin.battery_tx);
-    auto rx = static_cast<gpio_num_t>(pin.battery_rx);
+    auto tx = static_cast<gpio_num_t>(pin.rs232.tx);
+    auto rx = static_cast<gpio_num_t>(pin.rs232.rx);
 
     auto oHwSerialPort = SerialPortManager.allocatePort(_serialPortOwner);
     if (!oHwSerialPort) { return false; }

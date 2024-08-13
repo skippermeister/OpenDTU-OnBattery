@@ -24,9 +24,27 @@
                             {{ $n(acChargerConfigList.EEPROMwrites, 'decimal') }}
                         </label>
                     </div>
-
                 </div>
             </CardElement>
+
+            <div v-show="acChargerConfigList.enabled">
+                <CardElement v-show="'can_controller_frequency' in acChargerConfigList"
+                    :text="$t('acchargeradmin.CanControllerConfiguration')" textVariant="text-bg-primary" addSpace>
+                    <div class="row mb-3">
+                        <label class="col-sm-4 col-form-label">
+                            {{ $t('acchargeradmin.CanControllerFrequency') }}
+                        </label>
+                        <div class="col-sm-2">
+                            <select class="form-select" v-model="acChargerConfigList.can_controller_frequency">
+                                <option v-for="frequency in frequencyTypeList" :key="frequency.key"
+                                    :value="frequency.value">
+                                    {{ frequency.key }} MHz
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+                </CardElement>
+            </div>
 
             <CardElement v-show="acChargerConfigList.enabled" :text="$t('acchargeradmin.ChargerParameter')"
                 textVariant="text-bg-primary" add-space>
@@ -87,6 +105,11 @@ export default defineComponent({
             alertMessage: '',
             alertType: 'info',
             showAlert: false,
+            frequencyTypeList: [
+                { key: 8, value: 8000000 },
+                { key: 16, value: 16000000 },
+                { key: 20, value: 20000000 },
+            ],
         };
     },
     created() {

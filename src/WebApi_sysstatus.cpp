@@ -14,7 +14,6 @@
 #include <LittleFS.h>
 #include <ResetReason.h>
 
-
 void WebApiSysstatusClass::init(AsyncWebServer& server, Scheduler& scheduler)
 {
     using std::placeholders::_1;

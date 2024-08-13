@@ -4,7 +4,6 @@
 #include "Configuration.h"
 #include <espMqttClient.h>
 #include <TaskSchedulerDeclarations.h>
-#include <TimeoutHelper.h>
 #include <mutex>
 #include <deque>
 #include <functional>
@@ -13,6 +12,11 @@ class MqttHandlePowerLimiterClass {
 public:
     MqttHandlePowerLimiterClass();
     void init(Scheduler& scheduler);
+
+    void forceUpdate();
+
+    void subscribeTopics();
+    void unsubscribeTopics();
 
 private:
     void loop();
@@ -34,7 +38,7 @@ private:
 
     Task _loopTask;
 
-    TimeoutHelper _lastPublish;
+    uint32_t _lastPublish;
 
     // MQTT callbacks to process updates on subscribed topics are executed in
     // the MQTT thread's context. we use this queue to switch processing the

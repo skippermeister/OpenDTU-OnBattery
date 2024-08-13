@@ -146,7 +146,7 @@
                 </div>
             </div>
         </div>
-        <REFUsolView v-if="liveData.refusol.enabled" />
+        <REFUsolView v-if="'refusol' in liveData && liveData.refusol.enabled" />
         <VedirectView v-if="liveData.vedirect.enabled" />
         <BatteryView v-if="liveData.battery.enabled" />
         <MeanWellView v-if="liveData.meanwell.enabled" />

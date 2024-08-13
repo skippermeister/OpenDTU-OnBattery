@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #ifdef USE_HASS
+#ifdef USE_CHARGER_MEANWELL
 
 #include "MqttHandleMeanWellHass.h"
 #include "Configuration.h"
@@ -175,4 +176,5 @@ void MqttHandleMeanWellHassClass::publish(const String& subtopic, const String& 
     MqttSettings.publishGeneric(topic, payload, Configuration.get().Mqtt.Hass.Retain);
 }
 
+#endif
 #endif

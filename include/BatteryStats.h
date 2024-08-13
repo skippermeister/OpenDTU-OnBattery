@@ -9,6 +9,7 @@
 #include "VeDirectShuntController.h"
 #include "Configuration.h"
 #include "defaults.h"
+#include <cfloat>
 
 #pragma pack(push, 1)
 typedef union {
@@ -75,7 +76,7 @@ class BatteryStats {
         virtual Warning_t const& getWarning() const { static Warning_t dummy; return dummy; };
         virtual bool getChargeEnabled() const { return true; };
         virtual bool getDischargeEnabled() const { return true; };
-        virtual bool getChargeImmediately() const { return false; };
+        virtual bool getImmediateChargingRequest() const { return false; };
         virtual bool getFullChargeRequest() const { return false; };
 
         float getVoltage() const { return _voltage; };
@@ -100,6 +101,8 @@ class BatteryStats {
         bool isSoCValid() const { return _lastUpdateSoC > 0; }
         bool isVoltageValid() const { return _lastUpdateVoltage > 0; }
         bool isCurrentValid() const { return _lastUpdateCurrent > 0; }
+
+        virtual float getChargeCurrentLimitation() const { return FLT_MAX; };
 
     protected:
         virtual void mqttPublish() /*const*/;
@@ -256,7 +259,7 @@ public:
     const Warning_t& getWarning() const final { return Warning; };
     bool getChargeEnabled() const final { return chargeEnabled; };
     bool getDischargeEnabled() const final { return dischargeEnabled; };
-    bool getChargeImmediately() const final { return chargeImmediately; };
+    bool getImmediateChargingRequest() const final { return chargeImmediately; };
     bool isChargeTemperatureValid() const final { return true; }; // FIXME: to be done
     bool isDischargeTemperatureValid() const final { return true; }; // FIXME: to be done
 
@@ -335,7 +338,7 @@ public:
     const Warning_t& getWarning() const final { return totals.Warning; };
     bool getChargeEnabled() const final { return totals.ChargeDischargeManagementInfo.chargeEnabled; };
     bool getDischargeEnabled() const final { return totals.ChargeDischargeManagementInfo.dischargeEnabled; };
-    bool getChargeImmediately() const final {
+    bool getImmediateChargingRequest() const final {
         return (   totals.ChargeDischargeManagementInfo.chargeImmediately1
                 || totals.ChargeDischargeManagementInfo.chargeImmediately2
                 || totals.ChargeDischargeManagementInfo.fullChargeRequest);
@@ -346,6 +349,7 @@ public:
     float getRecommendedChargeVoltageLimit() const final { return totals.ChargeDischargeManagementInfo.chargeVoltageLimit; };
     float getRecommendedDischargeVoltageLimit() const final { return totals.ChargeDischargeManagementInfo.dischargeVoltageLimit; };
     float getRecommendedChargeCurrentLimit() const final { return totals.ChargeDischargeManagementInfo.chargeCurrentLimit; };
+    float getChargeCurrentLimitation() const { return totals.ChargeDischargeManagementInfo.chargeCurrentLimit; } ;
     float getRecommendedDischargeCurrentLimit() const final { return totals.ChargeDischargeManagementInfo.dischargeCurrentLimit; };
     float getMaximumChargeCurrentLimit() const final { return totals.SystemParameters.chargeCurrentLimit; };
     float getMaximumDischargeCurrentLimit() const final { return totals.SystemParameters.dischargeCurrentLimit; };
@@ -563,11 +567,12 @@ public:
 
     bool getChargeEnabled() const final { return ChargeDischargeManagementInfo.chargeEnabled; };
     bool getDischargeEnabled() const final { return ChargeDischargeManagementInfo.dischargeEnabled; };
-    bool getChargeImmediately() const final { return ChargeDischargeManagementInfo.chargeImmediately1; };
+    bool getImmediateChargingRequest() const final { return ChargeDischargeManagementInfo.chargeImmediately1; };
 
     float getRecommendedChargeVoltageLimit() const final { return ChargeDischargeManagementInfo.chargeVoltageLimit; };
     float getRecommendedDischargeVoltageLimit() const final { return ChargeDischargeManagementInfo.dischargeVoltageLimit; };
     float getRecommendedChargeCurrentLimit() const final { return ChargeDischargeManagementInfo.chargeCurrentLimit; };
+    float getChargeCurrentLimitation() const { return ChargeDischargeManagementInfo.chargeCurrentLimit; } ;
 
     bool isChargeTemperatureValid() const final
     {
@@ -617,12 +622,13 @@ class DalyBmsBatteryStats : public BatteryStats {
         const Warning_t& getWarning() const final { return Warning; };
         bool getChargeEnabled() const final { return chargingMosEnabled; };
         bool getDischargeEnabled() const final { return dischargingMosEnabled; };
-        bool getChargeImmediately() const final { return chargeImmediately1 || chargeImmediately2; };
+        bool getImmediateChargingRequest() const final { return chargeImmediately1 || chargeImmediately2; };
         float getTemperature() const final { return (_maxTemperature + _minTemperature) / 2.0; };
 
         float getRecommendedChargeVoltageLimit() const final { return WarningValues.maxPackVoltage * 0.99; };  // 1% below warning level
         float getRecommendedDischargeVoltageLimit() const final { return WarningValues.minPackVoltage * 1.01; }; // 1% above warning level
         float getRecommendedChargeCurrentLimit() const final { return WarningValues.maxPackChargeCurrent * 0.9; }; // 10% below warning level
+        float getChargeCurrentLimitation() const final { return WarningValues.maxPackChargeCurrent * 0.9; };
         float getRecommendedDischargeCurrentLimit() const final { return WarningValues.maxPackDischargeCurrent * 0.9; }; // 10% below warning level
         float getMaximumChargeCurrentLimit() const final { return WarningValues.maxPackChargeCurrent; };
         float getMaximumDischargeCurrentLimit() const final { return WarningValues.maxPackDischargeCurrent; };
@@ -825,7 +831,7 @@ class VictronSmartShuntStats : public BatteryStats {
         float getRecommendedChargeCurrentLimit() const final { return 50.0; }; // FIXME
         float getRecommendedDischargeCurrentLimit() const final { return 50.0; }; // FIXME
 
-        bool getChargeImmediately() const final { return ( getSoC() < 5.0); };  // FIXME below 5%
+        bool getImmediateChargingRequest() const final { return ( getSoC() < 5.0); };  // FIXME below 5%
         bool getFullChargeRequest() const final { return _lastFullCharge > 24*60*45; }; // FIXME 45 days
 
         bool isChargeTemperatureValid() const final

@@ -20,25 +20,24 @@
 
 #define REG_ADDR_SET    0X51
 
-
-#define CAN_5KBPS           1
-#define CAN_10KBPS          2
-#define CAN_20KBPS          3
-#define CAN_25KBPS          4
-#define CAN_31K25BPS        5
-#define CAN_33KBPS          6
-#define CAN_40KBPS          7
-#define CAN_50KBPS          8
-#define CAN_80KBPS          9
-#define CAN_83K3BPS         10
-#define CAN_95KBPS          11
-#define CAN_100KBPS         12
-#define CAN_125KBPS         13
-#define CAN_200KBPS         14
-#define CAN_250KBPS         15
-#define CAN_500KBPS         16
-#define CAN_666KBPS         17
-#define CAN_1000KBPS        18
+#define I2C_CAN_5KBPS           1
+#define I2C_CAN_10KBPS          2
+#define I2C_CAN_20KBPS          3
+#define I2C_CAN_25KBPS          4
+#define I2C_CAN_31K25BPS        5
+#define I2C_CAN_33KBPS          6
+#define I2C_CAN_40KBPS          7
+#define I2C_CAN_50KBPS          8
+#define I2C_CAN_80KBPS          9
+#define I2C_CAN_83K3BPS         10
+#define I2C_CAN_95KBPS          11
+#define I2C_CAN_100KBPS         12
+#define I2C_CAN_125KBPS         13
+#define I2C_CAN_200KBPS         14
+#define I2C_CAN_250KBPS         15
+#define I2C_CAN_500KBPS         16
+#define I2C_CAN_666KBPS         17
+#define I2C_CAN_1000KBPS        18
 
 #define CAN_OK              (0)
 #define CAN_FAILINIT        (1)
@@ -49,7 +48,6 @@
 #define CAN_GETTXBFTIMEOUT  (6)
 #define CAN_SENDMSGTIMEOUT  (7)
 #define CAN_FAIL            (0xff)
-
 
 #endif
 

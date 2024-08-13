@@ -30,12 +30,9 @@ bool PylontechRS485Receiver::init()
     }
 */
 
-    const PinMapping_t& pin = PinMapping.get();
+    const Battery_t& pin = PinMapping.get().battery;
 
-    if (pin.battery_rx < 0 || pin.battery_tx < 0
-        || pin.battery_rx == pin.battery_tx
-        || (pin.battery_rts >= 0
-            && (pin.battery_rts == pin.battery_rx || pin.battery_rts == pin.battery_tx))) {
+    if (!PinMapping.isValidChargerConfig()) {
         MessageOutput.println("Invalid pin config");
         return false;
     }
@@ -45,9 +42,9 @@ bool PylontechRS485Receiver::init()
 
     _upSerial = std::make_unique<HardwareSerial>(*oHwSerialPort);
 
-    _upSerial->begin(115200, SERIAL_8N1, pin.battery_rx, pin.battery_tx);
-    MessageOutput.printf("Port= %d, RS485 (Type %d) port rx = %d, tx = %d", *oHwSerialPort, pin.battery_rts >= 0 ? 1 : 2, pin.battery_rx, pin.battery_tx);
-    if (pin.battery_rts >= 0) {
+    _upSerial->begin(115200, SERIAL_8N1, pin.rs485.rx, pin.rs485.tx);
+    MessageOutput.printf("Port= %d, RS485 (Type %d) port rx = %d, tx = %d", *oHwSerialPort, pin.rs485.rts >= 0 ? 1 : 2, pin.rs485.rx, pin.rs485.tx);
+    if (pin.rs485.rts >= 0) {
         /*
          * Pylontech is connected via a RS485 module. Two different types of modules are supported.
          * Type 1: if a GPIO pin greater or equal 0 is given, we have a MAX3485 or SP3485 modul with external driven DE/RE pins
@@ -55,8 +52,8 @@ bool PylontechRS485Receiver::init()
          * Type 2: if the GPIO is negativ (-1), we assume that we have a RS485 TTL Modul with a self controlled DE/RE circuit.
          *         In this case we only need a TX and RX pin.
          */
-        MessageOutput.printf(", rts = %d", pin.battery_rts);
-        _upSerial->setPins(pin.battery_rx, pin.battery_tx, UART_PIN_NO_CHANGE, pin.battery_rts);
+        MessageOutput.printf(", rts = %d", pin.rs485.rts);
+        _upSerial->setPins(pin.rs485.rx, pin.rs485.tx, UART_PIN_NO_CHANGE, pin.rs485.rts);
     }
     ESP_ERROR_CHECK(uart_set_mode(*oHwSerialPort, UART_MODE_RS485_HALF_DUPLEX));
 
@@ -140,7 +137,7 @@ void PylontechRS485Receiver::deinit()
 {
     _upSerial->end();
 
-    if (PinMapping.get().battery_rts >= 0) { pinMode(PinMapping.get().battery_rts, INPUT); }
+    if (PinMapping.get().battery.rs485.rts >= 0) { pinMode(PinMapping.get().battery.rs485.rts, INPUT); }
 
     SerialPortManager.freePort(_serialPortOwner);
 

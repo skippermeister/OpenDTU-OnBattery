@@ -1,16 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #pragma once
 
-#ifndef CHARGER_HUAWEI
+#ifdef USE_CHARGER_MEANWELL
 
 #include <TaskSchedulerDeclarations.h>
 #include <cstdint>
-#ifdef CHARGER_USE_CAN0
 #include <driver/twai.h>
-#else
 #include "SPI.h"
 #include <mcp_can.h>
-#endif
+#include <Longan_I2C_CAN_Arduino.h>
 #include <AsyncJson.h>
 
 #define MEANWELL_MINIMAL_SET_VOLTAGE 42
@@ -169,12 +167,11 @@ public:
 
     bool getLastPowerCommandSuccess(void) { return _lastPowerCommandSuccess; };
 
-    bool getVerboseLogging(void) { return _verboseLogging; };
-    void setVerboseLogging(bool logging) { _verboseLogging = logging; };
-
     bool updateAvailable(uint32_t since) const;
 
     uint32_t getEEPROMwrites() { return EEPROMwrites;}
+
+    bool isMCP2515Provider() { return _provider == CAN_Provider_t::MCP2515; }
 
 private:
     void loop();
@@ -201,13 +198,11 @@ private:
     float calcEfficency(float x);
     void setupParameter(void);
 
-#ifdef CHARGER_USE_CAN0
     twai_general_config_t g_config;
-#else
+    I2C_CAN* i2c_can;
     SPIClass* spi;
     MCP_CAN* CAN;
     uint8_t _mcp2515_irq;
-#endif
 
     enum class NPB_Model_t {
         NPB_450_24,
@@ -231,10 +226,18 @@ private:
     bool _lastPowerCommandSuccess;
     bool _setupParameter = true;
 
-    bool _verboseLogging = false;
+    enum class CAN_Provider_t {
+        UNDEFINED=0,
+        CAN0=1,
+        I2C=2,
+        MCP2515=3
+    };
+    CAN_Provider_t _provider = CAN_Provider_t::UNDEFINED;
 
     const uint8_t ChargerID = 0x03;
     uint32_t EEPROMwrites;
+
+    bool _verboseLogging = false;
 };
 
 extern MeanWellCanClass MeanWellCan;

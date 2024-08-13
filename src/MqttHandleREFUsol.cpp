@@ -21,7 +21,7 @@ void MqttHandleREFUsolClass::init(Scheduler& scheduler)
     scheduler.addTask(_loopTask);
     _loopTask.enable();
 
-    _lastPublish.set(Configuration.get().Mqtt.PublishInterval * 1000);
+    _lastPublish = millis();
 }
 
 #define MQTTpublish(value)                                                \
@@ -46,7 +46,10 @@ void MqttHandleREFUsolClass::loop()
 
     mqttLock.unlock();
 
-    if (!MqttSettings.getConnected() || !_lastPublish.occured() || !REFUsol.isDataValid()) {
+    if (!MqttSettings.getConnected() ||
+        (millis() - _lastPublish) < config.Mqtt.PublishInterval * 1000 ||
+        !REFUsol.isDataValid())
+    {
         return;
     }
 
@@ -90,7 +93,7 @@ void MqttHandleREFUsolClass::loop()
     MQTTpublish(temperatureBottomRight);
     MQTTpublish(temperatureLeft);
 
-    _lastPublish.set(Configuration.get().Mqtt.PublishInterval * 1000);
+    _lastPublish = millis();
 }
 
 #endif

@@ -58,6 +58,7 @@ void WebApiDtuClass::onDtuAdminGet(AsyncWebServerRequest* request)
         ((uint32_t)(cDtu.Serial & 0xFFFFFFFF)));
     root["serial"] = buffer;
     root["pollinterval"] = cDtu.PollInterval;
+    root["verbose_logging"] = Hoymiles.getVerboseLogging();
     root["nrf_enabled"] = Hoymiles.getRadioNrf()->isInitialized();
     root["nrf_palevel"] = cDtu.Nrf.PaLevel;
 #ifdef USE_RADIO_CMT
@@ -80,8 +81,6 @@ void WebApiDtuClass::onDtuAdminGet(AsyncWebServerRequest* request)
 #else
     root["cmt_enabled"] = false;
 #endif
-
-    root["verbose_logging"] = Hoymiles.getVerboseLogging();
 
     WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 }
@@ -108,7 +107,8 @@ void WebApiDtuClass::onDtuAdminPost(AsyncWebServerRequest* request)
             && root.containsKey("cmt_frequency")
             && root.containsKey("cmt_country")
 #endif
-            && root.containsKey("nrf_palevel"))) {
+            && root.containsKey("nrf_palevel")))
+    {
         retMsg["message"] = ValuesAreMissing;
         retMsg["code"] = WebApiError::GenericValueMissing;
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
@@ -157,8 +157,8 @@ void WebApiDtuClass::onDtuAdminPost(AsyncWebServerRequest* request)
     auto FrequencyDefinition = Hoymiles.getRadioCmt()->getCountryFrequencyList()[root["cmt_country"].as<CountryModeId_t>()].definition;
     if (root["cmt_frequency"].as<uint32_t>() < FrequencyDefinition.Freq_Min
         || root["cmt_frequency"].as<uint32_t>() > FrequencyDefinition.Freq_Max
-        || root["cmt_frequency"].as<uint32_t>() % Hoymiles.getRadioCmt()->getChannelWidth() > 0) {
-
+        || root["cmt_frequency"].as<uint32_t>() % Hoymiles.getRadioCmt()->getChannelWidth() > 0)
+    {
         retMsg["message"] = "Invalid CMT frequency setting!";
         retMsg["code"] = WebApiError::DtuInvalidCmtFrequency;
         retMsg["param"]["min"] = FrequencyDefinition.Freq_Min;
@@ -172,13 +172,13 @@ void WebApiDtuClass::onDtuAdminPost(AsyncWebServerRequest* request)
 
     cDtu.Serial = serial;
     cDtu.PollInterval = root["pollinterval"].as<uint32_t>();
+    Hoymiles.setVerboseLogging(root["verbose_logging"].as<bool>());
     cDtu.Nrf.PaLevel = root["nrf_palevel"].as<uint8_t>();
 #ifdef USE_RADIO_CMT
     cDtu.Cmt.PaLevel = root["cmt_palevel"].as<int8_t>();
     cDtu.Cmt.Frequency = root["cmt_frequency"].as<uint32_t>();
     cDtu.Cmt.CountryMode = root["cmt_country"].as<CountryModeId_t>();
 #endif
-    Hoymiles.setVerboseLogging(root["verbose_logging"].as<bool>());
 
     WebApi.writeConfig(retMsg);
 

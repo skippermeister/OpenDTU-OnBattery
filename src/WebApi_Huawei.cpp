@@ -2,7 +2,7 @@
 /*
  * Copyright (C) 2022-2024 Thomas Basler and others
  */
-#ifdef CHARGER_HUAWEI
+#ifdef USE_CHARGER_HUAWEI
 
 #include "WebApi_Huawei.h"
 #include "Huawei_can.h"
@@ -48,7 +48,6 @@ void WebApiHuaweiClass::getJsonData(JsonVariant& root) {
     root["output_temp"]["u"] = "°C";
     root["efficiency"]["v"] = rp->efficiency * 100;
     root["efficiency"]["u"] = "%";
-
 }
 
 void WebApiHuaweiClass::onStatus(AsyncWebServerRequest* request)
@@ -84,11 +83,7 @@ void WebApiHuaweiClass::onPost(AsyncWebServerRequest* request)
 
     if (root.containsKey("online")) {
         online = root["online"].as<bool>();
-        if (online) {
-            minimal_voltage = HUAWEI_MINIMAL_ONLINE_VOLTAGE;
-        } else {
-            minimal_voltage = HUAWEI_MINIMAL_OFFLINE_VOLTAGE;
-        }
+        minimal_voltage = online ? HUAWEI_MINIMAL_ONLINE_VOLTAGE : HUAWEI_MINIMAL_OFFLINE_VOLTAGE;
     } else {
         retMsg["message"] = "Could not read info if data should be set for online/offline operation!";
         retMsg["code"] = WebApiError::LimitInvalidType;
@@ -103,16 +98,11 @@ void WebApiHuaweiClass::onPost(AsyncWebServerRequest* request)
                 retMsg["code"] = WebApiError::LimitInvalidLimit;
                 retMsg["param"]["max"] = 58;
                 retMsg["param"]["min"] = minimal_voltage;
-                response->setLength();
-                request->send(response);
+                WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
                 return;
             } else {
                 value = root["voltage"].as<float>();
-                if (online) {
-                    HuaweiCan.setValue(value, HUAWEI_ONLINE_VOLTAGE);
-                } else {
-                    HuaweiCan.setValue(value, HUAWEI_OFFLINE_VOLTAGE);
-                }
+                HuaweiCan.setValue(value, online?HUAWEI_ONLINE_VOLTAGE:HUAWEI_OFFLINE_VOLTAGE);
             }
         }
     }
@@ -124,16 +114,11 @@ void WebApiHuaweiClass::onPost(AsyncWebServerRequest* request)
                 retMsg["code"] = WebApiError::LimitInvalidLimit;
                 retMsg["param"]["max"] = 60;
                 retMsg["param"]["min"] = 0;
-                response->setLength();
-                request->send(response);
+                WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
                 return;
             } else {
                 value = root["current"].as<float>();
-                if (online) {
-                    HuaweiCan.setValue(value, HUAWEI_ONLINE_CURRENT);
-                } else {
-                    HuaweiCan.setValue(value, HUAWEI_OFFLINE_CURRENT);
-                }
+                HuaweiCan.setValue(value, online?HUAWEI_ONLINE_CURRENT:HUAWEI_OFFLINE_CURRENT);
             }
         }
     }
@@ -145,7 +130,7 @@ void WebApiHuaweiClass::onPost(AsyncWebServerRequest* request)
 
 void WebApiHuaweiClass::onAdminGet(AsyncWebServerRequest* request)
 {
-    if (!WebApi.checkCredentialsReadonly(request)) {
+    if (!WebApi.checkCredentials(request)) {
         return;
     }
 
@@ -155,7 +140,7 @@ void WebApiHuaweiClass::onAdminGet(AsyncWebServerRequest* request)
 
     root["enabled"] = cHuawei.Enabled;
     root["verbose_logging"] = cHuawei.VerboseLogging;
-    root["can_controller_frequency"] = cHuawei.CAN_Controller_Frequency;
+    if (HuaweiCanComm.isMCP2515Provider()) root["can_controller_frequency"] = Configuration.get().MCP2515.Controller_Frequency;
     root["auto_power_enabled"] = cHuawei.Auto_Power_Enabled;
     root["auto_power_batterysoc_limits_enabled"] = cHuawei.Auto_Power_BatterySoC_Limits_Enabled;
     root["emergency_charge_enabled"] = cHuawei.Emergency_Charge_Enabled;
@@ -166,7 +151,7 @@ void WebApiHuaweiClass::onAdminGet(AsyncWebServerRequest* request)
     root["stop_batterysoc_threshold"] = cHuawei.Auto_Power_Stop_BatterySoC_Threshold;
     root["target_power_consumption"] = cHuawei.Auto_Power_Target_Power_Consumption;
 
-    reWebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
+    WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 }
 
 void WebApiHuaweiClass::onAdminPost(AsyncWebServerRequest* request)
@@ -184,12 +169,13 @@ void WebApiHuaweiClass::onAdminPost(AsyncWebServerRequest* request)
     auto& retMsg = response->getRoot();
 
     if (!(root.containsKey("enabled")) ||
-        !(root.containsKey("can_controller_frequency")) ||
+        !(root.containsKey("verbose_logging")) ||
         !(root.containsKey("auto_power_enabled")) ||
         !(root.containsKey("emergency_charge_enabled")) ||
         !(root.containsKey("voltage_limit")) ||
         !(root.containsKey("lower_power_limit")) ||
-        !(root.containsKey("upper_power_limit"))) {
+        !(root.containsKey("upper_power_limit")))
+    {
         retMsg["message"] = ValuesAreMissing;
         retMsg["code"] = WebApiError::GenericValueMissing;
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
@@ -199,7 +185,7 @@ void WebApiHuaweiClass::onAdminPost(AsyncWebServerRequest* request)
     CONFIG_T& config = Configuration.get();
     config.Huawei.Enabled = root["enabled"].as<bool>();
     config.Huawei.VerboseLogging = root["verbose_logging"];
-    config.Huawei.CAN_Controller_Frequency = root["can_controller_frequency"].as<uint32_t>();
+    if (HuaweiCanComm.isMCP2515Provider()) config.MCP2515.Controller_Frequency = root["can_controller_frequency"].as<uint32_t>();
     config.Huawei.Auto_Power_Enabled = root["auto_power_enabled"].as<bool>();
     config.Huawei.Auto_Power_BatterySoC_Limits_Enabled = root["auto_power_batterysoc_limits_enabled"].as<bool>();
     config.Huawei.Emergency_Charge_Enabled = root["emergency_charge_enabled"].as<bool>();
@@ -222,17 +208,10 @@ void WebApiHuaweiClass::onAdminPost(AsyncWebServerRequest* request)
     yield();
     ESP.restart();
 
-    const PinMapping_t& pin = PinMapping.get();
     // Properly turn this on
     if (config.Huawei.Enabled) {
         MessageOutput.println("Initialize Huawei AC charger interface... ");
-        if (PinMapping.isValidHuaweiConfig()) {
-            MessageOutput.printf("Huawei AC-charger miso = %d, mosi = %d, clk = %d, irq = %d, cs = %d, power_pin = %d\r\n", pin.huawei_miso, pin.huawei_mosi, pin.huawei_clk, pin.huawei_irq, pin.huawei_cs, pin.huawei_power);
-            HuaweiCan.updateSettings(pin.huawei_miso, pin.huawei_mosi, pin.huawei_clk, pin.huawei_irq, pin.huawei_cs, pin.huawei_power);
-            MessageOutput.println("done");
-        } else {
-            MessageOutput.println("Invalid pin config");
-        }
+        HuaweiCan.updateSettings();
     }
 
     // Properly turn this off

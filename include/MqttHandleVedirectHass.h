@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-#ifdef USE_HASS
-
 #pragma once
+
+#ifdef USE_HASS
 
 #include <ArduinoJson.h>
 #include "VeDirectMpptController.h"

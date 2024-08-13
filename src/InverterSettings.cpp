@@ -59,6 +59,9 @@ void InverterSettingsClass::init(Scheduler& scheduler)
         if (PinMapping.isValidNrf24Config()) {
             auto oSPInum = SPIPortManager.allocatePort("NRF24");
             if (oSPInum) {
+                MessageOutput.printf("Init NRF24 chip: CLK: %d, MISO: %d, MOSI: %d, CS: %d, EN: %d, IRQ: %d\r\n",
+                    pin.nrf24_clk, pin.nrf24_miso, pin.nrf24_mosi, pin.nrf24_cs, pin.nrf24_en, pin.nrf24_irq);
+
                 SPIClass* spiClass = new SPIClass(*oSPInum);
                 spiClass->begin(pin.nrf24_clk, pin.nrf24_miso, pin.nrf24_mosi, pin.nrf24_cs);
                 Hoymiles.initNRF(spiClass, pin.nrf24_en, pin.nrf24_irq);
@@ -69,7 +72,16 @@ void InverterSettingsClass::init(Scheduler& scheduler)
         if (PinMapping.isValidCmt2300Config()) {
             auto oSPInum = SPIPortManager.allocatePort("CMT2300A");
             if (oSPInum) {
-                Hoymiles.initCMT(SPIPortManager.SPIhostNum(*oSPInum), pin.cmt_sdio, pin.cmt_clk, pin.cmt_cs, pin.cmt_fcs, pin.cmt_gpio2, pin.cmt_gpio3);
+                MessageOutput.printf("Init CMT2300A chip: SPI Host %d, SDIO: %d, CLK: %d, CS: %d, FCS: %d, GPIO2: %d, GPIO3: %d, Chip Int1@GPIO: %d, Int2@GPIO: %d\r\n",
+                    SPIPortManager.SPIhostNum(*oSPInum),
+                    pin.cmt_sdio, pin.cmt_clk, pin.cmt_cs, pin.cmt_fcs,
+                    pin.cmt_gpio2, pin.cmt_gpio3,
+                    pin.cmt_chip_int1gpio, pin.cmt_chip_int2gpio);
+
+                Hoymiles.initCMT(SPIPortManager.SPIhostNum(*oSPInum), pin.cmt_sdio, pin.cmt_clk, pin.cmt_cs, pin.cmt_fcs, pin.cmt_gpio2, pin.cmt_gpio3,
+                            pin.cmt_chip_int1gpio, pin.cmt_chip_int2gpio);
+                MessageOutput.println("  Setting country mode... ");
+                Hoymiles.getRadioCmt()->setCountryMode(static_cast<CountryModeId_t>(config.Dtu.Cmt.CountryMode));
                 MessageOutput.println("  Setting CMT target frequency... ");
                 Hoymiles.getRadioCmt()->setInverterTargetFrequency(config.Dtu.Cmt.Frequency);
             }

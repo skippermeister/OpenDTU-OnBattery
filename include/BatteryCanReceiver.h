@@ -25,7 +25,6 @@ protected:
     float scaleValue(int16_t value, float factor);
     bool getBit(uint8_t value, uint8_t bit);
 
-    bool _isCAN0;
     char const* _providerName = "Battery CAN";
 
     bool _initialized = false;

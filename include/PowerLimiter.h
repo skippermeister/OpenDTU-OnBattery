@@ -48,7 +48,7 @@ public:
         UnconditionalSolarPassthrough,
         NoVeDirect,
         NoEnergy,
-        MeanWellPsu,
+        ChargerPsu,
         Stable,
         TemperatureRange,
         BatteryNotInitialized,

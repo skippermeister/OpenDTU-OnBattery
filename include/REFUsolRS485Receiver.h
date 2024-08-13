@@ -8,9 +8,9 @@
  *
  */
 
-#ifdef USE_REFUsol_INVERTER
-
 #pragma once
+
+#ifdef USE_REFUsol_INVERTER
 
 #include <AsyncJson.h>
 #include <TaskSchedulerDeclarations.h>

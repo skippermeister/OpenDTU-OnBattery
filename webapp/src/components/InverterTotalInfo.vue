@@ -1,5 +1,6 @@
 <template>
     <div class="row row-cols-1 row-cols-md-3 g-3">
+        <div v-if="totalREFUsolData != null">
         <div class="col" v-if="totalREFUsolData.enabled">
             <CardElement centerContent textVariant="text-bg-success"
                 :text="$t('invertertotalinfo.REFUsolTotalDeliveredTotal')">
@@ -34,6 +35,7 @@
                     <small class="text-muted">{{ totalREFUsolData.total.Power.u }}</small>
                 </h2>
             </CardElement>
+        </div>
         </div>
 
         <div class="col" v-if="totalVeData.enabled">

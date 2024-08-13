@@ -36,6 +36,13 @@ private:
     size_t _count;
 };
 
+struct VeDirectHexQueue {
+    VeDirectHexRegister _hexRegister;   // hex register
+    int8_t hasCapability;
+    int8_t _readPeriod;                 // time period in sec until we send the command again
+    int32_t _lastSendTime;              // time stamp in milli sec of last send
+};
+
 class VeDirectMpptController : public VeDirectFrameHandler<veMpptStruct> {
 public:
     VeDirectMpptController() = default;
@@ -51,35 +58,39 @@ private:
     bool processTextDataDerived(std::string const& name, std::string const& value) final;
     void frameValidEvent() final;
     MovingAverage<float, 5> _efficiency;
-    int8_t _slotNr = 0;
+
+    int32_t _sendTimeStamp = 0;             // timestamp of last command
+    int32_t _sendTimeout = 0;               // timeout until we send the next command from the queue
+    int8_t _sendQueueNr = 0;                // actual queue position;
+
 #ifdef PROCESS_NETWORK_STATE
     std::array<VeDirectHexRegister, 17> _slotRegister {
 #else
-    std::array<VeDirectHexRegister, 14> _slotRegister {
+    std::array<VeDirectHexQueue, 14> _hexQueue {
 #endif
-                                                        VeDirectHexRegister::Capabilities,
-                                                        VeDirectHexRegister::BatteryType,
-                                                        VeDirectHexRegister::ChargeControllerTemperature,
-                                                        VeDirectHexRegister::NetworkTotalDcInputPower,
-//                                                        VeDirectHexRegister::ChargerVoltage,
-//                                                        VeDirectHexRegister::ChargerCurrent,
-                                                        VeDirectHexRegister::ChargerMaximumCurrent,
-//                                                        VeDirectHexRegister::LoadOutputVoltage,
-                                                        VeDirectHexRegister::LoadOutputState,
-//                                                        VeDirectHexRegister::LoadOutputControl,
-                                                        VeDirectHexRegister::LoadCurrent,
-                                                        VeDirectHexRegister::PanelCurrent,
-                                                        VeDirectHexRegister::BatteryMaximumCurrent,
-                                                        VeDirectHexRegister::VoltageSettingsRange,
-                                                        VeDirectHexRegister::BatteryVoltageSetting,
-                                                        VeDirectHexRegister::SmartBatterySenseTemperature,
-                                                        VeDirectHexRegister::BatteryFloatVoltage,
-                                                        VeDirectHexRegister::BatteryAbsorptionVoltage
+                                                        VeDirectHexRegister::Capabilities, 127, 30, 0,
+                                                        VeDirectHexRegister::BatteryType, 127, 30, 0,
+                                                        VeDirectHexRegister::ChargeControllerTemperature, 127, 4, 0,
+                                                        VeDirectHexRegister::NetworkTotalDcInputPower, 127, 1, 0,
+//                                                        VeDirectHexRegister::ChargerVoltage, 127, 1, 0,
+//                                                        VeDirectHexRegister::ChargerCurrent, 127, 1, 0,
+                                                        VeDirectHexRegister::ChargerMaximumCurrent, 127, 30, 0,
+//                                                        VeDirectHexRegister::LoadOutputVoltage, 0, 5, 0,
+                                                        VeDirectHexRegister::LoadOutputState, 0, 5, 0,
+//                                                        VeDirectHexRegister::LoadOutputControl, 0, 5, 0,
+                                                        VeDirectHexRegister::LoadCurrent, -12, 5, 0,
+                                                        VeDirectHexRegister::PanelCurrent, 13, 2, 0,
+                                                        VeDirectHexRegister::BatteryMaximumCurrent, 127, 30, 0,
+                                                        VeDirectHexRegister::VoltageSettingsRange, 127, 30, 0,
+                                                        VeDirectHexRegister::BatteryVoltageSetting, 127, 30, 0,
+                                                        VeDirectHexRegister::SmartBatterySenseTemperature, 127, 4, 0,
+                                                        VeDirectHexRegister::BatteryFloatVoltage, 127, 4, 0,
+                                                        VeDirectHexRegister::BatteryAbsorptionVoltage, 127, 4, 0,
 #ifdef PROCESS_NETWORK_STATE
                                                         ,
-    	                                                VeDirectHexRegister::NetworkInfo,
-	                                                    VeDirectHexRegister::NetworkMode,
-	                                                    VeDirectHexRegister::NetworkStatus,
+    	                                                VeDirectHexRegister::NetworkInfo, 127, 10, 0,
+	                                                    VeDirectHexRegister::NetworkMode, 127, 10, 0,
+	                                                    VeDirectHexRegister::NetworkStatus, 127, 10, 0
 #endif
                                                          };
 };

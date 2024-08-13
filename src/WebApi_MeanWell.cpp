@@ -2,7 +2,7 @@
 /*
  * Copyright (C) 2023 Andreas Högner
  */
-#ifndef CHARGER_HUAWEI
+#ifdef USE_CHARGER_MEANWELL
 
 #include "WebApi_MeanWell.h"
 #include "Configuration.h"
@@ -45,7 +45,7 @@ void WebApiMeanWellClass::onStatus(AsyncWebServerRequest* request)
 
 void WebApiMeanWellClass::onAdminGet(AsyncWebServerRequest* request)
 {
-    if (!WebApi.checkCredentialsReadonly(request)) {
+    if (!WebApi.checkCredentials(request)) {
         return;
     }
 
@@ -54,6 +54,8 @@ void WebApiMeanWellClass::onAdminGet(AsyncWebServerRequest* request)
     const MeanWell_CONFIG_T& cMeanWell = Configuration.get().MeanWell;
 
     root["enabled"] = cMeanWell.Enabled;
+    root["verbose_logging"] = cMeanWell.VerboseLogging;
+    if (MeanWellCan.isMCP2515Provider()) root["can_controller_frequency"] = Configuration.get().MCP2515.Controller_Frequency;
     root["pollinterval"] = cMeanWell.PollInterval;
     root["updatesonly"] = cMeanWell.UpdatesOnly;
     root["min_voltage"] = cMeanWell.MinVoltage;
@@ -61,7 +63,6 @@ void WebApiMeanWellClass::onAdminGet(AsyncWebServerRequest* request)
     root["min_current"] = cMeanWell.MinCurrent;
     root["max_current"] = cMeanWell.MaxCurrent;
     root["hysteresis"] = cMeanWell.Hysteresis;
-    root["verbose_logging"] = MeanWellCan.getVerboseLogging();
     root["EEPROMwrites"] = MeanWellCan.getEEPROMwrites();
     root["mustInverterProduce"] = cMeanWell.mustInverterProduce;
 
@@ -108,7 +109,9 @@ void WebApiMeanWellClass::onAdminPost(AsyncWebServerRequest* request)
 
     MeanWell_CONFIG_T& cMeanWell = Configuration.get().MeanWell;
     cMeanWell.Enabled = root["enabled"].as<bool>();
+    cMeanWell.VerboseLogging = root["verbose_logging"].as<bool>();
     cMeanWell.UpdatesOnly = root["updatesonly"].as<bool>();
+    if (MeanWellCan.isMCP2515Provider()) Configuration.get().MCP2515.Controller_Frequency = root["can_controller_frequency"].as<uint32_t>();
     cMeanWell.PollInterval = root["pollinterval"].as<uint32_t>();
     cMeanWell.MinVoltage = root["min_voltage"].as<float>();
     cMeanWell.MaxVoltage = root["max_voltage"].as<float>();
@@ -116,7 +119,6 @@ void WebApiMeanWellClass::onAdminPost(AsyncWebServerRequest* request)
     cMeanWell.MaxCurrent = root["max_current"].as<float>();
     cMeanWell.Hysteresis = root["hysteresis"].as<float>();
     cMeanWell.mustInverterProduce = root["mustInverterProduce"].as<bool>();
-    MeanWellCan.setVerboseLogging(root["verbose_logging"].as<bool>());
 
     WebApi.writeConfig(retMsg);
 
@@ -142,7 +144,7 @@ void WebApiMeanWellClass::onLimitGet(AsyncWebServerRequest* request)
     root["curveFV"] = MeanWellCan._rp.curveFV;
     root["curveTC"] = MeanWellCan._rp.curveTC;
 
-    /*    if (MeanWellCan.getVerboseLogging()) {
+    /*    if (Configuration.get().MeanWell.VerboseLogging) {
             String output;
             serializeJsonPretty(root, output);
             MessageOutput.println(output);
@@ -166,7 +168,7 @@ void WebApiMeanWellClass::onLimitPost(AsyncWebServerRequest* request)
     auto& retMsg = response->getRoot();
 
     /*
-        if (MeanWellCan.getVerboseLogging()) {
+        if (Configuration.get().MeanWell.VerboseLogging) {
             String output;
             serializeJson(root, output);
             MessageOutput.println(output);
@@ -291,7 +293,7 @@ void WebApiMeanWellClass::onPowerGet(AsyncWebServerRequest* request)
     root["power_set_status"] = MeanWellCan.getLastPowerCommandSuccess() ? "Ok" : "Failure";
 
     /*
-        if (MeanWellCan.getVerboseLogging()) {
+        if (Configuration.get().MeanWell.VerboseLogging) {
             String output;
             serializeJson(root, output);
             MessageOutput.println(output);
@@ -315,7 +317,7 @@ void WebApiMeanWellClass::onPowerPost(AsyncWebServerRequest* request)
     auto& retMsg = response->getRoot();
 
     /*
-        if (MeanWellCan.getVerboseLogging()) {
+        if (Configuration.get().MeanWell.VerboseLogging) {
             String output;
             serializeJson(root, output);
             MessageOutput.println(output);
@@ -325,7 +327,7 @@ void WebApiMeanWellClass::onPowerPost(AsyncWebServerRequest* request)
     if (root.containsKey("power")) {
         uint16_t power = root["power"].as<int>();
 
-        if (MeanWellCan.getVerboseLogging())
+        if (Configuration.get().MeanWell.VerboseLogging)
             MessageOutput.printf("Power: %s\r\n",
                 power == 0 ? "off" : power == 1 ? "on"
                     : power == 2                ? "auto"

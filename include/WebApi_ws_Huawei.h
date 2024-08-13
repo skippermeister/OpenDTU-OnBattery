@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-#ifdef CHARGER_HUAWEI
-
 #pragma once
+
+#ifdef USE_CHARGER_HUAWEI
 
 #include "ArduinoJson.h"
 #include <ESPAsyncWebServer.h>
@@ -18,7 +18,6 @@ private:
     void onLivedataStatus(AsyncWebServerRequest* request);
     void onWebsocketEvent(AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType type, void* arg, uint8_t* data, size_t len);
 
-    //AsyncWebServer* _server;
     AsyncWebSocket _ws;
 
     std::mutex _mutex;

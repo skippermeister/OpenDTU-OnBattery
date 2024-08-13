@@ -25,12 +25,9 @@
 #include "MqttHandleREFUsol.h"
 #include "MqttHandleVedirect.h"
 #include "MqttHandleVedirectHass.h"
-#ifdef CHARGER_HUAWEI
 #include "MqttHandleHuawei.h"
-#else
 #include "MqttHandleMeanWell.h"
 #include "MqttHandleMeanWellHass.h"
-#endif
 #include "MqttHandlePowerLimiter.h"
 #include "MqttHandlePowerLimiterHass.h"
 #include "MqttHandleZeroExport.h"
@@ -130,20 +127,18 @@ void setup()
     MqttHandleVedirectHass.init(scheduler);
     MqttHandleBatteryHass.init(scheduler);
     MqttHandlePowerLimiterHass.init(scheduler);
-#ifndef CHARGER_HUAWEI
+#ifdef USE_CHARGER_MEANWELL
     MqttHandleMeanWellHass.init(scheduler);
 #endif
 #endif
 
-#ifdef CHARGER_HUAWEI
+#ifdef USE_CHARGER_HUAWEI
     MqttHandleHuawei.init(scheduler);
-#else
+#endif
+#ifdef USE_CHARGER_MEANWELL
     MqttHandleMeanWell.init(scheduler);
 #endif
     MqttHandlePowerLimiter.init(scheduler);
-#ifdef USE_HASS
-    MqttHandlePowerLimiterHass.init(scheduler);
-#endif
     MqttHandleZeroExport.init(scheduler);
     MessageOutput.println("done");
 
@@ -186,9 +181,10 @@ void setup()
     PowerLimiter.init(scheduler); // Dynamic power limiter
     ZeroExport.init(scheduler); // Dynamic Zero Eport limiter
 
-#ifdef CHARGER_HUAWEI
+#ifdef USE_CHARGER_HUAWEI
     HuaweiCan.init(scheduler); // Initialize Huawei AC-charger PSU / CAN bus
-#else
+#endif
+#ifdef USE_CHARGER_MEANWELL
     MeanWellCan.init(scheduler); // Initialize MeanWell NPB-1200-48 AC-charger PSU / CAN bus
 #endif
 

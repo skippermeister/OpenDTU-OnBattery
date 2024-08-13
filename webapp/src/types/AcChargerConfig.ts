@@ -1,5 +1,6 @@
 export interface AcChargerConfig {
   enabled: boolean;
+  verbose_logging: boolean;
   can_controller_frequency: number;
   pollinterval: number;
   updatesonly: boolean;
@@ -8,7 +9,6 @@ export interface AcChargerConfig {
   min_current: number;
   max_current: number;
   hysteresis: number;
-  verbose_logging: boolean;
   EEPROMwrites: number;
   mustInverterProduce: boolean;
 }

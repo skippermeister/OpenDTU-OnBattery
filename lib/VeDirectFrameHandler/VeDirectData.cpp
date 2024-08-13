@@ -296,23 +296,28 @@ frozen::string const& VeDirectHexData::getResponseAsString() const
 frozen::string const& VeDirectHexData::getRegisterAsString() const
 {
 	using Register = VeDirectHexRegister;
-	static constexpr frozen::map<Register, frozen::string, 25> values = {
+	static constexpr frozen::map<Register, frozen::string, 30> values = {
 		{ Register::Capabilities, "Capabilities" },
+		{ Register::BatteryType, "Battery Type" },
 		{ Register::DeviceMode, "Device Mode" },
 		{ Register::DeviceState, "Device State" },
 		{ Register::RemoteControlUsed, "Remote Control Used" },
 		{ Register::PanelVoltage, "Panel Voltage" },
 		{ Register::PanelPower, "Panel Power" },
+        { Register::PanelMaximumVoltage, "Panel maximum Voltage" },
+		{ Register::PanelCurrent, "Panel Current" },
 		{ Register::ChargerVoltage, "Charger Voltage" },
 		{ Register::ChargerCurrent, "Charger Current" },
 		{ Register::ChargerMaximumCurrent, "Charger maximum Current" },
-        { Register::VoltageSettingsRange, "Voltage Settings Range" },
+        { Register::VoltageSettingsRange, "Voltage settings range" },
 		{ Register::NetworkTotalDcInputPower, "Network Total DC Input Power" },
 		{ Register::ChargeControllerTemperature, "Charger Controller Temperature" },
 		{ Register::SmartBatterySenseTemperature, "Smart Battery Sense Temperature" },
 		{ Register::NetworkInfo, "Network Info" },
 		{ Register::NetworkMode, "Network Mode" },
 		{ Register::NetworkStatus, "Network Status" },
+        { Register::BatteryVoltageSetting, "Battery voltage setting" },
+        { Register::BatteryMaximumCurrent, "Battery maximum Current" },
 		{ Register::BatteryAbsorptionVoltage, "Battery Absorption Voltage" },
 		{ Register::BatteryFloatVoltage, "Battery Float Voltage" },
 		{ Register::TotalChargeCurrent, "Total Charge Current" },

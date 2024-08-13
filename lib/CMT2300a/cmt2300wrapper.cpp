@@ -17,8 +17,20 @@ CMT2300A::CMT2300A(const spi_host_device_t spi_host, const uint8_t pin_sdio, con
     _spi_speed = spi_speed;
 }
 
-bool CMT2300A::begin(void)
+bool CMT2300A::begin(int8_t chip_int1gpio, int8_t chip_int2gpio)
 {
+    _nGpioSel = 0;
+    // FIXME: skippermeister
+    if (chip_int1gpio < 1 || chip_int1gpio == 3 || chip_int1gpio > 4) {
+        _nGpioSel |= CMT2300A_GPIO2_SEL_INT1;
+    } else if (chip_int2gpio < 1 || chip_int2gpio > 3) {
+        _nGpioSel |= CMT2300A_GPIO3_SEL_INT2;
+    } else if (chip_int1gpio == chip_int2gpio) {
+        _nGpioSel = CMT2300A_GPIO1_SEL_INT1 | CMT2300A_GPIO3_SEL_INT2;  // default
+    } else {
+        _nGpioSel  = chip_int1gpio == 1 ? CMT2300A_GPIO1_SEL_INT1 : chip_int1gpio == 2 ? CMT2300A_GPIO2_SEL_INT1 : CMT2300A_GPIO4_SEL_INT1;
+        _nGpioSel |= chip_int2gpio == 1 ? CMT2300A_GPIO1_SEL_INT2 : chip_int2gpio == 2 ? CMT2300A_GPIO2_SEL_INT2 : CMT2300A_GPIO3_SEL_INT2;
+    }
     return _init_pins() && _init_radio();
 }
 
@@ -304,8 +316,9 @@ bool CMT2300A::_init_radio()
     CMT2300A_WriteReg(CMT2300A_CUS_CMT10, tmp | 0x02);
 
     /* Config GPIOs */
-    CMT2300A_ConfigGpio(
-        CMT2300A_GPIO2_SEL_INT1 | CMT2300A_GPIO3_SEL_INT2);
+    CMT2300A_ConfigGpio(_nGpioSel);   // FIXME: skippermeister
+//        CMT2300A_GPIO2_SEL_INT1 | CMT2300A_GPIO3_SEL_INT2);
+//        CMT2300A_GPIO2_SEL_INT1 | CMT2300A_GPIO1_SEL_INT2);
 
     /* Config interrupt */
     CMT2300A_ConfigInterrupt(

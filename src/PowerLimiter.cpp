@@ -92,7 +92,7 @@ frozen::string const& PowerLimiterClass::getStatusText(PowerLimiterClass::Status
         { Status::UnconditionalSolarPassthrough, "unconditionally passing through all solar power (MQTT override)" },
         { Status::NoVeDirect, "VE.Direct disabled, connection broken, or data outdated" },
         { Status::NoEnergy, "no energy source available to power the inverter from" },
-        { Status::MeanWellPsu, "DPL stands by while MeanWell PSU is enabled/charging" },
+        { Status::ChargerPsu, "DPL stands by while Charger PSU is enabled/charging" },
         { Status::Stable, "the system is stable, the last power limit is still valid" },
         { Status::TemperatureRange, "temperatue out of recommended discharge range (-10°C ~ 50°C)" },
         { Status::BatteryNotInitialized, "battery is not initialized" },
@@ -530,14 +530,19 @@ bool PowerLimiterClass::calcPowerLimit(std::shared_ptr<InverterAbstract> inverte
     // kicks in. The only case where this is not desired is if the battery is
     // over the Full Solar Passthrough Threshold. In this case the Power
     // Limiter should run and the PSU will shut down as a consequence.
-    if (!useFullSolarPassthrough() &&
-#ifdef CHARGER_HUAWEI
+    if (!useFullSolarPassthrough() && (
+#ifdef USE_CHARGER_HUAWEI
         HuaweiCan.getAutoPowerStatus()
-#else
+#endif
+#if defined(USE_CHARGER_HUAWEI) && defined(USE_CHARGER_MEANWELL)
+        ||
+#endif
+#ifdef USE_CHARGER_MEANWELL
         MeanWellCan.getAutoPowerStatus()
 #endif
-    ) {
-        return shutdown(Status::MeanWellPsu);
+    ))
+    {
+        return shutdown(Status::ChargerPsu);
     }
 
     auto meterValid = PowerMeter.isDataValid();
@@ -1107,7 +1112,13 @@ bool PowerLimiterClass::manageBatteryDCpowerSwitch()
         && _inverter->getEnablePolling() // Inverter connected to Battery must be enabled for polling
         && _inverter->getEnableCommands() // Inverter connected to Battery must be enabled to receive commands
         && !isStopThresholdReached() // Battery SoC must be geater than equal StopThreshold
-        && MeanWellCan._rp.operation == 0) // only if Charger is off
+#ifdef USE_CHARGER_HUAWEI
+        && HuaweiCan.getMode() == 0
+#endif
+#ifdef USE_CHARGER_MEANWELL
+        && MeanWellCan._rp.operation == 0
+#endif
+        ) // only if Charger is off
     {
         switch (_preChargePowerState) {
         case 0:

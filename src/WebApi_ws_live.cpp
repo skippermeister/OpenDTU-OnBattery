@@ -77,16 +77,17 @@ void WebApiWsLiveClass::generateOnBatteryJsonResponse(JsonVariant& root, bool al
         if (!all) { _lastPublishVictron = millis(); }
     }
 
-#ifdef CHARGER_HUAWEI
-    if (all || (Huawei.getLastUpdate() - _lastPublishCharger) < halfOfAllMillis) {
+#ifdef USE_CHARGER_HUAWEI
+    if (all || (HuaweiCan.getLastUpdate() - _lastPublishCharger) < halfOfAllMillis) {
         auto huaweiObj = root["huawei"].to<JsonObject>();
         huaweiObj["enabled"] = Configuration.get().Huawei.Enabled;
 
         if (config.Huawei.Enabled) {
             const RectifierParameters_t* rp = HuaweiCan.get();
-            addTotalField(huaweiObj, "Power", rp->outputPower, "W", 2);
+            addTotalField(huaweiObj, "Power", rp->input_power, "W", 2);
         }
-#else
+#endif
+#ifdef USE_CHARGER_MEANWELL
     if (all || (MeanWellCan.getLastUpdate() - _lastPublishCharger) < halfOfAllMillis) {
         auto meanwellObj = root["meanwell"].to<JsonObject>();
         meanwellObj["enabled"] = Configuration.get().MeanWell.Enabled;
@@ -137,8 +138,8 @@ void WebApiWsLiveClass::generateOnBatteryJsonResponse(JsonVariant& root, bool al
         if (!all) { _lastPublishPowerMeter = millis(); }
     }
 
-    auto refusolObj = root["refusol"].to<JsonObject>();
 #if defined(USE_REFUsol_INVERTER)
+    auto refusolObj = root["refusol"].to<JsonObject>();
     refusolObj["enabled"] = Configuration.get().REFUsol.Enabled;
     auto totalREFUsolObj = refusolObj["total"].to<JsonObject>();
 
@@ -147,8 +148,6 @@ void WebApiWsLiveClass::generateOnBatteryJsonResponse(JsonVariant& root, bool al
         addTotalField(totalREFUsolObj, "YieldDay", REFUsol.Frame.YieldDay * 1000, "kWh", 3);
         addTotalField(totalREFUsolObj, "YieldTotal", REFUsol.Frame.YieldTotal, "kWh", 3);
     }
-#else
-    refusolObj["enabled"] = false;
 #endif
 
     if (all || (millis() - _lastPublishHours) > 10 * 1000) { // update every 10 seconds

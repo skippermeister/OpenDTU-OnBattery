@@ -76,7 +76,7 @@ void DisplayGraphicClass::init(Scheduler& scheduler)
             pin.display_clk < 0 ? 255 : pin.display_clk,
             pin.display_data < 0 ? 255 : pin.display_data,
             pin.display_cs < 0 ? 255 : pin.display_cs,
-            pin.display_cs < 0 ? 255 : pin.display_dc);
+            pin.display_dc < 0 ? 255 : pin.display_dc);
         if (_display_type == DisplayType_t::ST7567_GM12864I_59N) {
             _display->setI2CAddress(0x3F << 1);
         }

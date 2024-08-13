@@ -12,7 +12,7 @@
 
 class PylontechCanReceiver : public BatteryCanReceiver  {
 public:
-    explicit PylontechCanReceiver(bool isCAN0) { _isCAN0 = isCAN0; }
+    explicit PylontechCanReceiver() {}
 
     bool init() final;
     void onMessage(twai_message_t rx_message) final;

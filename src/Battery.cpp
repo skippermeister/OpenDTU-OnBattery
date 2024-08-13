@@ -63,7 +63,7 @@ void BatteryClass::updateSettings()
 #ifdef USE_PYLONTECH_CAN_RECEIVER
         case 1: // Initialize Pylontech Battery / CAN0 bus
         case 2: // Initialize Pylontech Battery / MCP2515 bus
-            _upProvider = std::make_unique<PylontechCanReceiver>(cBattery.Provider==1);
+            _upProvider = std::make_unique<PylontechCanReceiver>();
             break;
 #endif
 #ifdef USE_JKBMS_CONTROLLER
@@ -90,7 +90,7 @@ void BatteryClass::updateSettings()
 #ifdef USE_PYTES_CAN_RECEIVER
         case 7: // Initialize Pylontech Battery / CAN0 bus
         case 8: // Initialize Pylontech Battery / MCP2515 bus
-            _upProvider = std::make_unique<PytesCanReceiver>(cBattery.Provider==7);
+            _upProvider = std::make_unique<PytesCanReceiver>();
             break;
 #endif
         default:

@@ -2,13 +2,12 @@
 /*
  * Copyright (C) 2022 Thomas Basler and others
  */
-#ifdef CHARGER_HUAWEI
+#ifdef USE_CHARGER_HUAWEI
 
 #include "MqttHandleHuawei.h"
 #include "MessageOutput.h"
 #include "MqttSettings.h"
 #include "Huawei_can.h"
-// #include "Failsafe.h"
 #include "WebApi_Huawei.h"
 #include <ctime>
 
@@ -26,6 +25,18 @@ void MqttHandleHuaweiClass::init(Scheduler& scheduler)
     scheduler.addTask(_loopTask);
     _loopTask.enable();
 
+    subscribeTopics();
+
+    _lastPublish = millis();
+}
+
+void MqttHandleHuaweiClass::forceUpdate()
+{
+    _lastPublish = 0;
+}
+
+void MqttHandleHuaweiClass::subscribeTopics()
+{
     String const& prefix = MqttSettings.getPrefix();
 
     auto subscribe = [&prefix, this](char const* subTopic, Topic t) {
@@ -42,8 +53,16 @@ void MqttHandleHuaweiClass::init(Scheduler& scheduler)
     subscribe("limit_offline_voltage", Topic::LimitOfflineVoltage);
     subscribe("limit_offline_current", Topic::LimitOfflineCurrent);
     subscribe("mode", Topic::Mode);
+}
 
-    _lastPublish.set(Configuration.get().Mqtt.PublishInterval * 1000);
+void MqttHandleHuaweiClass::unsubscribeTopics()
+{
+    String const& prefix = MqttSettings.getPrefix() + "huawei/cmd/";
+    MqttSettings.unsubscribe(String(prefix + "limit_online_voltage"));
+    MqttSettings.unsubscribe(String(prefix + "limit_online_current"));
+    MqttSettings.unsubscribe(String(prefix + "limit_offline_voltage"));
+    MqttSettings.unsubscribe(String(prefix + "limit_offline_current"));
+    MqttSettings.unsubscribe(String(prefix + "mode"));
 }
 
 void MqttHandleHuaweiClass::loop()
@@ -62,13 +81,14 @@ void MqttHandleHuaweiClass::loop()
 
     mqttLock.unlock();
 
-    if (!MqttSettings.getConnected() || !_lastPublish.occured()) {
+    if (!MqttSettings.getConnected() || (millis() - _lastPublish) < config.Mqtt.PublishInterval * 1000) {
         return;
     }
 
     const RectifierParameters_t* rp = HuaweiCan.get();
 
-    const String subtopic = "huawei/" MqttSettings.publish(subtopic + "data_age", String((millis() - HuaweiCan.getLastUpdate()) / 1000));
+    const String subtopic = "huawei/";
+    MqttSettings.publish(subtopic + "data_age", String((millis() - HuaweiCan.getLastUpdate()) / 1000));
     MqttSettings.publish(subtopic + "input_voltage", String(rp->input_voltage));
     MqttSettings.publish(subtopic + "input_current", String(rp->input_current));
     MqttSettings.publish(subtopic + "input_power", String(rp->input_power));
@@ -80,7 +100,7 @@ void MqttHandleHuaweiClass::loop()
     MqttSettings.publish(subtopic + "output_temp", String(rp->output_temp));
     MqttSettings.publish(subtopic + "efficiency", String(rp->efficiency));
 
-    _lastPublish.set(Configuration.get().Mqtt.PublishInterval * 1000);
+    _lastPublish = millis();
     yield();
 }
 

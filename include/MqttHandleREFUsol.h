@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-#ifdef USE_REFUsol_INVERTER
-
 #pragma once
+
+#ifdef USE_REFUsol_INVERTER
 
 #include "Configuration.h"
 #include "REFUsolRS485Receiver.h"
 #include <Arduino.h>
 #include <TaskSchedulerDeclarations.h>
-#include <TimeoutHelper.h>
 #include <mutex>
 
 #ifndef REFUsol_PIN_RX
@@ -38,7 +37,7 @@ private:
 
     REFUsolStruct _last {}; // last value store for MQTT publishing
 
-    TimeoutHelper _lastPublish;
+    uint32_t _lastPublish;
 
     // MQTT callbacks to process updates on subscribed topics are executed in
     // the MQTT thread's context. we use this queue to switch processing the

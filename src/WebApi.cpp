@@ -49,10 +49,11 @@ void WebApiClass::init(Scheduler& scheduler)
     _webApiWsREFUsolLive.init(_server, scheduler);
     _webApiREFUsol.init(_server, scheduler);
 #endif
-#ifdef CHARGER_HUAWEI
+#ifdef USE_CHARGER_HUAWEI
     _webApiWsHuaweiLive.init(_server, scheduler);
     _webApiHuaweiClass.init(_server, scheduler);
-#else
+#endif
+#ifdef USE_CHARGER_MEANWELL
     _webApiWsMeanWellLive.init(_server, scheduler);
     _webApiMeanWellClass.init(_server, scheduler);
 #endif

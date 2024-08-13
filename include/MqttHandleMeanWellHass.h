@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-#ifdef USE_HASS
-
 #pragma once
+
+#ifdef USE_HASS
+#ifdef USE_CHARGER_MEANWELL
 
 #include <ArduinoJson.h>
 #include <TaskSchedulerDeclarations.h>
@@ -28,4 +29,5 @@ private:
 
 extern MqttHandleMeanWellHassClass MqttHandleMeanWellHass;
 
+#endif
 #endif

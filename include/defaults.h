@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #pragma once
 
-#ifdef CHARGER_HUAWEI
-#undef CHARGER_HUAWEI
-#define CHARGER_HUAWEI 1
+#if defined(USE_CHARGER_MEANWELL) && defined(USE_CHARGER_HUAWEI)
+#error "Meanwell and Huawei charger are not supported at the same time. Please decide for one of both"
 #endif
 
 #define SERIAL_BAUDRATE 115200
@@ -27,7 +26,12 @@
 
 #define MDNS_ENABLED false
 
-#define FRONIUS_SM_SIMULATION_ENABLED false
+#define MODBUS_ENABLED false
+#define MODBUS_DELAY_START false
+#define MODBUS_MFRNAME "OpenDTU"
+#define MODBUS_MODELNAME "OpenDTU-SunSpec"
+#define MODBUS_OPTIONS ""
+#define MODBUS_VERSION "1.0"
 
 #define NTP_SERVER "opendtu.pool.ntp.org"
 #define NTP_TIMEZONE "CET-1CEST,M3.5.0,M10.5.0/3"
@@ -175,13 +179,16 @@
 
 #define MCP2515_CAN_CONTROLLER_FREQUENCY 8000000UL
 
-#ifdef CHARGER_HUAWEI
+#ifdef USE_CHARGER_HUAWEI
 #define HUAWEI_ENABLED false
 #define HUAWEI_AUTO_POWER_VOLTAGE_LIMIT 42.0
 #define HUAWEI_AUTO_POWER_ENABLE_VOLTAGE_LIMIT 42.0
 #define HUAWEI_AUTO_POWER_LOWER_POWER_LIMIT 150
 #define HUAWEI_AUTO_POWER_UPPER_POWER_LIMIT 2000
-#else
+#define HUAWEI_AUTO_POWER_STOP_BATTERYSOC_THRESHOLD 95
+#define HUAWEI_AUTO_POWER_TARGET_POWER_CONSUMPTION 0
+#endif
+#ifdef USE_CHARGER_MEANWELL
 #define MEANWELL_ENABLED false
 #define MEANWELL_UPDATESONLY true
 #define MEANWELL_POLLINTERVAL 5

@@ -2,7 +2,7 @@
 /*
  * Copyright (C) 2022-2024 Thomas Basler and others
  */
-#ifdef CHARGER_HUAWEI
+#ifdef USE_CHARGER_HUAWEI
 
 #include "WebApi_ws_Huawei.h"
 #include "AsyncJson.h"
@@ -29,10 +29,9 @@ void WebApiWsHuaweiLiveClass::init(AsyncWebServer& server, Scheduler& scheduler)
     using std::placeholders::_5;
     using std::placeholders::_6;
 
-    _server = &server;
-    _server->on("/api/huaweilivedata/status", HTTP_GET, std::bind(&WebApiWsHuaweiLiveClass::onLivedataStatus, this, _1));
+    server.on("/api/huaweilivedata/status", HTTP_GET, std::bind(&WebApiWsHuaweiLiveClass::onLivedataStatus, this, _1));
 
-    _server->addHandler(&_ws);
+    server.addHandler(&_ws);
     _ws.onEvent(std::bind(&WebApiWsHuaweiLiveClass::onWebsocketEvent, this, _1, _2, _3, _4, _5, _6));
 
     scheduler.addTask(_wsCleanupTask);

@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #pragma once
 
-#ifndef CHARGER_HUAWEI
+#ifdef USE_CHARGER_MEANWELL
 
 #include "Configuration.h"
 #include <MeanWell_can.h>
 #include <TaskSchedulerDeclarations.h>
-#include <TimeoutHelper.h>
 #include <deque>
 #include <espMqttClient.h>
 #include <functional>
@@ -16,6 +15,11 @@ class MqttHandleMeanWellClass {
 public:
     MqttHandleMeanWellClass();
     void init(Scheduler& scheduler);
+
+    void forceUpdate();
+
+    void subscribeTopics();
+    void unsubscribeTopics();
 
 private:
     enum class Topic : unsigned {
@@ -39,7 +43,7 @@ private:
 
     RectifierParameters_t _last {};
 
-    TimeoutHelper _lastPublish;
+    uint32_t _lastPublish;
 
     // MQTT callbacks to process updates on subscribed topics are executed in
     // the MQTT thread's context. we use this queue to switch processing the

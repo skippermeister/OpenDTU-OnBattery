@@ -21,7 +21,7 @@ class CMT2300A {
 public:
     CMT2300A(const spi_host_device_t spi_host, const uint8_t pin_sdio, const uint8_t pin_clk, const uint8_t pin_cs, const uint8_t pin_fcs, const uint32_t _spi_speed = CMT_SPI_SPEED);
 
-    bool begin(void);
+    bool begin(int8_t chip_int1gpio=2, int8_t chip_int2gpio=3);
 
     /**
      * Checks if the chip is connected to the SPI bus
@@ -137,4 +137,6 @@ private:
     uint32_t _spi_speed;
 
     FrequencyBand_t _frequencyBand = FrequencyBand_t::BAND_860;
+
+    uint8_t _nGpioSel;  // FIXME: skippermeister
 };

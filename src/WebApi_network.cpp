@@ -58,24 +58,28 @@ void WebApiNetworkClass::onNetworkAdminGet(AsyncWebServerRequest* request)
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& root = response->getRoot();
-    const WiFi_CONFIG_T& cWiFi = Configuration.get().WiFi;
+    const CONFIG_T& config = Configuration.get();
 
-    root["hostname"] = cWiFi.Hostname;
-    root["dhcp"] = cWiFi.Dhcp;
-    root["ipaddress"] = IPAddress(cWiFi.Ip).toString();
-    root["netmask"] = IPAddress(cWiFi.Netmask).toString();
-    root["gateway"] = IPAddress(cWiFi.Gateway).toString();
-    root["dns1"] = IPAddress(cWiFi.Dns1).toString();
-    root["dns2"] = IPAddress(cWiFi.Dns2).toString();
-    root["ssid"] = cWiFi.Ssid;
-    root["password"] = cWiFi.Password;
-    root["aptimeout"] = cWiFi.ApTimeout;
-    root["mdnsenabled"] = Configuration.get().Mdns.Enabled;
+    root["hostname"] = config.WiFi.Hostname;
+    root["dhcp"] = config.WiFi.Dhcp;
+    root["ipaddress"] = IPAddress(config.WiFi.Ip).toString();
+    root["netmask"] = IPAddress(config.WiFi.Netmask).toString();
+    root["gateway"] = IPAddress(config.WiFi.Gateway).toString();
+    root["dns1"] = IPAddress(config.WiFi.Dns1).toString();
+    root["dns2"] = IPAddress(config.WiFi.Dns2).toString();
+    root["ssid"] = config.WiFi.Ssid;
+    root["password"] = config.WiFi.Password;
+    root["aptimeout"] = config.WiFi.ApTimeout;
+    root["mdnsenabled"] = config.Mdns.Enabled;
 
 #ifdef USE_ModbusDTU
-    root["froniussmmodbusenabled"] = Configuration.get().Modbus.Fronius_SM_Simulation_Enabled;
-#else
-    root["froniussmmodbusenabled"] = false;
+    root["modbus_tcp_enabled"] = config.Modbus.modbus_tcp_enabled;
+    root["modbus_delaystart"] = config.Modbus.modbus_delaystart;
+    root["mfrname"] = config.Modbus.mfrname;
+    root["modelname"] = config.Modbus.modelname;
+    root["options"] = config.Modbus.options;
+    root["version"] = config.Modbus.version;
+    root["serial"] = config.Modbus.serial;
 #endif
 
     WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
@@ -207,7 +211,13 @@ void WebApiNetworkClass::onNetworkAdminPost(AsyncWebServerRequest* request)
 
 #ifdef USE_ModbusDTU
     Modbus_CONFIG_T& cModbus = Configuration.get().Modbus;
-    cModbus.Fronius_SM_Simulation_Enabled = root["froniussmmodbusenabled"].as<bool>();
+    cModbus.modbus_tcp_enabled = root["modbus_tcp_enabled"].as<bool>();
+    cModbus.modbus_delaystart = root["modbus_delaystart"].as<bool>();
+    strlcpy(cModbus.mfrname, root["mfrname"].as<String>().c_str(), sizeof(cModbus.mfrname));
+    strlcpy(cModbus.modelname, root["modelname"].as<String>().c_str(), sizeof(cModbus.modelname));
+    strlcpy(cModbus.options, root["options"].as<String>().c_str(), sizeof(cModbus.options));
+    strlcpy(cModbus.version, root["version"].as<String>().c_str(), sizeof(cModbus.version));
+    strlcpy(cModbus.serial, root["serial"].as<String>().c_str(), sizeof(cModbus.serial));
 #endif
 
     WebApi.writeConfig(retMsg);

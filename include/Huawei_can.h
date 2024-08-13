@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-#ifdef CHARGER_HUAWEI
-
 #pragma once
 
+#ifdef USE_CHARGER_HUAWEI
+
 #include <cstdint>
+#include <driver/twai.h>
 #include "SPI.h"
 #include <mcp_can.h>
+#include <Longan_I2C_CAN_Arduino.h>
 #include <mutex>
 #include <TaskSchedulerDeclarations.h>
 
@@ -93,42 +95,56 @@ typedef struct RectifierParameters {
 
 class HuaweiCanCommClass {
 public:
-    bool init(uint8_t huawei_miso, uint8_t huawei_mosi, uint8_t huawei_clk,
-            uint8_t huawei_irq, uint8_t huawei_cs, uint32_t frequency);
+    bool init();
     void loop();
     bool gotNewRxDataFrame(bool clear);
     uint8_t  getErrorCode(bool clear);
     uint32_t getParameterValue(uint8_t parameter);
     void setParameterValue(uint16_t in, uint8_t parameterType);
 
+    bool isMCP2515Provider() { return _provider == CAN_Provider_t::MCP2515; }
+
 private:
     void sendRequest();
+    byte sendMsgBuf(uint32_t identifier, uint8_t extd, uint8_t len, uint8_t *data);
+    bool enable(void);
 
+    twai_general_config_t g_config;
     SPIClass *SPI;
     MCP_CAN  *_CAN;
-    uint8_t  _huaweiIrq;                         // IRQ pin
-    uint32_t _nextRequestMillis = 0;              // When to send next data request to PSU 
+    I2C_CAN  *i2c_can;
+    uint8_t  _mcp2515Irq;                         // IRQ pin
+    uint32_t _nextRequestMillis = 0;              // When to send next data request to PSU
+
+    enum class CAN_Provider_t {
+        UNDEFINED=0,
+        CAN0=1,
+        I2C=2,
+        MCP2515=3
+    };
+    CAN_Provider_t _provider = CAN_Provider_t::UNDEFINED;
 
     std::mutex _mutex;
 
     uint32_t _recValues[12];
     uint16_t _txValues[5];
     bool     _hasNewTxValue[5];
-    
+
     uint8_t _errorCode;
     bool _completeUpdateReceived;
 };
 
 class HuaweiCanClass {
 public:
-    void init(Scheduler& scheduler, uint8_t huawei_miso, uint8_t huawei_mosi, uint8_t huawei_clk, uint8_t huawei_irq, uint8_t huawei_cs, uint8_t huawei_power);
-    void updateSettings(uint8_t huawei_miso, uint8_t huawei_mosi, uint8_t huawei_clk, uint8_t huawei_irq, uint8_t huawei_cs, uint8_t huawei_power);
+    void init(Scheduler& scheduler);
+    void updateSettings();
     void setValue(float in, uint8_t parameterType);
     void setMode(uint8_t mode);
 
     RectifierParameters_t * get();
     uint32_t getLastUpdate();
-    bool getAutoPowerStatus();
+    bool getAutoPowerStatus() const { return _autoPowerEnabled; };
+    uint8_t getMode() const { return _mode; };
 
 private:
     void loop();
@@ -139,7 +155,7 @@ private:
 
     TaskHandle_t _HuaweiCanCommunicationTaskHdl = NULL;
     bool    _initialized = false;
-    uint8_t _huaweiPower;           // Power pin
+    int8_t _huaweiPower;           // Power pin
     uint8_t _mode = HUAWEI_MODE_AUTO_EXT;
 
     RectifierParameters_t _rp;
@@ -152,6 +168,9 @@ private:
 
     uint8_t _autoPowerEnabledCounter = 0;
     bool _autoPowerEnabled = false;
+    bool _batteryEmergencyCharging = false;
+
+    bool _verboseLogging = false;
 };
 
 extern HuaweiCanClass HuaweiCan;

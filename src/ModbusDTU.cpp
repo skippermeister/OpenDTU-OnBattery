@@ -20,16 +20,15 @@ void ModbusDtuClass::init(Scheduler& scheduler)
 
     scheduler.addTask(_loopTask);
     _loopTask.enable();
-
     scheduler.addTask(_modbusTask);
-    _modbusTask.enable();
 
     MessageOutput.println("done");
 }
 
+
 void ModbusDtuClass::modbus()
 {
-    if (_isstarted) mb.task();
+    mb.task();
 }
 
 void ModbusDtuClass::setup()
@@ -40,7 +39,7 @@ void ModbusDtuClass::setup()
 #ifdef SIMULATE_HOYMILES_DTU
         MessageOutput.printf("Hoymiles DTU Simulation: need a DTU Serial between 100000000000 and 199999999999 (currently configured: %llx)\r\n", Configuration.get().Dtu.Serial);
 #else
-        MessageOutput.printf("Fronius SM Simulation: need a DTU Serial between 100000000000 and 199999999999 (currently configured: %llx)\r\n", Configuration.get().Dtu.Serial);
+        MessageOutput.printf("Modbus: need a DTU Serial between 100000000000 and 199999999999 (currently configured: %llx)\r\n", Configuration.get().Dtu.Serial);
 #endif
         _isstarted = false;
         return;
@@ -87,55 +86,32 @@ void ModbusDtuClass::setup()
     mb.addHreg(40001, 0x6E53); // 0x6E53 nS
     mb.addHreg(40002, 1); // indetifies this as a SunSpec common model block
     mb.addHreg(40003, 65); // length of common model block
-    addHString(40004, "Fronius", 16); // Manufacturer start
-    addHString(40020, "Smart Meter TS 65A-3", 16); // Device Model start
-    addHString(40036, "<primary>", 8); // Options start
-    addHString(40044, "1.3", 8); // Software Version start
-    char buff[24];
-    snprintf(buff,sizeof(buff),"%llx",(Configuration.get().Dtu.Serial));
-    MessageOutput.printf("Fronius SM Simulation: init uses DTU Serial: %llx\r\n", Configuration.get().Dtu.Serial);
-    addHString(40052, buff, 16); // Serial Number start
-    mb.addHreg(40068, 202); // Modbus TCP Address: 202
-
-    uint8_t offset = 40069;
-    for (uint8_t i = 0; i < Hoymiles.getNumInverters(); i++) {
-        auto inv = Hoymiles.getInverterByPos(i);
-        if (inv == nullptr) {
-            continue;
+    addHString(40004, Configuration.get().modbus.mfrname, 16); // Manufacturer start
+    addHString(40020, Configuration.get().modbus.modelname, 16); // Device Model start
+    addHString(40036, Configuration.get().modbus.options, 8); // Options start
+    addHString(40044, Configuration.get().modbus.version, 8); // Software Version start
+    const char *serialconfig = Configuration.get().modbus.serial;
+    if (!strlen(serialconfig)) {
+        char serial[24];
+        snprintf(serial,sizeof(serial),"%llx",(Configuration.get().Dtu.Serial));
+        MessageOutput.printf("Modbus: init uses DTU Serial: %s\r\n", serial);
+        addHString(40052, buff, 6); // Serial Number start
+        mb.addHreg(40058, 0, 10);
+    } else {
+        for (uint8_t i = 0; i < 32; i += 2) {
+            uint16_t value = 0;
+            if (strlen(serialconfig) > i) value = (serialconfig[i] << 8) | (i + 1 < strlen(serialconfig) ? serialconfig[i + 1] : 0);
+            mb.addHreg(40052 + (i / 2), value); //40052 - 40067 Serial Number
+            // MessageOutput.printf("Modbus: write %d to register %d\r\n", value, (40052 + (i / 2)));
         }
-        uint64_t serialInv = inv->serial();
-
-        mb.addHreg(offset, 111);
-        mb.addHreg(offset + 1, 60);
-        mb.addHreg(offset + 2, 0, 58);
-        offset += 60;
-
-        uint8_t MPPT_offset = offset;
-        mb.addHreg(offset, 160);
-        mb.addHreg(offset + 1, 0, 7);
-        offset += 8;
-
-        uint8_t channel = 0;
-        for (auto& t : inv->Statistics()->getChannelTypes()) {
-            for (auto& c : inv->Statistics()->getChannelsByType(t)) {
-                if (t == TYPE_DC) {
-                    mb.addHreg(offset, ++channel);
-                    char buf[16];
-                    memset(buf, 0, sizeof(buf);
-                    snprintf(buf, sizeof(buf), "String %d", channel);
-                    addHString(offset + 1, buf, 8);
-                    mb.addHreg(offset + 9, 0, 11);
-                    offset += 20;
-                }
-            }
-        }
-        mb.Hreg(MPPToffset + 1, channel * 20 + 8); // Length of Multiple MPPT Inverter extension model
-        mb.Hreg(MPPToffset + 7, channel); // number of channels
     }
 
-    mb.addHreg(offset++, 0xFFFF); // 40432 end block identifier
-    mb.addHreg(offset, 0); // 40433
-
+    mb.addHreg(40068, 202); // Modbus TCP Address: 202
+    mb.addHreg(40069, 213);   //40069 SunSpec_DID
+    mb.addHreg(40070, 124);   //40070 SunSpec_Length
+    mb.addHreg(40071, 0, 123);//40071 - 40194 smartmeter data
+    mb.addHreg(40195, 65535); //40195 end block identifier
+    mb.addHreg(40196, 0);     //40196
 #endif
 
     _isstarted = true;
@@ -147,7 +123,7 @@ void ModbusDtuClass::loop()
 {
     _loopTask.setInterval(Configuration.get().Dtu.PollInterval * TASK_SECOND);
 
-    if (!(Configuration.get().Modbus.Fronius_SM_Simulation_Enabled)) return;
+    if (!(Configuration.get().Modbus.modbus_tcp_enabled)) return;
 
     if (!Hoymiles.isAllRadioIdle()) {
          _loopTask.forceNextIteration();
@@ -155,16 +131,16 @@ void ModbusDtuClass::loop()
     }
 
     if (!_isstarted) {
-        if (Datastore.getIsAllEnabledReachable() && Datastore.getTotalAcYieldTotalEnabled() != 0) {
+        if (!Configuration.get().modbus.modbus_delaystart ||
+            (Datastore.getIsAllEnabledReachable() && Datastore.getTotalAcYieldTotalEnabled() != 0))
+        {
+            MessageOutput.printf("Modbus: starting server ...\r\n");
             ModbusDtu.setup();
+            _modbusTask.enable();
         } else {
-            MessageOutput.printf("Fronius SM Simulation: not initializing yet! (Total Yield = 0 or not all configured inverters reachable).\r\n");
+            MessageOutput.printf("Modbus: not initializing yet! (Total Yield = 0 or not all configured inverters reachable)\r\n");
             return;
         }
-    }
-
-    if (!Hoymiles.isAllRadioIdle()) {
-        return;
     }
 
 #ifdef SIMULATE_HOYMILES_DTU
@@ -215,66 +191,57 @@ void ModbusDtuClass::loop()
         }
         invNumb++;
     }
-
 #else
-    // Fronius
-    if (!(Datastore.getIsAllEnabledReachable()) || !(Datastore.getTotalAcYieldTotalEnabled() != 0) || (!_isstarted)) {
-        MessageOutput.printf("Fronius SM Simulation: not updating registers! (Total Yield = 0 or not all configured inverters reachable).\r\n");
+    if (!(Datastore.getIsAllEnabledReachable()) || !(Datastore.getTotalAcYieldTotalEnabled() != 0) || (!_isstarted) || !(Configuration.get().modbus.modbus_delaystart)) {
+        MessageOutput.printf("Modbus: not updating registers! (Total Yield = 0 or not all configured inverters reachable)\r\n");
         return;
     } else {
-        setHRegs(40091, Datastore.getTotalAcPowerEnabled() * -1);
+        setHRegs(40097, Datastore.getTotalAcPowerEnabled() * -1);
         float value = (Datastore.getTotalAcYieldTotalEnabled() * 1000);
         if (value > _lasttotal) {
             _lasttotal = value;
-            setHRegs(40101, value);
+            setHRegs(40129, value);
         }
-        /*
+
         if (Hoymiles.getNumInverters() == 1) {
             auto inv = Hoymiles.getInverterByPos(0);
             if (inv != nullptr) {
                 for (auto& t : inv->Statistics()->getChannelTypes()) {
                     if (t == TYPE_DC) {
                         setHregs(40071, inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_IAC));
-                        setHregs(40073, inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_IAC_1));
+                        setHregs(40073, inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_IAC_1) != 0 ? inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_IAC_1) : inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_IAC));
                         setHRegs(40075, inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_IAC_2));
                         setHRegs(40077, inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_IAC_3));
-                        setHRegs(40079, inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_UAC_12));
-                        setHRegs(40081, inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_UAC_23));
-                        setHRegs(40083, inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_UAC_31));
-                        setHRegs(40085, inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_UAC_1N));
-                        setHRegs(40087, inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_UAC_2N));
-                        setHRegs(40089, inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_UAC_3N));
-                        setHRegs(40091, inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_PAC));
-                        setHRegs(40093, inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_F));
-                        setHRegs(40095, inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_Q)*inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_PF));  // reactive power
-                        setHRegs(40097, inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_Q));  // apparent power
-                        setHRegs(40099, inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_PF)); // Power Factor
-                        setHRegs(40101, inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_YT)*1000.0);  // AC Lifetime Energy Production
-                        //setHRegs(40103, inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_IDC) * inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_UAC_2N) * -1);
-                        //setHRegs(40105, inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_UDC) * inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_UAC_2N) * -1);
-                        setHRegs(40107, inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_PDC));
-                        setHRegs(40109, inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_T));
-                        // setHRegs(40111, 0.0); // Collant or Heat Sink Temperature
-                        // setHRegs(40113, 0.0); // Transformer Temperature
-                        // setHRegs(40115, 0.0); // other Temperature
-                        // setHRegs(40123, 0.0);
-                        // setHRegs(40125, 0.0);
-                        // setHRegs(40127, 0.0);
-                        float value = (inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_YT)*1000);
-                        if (value != 0){
-                            setHRegs(40129, value);
-                        }
+                        setHRegs(40079, inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_UAC_1N));
+                        setHRegs(40081, inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_UAC_1N) != 0 ? inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_UAC_1N) : inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_UAC));
+                        setHRegs(40083, inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_UAC_2N));
+                        setHRegs(40085, inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_UAC_3N));
+                        setHRegs(40087, inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_UAC));
+                        setHRegs(40089, inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_UAC_12));
+                        setHRegs(40091, inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_UAC_23));
+                        setHRegs(40093, inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_UAC_31));
+                        setHRegs(40095, inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_F));
+                        //setHRegs(40097, inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_PAC)*-1); //done above already!
+                        setHRegs(40099, inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_IAC_1) != 0 ?
+                                        inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_IAC_1) * inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_UAC_1N) * -1 :
+                                        inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_IAC) * inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_UAC) * -1;
+                        setHRegs(40101, inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_IAC_2) * inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_UAC_2N) * -1);
+                        setHRegs(40103, inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_IAC_3) * inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_UAC_3N) * -1);
+
+                        setHRegs(40113, inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_Q));  // apparent power
+
+                        setHRegs(40121, inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_PF)); // Power Factor
+
+                        //value = inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_YT)*1000.0;  // AC Lifetime Energy Production
+                        //if (value > _lastttotal) {
+                        //    _lasttotal = value;
+                        //    setHRegs(40129, value);
+                        //}
                     }
                 }
             }
-        } else {
-            setHRegs(40091, Datastore.getTotalAcPowerEnabled() * -1);
-            float value = (Datastore.getTotalAcYieldTotalEnabled() * 1000);
-            if (value > _lasttotal && Datastore.getIsAllEnabledReachable()) {
-                _lasttotal = value;
-                setHRegs(40101, value);
-            }
-        }*/
+            // MessageOutput.printf("Modbus: End additional SM Information\r\n");
+        }
     }
 #endif
 }

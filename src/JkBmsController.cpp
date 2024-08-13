@@ -22,10 +22,10 @@ bool Controller::init()
     if (Interface::Transceiver != getInterface()) { ifcType = "TTL-UART"; }
     MessageOutput.printf("%s Initialize %s interface... ", TAG, ifcType.c_str());
 
-    const PinMapping_t& pin = PinMapping.get();
-    MessageOutput.printf("%s rx = %d, tx = %d, rts = %d\r\n", TAG, pin.battery_rx, pin.battery_tx, pin.battery_rts);
+    auto const &pin = PinMapping.get().battery;
+    MessageOutput.printf("%s rx = %d, tx = %d, rts = %d\r\n", TAG, pin.rs485.rx, pin.rs485.tx, pin.rs485.rts);
 
-    if (pin.battery_rx < 0 || pin.battery_tx < 0) {
+    if (!PinMapping.isValidBatteryConfig()) {
         MessageOutput.printf("%s Invalid RX/TX pin config\r\n", TAG);
         return false;
     }
@@ -39,19 +39,19 @@ bool Controller::init()
     _upSerial = std::make_unique<HardwareSerial>(*oHwSerialPort);
 #endif
 
-    _upSerial->begin(115200, SERIAL_8N1, pin.battery_rx, pin.battery_tx);
+    _upSerial->begin(115200, SERIAL_8N1, pin.rs485.rx, pin.rs485.tx);
     _upSerial->flush();
 
     if (Interface::Transceiver != getInterface()) {
         return true;
     }
 
-    if (pin.battery_rts < 0) {
+    if (pin.rs485.rts < 0) {
         MessageOutput.printf("%s Invalid transceiver pin config\r\n", TAG);
         return false;
     }
 
-    _upSerial->setPins(pin.battery_rx, pin.battery_tx, UART_PIN_NO_CHANGE, pin.battery_rts);
+    _upSerial->setPins(pin.rs485.rx, pin.rs485.tx, UART_PIN_NO_CHANGE, pin.rs485.rts);
 #ifndef JKBMS_DUMMY_SERIAL
     ESP_ERROR_CHECK(uart_set_mode(*oHwSerialPort, UART_MODE_RS485_HALF_DUPLEX));
 #endif
@@ -65,7 +65,8 @@ void Controller::deinit()
 {
     _upSerial->end();
 
-    if (PinMapping.get().battery_rts >= 0) { pinMode(PinMapping.get().battery_rts, INPUT); }
+    const auto &pin = PinMapping.get().battery;
+    if (pin.provider == Battery_Provider_t::RS485 && pin.rs485.rts >= 0) { pinMode(pin.rs485.rts, INPUT); }
 
     SerialPortManager.freePort(_serialPortOwner);
 
