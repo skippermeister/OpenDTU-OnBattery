@@ -130,6 +130,15 @@
                 </div>
             </CardElement>
 
+            <CardElement :text="$t('powerlimiteradmin.SurplusPower')" textVariant="text-bg-primary" add-space
+                v-if="'surplus_power_enabled' in powerLimiterConfigList && canUseSurplusPower()">
+                <div class="alert alert-secondary" role="alert" v-html="$t('powerlimiteradmin.SurplusPowerInfo')">
+                </div>
+
+                <InputElement :label="$t('powerlimiteradmin.EnableSurplusPower')"
+                    v-model="powerLimiterConfigList.surplus_power_enabled" type="checkbox" wide4_1 />
+            </CardElement>
+
             <CardElement :text="$t('powerlimiteradmin.SolarPassthrough')" textVariant="text-bg-primary" add-space
                 v-if="canUseSolarPassthrough()">
                 <div class="alert alert-secondary" role="alert" v-html="$t('powerlimiteradmin.SolarpassthroughInfo')">
@@ -317,6 +326,12 @@ export default defineComponent({
         canUseOverscaling() {
             const cfg = this.powerLimiterConfigList;
             return cfg.is_inverter_solar_powered;
+        },
+        canUseSurplusPower() {
+            const cfg = this.powerLimiterConfigList;
+            const meta = this.powerLimiterMetaData;
+            const canUse = this.isEnabled() && meta.charge_controller_enabled && !cfg.is_inverter_solar_powered;
+            return canUse;
         },
         canUseSolarPassthrough() {
             const cfg = this.powerLimiterConfigList;

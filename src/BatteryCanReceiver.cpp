@@ -9,37 +9,33 @@
 
 bool BatteryCanReceiver::init(char const* providerName)
 {
-    const char* help[7] = {"unknown", "CAN0", "MCP2515", "I2C0", "I2C1", "RS232", "RS485"};
-    static char helperString[32];
-    snprintf(helperString, 31, "[%s %s]", providerName, help[(int)PinMapping.get().battery.provider]);
-    _providerName = helperString;
+    snprintf(_providerName, 31, "[%s %s]", providerName, PinMapping.get().battery.providerName);
 
     MessageOutput.printf("%s Initialize interface...", _providerName);
+
+    if (PinMapping.isValidBatteryConfig()) {
+        MessageOutput.println(" Invalid pin config");
+        return false;
+    }
 
     const auto &pin = PinMapping.get().battery;
 
     if (pin.provider == Battery_Provider_t::MCP2515)
     {
-        MessageOutput.printf(" clk = %d, miso = %d, mosi = %d, cs = %d, irq = %d",
+        MessageOutput.printf(" clk = %d, miso = %d, mosi = %d, cs = %d, irq = %d\r\n",
             pin.mcp2515.clk, pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.cs, pin.mcp2515.irq);
-
-        if (pin.mcp2515.clk < 0 || pin.mcp2515.miso < 0 || pin.mcp2515.mosi < 0 || pin.mcp2515.cs < 0 || pin.mcp2515.irq < 0) {
-            MessageOutput.println(", Invalid pin config");
-            return false;
-        }
-
-        _mcp2515_irq = pin.mcp2515.irq;
 
         auto oSPInum = SPIPortManager.allocatePort("MCP2515");
         if (!oSPInum) { return false; }
-        MessageOutput.printf(", init SPI... ");
+        MessageOutput.printf("Init SPI... ");
         SPI = new SPIClass(*oSPInum);
         SPI->begin(pin.mcp2515.clk, pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.cs);
-        MessageOutput.printf("done");
+        MessageOutput.println("done.");
 
         pinMode(pin.mcp2515.cs, OUTPUT);
         digitalWrite(pin.mcp2515.cs, HIGH);
 
+        _mcp2515_irq = pin.mcp2515.irq;
         pinMode(_mcp2515_irq, INPUT_PULLUP);
 
         auto frequency = Configuration.get().MCP2515.Controller_Frequency;
@@ -47,19 +43,17 @@ bool BatteryCanReceiver::init(char const* providerName)
         if (16000000UL == frequency) { mcp_frequency = MCP_16MHZ; }
         else if (20000000UL == frequency) { mcp_frequency = MCP_20MHZ; }
         else if (8000000UL != frequency) {
-            MessageOutput.printf("%s unknown frequency %u Hz, using 8 MHz\r\n", _providerName, frequency);
-            //SPI->end();
-            return false;
+            MessageOutput.printf("Unknown frequency %u Hz, using 8 MHz\r\n", frequency);
         }
-        MessageOutput.printf(", MCP2515 Quarz = %u Mhz", (unsigned int)(frequency/1000000UL));
+        MessageOutput.printf("MCP2515 Quarz = %u Mhz\r\n", (unsigned int)(frequency/1000000UL));
 
         if (!_CAN) {
             MessageOutput.printf(", init MCP_CAN... ");
             _CAN = new MCP_CAN(SPI, pin.mcp2515.cs);
-            MessageOutput.printf("done");
+            MessageOutput.println("done.");
         }
         if (!_CAN->begin(MCP_STDEXT, CAN_500KBPS, mcp_frequency) == CAN_OK) {
-            MessageOutput.println(", MCP2515 chip not initialized");
+            MessageOutput.println("MCP2515 chip not initialized");
             //SPI->end();
             return false;
         }
@@ -76,51 +70,80 @@ bool BatteryCanReceiver::init(char const* providerName)
 
     } else if (pin.provider == Battery_Provider_t::CAN0) {
 
-        MessageOutput.printf(" rx = %d, tx = %d", pin.can0.rx, pin.can0.tx);
-
-        if (PinMapping.isValidBatteryConfig()) {
-            MessageOutput.println(" Invalid pin config");
-            return false;
-        }
+        MessageOutput.printf(" rx = %d, tx = %d\r\n", pin.can0.rx, pin.can0.tx);
 
         auto tx = static_cast<gpio_num_t>(pin.can0.tx);
         auto rx = static_cast<gpio_num_t>(pin.can0.rx);
         twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(tx, rx, TWAI_MODE_NORMAL);
+        // g_config.bus_off_io = (gpio_num_t)can0_stb;
+        g_config.intr_flags = ESP_INTR_FLAG_LEVEL2;
 
         // Initialize configuration structures using macro initializers
         twai_timing_config_t t_config = TWAI_TIMING_CONFIG_500KBITS();
         twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
 
         // Install TWAI driver
+        MessageOutput.print("Twai driver install");
         esp_err_t twaiLastResult = twai_driver_install(&g_config, &t_config, &f_config);
         switch (twaiLastResult) {
             case ESP_OK:
-                MessageOutput.print(" Twai driver installed");
+                MessageOutput.print("ed");
                 break;
             case ESP_ERR_INVALID_ARG:
-                MessageOutput.println(" Twai driver install - invalid arg");
+                MessageOutput.println(" - invalid arg");
                 return false;
             case ESP_ERR_NO_MEM:
-                MessageOutput.println(" Twai driver install - no memory");
+                MessageOutput.println(" - no memory");
                 return false;
             case ESP_ERR_INVALID_STATE:
-                MessageOutput.println(" Twai driver install - invalid state");
+                MessageOutput.println(" - invalid state");
+                return false;
+            default:;
+                MessageOutput.println(" failed.");
                 return false;
         }
 
         // Start TWAI driver
+        MessageOutput.print(", start");
         twaiLastResult = twai_start();
         switch (twaiLastResult) {
             case ESP_OK:
-                MessageOutput.print(" and started");
+                MessageOutput.print("ed");
                 break;
             case ESP_ERR_INVALID_STATE:
-                MessageOutput.println(" Twai driver start - invalid state");
+                MessageOutput.println(" - invalid state.");
+                return false;
+            default:;
+                MessageOutput.println(" - failed.");
                 return false;
         }
+
     } else if (pin.provider == Battery_Provider_t::I2C0 || pin.provider == Battery_Provider_t::I2C1) {
-        MessageOutput.println(" I2C CAN Bus Provider not yet implemented");
-        return false;
+
+        auto scl = pin.provider == Battery_Provider_t::I2C0?pin.i2c0.scl:pin.i2c1.scl;
+        auto sda = pin.provider == Battery_Provider_t::I2C1?pin.i2c0.sda:pin.i2c1.sda;
+
+        MessageOutput.printf("I2C CAN Bus @ I2C%d scl = %d, sda = %d\r\n", pin.i2c0.scl>=0?0:1, scl, sda);
+
+        i2c_can = new I2C_CAN(pin.provider == Battery_Provider_t::I2C0?&Wire:&Wire1, 0x25, scl, sda, 400000UL);     // Set I2C Address
+
+        int i = 10;
+        while (CAN_OK != i2c_can->begin(I2C_CAN_500KBPS))    // init can bus : baudrate = 500k
+        {
+            delay(200);
+            if (--i) continue;
+
+            MessageOutput.println("CAN Bus FAIL!");
+            return false;
+        }
+/*
+        const uint32_t myMask = 0xFFFFFFFF;         // Look at all incoming bits and...
+        const uint32_t myFilter = 0x1081407F;       // filter for this message only
+        i2c_can->init_Mask(0, 1, myMask);
+        i2c_can->init_Filt(0, 1, myFilter);
+        i2c_can->init_Mask(1, 1, myMask);
+*/
+        MessageOutput.println("I2C CAN Bus OK!");
     }
 
     MessageOutput.println(" Done");
@@ -154,7 +177,7 @@ void BatteryCanReceiver::deinit()
                 MessageOutput.printf("stopped");
                 break;
             case ESP_ERR_INVALID_STATE:
-                MessageOutput.printf(" - invalid state");
+                MessageOutput.print(" - invalid state");
                 break;
         }
 
@@ -162,14 +185,13 @@ void BatteryCanReceiver::deinit()
         twaiLastResult = twai_driver_uninstall();
         switch (twaiLastResult) {
             case ESP_OK:
-                MessageOutput.print(" uninstalled");
+                MessageOutput.print(" and uninstalled");
                 break;
             case ESP_ERR_INVALID_STATE:
-                MessageOutput.print(" uninstall - invalid state");
-                break;
+                MessageOutput.print(", uninstall - invalid state");
         }
+    } else if (pin.provider == Battery_Provider_t::I2C0 || pin.provider == Battery_Provider_t::I2C1){
     }
-
     MessageOutput.println();
 
     _initialized = false;
@@ -177,66 +199,84 @@ void BatteryCanReceiver::deinit()
 
 void BatteryCanReceiver::loop()
 {
-    const auto pin = PinMapping.get().battery;
+    const auto _provider = PinMapping.get().battery.provider;
 
     twai_message_t rx_message;
 
-    if (pin.provider == Battery_Provider_t::MCP2515)
+    if (_provider == Battery_Provider_t::MCP2515)
     {
-        if(!digitalRead(_mcp2515_irq))                         // If CAN0_INT pin is low, read receive buffer
+        if(digitalRead(_mcp2515_irq))                         // If CAN0_INT pin is low, read receive buffer
         {
-            _CAN->readMsgBuf(&rx_message.identifier, &rx_message.data_length_code, rx_message.data);      // Read data: len = data length, buf = data byte(s)
+            return;
+        }
 
+        _CAN->readMsgBuf(&rx_message.identifier, &rx_message.data_length_code, rx_message.data);      // Read data: len = data length, buf = data byte(s)
+
+        if (_verboseLogging) {
             if((rx_message.identifier & 0x80000000) == 0x80000000)     // Determine if ID is standard (11 bits) or extended (29 bits)
                 MessageOutput.printf("Extended ID: 0x%.8" PRIx32 " DLC: %1d  Data:", rx_message.identifier & 0x1FFFFFFF, rx_message.data_length_code);
             else
                 MessageOutput.printf("Standard ID: 0x%.3" PRIx32 " DLC: %1d  Data:", rx_message.identifier, rx_message.data_length_code);
+        }
 
-            if((rx_message.identifier & 0x40000000) == 0x40000000){    // Determine if message is a remote request frame.
-                MessageOutput.printf(" REMOTE REQUEST FRAME %s\r\n", rx_message.data);
-            } else {
-
-                if (_verboseLogging) {
-                    MessageOutput.printf("%s Received CAN message: 0x%04X -", _providerName, rx_message.identifier);
-
-                    for (int i = 0; i < rx_message.data_length_code; i++) {
-                        MessageOutput.printf(" %02X", rx_message.data[i]);
-                    }
-
-                    MessageOutput.printf("\r\n");
-                }
-
-                onMessage(rx_message);
-            }
+        if ((rx_message.identifier & 0x40000000) == 0x40000000){    // Determine if message is a remote request frame.
+            MessageOutput.printf(" REMOTE REQUEST FRAME %s\r\n", rx_message.data);
             return;
         }
 
-    } else if (pin.provider == Battery_Provider_t::CAN0) {
+    } else if (_provider == Battery_Provider_t::CAN0) {
 
         // Check for messages. twai_receive is blocking when there is no data so we return if there are no frames in the buffer
         twai_status_info_t status_info;
         esp_err_t twaiLastResult = twai_get_status_info(&status_info);
         if (twaiLastResult != ESP_OK) {
+            MessageOutput.printf("%s Twai driver get status ", _providerName);
             switch (twaiLastResult) {
             case ESP_ERR_INVALID_ARG:
-                MessageOutput.printf("%s Twai driver get status - invalid arg\r\n", _providerName);
+                MessageOutput.println("- invalid arg");
                 break;
             case ESP_ERR_INVALID_STATE:
-                MessageOutput.printf("%s Twai driver get status - invalid state\r\n", _providerName);
+                MessageOutput.println("- invalid state");
                 break;
+            default:;
+                MessageOutput.println("- failure");
             }
             return;
         }
+
         if (status_info.msgs_to_rx == 0) {
             return;
         }
 
         // Wait for message to be received, function is blocking
-        twai_message_t rx_message;
         if (twai_receive(&rx_message, pdMS_TO_TICKS(100)) != ESP_OK) {
             MessageOutput.printf("%s Failed to receive message\r\n", _providerName);
             return;
         }
+
+    } else if (_provider == Battery_Provider_t::I2C0 || _provider == Battery_Provider_t::I2C1) {
+
+        if (CAN_MSGAVAIL != i2c_can->checkReceive()) {
+            return;
+        }
+
+        if (CAN_OK != i2c_can->readMsgBuf(&rx_message.data_length_code, rx_message.data)) {    // read data,  len: data length, buf: data buf
+            MessageOutput.println("I2C CAN nothing received");
+            return;
+        }
+
+        if (rx_message.data_length_code > 8) {
+            MessageOutput.printf("I2C CAN received %d bytes\r\n", rx_message.data_length_code);
+            return;
+        }
+
+        if (rx_message.data_length_code == 0) {
+            return;
+        }
+
+        rx_message.identifier = i2c_can->getCanId();
+        rx_message.extd = i2c_can->isExtendedFrame();
+        rx_message.rtr = i2c_can->isRemoteRequest();
     }
 
     if (_verboseLogging) {

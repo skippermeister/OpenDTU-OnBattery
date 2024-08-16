@@ -1,6 +1,7 @@
 export interface AcChargerConfig {
   enabled: boolean;
   verbose_logging: boolean;
+  io_providername: string;
   can_controller_frequency: number;
   pollinterval: number;
   updatesonly: boolean;

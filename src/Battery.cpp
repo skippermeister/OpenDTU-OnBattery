@@ -52,50 +52,81 @@ void BatteryClass::updateSettings()
         return;
     }
 
-    MessageOutput.println("Activate Battery provider");
+    MessageOutput.printf("Activate Battery provider using %s interface\r\n", PinMapping.get().battery.providerName);
 
+    Battery_Provider_t ioProvider = PinMapping.get().battery.provider;
     switch (cBattery.Provider) {
+#if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_PYLONTECH_CAN_RECEIVER)
+        case 0: // Initialize Pylontech Battery
+            switch (ioProvider) {
 #ifdef USE_PYLONTECH_RS485_RECEIVER
-        case 0: // Initialize Pylontech Battery / RS485 bus
-            _upProvider = std::make_unique<PylontechRS485Receiver>();
-            break;
+                case Battery_Provider_t::RS485:
+                    _upProvider = std::make_unique<PylontechRS485Receiver>();
+                    break;
 #endif
 #ifdef USE_PYLONTECH_CAN_RECEIVER
-        case 1: // Initialize Pylontech Battery / CAN0 bus
-        case 2: // Initialize Pylontech Battery / MCP2515 bus
-            _upProvider = std::make_unique<PylontechCanReceiver>();
+                case Battery_Provider_t::CAN0:
+                case Battery_Provider_t::MCP2515:
+                case Battery_Provider_t::I2C0:
+                case Battery_Provider_t::I2C1:
+                    _upProvider = std::make_unique<PylontechCanReceiver>();
+                    break;
+#endif
+                default:;
+            }
             break;
 #endif
+#if defined(USE_PYTES_CAN_RECEIVER) || defined(USE_PYTES_RS485_RECEIVER)
+        case 1: // Initialize Pytes Battery
+            switch (ioProvider) {
+#ifdef USE_PYTES_RS485_RECEIVER
+                case Battery_Provider_t::RS485:
+                    break;
+#endif
+#ifdef USE_PYTES_CAN_RECEIVER
+                case Battery_Provider_t::CAN0:
+                case Battery_Provider_t::MCP2515:
+                case Battery_Provider_t::I2C0:
+                case Battery_Provider_t::I2C1:
+                    _upProvider = std::make_unique<PytesCanReceiver>();
+                    break;
+#endif
+                default:;
+            }
+            break;
+#endif
+
 #ifdef USE_JKBMS_CONTROLLER
         case 3:
-            _upProvider = std::make_unique<JkBms::Controller>();
-            break;
-#endif
-#ifdef USE_VICTRON_SMART_SHUNT
-        case 4:
-            _upProvider = std::make_unique<VictronSmartShunt>();
+            if (ioProvider == Battery_Provider_t::RS232 || ioProvider == Battery_Provider_t::RS485)
+                _upProvider = std::make_unique<JkBms::Controller>();
             break;
 #endif
 #ifdef USE_DALYBMS_CONTROLLER
-        case 5:
-            _upProvider = std::make_unique<DalyBmsController>();
+        case 4:
+            if (ioProvider == Battery_Provider_t::RS232 || ioProvider == Battery_Provider_t::RS485)
+                _upProvider = std::make_unique<DalyBmsController>();
             break;
 #endif
 
+#ifdef USE_VICTRON_SMART_SHUNT
+        case 5:
+            if (ioProvider == Battery_Provider_t::RS232)
+                _upProvider = std::make_unique<VictronSmartShunt>();
+            break;
+#endif
 #ifdef USE_MQTT_BATTERY
         case 6:
             _upProvider = std::make_unique<MqttBattery>();
             break;
 #endif
-#ifdef USE_PYTES_CAN_RECEIVER
-        case 7: // Initialize Pylontech Battery / CAN0 bus
-        case 8: // Initialize Pylontech Battery / MCP2515 bus
-            _upProvider = std::make_unique<PytesCanReceiver>();
-            break;
-#endif
-        default:
-            MessageOutput.printf("Unknown battery provider: %d\r\n", cBattery.Provider);
-            return;
+        default:;
+    }
+
+    if (_upProvider == nullptr) {
+        MessageOutput.printf("Unknown battery provider: %d at interface %s\r\n",
+            cBattery.Provider, PinMapping.get().battery.providerName);
+        return;
     }
 
     _upProvider->_verboseLogging = Configuration.get().Battery.VerboseLogging;

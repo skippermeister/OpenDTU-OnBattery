@@ -28,8 +28,8 @@
             "rs232_tx3": -1
         },
         "battery": {
-            "rs232_tx": 47,
-            "rs232_rx": 45,
+            "rs232_tx": 45,
+            "rs232_rx": 47,
             "wakeup": 21
         },
         "charger": {
@@ -79,9 +79,9 @@
             "rs232_tx3": -1
         },
         "battery": {
-            "rs232_tx": 47,
-            "rs232_rx": 45,
-            "wakeup": 21
+            "rs485_tx": 45,
+            "rs485_rx": 47,
+            "rs485_rts": 21
         },
         "charger": {
             "can0_rx": 3,
@@ -130,15 +130,15 @@
             "rs232_tx3": -1
         },
         "battery": {
-            "rs485_tx": 47,
-            "rs485_rx": 45,
+            "rs485_tx": 45,
+            "rs485_rx": 47,
             "rs485_rts": 21
         },
         "charger": {
             "mcp2515_irq": 4,
             "mcp2515_clk": 5,
-            "mcp2515_miso": 6,
-            "mcp2515_mosi": 7,
+            "mcp2515_mosi": 6,
+            "mcp2515_miso": 7,
             "mcp2515_cs": 15,
             "power": 16
         },

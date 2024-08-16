@@ -71,6 +71,8 @@ public:
     std::vector<CountryFrequencyList_t> getCountryFrequencyList() const;
 
 private:
+//    void IRAM_ATTR handleInt1();
+//    void IRAM_ATTR handleInt2();
     void ARDUINO_ISR_ATTR handleInt1();
     void ARDUINO_ISR_ATTR handleInt2();
 

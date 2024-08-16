@@ -29,10 +29,9 @@
 #include <stdio.h>
 #include <string.h>
 
-#define LED_STRIP_TASK_SIZE (4096)
-#define LED_STRIP_TASK_PRIORITY (configMAX_PRIORITIES - 1)
+#define LED_STRIP_TASK_SIZE (2048)
 
-#define LED_STRIP_REFRESH_PERIOD_MS (30U) // TODO(skippermeister): add as parameter to led_strip_task
+#define LED_STRIP_REFRESH_PERIOD_MS (1000U) // TODO(skippermeister): add as parameter to led_strip_task
 
 #define LED_STRIP_NUM_RMT_ITEMS_PER_LED (24U) // Assumes 24 bit color for each led
 
@@ -59,7 +58,7 @@ void LedStripClass::init(Scheduler& scheduler)
 {
     MessageOutput.print("Initialize LED WS2812... ");
 
-    bool ledRGBActive = false;
+    cLed = Configuration.get().Led;
 
     turnAllOn();
 
@@ -72,12 +71,10 @@ void LedStripClass::init(Scheduler& scheduler)
 
     if (pin.led_rgb >= 0) {
         MessageOutput.printf("at Pin %d ...", pin.led_rgb);
-        ledRGBActive = true;
+
         _ledRGBState[0] = LedRGBState_t::OffN;
         _ledRGBState[1] = LedRGBState_t::OffI;
-    }
 
-    if (ledRGBActive) {
         // uint32_t b1[_numPixels];
         // buf1 = b1;
         buf1 = reinterpret_cast<uint32_t*>(malloc(sizeof(uint32_t) * _numPixels));
@@ -101,13 +98,12 @@ void LedStripClass::init(Scheduler& scheduler)
 
         xSemaphoreGive(access_semaphore);
 
-        BaseType_t task_created = xTaskCreatePinnedToCore(led_strip_task,
+        BaseType_t task_created = xTaskCreate(led_strip_task,
             "led_strip_task",
             LED_STRIP_TASK_SIZE,
             this,
-            +6, // LED_STRIP_TASK_PRIORITY,
-            &led_strip_task_handle,
-            1);
+            tskIDLE_PRIORITY,
+            &led_strip_task_handle);
 
         if (!task_created) {
             MessageOutput.println("error: creating LED Strip Task");
@@ -188,7 +184,6 @@ void LedStripClass::led_strip_task(void* arg)
 
     led_fill_rmt_items_fn led_make_waveform = NULL;
 
-    bool make_new_rmt_items = true;
     bool prev_showing_buf_1 = !strip->showingBuf1;
 
     size_t num_items_malloc = (LED_STRIP_NUM_RMT_ITEMS_PER_LED * strip->_numPixels);
@@ -220,22 +215,11 @@ void LedStripClass::led_strip_task(void* arg)
          * and now buf 1 is being shown, it should update the new rmt items array.
          * Otherwise, no need to update the array
          */
-        if ((prev_showing_buf_1 == true) && (strip->showingBuf1 == false)) {
-            make_new_rmt_items = true;
-        } else if ((prev_showing_buf_1 == false) && (strip->showingBuf1 == true)) {
-            make_new_rmt_items = true;
-        } else {
-            make_new_rmt_items = false;
-        }
-
-        if (make_new_rmt_items) {
-            if (strip->showingBuf1) {
-                led_make_waveform(strip->buf1, rmt_items, strip->_numPixels,
-                    strip->wOffset, strip->rOffset, strip->gOffset, strip->bOffset);
-            } else {
-                led_make_waveform(strip->buf2, rmt_items, strip->_numPixels,
-                    strip->wOffset, strip->rOffset, strip->gOffset, strip->bOffset);
-            }
+        if ((prev_showing_buf_1 == true && strip->showingBuf1 == false) ||
+            (prev_showing_buf_1 == false && strip->showingBuf1 == true))
+        {
+            led_make_waveform(strip->showingBuf1?strip->buf1:strip->buf2, rmt_items, strip->_numPixels,
+                strip->wOffset, strip->rOffset, strip->gOffset, strip->bOffset);
         }
 
         rmt_write_items((rmt_channel_t)strip->rmtChannel, rmt_items, num_items_malloc, false);
@@ -259,8 +243,7 @@ void LedStripClass::led_strip_fill_rmt_items_ws2812(uint32_t* led_strip_buf, rmt
         uint32_t led_color = led_strip_buf[led_index];
         uint8_t bytes[4] = { (uint8_t)((led_color & 0xff0000) >> 16), (uint8_t)((led_color & 0xff00) >> 8), (uint8_t)(led_color & 0xff), (uint8_t)((led_color & 0xff) >> 24) };
         for (uint8_t bit = 8; bit != 0; bit--) {
-            uint8_t bit_set = (bytes[wOffset] >> (bit - 1)) & 1;
-            if (bit_set) {
+            if ( (bytes[wOffset] >> (bit - 1)) & 1 ) {
                 LedStripClass::led_strip_rmt_bit_1_ws2812(&(rmt_items[rmt_items_index]));
             } else {
                 LedStripClass::led_strip_rmt_bit_0_ws2812(&(rmt_items[rmt_items_index]));
@@ -268,8 +251,7 @@ void LedStripClass::led_strip_fill_rmt_items_ws2812(uint32_t* led_strip_buf, rmt
             rmt_items_index++;
         }
         for (uint8_t bit = 8; bit != 0; bit--) {
-            uint8_t bit_set = (bytes[gOffset] >> (bit - 1)) & 1;
-            if (bit_set) {
+            if ( (bytes[gOffset] >> (bit - 1)) & 1 ) {
                 LedStripClass::led_strip_rmt_bit_1_ws2812(&(rmt_items[rmt_items_index]));
             } else {
                 LedStripClass::led_strip_rmt_bit_0_ws2812(&(rmt_items[rmt_items_index]));
@@ -277,8 +259,7 @@ void LedStripClass::led_strip_fill_rmt_items_ws2812(uint32_t* led_strip_buf, rmt
             rmt_items_index++;
         }
         for (uint8_t bit = 8; bit != 0; bit--) {
-            uint8_t bit_set = (bytes[bOffset] >> (bit - 1)) & 1;
-            if (bit_set) {
+            if ( (bytes[bOffset] >> (bit - 1)) & 1 ) {
                 led_strip_rmt_bit_1_ws2812(&(rmt_items[rmt_items_index]));
             } else {
                 led_strip_rmt_bit_0_ws2812(&(rmt_items[rmt_items_index]));
@@ -287,8 +268,7 @@ void LedStripClass::led_strip_fill_rmt_items_ws2812(uint32_t* led_strip_buf, rmt
         }
         if (wOffset != rOffset) {
             for (uint8_t bit = 8; bit != 0; bit--) {
-                uint8_t bit_set = (bytes[wOffset] >> (bit - 1)) & 1;
-                if (bit_set) {
+                if ( (bytes[wOffset] >> (bit - 1)) & 1 ) {
                     led_strip_rmt_bit_1_ws2812(&(rmt_items[rmt_items_index]));
                 } else {
                     led_strip_rmt_bit_0_ws2812(&(rmt_items[rmt_items_index]));
@@ -317,21 +297,13 @@ bool LedStripClass::setPixelColor(uint32_t pixel_num, uint32_t color)
  */
 bool LedStripClass::clear()
 {
-    bool success = true;
+    memset(showingBuf1?buf2:buf1, 0, sizeof(uint32_t) * _numPixels);
 
-    if (showingBuf1) {
-        memset(buf2, 0, sizeof(uint32_t) * _numPixels);
-    } else {
-        memset(buf1, 0, sizeof(uint32_t) * _numPixels);
-    }
-
-    return success;
+    return true;
 }
 
 bool LedStripClass::getPixelColor(uint32_t pixel_num, uint32_t color)
 {
-    bool get_success = true;
-
     if ((pixel_num > _numPixels) || (!color)) {
         color = 0;
         return false;
@@ -343,7 +315,7 @@ bool LedStripClass::getPixelColor(uint32_t pixel_num, uint32_t color)
         color = buf2[pixel_num];
     }
 
-    return get_success;
+    return true;
 }
 
 /*!
@@ -519,11 +491,11 @@ void LedStripClass::whiteOverRainbow(int whiteSpeed, int whiteLength)
     clock_t lastTime = millis();
     uint32_t firstPixelHue = 0;
 
-    const Led_Config_T *cLed = Configuration.get().Led;
     for (;;) { // Repeat forever (or until a 'break' or 'return')
         for (int i = 0; i < numPixels(); i++) { // For each pixel in ..
             if (((i >= tail) && (i <= head)) || //  If between head & tail...
-                ((tail > head) && ((i >= tail) || (i <= head)))) {
+                ((tail > head) && ((i >= tail) || (i <= head))))
+            {
                 setPixelColor(i, Color(0, 0, 0, 255, cLed[i].Brightness).value()); // Set white
             } else { // else set rainbow
                 int pixelHue = firstPixelHue + (i * 65536L / numPixels());
@@ -553,8 +525,6 @@ void LedStripClass::whiteOverRainbow(int whiteSpeed, int whiteLength)
 
 void LedStripClass::pulseWhite(uint8_t wait)
 {
-    const Led_Config_T *cLed = Configuration.get().Led;
-
     for (int j = 0; j < 256; j++) { // Ramp up from 0 to 255
         // Fill entire strip with white at gamma-corrected brightness level 'j':
         fill(Color(gamma8(j), gamma8(j), gamma8(j), 0, cLed[j].Brightness).value(), 0, 0);
@@ -608,7 +578,6 @@ void LedStripClass::rainbowFade2White(int wait, int rainbowLoops, int whiteLoops
         }
     }
 
-    const Led_Config_T *cLed = Configuration.get().Led;
     for (int k = 0; k < whiteLoops; k++) {
         for (int j = 0; j < 256; j++) { // Ramp up 0 to 255
             // Fill entire strip with white at gamma-corrected brightness level 'j':
@@ -697,8 +666,6 @@ void LedStripClass::loop()
     _ledRGBState[0] = LedRGBState_t::OffN;
     _ledRGBState[1] = LedRGBState_t::OffI;
 
-    const Led_Config_T *cLed = Configuration.get().Led;
-
     if (_allMode == LedRGBState_t::On) {
         const CONFIG_T& config = Configuration.get();
 
@@ -732,29 +699,25 @@ void LedStripClass::loop()
                 break;
             case LedRGBState_t::OnN:
                 colorWipe(Color(0, 0, 255, 0, cLed[i].Brightness).value(), 1000, i); // BLUE: Network is On
-//                colorWipe(Color(0, 255, 0, 0, cLed[i].Brightness).value(), 1000, i); // GREEN: Network is On
                 break;
             case LedRGBState_t::BlinkN:
-//                colorWipe(Color(255, 255, 0, 0, cLed[i].Brightness).value(), 1000, i); // YELLOW: Network is Connected
-//                colorWipe(Color(255, 51, 204, 0, cLed[i].Brightness).value(), 1000, i); // VIOLET: Network is Connected
                 colorWipe(Color(0, 255, 0, 0, cLed[i].Brightness).value(), 1000, i); // GREEN: Network is Connected
-//                colorWipe(Color(0, 0, 255, 0, cLed[i].Brightness).value(), 1000, i); // BLUE: Network is Connected
                 break;
             case LedRGBState_t::OffI:
                 colorWipe(Color(255, 0, 0, 0, cLed[i].Brightness).value(), 1000, i); // RED: Inverter is Off
-//                colorWipe(Color(0, 0, 255, 0, cLed[i].Brightnesss).value(), 1000, i); // BLUE: Inverter is Off
                 break;
             case LedRGBState_t::OnI:
-//                colorWipe(Color(255, 255, 0, 0, cLed[i].Brightness).value(), 1000, i); // YELLOW: Inverter is On
-//                colorWipe(Color(0, 255, 0, 0, cLed[i].Brightness).value(), 1000, i); // GREEN: Inverter is On
                 colorWipe(Color(0, 0, 255, 0, cLed[i].Brightness).value(), 1000, i); // BLUE: Inverter is On
                 break;
             case LedRGBState_t::BlinkI:
                 colorWipe(Color(255, 102, 0, 0, cLed[i].Brightness).value(), 1000, i); // ORANGE: Inverter is Blink
                 break;
             case LedRGBState_t::On:
+                colorWipe(Color(255, 255, 0, 0, cLed[i].Brightness).value(), 1000, i); // YELLOW
+//                colorWipe(Color(255, 51, 204, 0, cLed[i].Brightness).value(), 1000, i); // VIOLET
                 break;
             case LedRGBState_t::Off:
+                colorWipe(Color(0, 0, 0, 0, cLed[i].Brightness).value(), 1000, i); // all off
                 break;
             }
         }

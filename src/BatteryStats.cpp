@@ -346,11 +346,11 @@ void PytesBatteryStats::getLiveViewData(JsonVariant& root) const
     addLiveViewValue(root, "remainingCapacity", _availableCapacity, "Ah", 0);
 
     if (_chargedEnergy != -1) {
-        addLiveViewValue(root, "chargedEnergy", _chargedEnergy, "kWh", 2);
+        addLiveViewValue(root, "chargedEnergy", _chargedEnergy, "kWh", 1);
     }
 
     if (_dischargedEnergy != -1) {
-        addLiveViewValue(root, "dischargedEnergy", _dischargedEnergy, "kWh", 2);
+        addLiveViewValue(root, "dischargedEnergy", _dischargedEnergy, "kWh", 1);
     }
 
     addLiveViewValue(root, "online", _moduleCountOnline, "Module", 0);

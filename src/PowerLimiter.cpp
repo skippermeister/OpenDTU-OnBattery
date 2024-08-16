@@ -20,6 +20,7 @@
 #include <cmath>
 #include <ctime>
 #include <frozen/map.h>
+#include "SurplusPower.h"
 
 static constexpr char TAG[] = "[PowerLimiter]";
 
@@ -320,7 +321,9 @@ void PowerLimiterClass::loop()
     auto getBatteryPower = [this,&config]() -> bool {
         if (config.PowerLimiter.IsInverterSolarPowered) { return false; }
 
-        if (_nighttimeDischarging && getSolarPower() > 0) {
+        auto isDayPeriod = SunPosition.isSunsetAvailable() ? SunPosition.isDayPeriod() : getSolarPower() > 0;
+
+        if (_nighttimeDischarging && isDayPeriod) {
             _nighttimeDischarging = false;
             return isStartThresholdReached();
         }
@@ -335,12 +338,11 @@ void PowerLimiterClass::loop()
             return true;
         }
 
-        // TODO(schlimmchen): should be supported by sunrise and sunset, such
-        // that a thunderstorm or other events that drastically lower the solar
-        // power do not cause the start of a discharge cycle during the day.
         if (config.PowerLimiter.SolarPassThroughEnabled &&
             config.PowerLimiter.BatteryAlwaysUseAtNight &&
-            getSolarPower() == 0 && !_batteryDischargeEnabled) {
+            !isDayPeriod &&
+            !_batteryDischargeEnabled)
+        {
             _nighttimeDischarging = true;
             if (_verboseLogging) MessageOutput.printf("%s%s: Solar passthroug is enabled and use battery always at night\r\n", TAG, __FUNCTION__);
             return true;
@@ -614,6 +616,12 @@ bool PowerLimiterClass::calcPowerLimit(std::shared_ptr<InverterAbstract> inverte
     }
 
     if (_verboseLogging) MessageOutput.printf("%s%s: match household consumption with limit of %d W\r\n", TAG, __FUNCTION__, newPowerLimit);
+
+#ifdef USE_SURPLUSPOWER
+    // use surplus power if active
+    if (SurplusPower.useSurplusPower())
+        newPowerLimit = SurplusPower.calcSurplusPower(newPowerLimit);
+#endif
 
     // Case 3:
     return setNewPowerLimit(inverter, newPowerLimit);

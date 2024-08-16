@@ -256,11 +256,14 @@ uint32_t HoymilesRadio_CMT::getInvBootFrequency() const
     return countryDefinition.at(_countryMode).Freq_StartUp;
 }
 
+//void IRAM_ATTR HoymilesRadio_CMT::handleInt1()
 void ARDUINO_ISR_ATTR HoymilesRadio_CMT::handleInt1()
 {
     _packetSent = true;
 }
 
+
+//void IRAM_ATTR HoymilesRadio_CMT::handleInt2()
 void ARDUINO_ISR_ATTR HoymilesRadio_CMT::handleInt2()
 {
     _packetReceived = true;

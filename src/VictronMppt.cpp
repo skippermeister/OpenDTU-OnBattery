@@ -11,7 +11,7 @@ static constexpr char TAG[] = "[VictronMppt]";
 
 void VictronMpptClass::init(Scheduler& scheduler)
 {
-    MessageOutput.print("Initialize VE.Direct interface... ");
+    MessageOutput.println("Initialize VE.Direct interface...");
 
     scheduler.addTask(_loopTask);
     _loopTask.setCallback([this] { loop(); });
@@ -266,6 +266,12 @@ float VictronMpptClass::getVoltage(MPPTVoltage kindOf) const
                 break;
             case MPPTVoltage::FLOAT:
                 voltX = upController->getData().BatteryFloatMilliVolt;
+                break;
+            case MPPTVoltage::BATTERY:
+                if (upController->isDataValid()) {
+                    voltX.first = 1;
+                    voltX.second = upController->getData().batteryVoltage_V_mV;
+                }
                 break;
         }
         if (voltX.first > 0) {

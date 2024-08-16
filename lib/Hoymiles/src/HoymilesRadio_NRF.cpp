@@ -143,6 +143,7 @@ void HoymilesRadio_NRF::openWritingPipe(const serial_u serial)
     _radio->openWritingPipe(s.u64);
 }
 
+// void IRAM_ATTR HoymilesRadio_NRF::handleIntr()
 void ARDUINO_ISR_ATTR HoymilesRadio_NRF::handleIntr()
 {
     _packetReceived = true;

@@ -38,6 +38,7 @@ void WebApiBatteryClass::onStatus(AsyncWebServerRequest* request)
     root["verbose_logging"] = cBattery.VerboseLogging;
     root["updatesonly"] = cBattery.UpdatesOnly;
     root["provider"] = cBattery.Provider;
+    root["io_providername"] = PinMapping.get().battery.providerName;
     root["can_controller_frequency"] = Configuration.get().MCP2515.Controller_Frequency;
 #ifdef USE_JKBMS_CONTROLLER
     root["jkbms_interface"] = cBattery.JkBms.Interface;

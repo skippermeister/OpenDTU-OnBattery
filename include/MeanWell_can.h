@@ -10,6 +10,7 @@
 #include <mcp_can.h>
 #include <Longan_I2C_CAN_Arduino.h>
 #include <AsyncJson.h>
+#include "PinMapping.h"
 
 #define MEANWELL_MINIMAL_SET_VOLTAGE 42
 
@@ -171,7 +172,7 @@ public:
 
     uint32_t getEEPROMwrites() { return EEPROMwrites;}
 
-    bool isMCP2515Provider() { return _provider == CAN_Provider_t::MCP2515; }
+    bool isMCP2515Provider() { return PinMapping.get().charger.provider == Charger_Provider_t::MCP2515; }
 
 private:
     void loop();
@@ -181,7 +182,6 @@ private:
     void updateEEPROMwrites2NVS();
 
     void switchChargerOff(const char* reason);
-    bool enable(void);
     bool getCanCharger(void);
     bool parseCanPackets(void);
     void calcPower();
@@ -198,7 +198,6 @@ private:
     float calcEfficency(float x);
     void setupParameter(void);
 
-    twai_general_config_t g_config;
     I2C_CAN* i2c_can;
     SPIClass* spi;
     MCP_CAN* CAN;
@@ -226,13 +225,7 @@ private:
     bool _lastPowerCommandSuccess;
     bool _setupParameter = true;
 
-    enum class CAN_Provider_t {
-        UNDEFINED=0,
-        CAN0=1,
-        I2C=2,
-        MCP2515=3
-    };
-    CAN_Provider_t _provider = CAN_Provider_t::UNDEFINED;
+    char _providerName[32] = "Meanwell CAN";
 
     const uint8_t ChargerID = 0x03;
     uint32_t EEPROMwrites;

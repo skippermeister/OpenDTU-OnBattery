@@ -65,12 +65,11 @@ void MqttHandleBatteryHassClass::publishConfig()
 
     // battery info
     switch (config.Battery.Provider) {
+        case 0: // Pylontech Battery via CAN0, MCP2515, I2C0, I2C1, RS485
 #ifdef USE_PYLONTECH_CAN_RECEIVER
-        case 1: // Pylontech Battery CAN0
-        case 2: // Pylontech Battery CAN MCP2515
-            publishSensor("State of Health (SOH)", "mdi:heart-plus", "stateOfHealth", NULL, "measurement", "%");
+            if (PinMapping.get().battery.provider != Battery_Provider_t::RS485)
+                publishSensor("State of Health (SOH)", "mdi:heart-plus", "stateOfHealth", NULL, "measurement", "%");
 #endif
-        case 0: // Pylontech Battery RS485
             publishSensor("Battery voltage", NULL, "voltage", "voltage", "measurement", "V");
             publishSensor("Battery current", NULL, "current", "current", "measurement", "A");
             publishSensor("Total Capacity", NULL, "capacity", "capacity", "measurement", "Ah");
@@ -111,61 +110,12 @@ void MqttHandleBatteryHassClass::publishConfig()
 #undef PBSW
 #undef PBSA
             break;
-
-#ifdef USE_JKBMS_CONTROLLER
-        case 3: // JK BMS
-            //            caption              icon                    topic                       dev. class     state class    unit
-            publishSensor("Voltage",           "mdi:battery-charging", "BatteryVoltageMilliVolt",  "voltage",     "measurement", "mV");
-            publishSensor("Current",           "mdi:current-dc",       "BatteryCurrentMilliAmps",  "current",     "measurement", "mA");
-            publishSensor("BMS Temperature",   "mdi:thermometer",      "BmsTempCelsius",           "temperature", "measurement", "°C");
-            publishSensor("Cell Voltage Diff", "mdi:battery-alert",    "CellDiffMilliVolt",        "voltage",     "measurement", "mV");
-            publishSensor("Charge Cycles",     "mdi:counter",          "BatteryCycles");
-            publishSensor("Cycle Capacity",    "mdi:battery-sync",     "BatteryCycleCapacity");
-
-            publishBinarySensor("Charging Possible",    "mdi:battery-arrow-up",   "status/ChargingActive",    "1", "0");
-            publishBinarySensor("Discharging Possible", "mdi:battery-arrow-down", "status/DischargingActive", "1", "0");
-            publishBinarySensor("Balancing Active",     "mdi:scale-balance",      "status/BalancingActive",   "1", "0");
-#define PBS(a, b, c) publishBinarySensor("Alarm: " a, "mdi:" b, "alarms/" c, "1", "0")
-            PBS("Low Capacity",                "battery-alert-variant-outline", "LowCapacity");
-            PBS("BMS Overtemperature",         "thermometer-alert",             "BmsOvertemperature");
-            PBS("Charging Overvoltage",        "fuse-alert",                    "ChargingOvervoltage");
-            PBS("Discharge Undervoltage",      "fuse-alert",                    "DischargeUndervoltage");
-            PBS("Battery Overtemperature",     "thermometer-alert",             "BatteryOvertemperature");
-            PBS("Charging Overcurrent",        "fuse-alert",                    "ChargingOvercurrent");
-            PBS("Discharging Overcurrent",     "fuse-alert",                    "DischargeOvercurrent");
-            PBS("Cell Voltage Difference",     "battery-alert",                 "CellVoltageDifference");
-            PBS("Battery Box Overtemperature", "thermometer-alert",             "BatteryBoxOvertemperature");
-            PBS("Battery Undertemperature",    "thermometer-alert",             "BatteryUndertemperature");
-            PBS("Cell Overvoltage",            "battery-alert",                 "CellOvervoltage");
-            PBS("Cell Undervoltage",           "battery-alert",                 "CellUndervoltage");
-#undef PBS
-            break;
-#endif
-#ifdef USE_VICTRON_SMART_SHUNT
-        case 4: // Victron SmartShunt
-            publishSensor("Voltage", "mdi:battery-charging", "voltage", "voltage", "measurement", "V");
-            publishSensor("Current", "mdi:current-dc", "current", "current", "measurement", "A");
-            publishSensor("Instantaneous Power", NULL, "instantaneousPower", "power", "measurement", "W");
-            publishSensor("Charged Energy", NULL, "chargedEnergy", "energy", "total_increasing", "kWh");
-            publishSensor("Discharged Energy", NULL, "dischargedEnergy", "energy", "total_increasing", "kWh");
-            publishSensor("Charge Cycles", "mdi:counter", "chargeCycles");
-            publishSensor("Consumed Amp Hours", NULL, "consumedAmpHours", NULL, "measurement", "Ah");
-            publishSensor("Last Full Charge", "mdi:timelapse", "lastFullCharge", NULL, NULL, "min");
-            publishSensor("Midpoint Voltage", NULL, "midpointVoltage", "voltage", "measurement", "V");
-            publishSensor("Midpoint Deviation", NULL, "midpointDeviation", "battery", "measurement", "%");
-            break;
-#endif
-#ifdef USE_DALYBMS_CONTROLLER
-        case 5: // DALY BMS
-            break;
-#endif
 #ifdef USE_MQTT_BATTERY
         case 6: // SoC from MQTT
             break;
 #endif
 #ifdef USE_PYTES_CAN_RECEIVER
-        case 7: // Pytes Battery CAN0
-        case 8: // Pytes Battery MCP2515
+        case 1: // Pytes Battery via CAN0, MCP2515, I2C0, I2C1
             publishSensor("Charge voltage (BMS)", NULL, "settings/chargeVoltage", "voltage", "measurement", "V");
             publishSensor("Charge current limit", NULL, "settings/chargeCurrentLimitation", "current", "measurement", "A");
             publishSensor("Discharge current limit", NULL, "settings/dischargeCurrentLimitation", "current", "measurement", "A");
@@ -219,6 +169,54 @@ void MqttHandleBatteryHassClass::publishConfig()
             publishBinarySensor("Warning Temperature high (charge)", "mdi:thermometer-high", "warning/highTemperatureCharge", "1", "0");
             publishBinarySensor("Warning BMS internal", "mdi:alert-outline", "warning/bmsInternal", "1", "0");
             publishBinarySensor("Warning Cell Imbalance", "mdi:alert-outline", "warning/cellImbalance", "1", "0");
+            break;
+#endif
+
+#ifdef USE_JKBMS_CONTROLLER
+        case 3: // JK BMS
+            //            caption              icon                    topic                       dev. class     state class    unit
+            publishSensor("Voltage",           "mdi:battery-charging", "BatteryVoltageMilliVolt",  "voltage",     "measurement", "mV");
+            publishSensor("Current",           "mdi:current-dc",       "BatteryCurrentMilliAmps",  "current",     "measurement", "mA");
+            publishSensor("BMS Temperature",   "mdi:thermometer",      "BmsTempCelsius",           "temperature", "measurement", "°C");
+            publishSensor("Cell Voltage Diff", "mdi:battery-alert",    "CellDiffMilliVolt",        "voltage",     "measurement", "mV");
+            publishSensor("Charge Cycles",     "mdi:counter",          "BatteryCycles");
+            publishSensor("Cycle Capacity",    "mdi:battery-sync",     "BatteryCycleCapacity");
+
+            publishBinarySensor("Charging Possible",    "mdi:battery-arrow-up",   "status/ChargingActive",    "1", "0");
+            publishBinarySensor("Discharging Possible", "mdi:battery-arrow-down", "status/DischargingActive", "1", "0");
+            publishBinarySensor("Balancing Active",     "mdi:scale-balance",      "status/BalancingActive",   "1", "0");
+#define PBS(a, b, c) publishBinarySensor("Alarm: " a, "mdi:" b, "alarms/" c, "1", "0")
+            PBS("Low Capacity",                "battery-alert-variant-outline", "LowCapacity");
+            PBS("BMS Overtemperature",         "thermometer-alert",             "BmsOvertemperature");
+            PBS("Charging Overvoltage",        "fuse-alert",                    "ChargingOvervoltage");
+            PBS("Discharge Undervoltage",      "fuse-alert",                    "DischargeUndervoltage");
+            PBS("Battery Overtemperature",     "thermometer-alert",             "BatteryOvertemperature");
+            PBS("Charging Overcurrent",        "fuse-alert",                    "ChargingOvercurrent");
+            PBS("Discharging Overcurrent",     "fuse-alert",                    "DischargeOvercurrent");
+            PBS("Cell Voltage Difference",     "battery-alert",                 "CellVoltageDifference");
+            PBS("Battery Box Overtemperature", "thermometer-alert",             "BatteryBoxOvertemperature");
+            PBS("Battery Undertemperature",    "thermometer-alert",             "BatteryUndertemperature");
+            PBS("Cell Overvoltage",            "battery-alert",                 "CellOvervoltage");
+            PBS("Cell Undervoltage",           "battery-alert",                 "CellUndervoltage");
+#undef PBS
+            break;
+#endif
+#ifdef USE_DALYBMS_CONTROLLER
+        case 4: // DALY BMS
+            break;
+#endif
+#ifdef USE_VICTRON_SMART_SHUNT
+        case 5: // Victron SmartShunt
+            publishSensor("Voltage", "mdi:battery-charging", "voltage", "voltage", "measurement", "V");
+            publishSensor("Current", "mdi:current-dc", "current", "current", "measurement", "A");
+            publishSensor("Instantaneous Power", NULL, "instantaneousPower", "power", "measurement", "W");
+            publishSensor("Charged Energy", NULL, "chargedEnergy", "energy", "total_increasing", "kWh");
+            publishSensor("Discharged Energy", NULL, "dischargedEnergy", "energy", "total_increasing", "kWh");
+            publishSensor("Charge Cycles", "mdi:counter", "chargeCycles");
+            publishSensor("Consumed Amp Hours", NULL, "consumedAmpHours", NULL, "measurement", "Ah");
+            publishSensor("Last Full Charge", "mdi:timelapse", "lastFullCharge", NULL, NULL, "min");
+            publishSensor("Midpoint Voltage", NULL, "midpointVoltage", "voltage", "measurement", "V");
+            publishSensor("Midpoint Deviation", NULL, "midpointDeviation", "battery", "measurement", "%");
             break;
 #endif
     }
@@ -321,8 +319,7 @@ void MqttHandleBatteryHassClass::createDeviceInfo(JsonObject& object)
     switch (config.Battery.Provider) {
         case 0:
         case 1:
-        case 2:
-        case 4:
+        case 5:
         case 6:
             object["name"] = "Battery(" + serial + ")";
             break;
@@ -332,7 +329,7 @@ void MqttHandleBatteryHassClass::createDeviceInfo(JsonObject& object)
             break;
 #endif
 #ifdef USE_DALYBMS_CONTROLLER
-        case 5:
+        case 4:
             object["name"] = "DALY BMS (" + Battery.getStats()->getManufacturer() + ")";
             break;
 #endif

@@ -229,6 +229,9 @@ struct PowerLimiter_CONFIG_T {
     uint32_t FullSolarPassThroughSoc;
     float FullSolarPassThroughStartVoltage;
     float FullSolarPassThroughStopVoltage;
+#ifdef USE_SURPLUSPOWER
+    bool SurplusPowerEnabled;
+#endif
 };
 
 enum BatteryVoltageUnit { Volts = 0, DeciVolts = 1, CentiVolts = 2, MilliVolts = 3 };

@@ -280,6 +280,9 @@ bool ConfigurationClass::write()
     powerlimiter["full_solar_passthrough_soc"] = config.PowerLimiter.FullSolarPassThroughSoc;
     powerlimiter["full_solar_passthrough_start_voltage"] = config.PowerLimiter.FullSolarPassThroughStartVoltage;
     powerlimiter["full_solar_passthrough_stop_voltage"] = config.PowerLimiter.FullSolarPassThroughStopVoltage;
+#ifdef USE_SURPLUSPOWER
+    powerlimiter["surplus_power_enabled"] = config.PowerLimiter.SurplusPowerEnabled;
+#endif
 
     JsonObject battery = doc["battery"].to<JsonObject>();
     battery["enabled"] = config.Battery.Enabled;
@@ -719,6 +722,9 @@ bool ConfigurationClass::read()
     config.PowerLimiter.FullSolarPassThroughSoc = powerlimiter["full_solar_passthrough_soc"] | POWERLIMITER_FULL_SOLAR_PASSTHROUGH_SOC;
     config.PowerLimiter.FullSolarPassThroughStartVoltage = powerlimiter["full_solar_passthrough_start_voltage"] | POWERLIMITER_FULL_SOLAR_PASSTHROUGH_START_VOLTAGE;
     config.PowerLimiter.FullSolarPassThroughStopVoltage = powerlimiter["full_solar_passthrough_stop_voltage"] | POWERLIMITER_FULL_SOLAR_PASSTHROUGH_STOP_VOLTAGE;
+#ifdef USE_SURPLUSPOWER
+    config.PowerLimiter.SurplusPowerEnabled = powerlimiter["surplus_power_enabled"] | false;
+#endif
 
     JsonObject battery = doc["battery"];
     config.Battery.Enabled = battery["enabled"] | BATTERY_ENABLED;

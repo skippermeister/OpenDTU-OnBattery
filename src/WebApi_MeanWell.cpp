@@ -55,6 +55,7 @@ void WebApiMeanWellClass::onAdminGet(AsyncWebServerRequest* request)
 
     root["enabled"] = cMeanWell.Enabled;
     root["verbose_logging"] = cMeanWell.VerboseLogging;
+    root["io_providername"] = PinMapping.get().charger.providerName;
     if (MeanWellCan.isMCP2515Provider()) root["can_controller_frequency"] = Configuration.get().MCP2515.Controller_Frequency;
     root["pollinterval"] = cMeanWell.PollInterval;
     root["updatesonly"] = cMeanWell.UpdatesOnly;

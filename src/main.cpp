@@ -97,7 +97,7 @@ void setup()
     MessageOutput.println("done");
 
     CONFIG_T& config = Configuration.get();
-    PinMapping.init(String(Configuration.get().Dev_PinMapping)); // Load PinMapping
+    PinMapping.init(String(config.Dev_PinMapping)); // Load PinMapping
 
     SerialPortManager.init();
     SPIPortManager.init();

@@ -10,6 +10,7 @@
 #include <Longan_I2C_CAN_Arduino.h>
 #include <mutex>
 #include <TaskSchedulerDeclarations.h>
+#include "PinMapping.h"
 
 #ifndef HUAWEI_PIN_MISO
 #define HUAWEI_PIN_MISO 12
@@ -102,27 +103,18 @@ public:
     uint32_t getParameterValue(uint8_t parameter);
     void setParameterValue(uint16_t in, uint8_t parameterType);
 
-    bool isMCP2515Provider() { return _provider == CAN_Provider_t::MCP2515; }
+    bool isMCP2515Provider() { return PinMapping.get()charger.provider == Charger_Provider_t::MCP2515; }
 
 private:
     void sendRequest();
     byte sendMsgBuf(uint32_t identifier, uint8_t extd, uint8_t len, uint8_t *data);
-    bool enable(void);
 
-    twai_general_config_t g_config;
     SPIClass *SPI;
     MCP_CAN  *_CAN;
     I2C_CAN  *i2c_can;
     uint8_t  _mcp2515Irq;                         // IRQ pin
-    uint32_t _nextRequestMillis = 0;              // When to send next data request to PSU
 
-    enum class CAN_Provider_t {
-        UNDEFINED=0,
-        CAN0=1,
-        I2C=2,
-        MCP2515=3
-    };
-    CAN_Provider_t _provider = CAN_Provider_t::UNDEFINED;
+    uint32_t _nextRequestMillis = 0;              // When to send next data request to PSU
 
     std::mutex _mutex;
 

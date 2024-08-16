@@ -18,9 +18,10 @@ struct MCP2515_t {
         int8_t cs;
 };
 
-enum Charger_Provider_t { undefined=0, CAN0=1, MCP2515=2, I2C0=3, I2C1=4};
+enum class Charger_Provider_t { undefined=0, CAN0=1, MCP2515=2, I2C0=3, I2C1=4};
 struct CHARGER_t {
     Charger_Provider_t provider;
+    const char *providerName;
     union {
         struct {
             int8_t rx;
@@ -43,6 +44,7 @@ struct CHARGER_t {
 
 enum class Battery_Provider_t { undefined=0, CAN0=1, MCP2515=2, I2C0=3, I2C1=4, RS232=5, RS485=6};
 struct Battery_t {
+    const char *providerName;
     Battery_Provider_t provider;
     union {
 #if defined(USE_PYLONTECH_CAN_RECEIVER) || defined(USE_PYTES_CAN_RECEIVER)
@@ -187,6 +189,8 @@ private:
     void createPinMappingJson() const;
 
     PinMapping_t _pinMapping;
+
+    const char* help[7] = {"unknown", "CAN0 Bus", "MCP2515", "I2C0/CAN", "I2C1/CAN", "RS232", "RS485"};
 };
 
 extern PinMappingClass PinMapping;

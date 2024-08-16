@@ -17,7 +17,7 @@
                         type="checkbox" wide4_1 />
                     <div class="row mb-3">
                         <label class="col-sm-4 col-form-label">
-                            {{ $t('batteryadmin.Provider') }}
+                            {{ $t('batteryadmin.Provider')}} {{ getIoProvider() }} {{ $t('batteryadmin.Interface')}}
                         </label>
                         <div class="col-sm-4">
                             <select class="form-select" v-model="batteryConfigList.provider">
@@ -28,9 +28,8 @@
                         </div>
                     </div>
 
-                    <InputElement v-show="batteryConfigList.provider == 0 ||
-                        batteryConfigList.provider == 3 ||
-                        batteryConfigList.provider == 5" :label="$t('batteryadmin.NumberOfBatteries')"
+                    <InputElement v-show="batteryConfigList.provider < 5"
+                        :label="$t('batteryadmin.NumberOfBatteries')"
                         v-model="batteryConfigList.numberOfBatteries" type="number" min="1" max="5" wide4_1 />
                 </div>
             </CardElement>
@@ -38,9 +37,8 @@
             <div v-show="batteryConfigList.enabled">
                 <CardElement :text="$t('batteryadmin.BatteryParameter')" textVariant="text-bg-primary" add-space>
 
-                    <InputElement v-show="batteryConfigList.provider == 0 ||
-                        batteryConfigList.provider == 3 ||
-                        batteryConfigList.provider == 5" :label="$t('batteryadmin.PollInterval')"
+                    <InputElement v-show="batteryConfigList.provider < 5"
+                        :label="$t('batteryadmin.PollInterval')"
                         v-model="batteryConfigList.pollinterval" type="number" min="2" max="90" wide4_2
                         :postfix="$t('batteryadmin.Seconds')" />
 
@@ -62,13 +60,13 @@
                         v-model="batteryConfigList.stop_charging_soc" type="number" step="1" min="20" max="100" wide4_2
                         :tooltip="$t('batteryadmin.StopChargingSoCHint')" :postfix="$t('batteryadmin.Percent')" />
 
-                    <InputElement v-show="batteryConfigList.provider == 4 ||
+                    <InputElement v-show="batteryConfigList.provider == 5 ||
                         batteryConfigList.provider == 6"
                         :label="$t('batteryadmin.RecommendedChargeVoltage')"
                         v-model="batteryConfigList.recommended_charge_voltage" type="number" min="21" max="80"
                         step="0.1" wide4_2 :postfix="$t('batteryadmin.Volts')" />
 
-                    <InputElement v-show="batteryConfigList.provider == 4 ||
+                    <InputElement v-show="batteryConfigList.provider == 5 ||
                         batteryConfigList.provider == 6"
                         :label="$t('batteryadmin.RecommendedDischargeVoltage')"
                         v-model="batteryConfigList.recommended_discharge_voltage" type="number" min="21" max="80"
@@ -76,7 +74,7 @@
 
                 </CardElement>
 
-                <CardElement v-show="batteryConfigList.provider == 2 || batteryConfigList.provider == 8"
+                <CardElement v-show="batteryConfigList.io_providername == 'MCP2515'"
                     :text="$t('batteryadmin.CanControllerConfiguration')" textVariant="text-bg-primary" addSpace>
                     <div class="row mb-3">
                         <label class="col-sm-4 col-form-label">
@@ -180,15 +178,12 @@ export default defineComponent({
             alertType: "info",
             showAlert: false,
             providerTypeList: [
-                { key: 0, value: 'PylontechRS485' },
-                { key: 1, value: 'PylontechCan0' },
-                { key: 2, value: 'PylontechMCP2515' },
+                { key: 0, value: 'Pylontech' },
+                { key: 1, value: 'Pytes' },
                 { key: 3, value: 'JkBmsSerial' },
-                { key: 4, value: 'Victron' },
-                { key: 5, value: 'DalyBmsRS485' },
+                { key: 4, value: 'DalyBms' },
+                { key: 5, value: 'Victron' },
                 { key: 6, value: 'Mqtt' },
-                { key: 7, value: 'PytesCan0' },
-                { key: 8, value: 'PytesMCP2515' }
             ],
             jkBmsInterfaceTypeList: [
                 { key: 0, value: 'Uart' },
@@ -211,6 +206,24 @@ export default defineComponent({
         this.getBatteryConfig();
     },
     methods: {
+        getIoProvider() {
+            if (((this.batteryConfigList.provider == 1 || this.batteryConfigList.provider == 2) &&
+                 (this.batteryConfigList.io_providername == 'RS232' || this.batteryConfigList.io_providername == 'RS485')
+                ) ||
+                (this.batteryConfigList.provider > 2 && this.batteryConfigList.provider < 5 &&
+                 (this.batteryConfigList.io_providername != 'RS232' && this.batteryConfigList.io_providername != 'RS485')
+                ) ||
+                (this.batteryConfigList.provider == 5 && this.batteryConfigList.io_providername != 'RS232'))
+            {
+                this.alertMessage = 'I/O interface ' + this.batteryConfigList.io_providername + ' is not supported for this battery provider. Please configure correct interface in pinmapping.json file';
+                this.alertType = 'error';
+                this.showAlert = true;
+            } else {
+                this.showAlert = false;
+            }
+
+            return this.batteryConfigList.provider < 6 ? this.batteryConfigList.io_providername : 'MQTT';
+        },
         getBatteryConfig() {
             this.dataLoading = true;
             fetch('/api/battery/config', { headers: authHeader() })

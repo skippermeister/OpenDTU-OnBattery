@@ -60,6 +60,9 @@ void WebApiPowerLimiterClass::onStatus(AsyncWebServerRequest* request)
     root["full_solar_passthrough_soc"] = config.PowerLimiter.FullSolarPassThroughSoc;
     root["full_solar_passthrough_start_voltage"] = static_cast<int>(config.PowerLimiter.FullSolarPassThroughStartVoltage * 100 + 0.5) / 100.0;
     root["full_solar_passthrough_stop_voltage"] = static_cast<int>(config.PowerLimiter.FullSolarPassThroughStopVoltage * 100 + 0.5) / 100.0;
+#ifdef USE_SURPLUSPOWER
+    root["surplus_power_enabled"] = config.PowerLimiter.SurplusPowerEnabled;
+#endif
 
     WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 }
@@ -179,6 +182,9 @@ void WebApiPowerLimiterClass::onAdminPost(AsyncWebServerRequest* request)
     config.PowerLimiter.LowerPowerLimit = root["lower_power_limit"].as<int32_t>();
     config.PowerLimiter.BaseLoadLimit = root["base_load_limit"].as<int32_t>();
     config.PowerLimiter.UpperPowerLimit = root["upper_power_limit"].as<int32_t>();
+#ifdef USE_SURPLUSPOWER
+    config.PowerLimiter.SurplusPowerEnabled = root["surplus_power_enabled"];
+#endif
 
     if (config.Battery.Enabled) {
         config.PowerLimiter.IgnoreSoc = root["ignore_soc"].as<bool>();

@@ -288,10 +288,10 @@ void WebApiDeviceClass::onDeviceAdminPost(AsyncWebServerRequest* request)
         return;
     }
 
-    String output;
+/*    String output;
     serializeJson(root, output);
     Serial.println(output);
-
+*/
     CONFIG_T& config = Configuration.get();
     bool performRestart = root["curPin"]["name"].as<String>() != config.Dev_PinMapping;
 

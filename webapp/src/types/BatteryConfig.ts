@@ -5,6 +5,7 @@ export interface BatteryConfig {
     updatesonly: boolean;
     verbose_logging: boolean;
     provider: number;
+    io_providername: string;
     can_controller_frequency: number;
     jkbms_interface: number;
     jkbms_polling_interval: number;

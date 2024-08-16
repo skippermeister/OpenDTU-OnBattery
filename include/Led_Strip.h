@@ -268,6 +268,7 @@ private:
 
     LedRGBState_t _ledRGBState[LED_COUNT];
     LedRGBState_t _allMode;
+    const Led_Config_T *cLed = nullptr;
 };
 
 extern LedStripClass LedStrip;

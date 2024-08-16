@@ -7,6 +7,7 @@
 #include <driver/twai.h>
 #include <SPI.h>
 #include <mcp_can.h>
+#include <Longan_I2C_CAN_Arduino.h>
 #include <Arduino.h>
 
 class BatteryCanReceiver : public BatteryProvider {
@@ -25,7 +26,7 @@ protected:
     float scaleValue(int16_t value, float factor);
     bool getBit(uint8_t value, uint8_t bit);
 
-    char const* _providerName = "Battery CAN";
+    char _providerName[32] = "Battery CAN";
 
     bool _initialized = false;
 
@@ -33,6 +34,7 @@ private:
     int _mcp2515_irq;
     SPIClass *SPI = nullptr;
     MCP_CAN  *_CAN = nullptr;
+    I2C_CAN *i2c_can = nullptr;
 };
 
 #endif
