@@ -151,12 +151,12 @@
 #define BATTERY_PIN_WAKEUP -1
 #endif
 
-#ifndef I2C1_PIN_SCL
-#define I2C1_PIN_SCL -1
+#ifndef I2C_PIN_SCL
+#define I2C_PIN_SCL -1
 #endif
 
-#ifndef I2C1_PIN_SDA
-#define I2C1_PIN_SDA -1
+#ifndef I2C_PIN_SDA
+#define I2C_PIN_SDA -1
 #endif
 
 #ifndef CAN0_PIN_RX
@@ -165,14 +165,6 @@
 
 #ifndef CAN0_PIN_TX
 #define CAN0_PIN_TX 26
-#endif
-
-#ifndef I2C0_PIN_SCL
-#define I2C0_PIN_SCL -1
-#endif
-
-#ifndef I2C0_PIN_SDA
-#define I2C0_PIN_SDA -1
 #endif
 
 #ifndef MCP2515_PIN_MISO
@@ -449,12 +441,12 @@ void PinMappingClass::init(const String& deviceMapping)
                     _pinMapping.battery.can0.tx = doc[i]["battery"]["can0_tx"] | -1;
                 } else if (doc[i]["battery"].containsKey("i2c0_scl")) {
                     _pinMapping.battery.provider = Battery_Provider_t::I2C0;
-                    _pinMapping.battery.i2c0.scl = doc[i]["battery"]["i2c0_scl"] | -1;
-                    _pinMapping.battery.i2c0.sda = doc[i]["battery"]["i2c0_sda"] | -1;
+                    _pinMapping.battery.i2c.scl = doc[i]["battery"]["i2c0_scl"] | -1;
+                    _pinMapping.battery.i2c.sda = doc[i]["battery"]["i2c0_sda"] | -1;
                 } else if (doc[i]["battery"].containsKey("i2c1_scl")) {
                     _pinMapping.battery.provider = Battery_Provider_t::I2C1;
-                    _pinMapping.battery.i2c1.scl = doc[i]["battery"]["i2c1_scl"] | -1;
-                    _pinMapping.battery.i2c1.sda = doc[i]["battery"]["i2c1_sda"] | -1;
+                    _pinMapping.battery.i2c.scl = doc[i]["battery"]["i2c1_scl"] | -1;
+                    _pinMapping.battery.i2c.sda = doc[i]["battery"]["i2c1_sda"] | -1;
                 } else if (doc[i]["battery"].containsKey("mcp2515_miso")) {
                     _pinMapping.battery.provider = Battery_Provider_t::MCP2515;
                     _pinMapping.battery.mcp2515.miso = doc[i]["battery"]["mcp2515_miso"] | -1;
@@ -486,12 +478,12 @@ void PinMappingClass::init(const String& deviceMapping)
                     _pinMapping.charger.can0.tx = doc[i]["charger"]["can0_tx"] | -1;
                 } else if (doc[i]["battery"].containsKey("i2c0_scl")) {
                     _pinMapping.charger.provider = Charger_Provider_t::I2C0;
-                    _pinMapping.charger.i2c0.scl = doc[i]["charger"]["i2c0_scl"] | -1;
-                    _pinMapping.charger.i2c0.sda = doc[i]["charger"]["i2c0_sda"] | -1;
+                    _pinMapping.charger.i2c.scl = doc[i]["charger"]["i2c0_scl"] | -1;
+                    _pinMapping.charger.i2c.sda = doc[i]["charger"]["i2c0_sda"] | -1;
                 } else if (doc[i]["charger"].containsKey("i2c1_scl")) {
                     _pinMapping.charger.provider = Charger_Provider_t::I2C1;
-                    _pinMapping.charger.i2c1.scl = doc[i]["charger"]["i2c1_scl"] | -1;
-                    _pinMapping.charger.i2c1.sda = doc[i]["charger"]["i2c1_sda"] | -1;
+                    _pinMapping.charger.i2c.scl = doc[i]["charger"]["i2c1_scl"] | -1;
+                    _pinMapping.charger.i2c.sda = doc[i]["charger"]["i2c1_sda"] | -1;
                 } else if (doc[i]["charger"].containsKey("mcp2515_miso")) {
                     _pinMapping.charger.provider = Charger_Provider_t::MCP2515;
                     _pinMapping.charger.mcp2515.miso = doc[i]["charger"]["mcp2515_miso"] | -1;
@@ -604,14 +596,11 @@ bool PinMappingClass::isValidBatteryConfig() const
         return    _pinMapping.battery.can0.rx > 0
                && _pinMapping.battery.can0.tx > 0
                && _pinMapping.battery.can0.rx != _pinMapping.battery.can0.tx;
-    if (_pinMapping.battery.provider == Battery_Provider_t::I2C0)
-        return    _pinMapping.battery.i2c0.scl > 0
-               && _pinMapping.battery.i2c0.sda > 0
-               && _pinMapping.battery.i2c0.scl != _pinMapping.battery.i2c0.sda;
-    if (_pinMapping.battery.provider == Battery_Provider_t::I2C1)
-        return    _pinMapping.battery.i2c1.scl > 0
-               && _pinMapping.battery.i2c1.sda > 0
-               && _pinMapping.battery.i2c1.scl != _pinMapping.battery.i2c1.sda;
+    if ((_pinMapping.battery.provider == Battery_Provider_t::I2C0) ||
+        (_pinMapping.battery.provider == Battery_Provider_t::I2C1))
+        return    _pinMapping.battery.i2c.scl > 0
+               && _pinMapping.battery.i2c.sda > 0
+               && _pinMapping.battery.i2c.scl != _pinMapping.battery.i2c.sda;
     if (_pinMapping.battery.provider == Battery_Provider_t::MCP2515)
         return _pinMapping.battery.mcp2515.miso > 0 &&
                _pinMapping.battery.mcp2515.mosi > 0 &&
@@ -628,12 +617,10 @@ bool PinMappingClass::isValidChargerConfig() const
     if (_pinMapping.charger.provider == Charger_Provider_t::CAN0)
         return _pinMapping.charger.can0.rx >= 0 &&
                _pinMapping.charger.can0.tx >= 0;
-    if (_pinMapping.charger.provider == Charger_Provider_t::I2C0)
-        return _pinMapping.charger.i2c0.scl >= 0 &&
-               _pinMapping.charger.i2c0.sda >= 0;
-    if (_pinMapping.charger.provider == Charger_Provider_t::I2C1)
-        return _pinMapping.charger.i2c1.scl >= 0 &&
-               _pinMapping.charger.i2c1.sda >= 0;
+    if ((_pinMapping.charger.provider == Charger_Provider_t::I2C0) ||
+        (_pinMapping.battery.provider == Battery_Provider_t::I2C1))
+        return _pinMapping.charger.i2c.scl >= 0 &&
+               _pinMapping.charger.i2c.sda >= 0;
     if (_pinMapping.charger.provider == Charger_Provider_t::MCP2515)
         return _pinMapping.charger.mcp2515.miso >= 0 &&
                _pinMapping.charger.mcp2515.mosi >= 0 &&
@@ -758,11 +745,11 @@ void PinMappingClass::createPinMappingJson() const
         battery["mcp2515_irq"] = _pinMapping.battery.mcp2515.irq;
         battery["mcp2515_cs"] = _pinMapping.battery.mcp2515.cs;
     } else if (_pinMapping.battery.provider == Battery_Provider_t::I2C0) {
-        battery["i2c0_scl"] = _pinMapping.battery.i2c0.scl;
-        battery["i2c0_sda"] = _pinMapping.battery.i2c0.sda;
+        battery["i2c0_scl"] = _pinMapping.battery.i2c.scl;
+        battery["i2c0_sda"] = _pinMapping.battery.i2c.sda;
     } else if (_pinMapping.battery.provider == Battery_Provider_t::I2C1) {
-        battery["i2c1_scl"] = _pinMapping.battery.i2c1.scl;
-        battery["i2c1_sda"] = _pinMapping.battery.i2c1.sda;
+        battery["i2c1_scl"] = _pinMapping.battery.i2c.scl;
+        battery["i2c1_sda"] = _pinMapping.battery.i2c.sda;
     }
 #endif
 
@@ -773,12 +760,12 @@ void PinMappingClass::createPinMappingJson() const
         charger["can0_tx"] = _pinMapping.charger.can0.tx;
     }
     else if (_pinMapping.charger.provider == Charger_Provider_t::I2C0) {
-        charger["i2c0_scl"] = _pinMapping.charger.i2c0.scl;
-        charger["i2c0_sda"] = _pinMapping.charger.i2c0.sda;
+        charger["i2c0_scl"] = _pinMapping.charger.i2c.scl;
+        charger["i2c0_sda"] = _pinMapping.charger.i2c.sda;
     }
     else if (_pinMapping.charger.provider == Charger_Provider_t::I2C1) {
-        charger["i2c1_scl"] = _pinMapping.charger.i2c1.scl;
-        charger["i2c1_sda"] = _pinMapping.charger.i2c1.sda;
+        charger["i2c1_scl"] = _pinMapping.charger.i2c.scl;
+        charger["i2c1_sda"] = _pinMapping.charger.i2c.sda;
     }
     else if (_pinMapping.charger.provider == Charger_Provider_t::MCP2515) {
         charger["mcp2515_miso"] = _pinMapping.charger.mcp2515.miso;

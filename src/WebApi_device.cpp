@@ -190,11 +190,11 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
         batteryPinObj["can0_rx"] = pin.battery.can0.rx;
         batteryPinObj["can0_tx"] = pin.battery.can0.tx;
     } else if (pin.battery.provider == Battery_Provider_t::I2C0) {
-        batteryPinObj["i2c0_scl"] = pin.battery.i2c0.scl;
-        batteryPinObj["i2c0_sda"] = pin.battery.i2c0.sda;
+        batteryPinObj["i2c0_scl"] = pin.battery.i2c.scl;
+        batteryPinObj["i2c0_sda"] = pin.battery.i2c.sda;
     } else if (pin.battery.provider == Battery_Provider_t::I2C1) {
-        batteryPinObj["i2c1_scl"] = pin.battery.i2c1.scl;
-        batteryPinObj["i2c1_sda"] = pin.battery.i2c1.sda;
+        batteryPinObj["i2c1_scl"] = pin.battery.i2c.scl;
+        batteryPinObj["i2c1_sda"] = pin.battery.i2c.sda;
     } else if (pin.battery.provider == Battery_Provider_t::MCP2515) {
         batteryPinObj["mcp2515_miso"] = pin.battery.mcp2515.miso;
         batteryPinObj["mcp2515_mosi"] = pin.battery.mcp2515.mosi;
@@ -216,12 +216,12 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
     //    chargerPinObj["can0_stb"] = pin.charger.can0.stb;
     }
     if (pin.charger.provider == Charger_Provider_t::I2C0) {
-        chargerPinObj["i2c0_scl"] = pin.charger.i2c0.scl;
-        chargerPinObj["i2c0_sda"] = pin.charger.i2c0.sda;
+        chargerPinObj["i2c0_scl"] = pin.charger.i2c.scl;
+        chargerPinObj["i2c0_sda"] = pin.charger.i2c.sda;
     }
     if (pin.charger.provider == Charger_Provider_t::I2C1) {
-        chargerPinObj["i2c1_scl"] = pin.charger.i2c1.scl;
-        chargerPinObj["i2c1_sda"] = pin.charger.i2c1.sda;
+        chargerPinObj["i2c1_scl"] = pin.charger.i2c.scl;
+        chargerPinObj["i2c1_sda"] = pin.charger.i2c.sda;
     }
     if (pin.charger.provider == Charger_Provider_t::MCP2515) {
         chargerPinObj["mcp2515_miso"] = pin.charger.mcp2515.miso;

@@ -43,96 +43,111 @@ bool HuaweiCanCommClass::init() {
     }
 
     const CHARGER_t& pin = PinMapping.get().charger;
-    if (pin.provider == Charger_Provider_t::CAN0) {
+    switch (pin.provider) {
+#ifdef USE_CHARGER_CAN0
+        case Charger_Provider_t::CAN0:
+            {
+            auto tx = static_cast<gpio_num_t>(pin.can0.tx);
+            auto rx = static_cast<gpio_num_t>(pin.can0.rx);
 
-        auto tx = static_cast<gpio_num_t>(pin.can0.tx);
-        auto rx = static_cast<gpio_num_t>(pin.can0.rx);
+            MessageOutput.printf("CAN0 port rx = %d, tx = %d\r\n", rx, tx);
 
-        MessageOutput.printf("CAN0 port rx = %d, tx = %d\r\n", rx, tx);
+            g_config = TWAI_GENERAL_CONFIG_DEFAULT(tx, rx, TWAI_MODE_NORMAL);
+            // g_config.bus_off_io = (gpio_num_t)can0_stb;
+            g_config.intr_flags = ESP_INTR_FLAG_LEVEL2;
 
-        g_config = TWAI_GENERAL_CONFIG_DEFAULT(tx, rx, TWAI_MODE_NORMAL);
-        // g_config.bus_off_io = (gpio_num_t)can0_stb;
-        g_config.intr_flags = ESP_INTR_FLAG_LEVEL2;
+            twai_timing_config_t t_config = TWAI_TIMING_CONFIG_250KBITS();
+            twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
 
-        twai_timing_config_t t_config = TWAI_TIMING_CONFIG_250KBITS();
-        twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
+            // Install TWAI driver
+            if (twai_driver_install(&g_config, &t_config, &f_config) == ESP_OK) {
+                MessageOutput.print("Twai driver installed");
+            } else {
+                MessageOutput.println("ERR:Failed to install Twai driver.");
+                return false;
+            }
 
-        // Install TWAI driver
-        if (twai_driver_install(&g_config, &t_config, &f_config) == ESP_OK) {
-            MessageOutput.print("Twai driver installed");
-        } else {
-            MessageOutput.println("ERR:Failed to install Twai driver.");
+            // Start TWAI driver
+            if (twai_start() == ESP_OK) {
+                MessageOutput.print(" and started. ");
+            } else {
+                MessageOutput.println(". ERR:Failed to start Twai driver.");
+                return false;
+            }
+            }
+            break;
+#endif
+#ifdef USE_CHARGER_I2C
+        case Charger_Provider_t::I2C0:
+        case Charger_Provider_t::I2C1:
+            {
+            auto scl = pin.i2c.scl;
+            auto sda = pin.i2c.sda;
+
+            MessageOutput.printf("I2C CAN Bus @ I2C%d scl = %d, sda = %d\r\n", pin.provider==Charger_Provider_t::I2C0>=0?0:1, scl, sda);
+
+            i2c_can = new I2C_CAN(pin.provider == Charger_Provider_t::I2C0?&Wire:&Wire1, 0x25, scl, sda, 400000UL);     // Set I2C Address
+
+            int i = 10;
+            while (CAN_OK != i2c_can->begin(I2C_CAN_125KBPS))    // init can bus : baudrate = 125k
+            {
+                delay(200);
+                if (--i) continue;
+
+                MessageOutput.println("CAN Bus FAIL!");
+                return false;
+            }
+
+            const uint32_t myMask = 0xFFFFFFFF;         // Look at all incoming bits and...
+            const uint32_t myFilter = 0x1081407F;       // filter for this message only
+            i2c_can->init_Mask(0, 1, myMask);
+            i2c_can->init_Filt(0, 1, myFilter);
+            i2c_can->init_Mask(1, 1, myMask);
+
+            MessageOutput.println("I2C CAN Bus OK!");
+            }
+            break;
+#endif
+#ifdef USE_CHARGER_MCP2515
+        case Charger_Provider_t::MCP2515:
+            {
+            auto oSPInum = SPIPortManager.allocatePort("MCP2515");
+            if (!oSPInum) { return false; }
+
+            SPI = new SPIClass(*oSPInum); // old value HSPI
+            SPI->begin(pin.mcp2515.clk, pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.cs);
+            pinMode(pin.mcp2515.cs, OUTPUT);
+            digitalWrite(pin.mcp2515.cs, HIGH);
+
+            _mcp2515Irq = pin.mcp2515.irq;
+            pinMode(_mcp2515Irq, INPUT_PULLUP);
+
+            auto frequency = Configuration.get().MCP2515.Controller_Frequency;
+            auto mcp_frequency = MCP_8MHZ;
+            if (16000000UL == frequency) { mcp_frequency = MCP_16MHZ; }
+            else if (8000000UL != frequency) {
+                MessageOutput.printf("Huawei CAN: unknown frequency %d Hz, using 8 MHz\r\n", mcp_frequency);
+            }
+
+            _CAN = new MCP_CAN(SPI, pin.mcp2515.cs);
+            if (!_CAN->begin(MCP_STDEXT, CAN_125KBPS, mcp_frequency) == CAN_OK) {
+                return false;
+            }
+
+            const uint32_t myMask = 0xFFFFFFFF;         // Look at all incoming bits and...
+            const uint32_t myFilter = 0x1081407F;       // filter for this message only
+            _CAN->init_Mask(0, 1, myMask);
+            _CAN->init_Filt(0, 1, myFilter);
+            _CAN->init_Mask(1, 1, myMask);
+
+            // Change to normal mode to allow messages to be transmitted
+            _CAN->setMode(MCP_NORMAL);
+            }
+            break;
+#endif
+        default:;
+            MessageOutput.println(" Error: no IO provider configured");
             return false;
-        }
-
-        // Start TWAI driver
-        if (twai_start() == ESP_OK) {
-            MessageOutput.print(" and started. ");
-        } else {
-            MessageOutput.println(". ERR:Failed to start Twai driver.");
-            return false;
-        }
-
-    } else if (pin.provider == Charger_Provider_t::I2C0 || pin.provider == Charger_Provider_t::I2C1) {
-
-        auto scl = pin.provider == Charger_Provider_t::I2C0?pin.i2c0.scl:pin.i2c1.scl;
-        auto sda = pin.provider == Charger_Provider_t::I2C1?pin.i2c0.sda:pin.i2c1.sda;
-
-        MessageOutput.printf("I2C CAN Bus @ I2C%d scl = %d, sda = %d\r\n", pin.i2c0.scl>=0?0:1, scl, sda);
-
-        i2c_can = new I2C_CAN(pin.provider == Charger_Provider_t::I2C0?&Wire:&Wire1, 0x25, scl, sda, 400000UL);     // Set I2C Address
-
-        int i = 10;
-        while (CAN_OK != i2c_can->begin(I2C_CAN_125KBPS))    // init can bus : baudrate = 125k
-        {
-            delay(200);
-            if (--i) continue;
-
-            MessageOutput.println("CAN Bus FAIL!");
-            return false;
-        }
-
-        const uint32_t myMask = 0xFFFFFFFF;         // Look at all incoming bits and...
-        const uint32_t myFilter = 0x1081407F;       // filter for this message only
-        i2c_can->init_Mask(0, 1, myMask);
-        i2c_can->init_Filt(0, 1, myFilter);
-        i2c_can->init_Mask(1, 1, myMask);
-
-        MessageOutput.println("I2C CAN Bus OK!");
-
-    } else if (pin.provider == Charger_Provider_t::MCP2515) {
-
-        auto oSPInum = SPIPortManager.allocatePort("MCP2515");
-        if (!oSPInum) { return false; }
-
-        SPI = new SPIClass(*oSPInum); // old value HSPI
-        SPI->begin(pin.mcp2515.clk, pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.cs);
-        pinMode(pin.mcp2515.cs, OUTPUT);
-        digitalWrite(pin.mcp2515.cs, HIGH);
-
-        _mcp2515Irq = pin.mcp2515.irq;
-        pinMode(_mcp2515Irq, INPUT_PULLUP);
-
-        auto frequency = Configuration.get().MCP2515.Controller_Frequency;
-        auto mcp_frequency = MCP_8MHZ;
-        if (16000000UL == frequency) { mcp_frequency = MCP_16MHZ; }
-        else if (8000000UL != frequency) {
-            MessageOutput.printf("Huawei CAN: unknown frequency %d Hz, using 8 MHz\r\n", mcp_frequency);
-        }
-
-        _CAN = new MCP_CAN(SPI, pin.mcp2515.cs);
-        if (!_CAN->begin(MCP_STDEXT, CAN_125KBPS, mcp_frequency) == CAN_OK) {
-            return false;
-        }
-
-        const uint32_t myMask = 0xFFFFFFFF;         // Look at all incoming bits and...
-        const uint32_t myFilter = 0x1081407F;       // filter for this message only
-        _CAN->init_Mask(0, 1, myMask);
-        _CAN->init_Filt(0, 1, myFilter);
-        _CAN->init_Mask(1, 1, myMask);
-
-        // Change to normal mode to allow messages to be transmitted
-        _CAN->setMode(MCP_NORMAL);
     }
 
     return true;
@@ -149,17 +164,26 @@ void HuaweiCanCommClass::loop()
   bool gotMessage = false;
   auto _provider = PinMapping.get().charger.provider;
 
-  if (_provider == Charger_Provider_t::MCP2515) {
-    if (!digitalRead(_mcp2515Irq)) {
+  switch (_provider) {
+#ifdef USE_CHARGER_MCP2515
+    case Charger_Provider_t::MCP2515:
+        if (digitalRead(_mcp2515Irq)) break;
+
         // If CAN_INT pin is low, read receive buffer
         _CAN->readMsgBuf(&rx_message.identifier, &rx_message.data_length_code, rx_message.data); // Read data: len = data length, buf = data byte(s)
         gotMessage = true;
-    }
+        break;
+#endif
+#ifdef USE_CHARGER_CAN0
+    case Charger_Provider_t::CAN0:
+        {
+        // Check for messages. twai_recive is blocking when there is no data so we return if there are no frames in the buffer
+        twai_status_info_t status_info;
+        if (twai_get_status_info(&status_info) != ESP_OK) {
+            MessageOutput.printf("%s Failed to get Twai status info\r\n", TAG);
+            break;
+        }
 
-  } else if (_provider == Charger_Provider_t::CAN0) {
-    // Check for messages. twai_recive is blocking when there is no data so we return if there are no frames in the buffer
-    twai_status_info_t status_info;
-    if (twai_get_status_info(&status_info) == ESP_OK) {
         if (status_info.msgs_to_rx) {
             // Wait for message to be received, function is blocking
             if (twai_receive(&rx_message, pdMS_TO_TICKS(100)) == ESP_OK) {
@@ -170,12 +194,14 @@ void HuaweiCanCommClass::loop()
         } else {
             //  MessageOutput.printf("%s no message received\r\n", TAG);
         }
-    } else {
-        MessageOutput.printf("%s Failed to get Twai status info\r\n", TAG);
-    }
+        }
+        break;
+#endif
+#ifdef USE_CHARGER_I2C
+    case Charger_Provider_t::I2C0:
+    case Charger_Provider_t::I2C1:
+        if (CAN_MSGAVAIL != i2c_can->checkReceive()) break;
 
-  } else if (_provider == Charger_Provider_t::I2C0 || _provider == Charger_Provider_t::I2C1) {
-    if (CAN_MSGAVAIL == i2c_can->checkReceive()) {
         if (CAN_OK == i2c_can->readMsgBuf(&rx_message.data_length_code, rx_message.data)) {    // read data,  len: data length, buf: data buf
             if (rx_message.data_length_code > 0 && rx_message.data_length_code <= 8) {
                 rx_message.identifier = i2c_can->getCanId();
@@ -188,7 +214,9 @@ void HuaweiCanCommClass::loop()
         } else {
             MessageOutput.println("I2C CAN nothing received");
         }
-    }
+        break;
+#endif
+    default:;
   }
 
   if (gotMessage) {
@@ -253,25 +281,36 @@ void HuaweiCanCommClass::loop()
 
 byte HuaweiCanCommClass::sendMsgBuf(uint32_t identifier, uint8_t extd, uint8_t len, uint8_t *data) {
     auto _provider = PinMapping.get().charger.provider;
-    if (_provider == Charger_Provider_t::CAN0) {
-        twai_message_t tx_message;
-        memcpy(tx_message.data, data, len);
-        tx_message.extd = extd;
-        tx_message.data_length_code = len;
-        tx_message.identifier = identifier;
+    switch (_provider) {
+#ifdef USE_CHARGER_CAN0
+        case Charger_Provider_t::CAN0:
+            {
+            twai_message_t tx_message;
+            memcpy(tx_message.data, data, len);
+            tx_message.extd = extd;
+            tx_message.data_length_code = len;
+            tx_message.identifier = identifier;
 
-        if (twai_transmit(&tx_message, pdMS_TO_TICKS(1000)) == ESP_OK) {
+            if (twai_transmit(&tx_message, pdMS_TO_TICKS(1000)) == ESP_OK) {
+                yield();
+                return CAN_OK;
+            }
             yield();
+            MessageOutput.printf("%s Failed to queue message for transmission\r\n", TAG);
+            }
+            break;
+#endif
+#ifdef USE_CHARGER_MCP2515
+        case Charger_Provider_t::MCP2515:
+            return _CAN->sendMsgBuf(identifier, extd, len, data);
+#endif
+#ifdef USE_CHARGER_I2C
+        case Charger_Provider_t::I2C0:
+        case Charger_Provider_t::I2C1:
+            i2c_can->sendMsgBuf(identifier, extd, len, data);
             return CAN_OK;
-        }
-        yield();
-        MessageOutput.printf("%s Failed to queue message for transmission\r\n", TAG);
-
-    } else if (_provider == Charger_Provider_t::MCP2515) {
-        return _CAN->sendMsgBuf(identifier, extd, len, data);
-    } else if (_provider == Charger_Provider_t::I2C0 || _provider == Charger_Provider_t::I2C1) {
-        i2c_can->sendMsgBuf(identifier, extd, len, data);
-        return CAN_OK;
+#endif
+        default:;
     }
 
     return CAN_FAIL;
@@ -374,7 +413,7 @@ void HuaweiCanClass::updateSettings()
 
     xTaskCreate(HuaweiCanCommunicationTask,"HUAWEI_CAN_0",1536,NULL,0,&_HuaweiCanCommunicationTaskHdl);
 
-    MessageOutput.printf("%s::%s MCP2515 Initialized Successfully!\r\n", TAG, __FUNCTION__);
+    MessageOutput.printf("%s::%s CAN Bus Controller initialized Successfully!\r\n", TAG, __FUNCTION__);
     _initialized = true;
 }
 

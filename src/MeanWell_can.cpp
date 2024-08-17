@@ -87,106 +87,122 @@ void MeanWellCanClass::updateSettings()
     }
 
     const CHARGER_t& pin = PinMapping.get().charger;
-    if (pin.provider == Charger_Provider_t::CAN0) {
+    switch (pin.provider) {
+#ifdef USE_CHARGER_CAN0
+        case Charger_Provider_t::CAN0:
+            {
 
-        auto tx = static_cast<gpio_num_t>(pin.can0.tx);
-        auto rx = static_cast<gpio_num_t>(pin.can0.rx);
+            auto tx = static_cast<gpio_num_t>(pin.can0.tx);
+            auto rx = static_cast<gpio_num_t>(pin.can0.rx);
 
-        MessageOutput.printf("CAN0 port rx = %d, tx = %d.\r\n", rx, tx);
+            MessageOutput.printf("CAN0 port rx = %d, tx = %d.\r\n", rx, tx);
 
-        twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(tx, rx, TWAI_MODE_NORMAL);
-        // g_config.bus_off_io = (gpio_num_t)can0_stb;
-        g_config.intr_flags = ESP_INTR_FLAG_LEVEL2;
+            twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(tx, rx, TWAI_MODE_NORMAL);
+            // g_config.bus_off_io = (gpio_num_t)can0_stb;
+            g_config.intr_flags = ESP_INTR_FLAG_LEVEL2;
 
-        twai_timing_config_t t_config = TWAI_TIMING_CONFIG_250KBITS();
-        twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
+            twai_timing_config_t t_config = TWAI_TIMING_CONFIG_250KBITS();
+            twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
 
-        // Install TWAI driver
-        MessageOutput.print("Twai driver install");
-        switch (twai_driver_install(&g_config, &t_config, &f_config)) {
-            case ESP_OK:
-                MessageOutput.print("ed");
-                break;
-            case ESP_ERR_INVALID_ARG:
-                MessageOutput.println(" - invalid arg.");
+            // Install TWAI driver
+            MessageOutput.print("Twai driver install");
+            switch (twai_driver_install(&g_config, &t_config, &f_config)) {
+                case ESP_OK:
+                    MessageOutput.print("ed");
+                    break;
+                case ESP_ERR_INVALID_ARG:
+                    MessageOutput.println(" - invalid arg.");
+                    return;
+                case ESP_ERR_NO_MEM:
+                    MessageOutput.println(" - no memory.");
+                    return;
+                case ESP_ERR_INVALID_STATE:
+                    MessageOutput.println(" - invalid state.");
+                    return;
+                default:;
+                    MessageOutput.println(" failed.");
+                    return;
+            }
+
+            // Start TWAI driver
+            MessageOutput.print(", start");
+            switch (twai_start()) {
+                case ESP_OK:
+                    MessageOutput.println("ed.");
+                    break;
+                case ESP_ERR_INVALID_STATE:
+                    MessageOutput.println(" - invalid state.");
+                    return;
+                default:;
+                    MessageOutput.println(" failed.");
+                    return;
+            }
+            }
+            break;
+#endif
+#ifdef USE_CHARGER_I2C
+        case Charger_Provider_t::I2C0:
+        case Charger_Provider_t::I2C1:
+            {
+            auto scl = pin.i2c.scl;
+            auto sda = pin.i2c.sda;
+
+            MessageOutput.printf("I2C CAN Bus @ I2C%d scl = %d, sda = %d.\r\n", pin.provider==Charger_Provider_t::I2C0?0:1, scl, sda);
+
+            i2c_can = new I2C_CAN(pin.provider == Charger_Provider_t::I2C0?&Wire:&Wire1, 0x25, scl, sda, 400000UL);     // Set I2C Address
+
+            int i = 10;
+            while (CAN_OK != i2c_can->begin(I2C_CAN_125KBPS))    // init can bus : baudrate = 125k
+            {
+                delay(200);
+                if (--i) continue;
+
+                MessageOutput.println("CAN Bus FAIL!");
                 return;
-            case ESP_ERR_NO_MEM:
-                MessageOutput.println(" - no memory.");
+            }
+
+            MessageOutput.println("I2C CAN Bus OK!");
+            }
+            break;
+#endif
+#ifdef USE_CHARGER_MCP2515
+        case Charger_Provider_t::MCP2515:
+            {
+            MessageOutput.printf("MCP2515 CAN: miso = %d, mosi = %d, clk = %d, irq = %d, cs = %d.\r\n",
+                                pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.clk, pin.mcp2515.irq, pin.mcp2515.cs);
+            auto oSPInum = SPIPortManager.allocatePort("MCP2515");
+            if (!oSPInum) { return; }
+
+	        spi = new SPIClass(*oSPInum);
+            spi->begin(pin.mcp2515.clk, pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.cs);
+    	    pinMode(pin.mcp2515.cs, OUTPUT);
+        	digitalWrite(pin.mcp2515.cs, HIGH);
+
+        	_mcp2515_irq = pin.mcp2515.irq;
+	        pinMode(_mcp2515_irq, INPUT_PULLUP);
+
+            auto frequency = Configuration.get().MCP2515.Controller_Frequency;
+	        auto mcp_frequency = MCP_8MHZ;
+	        if (20000000UL == frequency) { mcp_frequency = MCP_20MHZ; }
+    	    else if (16000000UL == frequency) { mcp_frequency = MCP_16MHZ; }
+            else if (8000000UL != frequency) {
+                MessageOutput.printf("Unknown frequency %d Hz, using 8 MHz\r\n", mcp_frequency);
+    	    }
+            MessageOutput.printf("MCP2515 Quarz = %u Mhz\r\n", (unsigned int)(frequency/1000000UL));
+        	CAN = new MCP_CAN(spi, pin.mcp2515.cs);
+    	    if (!CAN->begin(MCP_ANY, CAN_125KBPS, mcp_frequency) == CAN_OK) {
+                MessageOutput.println("Error Initializing MCP2515...");
                 return;
-            case ESP_ERR_INVALID_STATE:
-                MessageOutput.println(" - invalid state.");
-                return;
-            default:;
-                MessageOutput.println(" failed.");
-                return;
-        }
+        	}
 
-        // Start TWAI driver
-        MessageOutput.print(", start");
-        switch (twai_start()) {
-            case ESP_OK:
-                MessageOutput.println("ed.");
-                break;
-            case ESP_ERR_INVALID_STATE:
-                MessageOutput.println(" - invalid state.");
-                return;
-            default:;
-                MessageOutput.println(" failed.");
-                return;
-        }
-
-    } else if (pin.provider == Charger_Provider_t::I2C0 || pin.provider == Charger_Provider_t::I2C1) {
-
-        auto scl = pin.provider == Charger_Provider_t::I2C0?pin.i2c0.scl:pin.i2c1.scl;
-        auto sda = pin.provider == Charger_Provider_t::I2C1?pin.i2c0.sda:pin.i2c1.sda;
-
-        MessageOutput.printf("I2C CAN Bus @ I2C%d scl = %d, sda = %d.\r\n", pin.i2c0.scl>=0?0:1, scl, sda);
-
-        i2c_can = new I2C_CAN(pin.provider == Charger_Provider_t::CAN0?&Wire:&Wire1, 0x25, scl, sda, 400000UL);     // Set I2C Address
-
-        int i = 10;
-        while (CAN_OK != i2c_can->begin(I2C_CAN_125KBPS))    // init can bus : baudrate = 125k
-        {
-            delay(200);
-            if (--i) continue;
-
-            MessageOutput.println("CAN Bus FAIL!");
+	        // Change to normal mode to allow messages to be transmitted
+	        CAN->setMode(MCP_NORMAL);
+            }
+            break;
+#endif
+        default:;
+            MessageOutput.println(" Error: no IO provider configured");
             return;
-        }
-
-        MessageOutput.println("I2C CAN Bus OK!");
-
-    } else if (pin.provider == Charger_Provider_t::MCP2515) {
-
-        MessageOutput.printf("MCP2515 CAN: miso = %d, mosi = %d, clk = %d, irq = %d, cs = %d.\r\n",
-                            pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.clk, pin.mcp2515.irq, pin.mcp2515.cs);
-        auto oSPInum = SPIPortManager.allocatePort("MCP2515");
-        if (!oSPInum) { return; }
-
-	    spi = new SPIClass(*oSPInum);
-        spi->begin(pin.mcp2515.clk, pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.cs);
-	    pinMode(pin.mcp2515.cs, OUTPUT);
-    	digitalWrite(pin.mcp2515.cs, HIGH);
-
-    	_mcp2515_irq = pin.mcp2515.irq;
-	    pinMode(_mcp2515_irq, INPUT_PULLUP);
-
-        auto frequency = Configuration.get().MCP2515.Controller_Frequency;
-	    auto mcp_frequency = MCP_8MHZ;
-	    if (20000000UL == frequency) { mcp_frequency = MCP_20MHZ; }
-	    else if (16000000UL == frequency) { mcp_frequency = MCP_16MHZ; }
-        else if (8000000UL != frequency) {
-            MessageOutput.printf("Unknown frequency %d Hz, using 8 MHz\r\n", mcp_frequency);
-	    }
-        MessageOutput.printf("MCP2515 Quarz = %u Mhz\r\n", (unsigned int)(frequency/1000000UL));
-    	CAN = new MCP_CAN(spi, pin.mcp2515.cs);
-	    if (!CAN->begin(MCP_ANY, CAN_125KBPS, mcp_frequency) == CAN_OK) {
-            MessageOutput.println("Error Initializing MCP2515...");
-            return;
-    	}
-
-	    // Change to normal mode to allow messages to be transmitted
-	    CAN->setMode(MCP_NORMAL);
     }
 
     _loopTask.enable();
@@ -224,76 +240,86 @@ bool MeanWellCanClass::parseCanPackets(void)
     if (xSemaphoreTake(xSemaphore, (TickType_t)1000) == pdTRUE) {
         twai_message_t rx_message;
 
-        if (_provider == Charger_Provider_t::CAN0) {
-            // Check for messages. twai_recive is blocking when there is no data so we return if there are no frames in the buffer
-            twai_status_info_t status_info;
-            if (twai_get_status_info(&status_info) != ESP_OK) {
-                MessageOutput.printf("%s Failed to get Twai status info\r\n", _providerName);
-                xSemaphoreGive(xSemaphore);
-                return false;
-            }
-            if (status_info.msgs_to_rx == 0) {
-                //  MessageOutput.printf("%s no message received\r\n", _providerName);
-                xSemaphoreGive(xSemaphore);
-                return false;
-            }
+        switch (_provider) {
+#ifdef USE_CHARGER_CAN0
+            case Charger_Provider_t::CAN0:
+                {
+                // Check for messages. twai_recive is blocking when there is no data so we return if there are no frames in the buffer
+                twai_status_info_t status_info;
+                if (twai_get_status_info(&status_info) != ESP_OK) {
+                    MessageOutput.printf("%s Failed to get Twai status info\r\n", _providerName);
+                    xSemaphoreGive(xSemaphore);
+                    return false;
+                }
+                if (status_info.msgs_to_rx == 0) {
+                    //  MessageOutput.printf("%s no message received\r\n", _providerName);
+                    xSemaphoreGive(xSemaphore);
+                    return false;
+                }
 
-            // Wait for message to be received, function is blocking
-            if (twai_receive(&rx_message, pdMS_TO_TICKS(100)) != ESP_OK) {
-                MessageOutput.printf("%s Failed to receive message\r\n", _providerName);
-                xSemaphoreGive(xSemaphore);
-                return false;
-            }
+                // Wait for message to be received, function is blocking
+                if (twai_receive(&rx_message, pdMS_TO_TICKS(100)) != ESP_OK) {
+                    MessageOutput.printf("%s Failed to receive message\r\n", _providerName);
+                    xSemaphoreGive(xSemaphore);
+                    return false;
+                }
+                }
+                break;
+#endif
+#ifdef USE_CHARGER_I2C
+            case Charger_Provider_t::I2C0:
+            case Charger_Provider_t::I2C1:
+                if (CAN_MSGAVAIL != i2c_can->checkReceive()) {
+                    xSemaphoreGive(xSemaphore);
+                    return false;
+                }
 
-        } else if (_provider == Charger_Provider_t::I2C0 || _provider == Charger_Provider_t::I2C1) {
+                if (CAN_OK != i2c_can->readMsgBuf(&rx_message.data_length_code, rx_message.data)) {    // read data,  len: data length, buf: data buf
+                    MessageOutput.println("I2C CAN nothing received");
+                    xSemaphoreGive(xSemaphore);
+                    return false;
+                }
 
-            if (CAN_MSGAVAIL != i2c_can->checkReceive()) {
-                xSemaphoreGive(xSemaphore);
-                return false;
-            }
+                if (rx_message.data_length_code > 8) {
+                    MessageOutput.printf("I2C CAN received %d bytes\r\n", rx_message.data_length_code);
+                    xSemaphoreGive(xSemaphore);
+                    return false;
+                }
 
-            if (CAN_OK != i2c_can->readMsgBuf(&rx_message.data_length_code, rx_message.data)) {    // read data,  len: data length, buf: data buf
-                MessageOutput.println("I2C CAN nothing received");
-                xSemaphoreGive(xSemaphore);
-                return false;
-            }
+                if(rx_message.data_length_code == 0) {
+                    xSemaphoreGive(xSemaphore);
+                    return false;
+                }
 
-            if (rx_message.data_length_code > 8) {
-                MessageOutput.printf("I2C CAN received %d bytes\r\n", rx_message.data_length_code);
-                xSemaphoreGive(xSemaphore);
-                return false;
-            }
+                rx_message.identifier = i2c_can->getCanId();
+                rx_message.extd = i2c_can->isExtendedFrame();
+                rx_message.rtr = i2c_can->isRemoteRequest();
+                break;
+#endif
+#ifdef USE_CHARGER_MCP2515
+            case Charger_Provider_t::MCP2515:
+                if (digitalRead(_mcp2515_irq)) {
+                    //  MessageOutput.printf("%s no message received\r\n", _providerName);
+                    xSemaphoreGive(xSemaphore);
+                    return false;
+                }
 
-            if(rx_message.data_length_code == 0) {
-                xSemaphoreGive(xSemaphore);
-                return false;
-            }
+                // If CAN_INT pin is low, read receive buffer
+                CAN->readMsgBuf(&rx_message.identifier, &rx_message.data_length_code, rx_message.data); // Read data: len = data length, buf = data byte(s)
 
-            rx_message.identifier = i2c_can->getCanId();
-            rx_message.extd = i2c_can->isExtendedFrame();
-            rx_message.rtr = i2c_can->isRemoteRequest();
-
-        } else if (_provider == Charger_Provider_t::MCP2515) {
-
-            if (digitalRead(_mcp2515_irq)) {
-                //  MessageOutput.printf("%s no message received\r\n", _providerName);
-                xSemaphoreGive(xSemaphore);
-                return false;
-            }
-
-            // If CAN_INT pin is low, read receive buffer
-            CAN->readMsgBuf(&rx_message.identifier, &rx_message.data_length_code, rx_message.data); // Read data: len = data length, buf = data byte(s)
-
-            if (_verboseLogging) {
-                if((rx_message.identifier & 0x80000000) == 0x80000000)     // Determine if ID is standard (11 bits) or extended (29 bits)
-                    MessageOutput.printf("Extended ID: 0x%.8" PRIx32 " DLC: %1d  Data:", rx_message.identifier & 0x1FFFFFFF, rx_message.data_length_code);
-                else
+                if (_verboseLogging) {
+                    if((rx_message.identifier & 0x80000000) == 0x80000000)     // Determine if ID is standard (11 bits) or extended (29 bits)
+                        MessageOutput.printf("Extended ID: 0x%.8" PRIx32 " DLC: %1d  Data:", rx_message.identifier & 0x1FFFFFFF, rx_message.data_length_code);
+                    else
                     MessageOutput.printf("Standard ID: 0x%.3" PRIx32 " DLC: %1d  Data:", rx_message.identifier, rx_message.data_length_code);
-            }
-            if ((rx_message.identifier & 0x40000000) == 0x40000000){    // Determine if message is a remote request frame.
-                MessageOutput.printf(" REMOTE REQUEST FRAME %s\r\n", rx_message.data);
-                return false;
-            }
+                }
+                if ((rx_message.identifier & 0x40000000) == 0x40000000){    // Determine if message is a remote request frame.
+                    MessageOutput.printf(" REMOTE REQUEST FRAME %s\r\n", rx_message.data);
+                    return false;
+                }
+                break;
+#endif
+            default:;
         }
 
         _meanwellLastResponseTime = millis(); // save last response time
@@ -1397,11 +1423,7 @@ bool MeanWellCanClass::_sendCmd(uint8_t id, uint16_t cmd, uint8_t* data, int len
             data[j++] = c;
         }
         data[j]=0;
-        MessageOutput.printf("%s: id: %08X extd: %d len: %d data:[%s]\r\n",
-            _provider == Charger_Provider_t::CAN0 ? "CAN0":
-            _provider == Charger_Provider_t::I2C0 ? "I2C0 CAN":
-            _provider == Charger_Provider_t::I2C1 ? "I2C1 CAN":
-            _provider == Charger_Provider_t::MCP2515 ? "MCP2515 CAN":"MeanWell unknown CAN Bus provider",
+        MessageOutput.printf("%s: id: %08X extd: %d len: %d data:[%s]\r\n", _providerName,
             tx_message.identifier, tx_message.extd, tx_message.data_length_code, data);
     }
 
@@ -1410,35 +1432,45 @@ bool MeanWellCanClass::_sendCmd(uint8_t id, uint16_t cmd, uint8_t* data, int len
     if (packetMarginTime < 5)
     vTaskDelay(5 - packetMarginTime); // ensure minimum packet time  of 5ms between last response and new request
 
-    if (_provider == Charger_Provider_t::CAN0) {
-        // Queue message for transmission
+    switch (_provider) {
+#ifdef USE_CHARGER_CAN0
+        case Charger_Provider_t::CAN0:
+            // Queue message for transmission
 
-        if (twai_transmit(&tx_message, pdMS_TO_TICKS(1000)) == ESP_OK) {
-            yield();
+            if (twai_transmit(&tx_message, pdMS_TO_TICKS(1000)) == ESP_OK) {
+                yield();
 #ifdef MEANWELL_DEBUG_ENABLED__
-            if (_verboseLogging)
-                MessageOutput.printf("%s Message queued for transmission cmnd %04X with %d data bytes\r\n", _providerName, cmd, len + 2);
+                if (_verboseLogging)
+                    MessageOutput.printf("%s Message queued for transmission cmnd %04X with %d data bytes\r\n", _providerName, cmd, len + 2);
 #endif
-            if (len>0) EEPROMwrites++;
+                if (len>0) EEPROMwrites++;
 
-        } else {
-            yield();
-            MessageOutput.printf("%s Failed to queue message for transmission\r\n", _providerName);
-            return false;
-        }
-
-    } else if (_provider == Charger_Provider_t::I2C0 || _provider == Charger_Provider_t::I2C1 ) {
-        i2c_can->sendMsgBuf(tx_message.identifier, (uint8_t)tx_message.extd, tx_message.data_length_code, tx_message.data);
-
-    } else if (_provider == Charger_Provider_t::MCP2515) {
-
-        uint8_t sndStat = CAN->sendMsgBuf(tx_message.identifier, (uint8_t)tx_message.extd, tx_message.data_length_code, tx_message.data);
-        if (sndStat == CAN_OK) {
-            //        MessageOutput.printf("%s Message Sent Successfully!\r\n", _providerName);
-        } else {
-            MessageOutput.printf("%s Error Sending Message... Status: %d\r\n", _providerName, sndStat);
-        }
-
+            } else {
+                yield();
+                MessageOutput.printf("%s Failed to queue message for transmission\r\n", _providerName);
+                return false;
+            }
+            break;
+#endif
+#ifdef USE_CHARGER_I2C
+        case Charger_Provider_t::I2C0:
+        case Charger_Provider_t::I2C1:
+            i2c_can->sendMsgBuf(tx_message.identifier, (uint8_t)tx_message.extd, tx_message.data_length_code, tx_message.data);
+            break;
+#endif
+#ifdef USE_CHARGER_MCP2515
+        case Charger_Provider_t::MCP2515:
+            {
+            uint8_t sndStat = CAN->sendMsgBuf(tx_message.identifier, (uint8_t)tx_message.extd, tx_message.data_length_code, tx_message.data);
+            if (sndStat == CAN_OK) {
+                //        MessageOutput.printf("%s Message Sent Successfully!\r\n", _providerName);
+            } else {
+                MessageOutput.printf("%s Error Sending Message... Status: %d\r\n", _providerName, sndStat);
+            }
+            }
+            break;
+#endif
+        default:;
     }
 
     yield();

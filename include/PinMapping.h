@@ -31,11 +31,7 @@ struct CHARGER_t {
         struct {
             int8_t scl;
             int8_t sda;
-        } i2c0;
-        struct {
-            int8_t scl;
-            int8_t sda;
-        } i2c1;
+        } i2c;
     };
 #if defined(USE_CHARGER_HUAWEI)
     int8_t power;
@@ -56,11 +52,7 @@ struct Battery_t {
         struct {
             int8_t scl;
             int8_t sda;
-        } i2c0;
-        struct {
-            int8_t scl;
-            int8_t sda;
-        } i2c1;
+        } i2c;
 #endif
 #if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER) || defined(USE_JKBMS_CONTROLLER)
         struct {
@@ -148,12 +140,6 @@ struct PinMapping_t {
     Battery_t battery;
 
     CHARGER_t charger;
-
-    int8_t i2c0_scl;
-    int8_t i2c0_sda;
-
-    int8_t i2c1_scl;
-    int8_t i2c1_sda;
 
     int8_t pre_charge;
     int8_t full_power;
