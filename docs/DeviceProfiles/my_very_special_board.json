@@ -25,13 +25,6 @@
             "can0_rx": 26,
             "can0_tx": 27
         },
-        "mcp2515": {
-            "miso": 12,
-            "mosi": 13,
-            "clk": 14,
-            "irq": 35,
-            "cs": 15
-        },
         "batteryConnectedInverter": {
             "pre_charge": 32,
             "full_power": 33
@@ -64,13 +57,6 @@
             "can0_rx": 26,
             "can0_tx": 27
         },
-        "mcp2515": {
-            "miso": -1,
-            "mosi": -1,
-            "clk": -1,
-            "irq": -1,
-            "cs": -1
-        },
         "batteryConnectedInverter": {
             "pre_charge": 32,
             "full_power": 33
@@ -81,7 +67,7 @@
         }
     },
     {
-        "name": "my_test_board DalyBMS via RS232",
+        "name": "my_test_board MCP2515+DalyBMS via RS232",
         "nrf24": {
             "clk": 18,
             "cs": 5,
@@ -103,15 +89,11 @@
             "bms_wakeup": 4
         },
         "charger": {
-            "can0_rx": 26,
-            "can0_tx": 27
-        },
-        "mcp2515": {
-            "miso": -1,
-            "mosi": -1,
-            "clk": -1,
-            "irq": -1,
-            "cs": -1
+            "mcp2515_miso": 12,
+            "mcp2515_mosi": 13,
+            "mcp2515_clk": 14,
+            "mcp2515_irq": 35,
+            "mcp2515_cs": 15
         },
         "batteryConnectedInverter": {
             "pre_charge": 32,
@@ -155,13 +137,6 @@
             "can0_rx": 26,
             "can0_tx": 27
         },
-        "mcp2515": {
-            "miso": -1,
-            "mosi": -1,
-            "clk": -1,
-            "irq": -1,
-            "cs": -1
-        },
         "batteryConnectedInverter": {
             "pre_charge": 32,
             "full_power": 33
@@ -202,13 +177,6 @@
             "can0_rx": 26,
             "can0_tx": 27
         },
-        "mcp2515": {
-            "miso": 12,
-            "mosi": 13,
-            "clk": 14,
-            "irq": 35,
-            "cs": 15
-        },
         "batteryConnectedInverter": {
             "pre_charge": 32,
             "full_power": 33
@@ -248,13 +216,6 @@
             "can0_rx": 26,
             "can0_tx": 27
         },
-        "mcp2515": {
-            "miso": 12,
-            "mosi": 13,
-            "clk": 14,
-            "irq": 35,
-            "cs": 15
-        },
         "batteryConnectedInverter": {
             "pre_charge": 32,
             "full_power": 33
@@ -293,13 +254,6 @@
         "charger": {
             "can0_rx": 26,
             "can0_tx": 27
-        },
-        "mcp2515": {
-            "miso": 12,
-            "mosi": 13,
-            "clk": 14,
-            "irq": 35,
-            "cs": 15
         },
         "batteryConnectedInverter": {
             "pre_charge": 32,

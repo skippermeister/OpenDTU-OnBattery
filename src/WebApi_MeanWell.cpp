@@ -55,6 +55,9 @@ void WebApiMeanWellClass::onAdminGet(AsyncWebServerRequest* request)
 
     root["enabled"] = cMeanWell.Enabled;
     root["verbose_logging"] = cMeanWell.VerboseLogging;
+    root["chargerType"] = (strcmp(MeanWellCan._rp.ManufacturerName, "MEANWELL") == 0) ?
+            String(MeanWellCan._rp.ManufacturerName) + " " + String(MeanWellCan._rp.ManufacturerModelName):
+            "MeanWell NPB-450/750/1200/1700-24/48";
     root["io_providername"] = PinMapping.get().charger.providerName;
     if (MeanWellCan.isMCP2515Provider()) root["can_controller_frequency"] = Configuration.get().MCP2515.Controller_Frequency;
     root["pollinterval"] = cMeanWell.PollInterval;

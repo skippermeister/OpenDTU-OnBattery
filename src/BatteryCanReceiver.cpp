@@ -13,7 +13,7 @@ bool BatteryCanReceiver::init(char const* providerName)
 
     MessageOutput.printf("%s Initialize interface...", _providerName);
 
-    if (PinMapping.isValidBatteryConfig()) {
+    if (!PinMapping.isValidBatteryConfig()) {
         MessageOutput.println(" Invalid pin config");
         return false;
     }

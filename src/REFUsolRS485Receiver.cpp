@@ -53,17 +53,12 @@ void REFUsolRS485ReceiverClass::updateSettings(void)
 
     _loopTask.enable();
 
-    const PinMapping_t& pin = PinMapping.get();
-
-    if (pin.REFUsol_rx < 0 || pin.REFUsol_tx < 0
-        || pin.REFUsol_rx == pin.REFUsol_tx
-        || (pin.REFUsol_rts >= 0
-            && (pin.REFUsol_rts == pin.REFUsol_rx || pin.REFUsol_rts == pin.REFUsol_tx))
-       )
-    {
+    if (!PinMapping.isValidREFUsolConfig()) {
         MessageOutput.println("Invalid TX/RX/RTS pin config");
         return;
     }
+
+    auto const& pin = PinMapping.get().REFUsol;
 
     if (!_initialized) {
         RS485BaudRate = 57600;
@@ -72,9 +67,9 @@ void REFUsolRS485ReceiverClass::updateSettings(void)
 
         _upSerial = std::make_unique<HardwareSerial>(*oHwSerialPort);
 
-        _upSerial->begin(RS485BaudRate, SERIAL_8N1, pin.REFUsol_rx, pin.REFUsol_tx);
-        MessageOutput.printf("RS485 (Type %d) port rx = %d, tx = %d", pin.REFUsol_rts >= 0 ? 1 : 2, pin.REFUsol_rx, pin.REFUsol_tx);
-        if (pin.REFUsol_rts >= 0) {
+        _upSerial->begin(RS485BaudRate, SERIAL_8N1, pin.rx, pin.tx);
+        MessageOutput.printf("RS485 (Type %d) port rx = %d, tx = %d", pin.rts >= 0 ? 1 : 2, pin.rx, pin.tx);
+        if (pin.rts >= 0) {
             /*
              * REFUsol inverter is connected via a RS485 module. Two different types of modules are supported.
              * Type 1: if a GPIO pin greater or equal 0 is given, we have a MAX3485 or SP3485 modul with external driven DE/RE pins
@@ -82,8 +77,8 @@ void REFUsolRS485ReceiverClass::updateSettings(void)
              * Type 2: if the GPIO is negativ (-1), we assume that we have a RS485 TTL Modul with a self controlled DE/RE circuit.
              *         In this case we only need a TX and RX pin.
              */
-            MessageOutput.printf(", rts = %d", pin.REFUsol_rts);
-            _upSerial->setPins(pin.REFUsol_rx, pin.REFUsol_tx, UART_PIN_NO_CHANGE, pin.REFUsol_rts);
+            MessageOutput.printf(", rts = %d", pin.rts);
+            _upSerial->setPins(pin.rx, pin.tx, UART_PIN_NO_CHANGE, pin.rts);
         }
         ESP_ERROR_CHECK(uart_set_mode(*oHwSerialPort, UART_MODE_RS485_HALF_DUPLEX));
 
@@ -148,7 +143,7 @@ void REFUsolRS485ReceiverClass::deinit(void)
 
     _upSerial->end();
 
-    if (PinMapping.get().REFUsol_rts >= 0) { pinMode(PinMapping.get().REFUsol_rts, INPUT); }
+    if (PinMapping.get().REFUsol.rts >= 0) { pinMode(PinMapping.get().REFUsol.rts, INPUT); }
 
     SerialPortManager.freePort(_serialPortOwner);
 

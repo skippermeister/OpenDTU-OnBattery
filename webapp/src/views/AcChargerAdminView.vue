@@ -6,7 +6,11 @@
 
         <form @submit="saveChargerConfig">
             <CardElement :text="$t('acchargeradmin.ChargerConfiguration')" textVariant="text-bg-primary">
-                <InputElement :label="$t('acchargeradmin.EnableMeanWell') + acChargerConfigList.io_providername + ' Bus Interface'" v-model="acChargerConfigList.enabled"
+                <InputElement :label="$t('acchargeradmin.Enable') +
+                    acChargerConfigList.chargerType +
+                    $t('acchargeradmin.on') +
+                    acChargerConfigList.io_providername +
+                    ' Interface'" v-model="acChargerConfigList.enabled"
                     type="checkbox" wide4_1 />
 
                 <div v-show="acChargerConfigList.enabled">

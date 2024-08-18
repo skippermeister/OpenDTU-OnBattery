@@ -140,6 +140,8 @@ void WebApiHuaweiClass::onAdminGet(AsyncWebServerRequest* request)
 
     root["enabled"] = cHuawei.Enabled;
     root["verbose_logging"] = cHuawei.VerboseLogging;
+    root["charger_type"] = "HUAWEI";
+    root["io_providername"] = PinMapping.get().charger.providerName;
     if (HuaweiCanComm.isMCP2515Provider()) root["can_controller_frequency"] = Configuration.get().MCP2515.Controller_Frequency;
     root["auto_power_enabled"] = cHuawei.Auto_Power_Enabled;
     root["auto_power_batterysoc_limits_enabled"] = cHuawei.Auto_Power_BatterySoC_Limits_Enabled;

@@ -10,6 +10,17 @@
 
 #define MAPPING_NAME_STRLEN 31
 
+struct RS485_t {
+    int8_t rx;
+    int8_t tx;
+    int8_t rts;
+};
+
+struct RS232_t {
+    int8_t rx;
+    int8_t tx;
+};
+
 struct MCP2515_t {
         int8_t miso;
         int8_t mosi;
@@ -55,15 +66,8 @@ struct Battery_t {
         } i2c;
 #endif
 #if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER) || defined(USE_JKBMS_CONTROLLER)
-        struct {
-            int8_t rx;
-            int8_t tx;
-        } rs232;
-        struct {
-            int8_t rx;
-            int8_t tx;
-            int8_t rts;
-        } rs485;
+        RS232_t rs232;
+        RS485_t rs485;
 #endif
     };
 #if defined(USE_DALYBMS_CONTROLLER)
@@ -121,20 +125,10 @@ struct PinMapping_t {
     int8_t led_rgb;
 #endif
 
-    int8_t victron_tx;
-    int8_t victron_rx;
-
-    int8_t victron_tx2;
-    int8_t victron_rx2;
-
-    int8_t victron_tx3;
-    int8_t victron_rx3;
+    RS232_t victron[3];
 
 #if defined(USE_REFUsol_INVERTER)
-    int8_t REFUsol_rx;
-    int8_t REFUsol_tx;
-    //    int8_t REFUsol_cts;
-    int8_t REFUsol_rts;
+    RS485_t refusol;
 #endif
 
     Battery_t battery;
@@ -165,18 +159,18 @@ public:
     bool isValidEthConfig() const;
 #endif
     bool isValidBatteryConfig() const;
-#if defined(USE_CHARGER_MEANWELL) || defined(USE_CHARGER_HUAWEI)
     bool isValidChargerConfig() const;
-#endif
-
     bool isValidPreChargeConfig() const;
+#if defined(USE_REFUsol_INVERTER)
+    bool isValidREFUsolConfig() const;
+#endif
 
 private:
     void createPinMappingJson() const;
 
     PinMapping_t _pinMapping;
 
-    const char* help[7] = {"unknown", "CAN0 Bus", "MCP2515", "I2C0/CAN", "I2C1/CAN", "RS232", "RS485"};
+    const char* help[7] = {"unknown", "CAN0 Bus", "MCP2515 CAN Bus", "I2C0/CAN Bus", "I2C1/CAN Bus", "RS232", "RS485"};
 };
 
 extern PinMappingClass PinMapping;

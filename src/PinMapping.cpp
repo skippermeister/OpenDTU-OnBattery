@@ -107,22 +107,6 @@
 #define VICTRON_PIN_TX 21
 #endif
 
-#ifndef VICTRON_PIN_RX2
-#define VICTRON_PIN_RX2 -1
-#endif
-
-#ifndef VICTRON_PIN_TX2
-#define VICTRON_PIN_TX2 -1
-#endif
-
-#ifndef VICTRON_PIN_RX3
-#define VICTRON_PIN_RX3 -1
-#endif
-
-#ifndef VICTRON_PIN_TX3
-#define VICTRON_PIN_TX3 -1
-#endif
-
 #ifndef REFUSOL_PIN_RX
 #define REFUSOL_PIN_RX -1
 #endif
@@ -262,19 +246,19 @@ PinMappingClass::PinMappingClass()
     _pinMapping.led_rgb = LED_RGB;
 #endif
 
-    _pinMapping.victron_tx = VICTRON_PIN_TX;
-    _pinMapping.victron_rx = VICTRON_PIN_RX;
+    _pinMapping.victron[0].tx = VICTRON_PIN_TX;
+    _pinMapping.victron[0].rx = VICTRON_PIN_RX;
 
-    _pinMapping.victron_tx2 = -1;
-    _pinMapping.victron_rx2 = -1;
+    _pinMapping.victron[1].tx = -1;
+    _pinMapping.victron[1].rx = -1;
 
-    _pinMapping.victron_tx3 = -1;
-    _pinMapping.victron_rx3 = -1;
+    _pinMapping.victron[2].tx = -1;
+    _pinMapping.victron[2].rx = -1;
 
 #if defined(USE_REFUsol_INVERTER)
-    _pinMapping.REFUsol_rx = REFUSOL_PIN_RX;
-    _pinMapping.REFUsol_tx = REFUSOL_PIN_TX;
-    _pinMapping.REFUsol_rts = REFUSOL_PIN_RTS;
+    _pinMapping.REFUsol.rx = REFUSOL_PIN_RX;
+    _pinMapping.REFUsol.tx = REFUSOL_PIN_TX;
+    _pinMapping.REFUsol.rts = REFUSOL_PIN_RTS;
 #endif
 
 #if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER) || defined(USE_JKBMS_CONTROLLER)
@@ -384,22 +368,19 @@ void PinMappingClass::init(const String& deviceMapping)
 #if defined(USE_LED_STRIP)
                 _pinMapping.led_rgb = doc[i]["led"]["rgb"] | LED_RGB;
 #endif
-                _pinMapping.victron_rx = doc[i]["victron"]["rs232_rx"] | VICTRON_PIN_RX;
-                _pinMapping.victron_tx = doc[i]["victron"]["rs232_tx"] | VICTRON_PIN_TX;
-
-                _pinMapping.victron_rx2 = doc[i]["victron"]["rs232_rx2"] | VICTRON_PIN_RX2;
-                _pinMapping.victron_tx2 = doc[i]["victron"]["rs232_tx2"] | VICTRON_PIN_TX2;
-
-                _pinMapping.victron_rx3 = doc[i]["victron"]["rs232_rx3"] | VICTRON_PIN_RX3;
-                _pinMapping.victron_tx3 = doc[i]["victron"]["rs232_tx3"] | VICTRON_PIN_TX3;
+                for (int i=0; i<sizeof(_pinMapping.victron)/sizeof(RS232_t); i++) {
+                    String offset = (i>0)?String(i+1):String("");
+                    _pinMapping.victron[i].rx = doc[i]["victron"][String("rs232_rx")+offset] | -1;
+                    _pinMapping.victron[i].tx = doc[i]["victron"][String("rs232_tx")+offset] | -1;
+                }
 
 #if defined(USE_REFUsol_INVERTER)
-                _pinMapping.REFUsol_rx = doc[i]["refusol"]["rs485_rx"] | REFUSOL_PIN_RX;
-                _pinMapping.REFUsol_tx = doc[i]["refusol"]["rs485_tx"] | REFUSOL_PIN_TX;
+                _pinMapping.REFUsol.rx = doc[i]["refusol"]["rs485_rx"] | REFUSOL_PIN_RX;
+                _pinMapping.REFUsol.tx = doc[i]["refusol"]["rs485_tx"] | REFUSOL_PIN_TX;
                 if (doc[i]["refusol"].containsKey("rs485_rts")) {
-                    _pinMapping.REFUsol_rts = doc[i]["refusol"]["rs485_rts"] | REFUSOL_PIN_RTS;
+                    _pinMapping.REFUsol.rts = doc[i]["refusol"]["rs485_rts"] | REFUSOL_PIN_RTS;
                 } else {
-                    _pinMapping.REFUsol_rts = -1;
+                    _pinMapping.REFUsol.rts = -1;
                 }
 #endif
 
@@ -611,9 +592,9 @@ bool PinMappingClass::isValidBatteryConfig() const
     return false;
 }
 
-#if defined(USE_CHARGER_MEANWELL) || defined(USE_CHARGER_HUAWEI)
 bool PinMappingClass::isValidChargerConfig() const
 {
+#if defined(USE_CHARGER_MEANWELL) || defined(USE_CHARGER_HUAWEI)
     if (_pinMapping.charger.provider == Charger_Provider_t::CAN0)
         return _pinMapping.charger.can0.rx >= 0 &&
                _pinMapping.charger.can0.tx >= 0;
@@ -627,16 +608,25 @@ bool PinMappingClass::isValidChargerConfig() const
                _pinMapping.charger.mcp2515.clk >= 0 &&
                _pinMapping.charger.mcp2515.irq >= 0 &&
                _pinMapping.charger.mcp2515.cs >= 0;
-
+#endif
     return false;
 }
-#endif
 
 bool PinMappingClass::isValidPreChargeConfig() const
 {
     return _pinMapping.pre_charge >= 0
         && _pinMapping.full_power >= 0;
 }
+
+#if defined(USE_REFUsol_INVERTER)
+bool PinMappingClass::isValidREFUsolConfig() const
+{
+    return _pinMapping.REFUsol.rx > 0
+        && _pinMapping.REFUsol.tx >= 0
+        && _pinMapping.REFUsol.rx != _pinMapping.REFUsol.tx
+        && _pinMapping.REFUsol.rts != _pinMapping.REFUsol.rx
+        && _pinMapping.REFUsol.rts != _pinMapping.REFUsol.tx;
+#endif
 
 void PinMappingClass::createPinMappingJson() const
 {
@@ -703,18 +693,17 @@ void PinMappingClass::createPinMappingJson() const
 #endif
 
     JsonObject victron = doc["victron"].to<JsonObject>();
-    victron["rs232_rx"] = _pinMapping.victron_rx;
-    victron["rs232_tx"] = _pinMapping.victron_tx;
-    victron["rs232_rx2"] = _pinMapping.victron_rx2;
-    victron["rs232_tx2"] = _pinMapping.victron_tx2;
-    victron["rs232_rx3"] = _pinMapping.victron_rx3;
-    victron["rs232_tx3"] = _pinMapping.victron_tx3;
+    for (int i=0; i<sizeof(_pinMapping.victron)/sizeof(RS232_t); i++) {
+        String offset = (i>0)?String(i+1):String("");
+        victron[String("rs232_rx")+offset] = _pinMapping.victron[i].rx;
+        victron[String("rs232_tx")+offset] = _pinMapping.victron[i].tx;
+    }
 
 #if defined(USE_REFUsol_INVERTER)
     JsonObject refusol = doc["refusol"].to<JsonObject>();
-    refusol["rs485_rx"] = _pinMapping.REFUsol_rx;
-    refusol["rs485_tx"] = _pinMapping.REFUsol_tx;
-    if (_pinMapping.REFUsol_rts >= 0) refusol["rs485_rts"] = _pinMapping.REFUsol_rts;
+    refusol["rs485_rx"] = _pinMapping.REFUsol.rx;
+    refusol["rs485_tx"] = _pinMapping.REFUsol.tx;
+    if (_pinMapping.REFUsol.rts >= 0) refusol["rs485_rts"] = _pinMapping.REFUsol.rts;
 #endif
 
     JsonObject battery = doc["battery"].to<JsonObject>();

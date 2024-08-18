@@ -30,9 +30,7 @@ bool PylontechRS485Receiver::init()
     }
 */
 
-    const Battery_t& pin = PinMapping.get().battery;
-
-    if (!PinMapping.isValidChargerConfig()) {
+    if (!PinMapping.isValidBatteryConfig()) {
         MessageOutput.println("Invalid pin config");
         return false;
     }
@@ -41,6 +39,8 @@ bool PylontechRS485Receiver::init()
     if (!oHwSerialPort) { return false; }
 
     _upSerial = std::make_unique<HardwareSerial>(*oHwSerialPort);
+
+    auto const& pin = PinMapping.get().battery;
 
     _upSerial->begin(115200, SERIAL_8N1, pin.rs485.rx, pin.rs485.tx);
     MessageOutput.printf("Port= %d, RS485 (Type %d) port rx = %d, tx = %d", *oHwSerialPort, pin.rs485.rts >= 0 ? 1 : 2, pin.rs485.rx, pin.rs485.tx);

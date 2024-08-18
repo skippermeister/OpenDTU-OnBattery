@@ -38,13 +38,9 @@ void VictronMpptClass::updateSettings()
         return;
     }
 
-    const PinMapping_t& pin = PinMapping.get();
-
-    initController(pin.victron_rx, pin.victron_tx, _verboseLogging, 1);
-
-    initController(pin.victron_rx2, pin.victron_tx2, _verboseLogging, 2);
-
-    initController(pin.victron_rx3, pin.victron_tx3, _verboseLogging, 3);
+    auto const& pin = PinMapping.get().victron;
+    for (int i=0; i<sizeof(pin)/sizeof(RS232_t); i++)
+        initController(pin[i].rx, pin[i].tx, _verboseLogging, i+1);
 }
 
 bool VictronMpptClass::initController(int8_t rx, int8_t tx, bool logging, uint8_t instance)

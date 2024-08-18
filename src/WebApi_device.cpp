@@ -141,25 +141,20 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
 #endif
 
     auto victronPinObj = curPin["victron"].to<JsonObject>();
-    if (pin.victron_rx >= 0) {
-        victronPinObj["rs232_rx"] = pin.victron_rx;
-        victronPinObj["rs232_tx"] = pin.victron_tx;
-    }
-    if (pin.victron_rx2 >= 0) {
-        victronPinObj["rs232_rx2"] = pin.victron_rx2;
-        victronPinObj["rs232_tx2"] = pin.victron_tx2;
-    }
-    if (pin.victron_rx3 >= 0) {
-        victronPinObj["rs232_rx3"] = pin.victron_rx3;
-        victronPinObj["rs232_tx3"] = pin.victron_tx3;
+    for (int i=0; i<sizeof(pin.victron)/sizeof(RS232_t); i++) {
+        if (pin.victron[i].rx >= 0) {
+            String offset = (i>0)?String(i+1):String("");
+            victronPinObj[String("rs232_rx")+offset] = pin.victron[i].rx;
+            victronPinObj[String("rs232_tx")+offset] = pin.victron[i].tx;
+        }
     }
 
 #if defined(USE_REFUsol_INVERTER)
     auto refusolPinObj = curPin["refusol"].to<JsonObject>();
-    refusolPinObj["rs485_rx"] = pin.REFUsol_rx;
-    refusolPinObj["rs485_tx"] = pin.REFUsol_tx;
-    if (pin.REFUsol_rts >= 0) {
-        refusolPinObj["rs485_rts"] = pin.REFUsol_rts;
+    refusolPinObj["rs485_rx"] = pin.REFUsol.rx;
+    refusolPinObj["rs485_tx"] = pin.REFUsol.tx;
+    if (pin.REFUsol.rts >= 0) {
+        refusolPinObj["rs485_rts"] = pin.REFUsol.rts;
     }
 #endif
 
