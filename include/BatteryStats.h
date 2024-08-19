@@ -552,6 +552,57 @@ class PytesBatteryStats : public BatteryStats {
 };
 #endif
 
+#ifdef USE_SBS_CAN_RECEIVER
+class SBSBatteryStats : public BatteryStats {
+    friend class SBSCanReceiver;
+
+    public:
+        void getLiveViewData(JsonVariant& root) const final;
+        void generatePackCommonJsonResponse(JsonObject& packObject, const uint8_t m) const final;
+        void mqttPublish() /*const*/ final;
+        float getChargeCurrent() const { return _current; } ;
+        float getChargeCurrentLimitation() const { return _chargeCurrentLimit; } ;
+
+        uint8_t get_number_of_packs() const final { return 1; };
+
+        const Alarm_t& getAlarm() const final { return Alarm; };
+        const Warning_t& getWarning() const final { return Warning; };
+
+        bool getChargeEnabled() const final { return _chargeEnabled; };
+        bool getDischargeEnabled() const final { return _dischargeEnabled; };
+
+        bool isChargeTemperatureValid() const final
+        {
+            const Battery_CONFIG_T& cBattery = Configuration.get().Battery;
+            return (_temperature >= cBattery.MinChargeTemperature) && (_temperature <= cBattery.MaxChargeTemperature);
+        };
+        bool isDischargeTemperatureValid() const final
+        {
+            const Battery_CONFIG_T& cBattery = Configuration.get().Battery;
+            return (_temperature >= cBattery.MinDischargeTemperature) && (_temperature <= cBattery.MaxDischargeTemperature);
+        };
+
+    private:
+        void setManufacturer(String&& m) { _manufacturer = std::move(m); }
+        void setLastUpdate(uint32_t ts) { _lastUpdate = ts; }
+
+        float _chargeVoltage;
+        float _chargeCurrentLimit;
+        float _dischargeCurrentLimit;
+        uint16_t _stateOfHealth;
+        float _current;
+        float _temperature;
+
+        Alarm_t Alarm;
+        Warning_t Warning;
+
+        bool _chargeEnabled;
+        bool _dischargeEnabled;
+
+        const char *_state = nullptr;
+};
+#endif
+
 #ifdef USE_JKBMS_CONTROLLER
 class JkBmsBatteryStats : public BatteryStats {
     friend class Controller;

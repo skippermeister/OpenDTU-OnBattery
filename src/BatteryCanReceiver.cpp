@@ -9,7 +9,7 @@
 
 bool BatteryCanReceiver::init(char const* providerName)
 {
-    snprintf(_providerName, 31, "[%s %s]", providerName, PinMapping.get().battery.providerName);
+    snprintf(_providerName, sizeof(_providerName), "[%s %s]", providerName, PinMapping.get().battery.providerName);
 
     MessageOutput.printf("%s Initialize interface...", _providerName);
 
@@ -337,6 +337,11 @@ uint16_t BatteryCanReceiver::readUnsignedInt16(uint8_t *data)
 int16_t BatteryCanReceiver::readSignedInt16(uint8_t *data)
 {
     return this->readUnsignedInt16(data);
+}
+
+int32_t BatteryCanReceiver::readSignedInt24(uint8_t *data)
+{
+    return (data[2] << 16) | (data[1] << 8) | data[0];
 }
 
 uint32_t BatteryCanReceiver::readUnsignedInt32(uint8_t *data)

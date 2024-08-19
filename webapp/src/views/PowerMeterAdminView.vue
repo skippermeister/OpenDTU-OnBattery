@@ -78,7 +78,7 @@
                 <CardElement v-if="(powerMeterConfigList.source === 1 || powerMeterConfigList.source === 2)"
                     :text="$t('powermeteradmin.SDM')" textVariant="text-bg-primary" add-space>
 
-                    <InputElement :label="$t('powermeteradmin.pollingInterval')"
+                    <InputElement :label="$t('powermeteradmin.PollInterval')"
                         v-model="powerMeterConfigList.serial_sdm.polling_interval" type="number" min=1 max=15
                         :postfix="$t('powermeteradmin.seconds')" wide3_2 />
 

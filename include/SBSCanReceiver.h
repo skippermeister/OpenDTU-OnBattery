@@ -1,17 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #pragma once
 
-#ifdef USE_PYTES_CAN_RECEIVER
+#ifdef USE_SBS_CAN_RECEIVER
 
-#include "Configuration.h"
-#include "Battery.h"
 #include "BatteryCanReceiver.h"
 #include <driver/twai.h>
+#include <Arduino.h>
 
-class PytesCanReceiver : public BatteryCanReceiver {
+class SBSCanReceiver : public BatteryCanReceiver {
 public:
-    PytesCanReceiver() {}
-
     bool init() final;
     void onMessage(twai_message_t rx_message) final;
 
@@ -20,7 +17,8 @@ public:
     bool initialized() const final { return _initialized; };
 
 private:
-    std::shared_ptr<PytesBatteryStats> _stats = std::make_shared<PytesBatteryStats>();
+    void dummyData();
+    std::shared_ptr<SBSBatteryStats> _stats = std::make_shared<SBSBatteryStats>();
 };
 
 #endif

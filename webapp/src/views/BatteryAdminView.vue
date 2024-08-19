@@ -180,6 +180,7 @@ export default defineComponent({
             providerTypeList: [
                 { key: 0, value: 'Pylontech' },
                 { key: 1, value: 'Pytes' },
+                { key: 2, value: 'SBSCan' },
                 { key: 3, value: 'JkBmsSerial' },
                 { key: 4, value: 'DalyBms' },
                 { key: 5, value: 'Victron' },

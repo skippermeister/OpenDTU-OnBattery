@@ -37,7 +37,7 @@ void MeanWellCanClass::init(Scheduler& scheduler)
 {
     MessageOutput.print("Initialize MeanWell AC charger interface... ");
 
-   snprintf(_providerName, 31, "[%s %s]", "Meanwell", PinMapping.get().charger.providerName);
+   snprintf(_providerName, sizeof(_providerName), "[%s %s]", "Meanwell", PinMapping.get().charger.providerName);
 
     _previousMillis = millis();
 
@@ -1083,9 +1083,17 @@ void MeanWellCanClass::loop()
             } else {
                 // Zero Grid Export Charging Algorithm (Charger consums at operation minimum 180 Watt = 3.6A*50V)
                 if (_verboseLogging) MessageOutput.printf("%s Zero Grid Charger controller", _providerName);
-                float pCharger = _rp.outputCurrentSet * Battery.getStats()->getVoltage();
-                if (_rp.outputPower > 0.0f) pCharger = _rp.outputPower;
-                if (GridPower - _rp.outputPower < -(pCharger + config.MeanWell.Hysteresis)) { // 25 Watt Hysteresic
+                float pCharger = config.MeanWell.MinCurrent * Battery.getStats()->getVoltage(); // Minimum power usage of charger
+                float hysteresis = 25.0;
+                float minPowerNeeded = pCharger;
+                float efficiency = 95.0 / 100.0;
+                if (_rp.inputPower > 10.0f) {
+                    pCharger = _rp.inputPower;
+                    minPowerNeeded = 0.0;
+                    hysteresis = 0.0;
+                    efficiency = _rp.efficiency / 100.0;
+                }
+                if ((GridPower < -(minPowerNeeded + hysteresis)) && ((fabs(GridPower) - minPowerNeeded) > config.MeanWell.Hysteresis)) { // 25 Watt Hysteresic
                     if (_verboseLogging) MessageOutput.printf(", increment");
                     // Solar Inverter produces enough power, we export to the Grid
                     if (_rp.outputCurrent >= config.MeanWell.MaxCurrent) {
@@ -1095,14 +1103,14 @@ void MeanWellCanClass::loop()
                     // check if outputCurrent is less than recommended charging current from battery
                     // if so than increase charging current by 0,5A (round about 25W)
                     else if (_rp.outputCurrent < Battery.getStats()->getRecommendedChargeCurrentLimit()) {
-                        float increment = fabs(GridPower) / Battery.getStats()->getVoltage();
+                        float increment = fabs(GridPower) / Battery.getStats()->getVoltage() * efficiency;
                         if (_verboseLogging) MessageOutput.printf(" by %.2f A", increment);
                         setValue(_rp.outputCurrentSet + increment, MEANWELL_SET_CURRENT);
                         setValue(_rp.outputCurrentSet, MEANWELL_SET_CURVE_CC);
                     }
-                } else if (GridPower - _rp.outputPower > -pCharger && _rp.outputCurrent > 0.0f) {
+                } else if ((GridPower >= 0.0) && (_rp.outputCurrent > 0.0f)) {
                     if (_verboseLogging) MessageOutput.printf(", decrement");
-                    float decrement = fabs(GridPower) / Battery.getStats()->getVoltage();
+                    float decrement = GridPower / Battery.getStats()->getVoltage() * efficiency;
                     // check if Solar Inverter produces not enough power, then we have to reduce switch off the charger
                     // otherwise we have to reduce the OutputCurrent
                     if ((_rp.outputCurrent < config.MeanWell.MinCurrent - 0.01f
@@ -1194,21 +1202,18 @@ exit:;
 void MeanWellCanClass::switchChargerOff(const char* reason)
 {
     if (_rp.operation) {
-        if (_verboseLogging)
-            MessageOutput.printf(", switch charger OFF%s", reason);
+        if (_verboseLogging) MessageOutput.printf(", switch charger OFF%s", reason);
         setValue(0.0, MEANWELL_SET_CURRENT);
         setValue(0.0, MEANWELL_SET_CURVE_CC);
         setPower(false);
     } else {
         if (_rp.outputCurrent > 0.0) {
-            if (_verboseLogging)
-                MessageOutput.printf(", force charger to switch OFF%s", reason);
+            if (_verboseLogging) MessageOutput.printf(", force charger to switch OFF%s", reason);
             setValue(0.0, MEANWELL_SET_CURRENT);
             setValue(0.0, MEANWELL_SET_CURVE_CC);
             setPower(false);
         } else {
-            if (_verboseLogging)
-                MessageOutput.printf(", charger is OFF%s", reason);
+            if (_verboseLogging) MessageOutput.printf(", charger is OFF%s", reason);
         }
     }
 }

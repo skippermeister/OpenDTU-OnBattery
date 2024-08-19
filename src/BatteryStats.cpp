@@ -388,6 +388,56 @@ void PytesBatteryStats::getLiveViewData(JsonVariant& root) const
 }
 #endif
 
+#ifdef USE_SBS_CAN_RECEIVER
+void SBSBatteryStats::generatePackCommonJsonResponse(JsonObject& packObject, const uint8_t module) const
+{
+    packObject["moduleNumber"] = 1;
+    packObject["moduleName"] = "";
+
+    packObject["device_name"] = "";
+
+    packObject["software_version"] = "";
+
+    packObject["moduleSerialNumber"] = _serial;
+/*
+    addLiveViewPackCellBalance(packObject, "cellMinVoltage", static_cast<float>(_cellMinMilliVolt)/1000, "V", 3);
+    addLiveViewPackCellBalance(packObject, "cellMaxVoltage", static_cast<float>(_cellMaxMilliVolt)/1000, "V", 3);
+    addLiveViewPackCellBalance(packObject, "cellDiffVoltage", (_cellMaxMilliVolt - _cellMinMilliVolt), "mV", 0);
+
+    addLiveViewPackValue(packObject, "cellMinTemperature", _cellMinTemperature, "V", 3);
+    addLiveViewPackValue(packObject, "cellMaxTemperature", _cellMaxTemperature, "V", 3);
+
+    addLiveViewPackText(packObject, "cellMinVoltageName", _cellMinVoltageName.c_str(), false);
+    addLiveViewPackText(packObject, "cellMaxVoltageName", _cellMaxVoltageName.c_str(), false);
+    addLiveViewPackText(packObject, "cellMinTemperatureName", _cellMinTemperatureName.c_str(), false);
+    addLiveViewPackText(packObject, "cellMaxTemperatureName", _cellMaxTemperatureName.c_str(), false);
+*/
+}
+
+void SBSBatteryStats::getLiveViewData(JsonVariant& root) const
+{
+    BatteryStats::getLiveViewData(root);
+
+    // values go into the "Status" card of the web application
+    addLiveViewValue(root, "chargeVoltage", _chargeVoltage, "V", 1);
+    addLiveViewValue(root, "chargeCurrentLimit", _chargeCurrentLimit, "A", 1);
+    addLiveViewValue(root, "dischargeCurrentLimit", _dischargeCurrentLimit, "A", 1);
+    addLiveViewValue(root, "stateOfHealth", _stateOfHealth, "%", 0);
+    addLiveViewValue(root, "current", _current, "A", 1);
+    addLiveViewValue(root, "temperature", _temperature, "°C", 1);
+    addLiveViewText(root, "chargeEnabled", (_chargeEnabled?"yes":"no"));
+    addLiveViewText(root, "dischargeEnabled", (_dischargeEnabled?"yes":"no"));
+
+    // alarms and warnings go into the "Issues" card of the web application
+    ISSUE(Warning, highCurrentDischarge);
+    ISSUE(Warning, highCurrentCharge);
+    ISSUE(Alarm, underVoltage);
+    ISSUE(Alarm, overVoltage);
+    ISSUE(Alarm, underTemperature);
+    ISSUE(Alarm, overTemperature);
+}
+#endif
+
 #ifdef USE_JKBMS_CONTROLLER
 void JkBmsBatteryStats::generatePackCommonJsonResponse(JsonObject& packObject, const uint8_t module) const
 {
@@ -1110,6 +1160,27 @@ void PytesBatteryStats::mqttPublish() /* const */
     MqttSettings.publish("battery/warning/highTemperatureCharge", String(Warning.highTemperatureCharge));
     MqttSettings.publish("battery/warning/bmsInternal", String(Warning.bmsInternal));
     MqttSettings.publish("battery/warning/cellImbalance", String(Warning.cellImbalance));
+}
+#endif
+
+#ifdef USE_SBS_CAN_RECEIVER
+void SBSBatteryStats::mqttPublish() // const
+{
+    BatteryStats::mqttPublish();
+
+    MqttSettings.publish("battery/settings/chargeVoltage", String(_chargeVoltage));
+    MqttSettings.publish("battery/settings/chargeCurrentLimitation", String(_chargeCurrentLimit));
+    MqttSettings.publish("battery/settings/dischargeCurrentLimitation", String(_dischargeCurrentLimit));
+    MqttSettings.publish("battery/stateOfHealth", String(_stateOfHealth));
+    MqttSettings.publish("battery/current", String(_current));
+    MqttSettings.publish("battery/temperature", String(_temperature));
+    MqttSettings.publish("battery/alarm/underVoltage", String(Alarm.underVoltage));
+    MqttSettings.publish("battery/alarm/overVoltage", String(Alarm.overVoltage));
+    MqttSettings.publish("battery/alarm/bmsInternal", String(Alarm.bmsInternal));
+    MqttSettings.publish("battery/warning/highCurrentDischarge", String(Warning.highCurrentDischarge));
+    MqttSettings.publish("battery/warning/highCurrentCharge", String(Warning.highCurrentCharge));
+    MqttSettings.publish("battery/charging/chargeEnabled", String(_chargeEnabled));
+    MqttSettings.publish("battery/charging/dischargeEnabled", String(_dischargeEnabled));
 }
 #endif
 

@@ -100,11 +100,11 @@
 #endif
 
 #ifndef VICTRON_PIN_RX
-#define VICTRON_PIN_RX 22
+#define VICTRON_PIN_RX -1
 #endif
 
 #ifndef VICTRON_PIN_TX
-#define VICTRON_PIN_TX 21
+#define VICTRON_PIN_TX -1
 #endif
 
 #ifndef REFUSOL_PIN_RX
@@ -120,15 +120,15 @@
 #endif
 
 #ifndef BATTERY_PIN_RX
-#define BATTERY_PIN_RX 16
+#define BATTERY_PIN_RX -1
 #endif
 
 #ifndef BATTERY_PIN_TX
-#define BATTERY_PIN_TX 17
+#define BATTERY_PIN_TX -1
 #endif
 
 #ifndef BATTERY_PIN_RTS
-#define BATTERY_PIN_RTS 4
+#define BATTERY_PIN_RTS -1
 #endif
 
 #ifndef BATTERY_PIN_WAKEUP
@@ -144,11 +144,11 @@
 #endif
 
 #ifndef CAN0_PIN_RX
-#define CAN0_PIN_RX 27
+#define CAN0_PIN_RX -1
 #endif
 
 #ifndef CAN0_PIN_TX
-#define CAN0_PIN_TX 26
+#define CAN0_PIN_TX -1
 #endif
 
 #ifndef MCP2515_PIN_MISO
@@ -275,7 +275,7 @@ PinMappingClass::PinMappingClass()
     _pinMapping.battery.can0.rx = CAN0_PIN_RX;
     _pinMapping.battery.can0.tx = CAN0_PIN_TX;
 #endif
-    _pinMapping.battery.providerName = help[(int)_pinMapping.battery.provider];
+    _pinMapping.battery.providerName = help[static_cast<int>(_pinMapping.battery.provider)];
 
 #if defined(USE_CHARGER_HUAWEI)
     _pinMapping.charger.power = CHARGER_PIN_POWER;
@@ -283,7 +283,7 @@ PinMappingClass::PinMappingClass()
     _pinMapping.charger.provider = Charger_Provider_t::CAN0;
     _pinMapping.charger.can0.rx = CAN0_PIN_RX;
     _pinMapping.charger.can0.tx = CAN0_PIN_TX;
-    _pinMapping.charger.providerName = help[(int)_pinMapping.charger.provider];
+    _pinMapping.charger.providerName = help[static_cast<int>(_pinMapping.charger.provider)];
 
     _pinMapping.pre_charge = PRE_CHARGE_PIN;
     _pinMapping.full_power = FULL_POWER_PIN;
@@ -446,7 +446,7 @@ void PinMappingClass::init(const String& deviceMapping)
                     _pinMapping.battery.wakeup = doc[i]["battery"]["wakeup"] | BATTERY_PIN_WAKEUP;
 #endif
                 }
-                _pinMapping.battery.providerName = help[(int)_pinMapping.battery.provider];
+                _pinMapping.battery.providerName = help[static_cast<int>(_pinMapping.battery.provider)];
 
 #if defined(USE_CHARGER_MEANWELL) || defined(USE_CHARGER_HUAWEI)
 #if defined(USE_CHARGER_HUAWEI)
@@ -479,7 +479,7 @@ void PinMappingClass::init(const String& deviceMapping)
                     _pinMapping.charger.can0.tx = doc[i]["charger"]["can0_tx"] | CAN0_PIN_TX;
                 }
 #endif
-                _pinMapping.charger.providerName = help[(int)_pinMapping.charger.provider];
+                _pinMapping.charger.providerName = help[static_cast<int>(_pinMapping.charger.provider)];
 
                 _pinMapping.pre_charge = doc[i]["batteryConnectedInverter"]["pre_charge"] | PRE_CHARGE_PIN;
                 _pinMapping.full_power = doc[i]["batteryConnectedInverter"]["full_power"] | FULL_POWER_PIN;

@@ -8,6 +8,7 @@
 #include "MqttBattery.h"
 #include "DalyBmsController.h"
 #include "PytesCanReceiver.h"
+#include "SBSCanReceiver.h"
 
 BatteryClass Battery;
 
@@ -95,7 +96,25 @@ void BatteryClass::updateSettings()
             }
             break;
 #endif
-
+#ifdef USE_SBS_CAN_RECEIVER
+        case 2:
+            switch (ioProvider) {
+#ifdef USE_SBS_RS485_RECEIVER
+                case Battery_Provider_t::RS485:
+                    break;
+#endif
+#ifdef USE_SBS_CAN_RECEIVER
+                case Battery_Provider_t::CAN0:
+                case Battery_Provider_t::MCP2515:
+                case Battery_Provider_t::I2C0:
+                case Battery_Provider_t::I2C1:
+                    _upProvider = std::make_unique<SBSCanReceiver>();
+                    break;
+#endif
+                default:;
+            }
+            break;
+#endif
 #ifdef USE_JKBMS_CONTROLLER
         case 3:
             if (ioProvider == Battery_Provider_t::RS232 || ioProvider == Battery_Provider_t::RS485)
