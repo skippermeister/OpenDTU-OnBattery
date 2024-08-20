@@ -68,10 +68,10 @@ void MeanWellCanClass::updateSettings()
 {
     preferences.putULong(sEEPROMwrites, EEPROMwrites);
 
-    auto const& meanwell = Configuration.get().MeanWell;
-    _verboseLogging = meanwell.VerboseLogging;
+    auto const& config = Configuration.get();
+    _verboseLogging = config.MeanWell.VerboseLogging;
 
-    if (!meanwell.Enabled) {
+    if (!config.MeanWell.Enabled) {
         _loopTask.disable();
         return;
     }
