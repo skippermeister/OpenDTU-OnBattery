@@ -82,8 +82,9 @@ bool BatteryCanReceiver::init(char const* providerName)
             auto rx = static_cast<gpio_num_t>(pin.can0.rx);
             twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(tx, rx, TWAI_MODE_NORMAL);
             // g_config.bus_off_io = (gpio_num_t)can0_stb;
+#if defined(BOARD_HAS_PSRAM)
             g_config.intr_flags = ESP_INTR_FLAG_LEVEL2;
-
+#endif
             // Initialize configuration structures using macro initializers
             twai_timing_config_t t_config = TWAI_TIMING_CONFIG_500KBITS();
             twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();

@@ -29,8 +29,8 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& root = response->getRoot();
-    const CONFIG_T& config = Configuration.get();
-    const PinMapping_t& pin = PinMapping.get();
+    auto const& config = Configuration.get();
+    auto const& pin = PinMapping.get();
 
     auto curPin = root["curPin"].to<JsonObject>();
     curPin["name"] = config.Dev_PinMapping;
@@ -287,7 +287,7 @@ void WebApiDeviceClass::onDeviceAdminPost(AsyncWebServerRequest* request)
     serializeJson(root, output);
     Serial.println(output);
 */
-    CONFIG_T& config = Configuration.get();
+    auto& config = Configuration.get();
     bool performRestart = root["curPin"]["name"].as<String>() != config.Dev_PinMapping;
 
     strlcpy(config.Dev_PinMapping, root["curPin"]["name"].as<String>().c_str(), sizeof(config.Dev_PinMapping));

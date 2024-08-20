@@ -51,24 +51,24 @@ void WebApiMeanWellClass::onAdminGet(AsyncWebServerRequest* request)
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& root = response->getRoot();
-    const MeanWell_CONFIG_T& cMeanWell = Configuration.get().MeanWell;
+    auto const& config = Configuration.get();
 
-    root["enabled"] = cMeanWell.Enabled;
-    root["verbose_logging"] = cMeanWell.VerboseLogging;
+    root["enabled"] = config.MeanWell.Enabled;
+    root["verbose_logging"] = config.MeanWell.VerboseLogging;
     root["chargerType"] = (strcmp(MeanWellCan._rp.ManufacturerName, "MEANWELL") == 0) ?
             String(MeanWellCan._rp.ManufacturerName) + " " + String(MeanWellCan._rp.ManufacturerModelName):
             "MeanWell NPB-450/750/1200/1700-24/48";
     root["io_providername"] = PinMapping.get().charger.providerName;
-    if (MeanWellCan.isMCP2515Provider()) root["can_controller_frequency"] = Configuration.get().MCP2515.Controller_Frequency;
-    root["pollinterval"] = cMeanWell.PollInterval;
-    root["updatesonly"] = cMeanWell.UpdatesOnly;
-    root["min_voltage"] = cMeanWell.MinVoltage;
-    root["max_voltage"] = cMeanWell.MaxVoltage;
-    root["min_current"] = cMeanWell.MinCurrent;
-    root["max_current"] = cMeanWell.MaxCurrent;
-    root["hysteresis"] = cMeanWell.Hysteresis;
+    if (MeanWellCan.isMCP2515Provider()) root["can_controller_frequency"] = config.MCP2515.Controller_Frequency;
+    root["pollinterval"] = config.MeanWell.PollInterval;
+    root["updatesonly"] = config.MeanWell.UpdatesOnly;
+    root["min_voltage"] = config.MeanWell.MinVoltage;
+    root["max_voltage"] = config.MeanWell.MaxVoltage;
+    root["min_current"] = config.MeanWell.MinCurrent;
+    root["max_current"] = config.MeanWell.MaxCurrent;
+    root["hysteresis"] = config.MeanWell.Hysteresis;
     root["EEPROMwrites"] = MeanWellCan.getEEPROMwrites();
-    root["mustInverterProduce"] = cMeanWell.mustInverterProduce;
+    root["mustInverterProduce"] = config.MeanWell.mustInverterProduce;
 
     WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 }
@@ -111,18 +111,18 @@ void WebApiMeanWellClass::onAdminPost(AsyncWebServerRequest* request)
         return;
     }
 
-    MeanWell_CONFIG_T& cMeanWell = Configuration.get().MeanWell;
-    cMeanWell.Enabled = root["enabled"].as<bool>();
-    cMeanWell.VerboseLogging = root["verbose_logging"].as<bool>();
-    cMeanWell.UpdatesOnly = root["updatesonly"].as<bool>();
-    if (MeanWellCan.isMCP2515Provider()) Configuration.get().MCP2515.Controller_Frequency = root["can_controller_frequency"].as<uint32_t>();
-    cMeanWell.PollInterval = root["pollinterval"].as<uint32_t>();
-    cMeanWell.MinVoltage = root["min_voltage"].as<float>();
-    cMeanWell.MaxVoltage = root["max_voltage"].as<float>();
-    cMeanWell.MinCurrent = root["min_current"].as<float>();
-    cMeanWell.MaxCurrent = root["max_current"].as<float>();
-    cMeanWell.Hysteresis = root["hysteresis"].as<float>();
-    cMeanWell.mustInverterProduce = root["mustInverterProduce"].as<bool>();
+    auto& config = Configuration.get();
+    config.MeanWell.Enabled = root["enabled"].as<bool>();
+    config.MeanWell.VerboseLogging = root["verbose_logging"].as<bool>();
+    config.MeanWell.UpdatesOnly = root["updatesonly"].as<bool>();
+    if (MeanWellCan.isMCP2515Provider()) config.MCP2515.Controller_Frequency = root["can_controller_frequency"].as<uint32_t>();
+    config.MeanWell.PollInterval = root["pollinterval"].as<uint32_t>();
+    config.MeanWell.MinVoltage = root["min_voltage"].as<float>();
+    config.MeanWell.MaxVoltage = root["max_voltage"].as<float>();
+    config.MeanWell.MinCurrent = root["min_current"].as<float>();
+    config.MeanWell.MaxCurrent = root["max_current"].as<float>();
+    config.MeanWell.Hysteresis = root["hysteresis"].as<float>();
+    config.MeanWell.mustInverterProduce = root["mustInverterProduce"].as<bool>();
 
     WebApi.writeConfig(retMsg);
 
@@ -180,7 +180,7 @@ void WebApiMeanWellClass::onLimitPost(AsyncWebServerRequest* request)
     */
     float value;
 
-    const MeanWell_CONFIG_T& cMeanWell = Configuration.get().MeanWell;
+    auto const& cMeanWell = Configuration.get().MeanWell;
 
     if (root.containsKey("voltageValid")) {
         if (root["voltageValid"].as<bool>()) {

@@ -753,7 +753,7 @@ void DalyBmsBatteryStats::getLiveViewData(JsonVariant& root) const
 
 void BatteryStats::mqttLoop()
 {
-    auto& config = Configuration.get();
+    auto const& config = Configuration.get();
 
     if (!MqttSettings.getConnected()
         || (millis() - _lastMqttPublish) < (config.Mqtt.PublishInterval * 1000)) {
@@ -767,7 +767,7 @@ void BatteryStats::mqttLoop()
 
 uint32_t BatteryStats::getMqttFullPublishIntervalMs() const
 {
-    auto& config = Configuration.get();
+    auto const& config = Configuration.get();
 
     // this is the default interval, see mqttLoop(). mqttPublish()
     // implementations in derived classes may choose to publish some values
@@ -841,7 +841,7 @@ void BatteryStats::mqttPublish() /* const */
 #ifdef USE_PYLONTECH_CAN_RECEIVER
 void PylontechCanBatteryStats::mqttPublish() /* const */
 {
-    Battery_CONFIG_T& cBattery = Configuration.get().Battery;
+    auto const& cBattery = Configuration.get().Battery;
 
     BatteryStats::mqttPublish();
 
@@ -885,7 +885,7 @@ void PylontechCanBatteryStats::mqttPublish() /* const */
 #ifdef USE_PYLONTECH_RS485_RECEIVER
 void PylontechRS485BatteryStats::mqttPublish() /*const*/
 {
-    Battery_CONFIG_T& cBattery = Configuration.get().Battery;
+    auto const& cBattery = Configuration.get().Battery;
 
     BatteryStats::mqttPublish();
 
@@ -1024,7 +1024,7 @@ void PylontechRS485BatteryStats::mqttPublish() /*const*/
 #ifdef USE_DALYBMS_CONTROLLER
 void DalyBmsBatteryStats::mqttPublish() /* const */
 {
-    Battery_CONFIG_T& cBattery = Configuration.get().Battery;
+    auto const& cBattery = Configuration.get().Battery;
 
     BatteryStats::mqttPublish();
 

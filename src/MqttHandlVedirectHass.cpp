@@ -54,7 +54,7 @@ void MqttHandleVedirectHassClass::forceUpdate()
 
 void MqttHandleVedirectHassClass::publishConfig()
 {
-    CONFIG_T& config = Configuration.get();
+    auto const& config = Configuration.get();
     if (!config.Mqtt.Hass.Enabled ||
        (!config.Vedirect.Enabled) ||
        (!MqttSettings.getConnected()) ||

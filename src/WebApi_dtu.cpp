@@ -27,7 +27,7 @@ void WebApiDtuClass::init(AsyncWebServer& server, Scheduler& scheduler)
 void WebApiDtuClass::applyDataTaskCb()
 {
     // Execute stuff in main thread to avoid busy SPI bus
-    CONFIG_T& config = Configuration.get();
+    auto const& config = Configuration.get();
     Hoymiles.getRadioNrf()->setPALevel((rf24_pa_dbm_e)config.Dtu.Nrf.PaLevel);
 #ifdef USE_RADIO_CMT
     Hoymiles.getRadioCmt()->setPALevel(config.Dtu.Cmt.PaLevel);
@@ -49,7 +49,7 @@ void WebApiDtuClass::onDtuAdminGet(AsyncWebServerRequest* request)
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& root = response->getRoot();
-    const Dtu_CONFIG_T& cDtu = Configuration.get().Dtu;
+    auto const& cDtu = Configuration.get().Dtu;
 
     // DTU Serial is read as HEX
     char buffer[sizeof(uint64_t) * 8 + 1];
@@ -168,7 +168,7 @@ void WebApiDtuClass::onDtuAdminPost(AsyncWebServerRequest* request)
     }
 #endif
 
-    Dtu_CONFIG_T& cDtu = Configuration.get().Dtu;
+    auto& cDtu = Configuration.get().Dtu;
 
     cDtu.Serial = serial;
     cDtu.PollInterval = root["pollinterval"].as<uint32_t>();

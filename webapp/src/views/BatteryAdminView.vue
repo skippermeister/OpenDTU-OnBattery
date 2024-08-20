@@ -42,6 +42,16 @@
                         v-model="batteryConfigList.pollinterval" type="number" min="2" max="90" wide4_2
                         :postfix="$t('batteryadmin.Seconds')" />
 
+                    <InputElement v-if="batteryConfigList.provider >= 5"
+                        :label="$t('batteryadmin.RecommendedChargeVoltage')"
+                        v-model="batteryConfigList.recommended_charge_voltage" type="number" min="21" max="80"
+                        step="0.1" wide4_2 :postfix="$t('batteryadmin.Volts')" />
+
+                    <InputElement v-if="batteryConfigList.provider >= 5"
+                        :label="$t('batteryadmin.RecommendedDischargeVoltage')"
+                        v-model="batteryConfigList.recommended_discharge_voltage" type="number" min="21" max="80"
+                        step="0.1" wide4_2 :postfix="$t('batteryadmin.Volts')" />
+
                     <InputElement :label="$t('batteryadmin.MinChargeTemp')" v-model="batteryConfigList.min_charge_temp"
                         type="number" step="1" min="-25" max="75" wide4_2 :postfix="$t('batteryadmin.Celsius')" />
 
@@ -59,18 +69,6 @@
                     <InputElement :label="$t('batteryadmin.StopChargingSoC')"
                         v-model="batteryConfigList.stop_charging_soc" type="number" step="1" min="20" max="100" wide4_2
                         :tooltip="$t('batteryadmin.StopChargingSoCHint')" :postfix="$t('batteryadmin.Percent')" />
-
-                    <InputElement v-show="batteryConfigList.provider == 5 ||
-                        batteryConfigList.provider == 6"
-                        :label="$t('batteryadmin.RecommendedChargeVoltage')"
-                        v-model="batteryConfigList.recommended_charge_voltage" type="number" min="21" max="80"
-                        step="0.1" wide4_2 :postfix="$t('batteryadmin.Volts')" />
-
-                    <InputElement v-show="batteryConfigList.provider == 5 ||
-                        batteryConfigList.provider == 6"
-                        :label="$t('batteryadmin.RecommendedDischargeVoltage')"
-                        v-model="batteryConfigList.recommended_discharge_voltage" type="number" min="21" max="80"
-                        step="0.1" wide4_2 :postfix="$t('batteryadmin.Volts')" />
 
                 </CardElement>
 

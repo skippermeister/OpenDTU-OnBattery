@@ -96,7 +96,7 @@ void SunPositionClass::updateSunData()
         return;
     }
 
-    Ntp_CONFIG_T const& cNtp = Configuration.get().Ntp;
+    auto const& cNtp = Configuration.get().Ntp;
 
     double sunset_type, sunrise_type;
     switch (cNtp.SunsetType) {

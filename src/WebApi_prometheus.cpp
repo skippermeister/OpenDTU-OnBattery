@@ -145,7 +145,7 @@ void WebApiPrometheusClass::addPanelInfo(AsyncResponseStream* stream, const Stri
         return;
     }
 
-    const CONFIG_T& config = Configuration.get();
+    auto const& config = Configuration.get();
 
     const bool printHelp = (idx == 0 && channel == 0);
     if (printHelp) {

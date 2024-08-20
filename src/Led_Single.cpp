@@ -81,7 +81,7 @@ void LedSingleClass::init(Scheduler& scheduler)
 void LedSingleClass::setLoop()
 {
     if (_allMode == LedState_t::On) {
-        const Mqtt_CONFIG_T& cMqtt = Configuration.get().Mqtt;
+        auto const& cMqtt = Configuration.get().Mqtt;
 
         // Update network status
         _ledMode[0] = LedState_t::Off;

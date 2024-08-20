@@ -35,11 +35,13 @@ void ModbusDtuClass::setup()
 {
     MessageOutput.print("Starting ModbusDTU Server... ");
 
-    if ((Configuration.get().Dtu.Serial) < 0x100000000000 || (Configuration.get().Dtu.Serial) > 0x199999999999) {
+    auto const& config = Configuration.get();
+
+    if ((config.Dtu.Serial) < 0x100000000000 || (config.Dtu.Serial) > 0x199999999999) {
 #ifdef SIMULATE_HOYMILES_DTU
-        MessageOutput.printf("Hoymiles DTU Simulation: need a DTU Serial between 100000000000 and 199999999999 (currently configured: %llx)\r\n", Configuration.get().Dtu.Serial);
+        MessageOutput.printf("Hoymiles DTU Simulation: need a DTU Serial between 100000000000 and 199999999999 (currently configured: %llx)\r\n", config.Dtu.Serial);
 #else
-        MessageOutput.printf("Modbus: need a DTU Serial between 100000000000 and 199999999999 (currently configured: %llx)\r\n", Configuration.get().Dtu.Serial);
+        MessageOutput.printf("Modbus: need a DTU Serial between 100000000000 and 199999999999 (currently configured: %llx)\r\n", config.Dtu.Serial);
 #endif
         _isstarted = false;
         return;
@@ -47,7 +49,6 @@ void ModbusDtuClass::setup()
 
     mb.server();
 #ifdef SIMULATE_HOYMILES_DTU
-    const CONFIG_T& config = Configuration.get();
     mb.addHreg(0x2000, (config.Dtu.Serial >> 32) & 0xFFFF);
     mb.addHreg(0x2001, (config.Dtu.Serial >> 16) & 0xFFFF);
     mb.addHreg(0x2002, (config.Dtu.Serial) & 0xFFFF);
@@ -86,14 +87,14 @@ void ModbusDtuClass::setup()
     mb.addHreg(40001, 0x6E53); // 0x6E53 nS
     mb.addHreg(40002, 1); // indetifies this as a SunSpec common model block
     mb.addHreg(40003, 65); // length of common model block
-    addHString(40004, Configuration.get().modbus.mfrname, 16); // Manufacturer start
-    addHString(40020, Configuration.get().modbus.modelname, 16); // Device Model start
-    addHString(40036, Configuration.get().modbus.options, 8); // Options start
-    addHString(40044, Configuration.get().modbus.version, 8); // Software Version start
-    const char *serialconfig = Configuration.get().modbus.serial;
+    addHString(40004, config.modbus.mfrname, 16); // Manufacturer start
+    addHString(40020, config.modbus.modelname, 16); // Device Model start
+    addHString(40036, config.modbus.options, 8); // Options start
+    addHString(40044, config.modbus.version, 8); // Software Version start
+    const char *serialconfig = config.modbus.serial;
     if (!strlen(serialconfig)) {
         char serial[24];
-        snprintf(serial,sizeof(serial),"%llx",(Configuration.get().Dtu.Serial));
+        snprintf(serial,sizeof(serial),"%llx",(config.Dtu.Serial));
         MessageOutput.printf("Modbus: init uses DTU Serial: %s\r\n", serial);
         addHString(40052, buff, 6); // Serial Number start
         mb.addHreg(40058, 0, 10);
@@ -121,9 +122,11 @@ void ModbusDtuClass::setup()
 
 void ModbusDtuClass::loop()
 {
-    _loopTask.setInterval(Configuration.get().Dtu.PollInterval * TASK_SECOND);
+    auto const& config = Configuration.get();
 
-    if (!(Configuration.get().Modbus.modbus_tcp_enabled)) return;
+    _loopTask.setInterval(config.Dtu.PollInterval * TASK_SECOND);
+
+    if (!(config.Modbus.modbus_tcp_enabled)) return;
 
     if (!Hoymiles.isAllRadioIdle()) {
          _loopTask.forceNextIteration();
@@ -131,7 +134,7 @@ void ModbusDtuClass::loop()
     }
 
     if (!_isstarted) {
-        if (!Configuration.get().modbus.modbus_delaystart ||
+        if (!config.modbus.modbus_delaystart ||
             (Datastore.getIsAllEnabledReachable() && Datastore.getTotalAcYieldTotalEnabled() != 0))
         {
             MessageOutput.printf("Modbus: starting server ...\r\n");
@@ -192,7 +195,11 @@ void ModbusDtuClass::loop()
         invNumb++;
     }
 #else
-    if (!(Datastore.getIsAllEnabledReachable()) || !(Datastore.getTotalAcYieldTotalEnabled() != 0) || (!_isstarted) || !(Configuration.get().modbus.modbus_delaystart)) {
+    if (!Datastore.getIsAllEnabledReachable() ||
+        !(Datastore.getTotalAcYieldTotalEnabled() != 0) ||
+        !_isstarted ||
+        !config.modbus.modbus_delaystart)
+    {
         MessageOutput.printf("Modbus: not updating registers! (Total Yield = 0 or not all configured inverters reachable)\r\n");
         return;
     } else {

@@ -30,7 +30,7 @@ void MqttHandleREFUsolClass::init(Scheduler& scheduler)
 
 void MqttHandleREFUsolClass::loop()
 {
-    const CONFIG_T& config = Configuration.get();
+    auto const& config = Configuration.get();
 
     std::unique_lock<std::mutex> mqttLock(_mqttMutex);
 

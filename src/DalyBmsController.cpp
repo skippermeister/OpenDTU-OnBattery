@@ -129,7 +129,7 @@ void DalyBmsController::announceStatus(DalyBmsController::Status status)
 
 void DalyBmsController::loop()
 {
-    Battery_CONFIG_T& cBattery = Configuration.get().Battery;
+    auto const& cBattery = Configuration.get().Battery;
     uint8_t pollInterval = cBattery.PollInterval;
 
     const uint32_t now = millis();

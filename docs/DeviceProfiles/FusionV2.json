@@ -41,7 +41,7 @@
   "battery":{
     "rs232_rx": 10,
     "rs232_tx": 9,
-    "bms_wakeup": -1
+    "wakeup": -1
   },
   "charger":{
     "can0_rx": 13,
@@ -106,8 +106,7 @@
   "battery":{
     "rs485_rx": 16,
     "rs485_tx": 45,
-    "rs485_rts": 46,
-    "bms_wakeup": -1
+    "rs485_rts": 46
   },
   "charger":{
     "can0_rx": 13,

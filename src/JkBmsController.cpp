@@ -77,7 +77,7 @@ void Controller::deinit()
 
 Controller::Interface Controller::getInterface() const
 {
-    Battery_CONFIG_T& cBattery = Configuration.get().Battery;
+    auto const& cBattery = Configuration.get().Battery;
     if (0x00 == cBattery.JkBms.Interface) { return Interface::Uart; }
     if (0x01 == cBattery.JkBms.Interface) { return Interface::Transceiver; }
     return Interface::Invalid;

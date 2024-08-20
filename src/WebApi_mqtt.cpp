@@ -38,7 +38,7 @@ void WebApiMqttClass::onMqttStatus(AsyncWebServerRequest* request)
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& root = response->getRoot();
-    const Mqtt_CONFIG_T& cMqtt = Configuration.get().Mqtt;
+    auto const& cMqtt = Configuration.get().Mqtt;
 
     root["enabled"] = cMqtt.Enabled;
     root["hostname"] = cMqtt.Hostname;
@@ -81,7 +81,7 @@ void WebApiMqttClass::onMqttAdminGet(AsyncWebServerRequest* request)
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& root = response->getRoot();
-    const Mqtt_CONFIG_T& cMqtt = Configuration.get().Mqtt;
+    auto const& cMqtt = Configuration.get().Mqtt;
 
     root["enabled"] = cMqtt.Enabled;
     root["verbose_logging"] = MqttSettings.getVerboseLogging();
@@ -305,7 +305,7 @@ void WebApiMqttClass::onMqttAdminPost(AsyncWebServerRequest* request)
 #endif
     }
 
-    Mqtt_CONFIG_T& cMqtt = Configuration.get().Mqtt;
+    auto& cMqtt = Configuration.get().Mqtt;
     cMqtt.Enabled = root["enabled"].as<bool>();
     MqttSettings.setVerboseLogging(root["verbose_logging"].as<bool>());
     cMqtt.Retain = root["retain"].as<bool>();

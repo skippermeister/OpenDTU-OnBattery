@@ -79,7 +79,7 @@ void MqttHandlePowerLimiterClass::loop()
 {
     std::unique_lock<std::mutex> mqttLock(_mqttMutex);
 
-    const CONFIG_T& config = Configuration.get();
+    auto const& config = Configuration.get();
 
     if (!config.PowerLimiter.Enabled) {
         _mqttCallbacks.clear();
@@ -129,7 +129,7 @@ void MqttHandlePowerLimiterClass::loop()
 
 void MqttHandlePowerLimiterClass::onMqttCmd(MqttPowerLimiterCommand command, const espMqttClientTypes::MessageProperties& properties, const char* topic, const uint8_t* payload, size_t len, size_t index, size_t total)
 {
-    CONFIG_T& config = Configuration.get();
+    auto& config = Configuration.get();
 
     std::string strValue(reinterpret_cast<const char*>(payload), len);
     float payload_val = -1;

@@ -115,7 +115,7 @@
                         <InputElement :label="$t('powermeteradmin.httpIndividualRequests')"
                             v-model="powerMeterConfigList.http_json.individual_requests" type="checkbox" wide3_1 />
 
-                        <InputElement :label="$t('powermeteradmin.pollingInterval')"
+                        <InputElement :label="$t('powermeteradmin.PollInterval')"
                             v-model="powerMeterConfigList.http_json.polling_interval" type="number" min=1 max=15
                             :postfix="$t('powermeteradmin.seconds')" wide3_2 />
                     </CardElement>
@@ -172,7 +172,7 @@
 
                 <div v-if="powerMeterConfigList.source === 6">
                     <CardElement :text="$t('powermeteradmin.HTTP_SML')" textVariant="text-bg-primary" add-space>
-                        <InputElement :label="$t('powermeteradmin.pollingInterval')"
+                        <InputElement :label="$t('powermeteradmin.PollInterval')"
                             v-model="powerMeterConfigList.http_sml.polling_interval" type="number" min=1 max=15
                             :postfix="$t('powermeteradmin.seconds')" wide3_2 />
 

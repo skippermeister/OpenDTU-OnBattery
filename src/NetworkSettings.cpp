@@ -277,7 +277,7 @@ void NetworkSettingsClass::loop()
 
 void NetworkSettingsClass::applyConfig()
 {
-    WiFi_CONFIG_T& cWiFi = Configuration.get().WiFi;
+    auto const& cWiFi = Configuration.get().WiFi;
 
     setHostname();
     if (!strcmp(cWiFi.Ssid, "")) {
@@ -326,7 +326,7 @@ void NetworkSettingsClass::setHostname()
 
 void NetworkSettingsClass::setStaticIp()
 {
-    WiFi_CONFIG_T& cWiFi = Configuration.get().WiFi;
+    auto const& cWiFi = Configuration.get().WiFi;
 
     if (_networkMode == network_mode::WiFi) {
         if (cWiFi.Dhcp) {

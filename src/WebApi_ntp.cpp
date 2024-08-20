@@ -31,7 +31,7 @@ void WebApiNtpClass::onNtpStatus(AsyncWebServerRequest* request)
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& root = response->getRoot();
-    const Ntp_CONFIG_T& cNtp = Configuration.get().Ntp;
+    auto const& cNtp = Configuration.get().Ntp;
 
     root["ntp_server"] = cNtp.Server;
     root["ntp_timezone"] = cNtp.Timezone;
@@ -75,7 +75,7 @@ void WebApiNtpClass::onNtpAdminGet(AsyncWebServerRequest* request)
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& root = response->getRoot();
-    const Ntp_CONFIG_T& cNtp = Configuration.get().Ntp;
+    auto const& cNtp = Configuration.get().Ntp;
 
     root["ntp_server"] = cNtp.Server;
     root["ntp_timezone"] = cNtp.Timezone;
@@ -140,7 +140,7 @@ void WebApiNtpClass::onNtpAdminPost(AsyncWebServerRequest* request)
         return;
     }
 
-    Ntp_CONFIG_T& cNtp = Configuration.get().Ntp;
+    auto& cNtp = Configuration.get().Ntp;
     strlcpy(cNtp.Server, root["ntp_server"].as<String>().c_str(), sizeof(cNtp.Server));
     strlcpy(cNtp.Timezone, root["ntp_timezone"].as<String>().c_str(), sizeof(cNtp.Timezone));
     strlcpy(cNtp.TimezoneDescr, root["ntp_timezone_descr"].as<String>().c_str(), sizeof(cNtp.TimezoneDescr));

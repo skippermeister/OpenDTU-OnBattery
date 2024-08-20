@@ -92,7 +92,7 @@ void ZeroExportClass::init(Scheduler& scheduler)
 void ZeroExportClass::loop()
 {
 
-    const ZeroExport_CONFIG_T& cZeroExport = Configuration.get().ZeroExport;
+    auto const& config = Configuration.get();
 
     struct tm timeinfo;
     if (!getLocalTime(&timeinfo, 5)) {
@@ -103,9 +103,9 @@ void ZeroExportClass::loop()
     // find sequentially a valid inverter serial no
     while (1) {
         if (_invID >= INV_MAX_COUNT) _invID = 0;    // switch back to first inverter serial no in list
-        if (cZeroExport.serials[_invID] == 0) {
+        if (config.ZeroExport.serials[_invID] == 0) {
             if (_invID == 0) {
-                if (!cZeroExport.Enabled) { return; }
+                if (!config.ZeroExport.Enabled) { return; }
                 // list is empty, no inverters are selected
                 announceStatus(Status::InverterInvalid, true);
                 return;
@@ -116,7 +116,7 @@ void ZeroExportClass::loop()
             break;
         }
     }
-    _inverter = Hoymiles.getInverterBySerial(cZeroExport.serials[_invID]);
+    _inverter = Hoymiles.getInverterBySerial(config.ZeroExport.serials[_invID]);
 
     if (_inverter == nullptr) {
         announceStatus(Status::InverterInvalid, true);
@@ -179,14 +179,14 @@ void ZeroExportClass::loop()
             _inverter->serial(), _inverter->DevInfo()->getMaxPower(), _totalMaxPower);
     }
 
-    if (!cZeroExport.Enabled) {
+    if (!config.ZeroExport.Enabled) {
         announceStatus(Status::DisabledByConfig);
         setNewPowerLimit(_inverter, 100); // set 100%
         _invID++;
         return;
     }
 
-    if (!Configuration.get().PowerMeter.Enabled) {
+    if (!config.PowerMeter.Enabled) {
         announceStatus(Status::PowerMeterDisabled, true);
         return;
     }
@@ -255,7 +255,7 @@ void ZeroExportClass::loop()
 bool ZeroExportClass::setNewPowerLimit(std::shared_ptr<InverterAbstract> inverter, int16_t newPowerLimit)
 {
 
-    ZeroExport_CONFIG_T& cZeroExport = Configuration.get().ZeroExport;
+    auto const& cZeroExport = Configuration.get().ZeroExport;
 
     // Check if the new value is within the limits of the hysteresis
     auto diff = std::abs(newPowerLimit - _lastRequestedPowerLimit);
@@ -302,7 +302,7 @@ int16_t ZeroExportClass::pid_Regler(void)
 
     int16_t payload;
 
-    const ZeroExport_CONFIG_T& cZeroExport = Configuration.get().ZeroExport;
+    auto const& cZeroExport = Configuration.get().ZeroExport;
 
     // static_cast<unsigned int>(_inverter->Statistics()->getChannelFieldDigits(TYPE_AC, CH0, FLD_PAC)));
 
@@ -328,21 +328,22 @@ int16_t ZeroExportClass::pid_Regler(void)
 
 void ZeroExportClass::setParameter(float value, ZeroExportTopic parameter)
 {
+    auto& config = Configuration.get();
     switch (parameter) {
     case ZeroExportTopic::Enabled:
-        Configuration.get().ZeroExport.Enabled = static_cast<int>(value) == 0 ? false : true;
+        config.ZeroExport.Enabled = static_cast<int>(value) == 0 ? false : true;
         break;
     case ZeroExportTopic::MaxGrid:
-        Configuration.get().ZeroExport.MaxGrid = value;
+        config.ZeroExport.MaxGrid = value;
         break;
     case ZeroExportTopic::MinimumLimit:
-        Configuration.get().ZeroExport.MinimumLimit = value;
+        config.ZeroExport.MinimumLimit = value;
         break;
     case ZeroExportTopic::PowerHysteresis:
-        Configuration.get().ZeroExport.PowerHysteresis = value;
+        config.ZeroExport.PowerHysteresis = value;
         break;
     case ZeroExportTopic::Tn:
-        Configuration.get().ZeroExport.Tn = value;
+        config.ZeroExport.Tn = value;
         break;
     }
 }

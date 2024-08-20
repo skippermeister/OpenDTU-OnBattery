@@ -37,7 +37,7 @@ void WebApiPowerMeterClass::onStatus(AsyncWebServerRequest* request)
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& root = response->getRoot();
-    const PowerMeter_CONFIG_T& cPM = Configuration.get().PowerMeter;
+    auto const& cPM = Configuration.get().PowerMeter;
 
     root["enabled"] = cPM.Enabled;
     root["updatesonly"] = cPM.UpdatesOnly;
@@ -150,7 +150,7 @@ void WebApiPowerMeterClass::onAdminPost(AsyncWebServerRequest* request)
         }
     }
 
-    CONFIG_T& config = Configuration.get();
+    auto& config = Configuration.get();
     config.PowerMeter.Enabled = root["enabled"].as<bool>();
     config.PowerMeter.VerboseLogging = root["verbose_logging"].as<bool>();
     config.PowerMeter.Source = root["source"].as<uint8_t>();

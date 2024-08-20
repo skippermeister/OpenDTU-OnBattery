@@ -46,17 +46,17 @@ void BatteryClass::updateSettings()
         _upProvider = nullptr;
     }
 
-    Battery_CONFIG_T& cBattery = Configuration.get().Battery;
+    auto const& config = Configuration.get();
 
-    if (!cBattery.Enabled) {
+    if (!config.Battery.Enabled) {
         MessageOutput.println("Battery provider not enabled");
         return;
     }
 
     MessageOutput.printf("Activate Battery provider using %s interface\r\n", PinMapping.get().battery.providerName);
 
-    Battery_Provider_t ioProvider = PinMapping.get().battery.provider;
-    switch (cBattery.Provider) {
+    auto const ioProvider = PinMapping.get().battery.provider;
+    switch (config.Battery.Provider) {
 #if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_PYLONTECH_CAN_RECEIVER)
         case 0: // Initialize Pylontech Battery
             switch (ioProvider) {
@@ -144,11 +144,11 @@ void BatteryClass::updateSettings()
 
     if (_upProvider == nullptr) {
         MessageOutput.printf("Unknown battery provider: %d at interface %s\r\n",
-            cBattery.Provider, PinMapping.get().battery.providerName);
+            config.Battery.Provider, PinMapping.get().battery.providerName);
         return;
     }
 
-    _upProvider->_verboseLogging = Configuration.get().Battery.VerboseLogging;
+    _upProvider->_verboseLogging = config.Battery.VerboseLogging;
     if (!_upProvider->init()) { MessageOutput.println("Error battery provider"); _upProvider = nullptr; }
 }
 

@@ -68,7 +68,7 @@ void MeanWellCanClass::updateSettings()
 {
     preferences.putULong(sEEPROMwrites, EEPROMwrites);
 
-    const MeanWell_CONFIG_T& meanwell = Configuration.get().MeanWell;
+    auto const& meanwell = Configuration.get().MeanWell;
     _verboseLogging = meanwell.VerboseLogging;
 
     if (!meanwell.Enabled) {
@@ -86,7 +86,7 @@ void MeanWellCanClass::updateSettings()
         return;
     }
 
-    const CHARGER_t& pin = PinMapping.get().charger;
+    auto const& pin = PinMapping.get().charger;
     switch (pin.provider) {
 #ifdef USE_CHARGER_CAN0
         case Charger_Provider_t::CAN0:
@@ -99,8 +99,9 @@ void MeanWellCanClass::updateSettings()
 
             twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(tx, rx, TWAI_MODE_NORMAL);
             // g_config.bus_off_io = (gpio_num_t)can0_stb;
+#if defined(BOARD_HAS_PSRAM)
             g_config.intr_flags = ESP_INTR_FLAG_LEVEL2;
-
+#endif
             twai_timing_config_t t_config = TWAI_TIMING_CONFIG_250KBITS();
             twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
 
@@ -144,12 +145,9 @@ void MeanWellCanClass::updateSettings()
         case Charger_Provider_t::I2C0:
         case Charger_Provider_t::I2C1:
             {
-            auto scl = pin.i2c.scl;
-            auto sda = pin.i2c.sda;
+            MessageOutput.printf("I2C CAN Bus @ I2C%d scl = %d, sda = %d.\r\n", pin.provider==Charger_Provider_t::I2C0?0:1, pin.i2c.scl, pin.i2c.sda);
 
-            MessageOutput.printf("I2C CAN Bus @ I2C%d scl = %d, sda = %d.\r\n", pin.provider==Charger_Provider_t::I2C0?0:1, scl, sda);
-
-            i2c_can = new I2C_CAN(pin.provider == Charger_Provider_t::I2C0?&Wire:&Wire1, 0x25, scl, sda, 400000UL);     // Set I2C Address
+            i2c_can = new I2C_CAN(pin.provider == Charger_Provider_t::I2C0?&Wire:&Wire1, 0x25, pin.i2c.scl, pin.i2c.sda, 400000UL);     // Set I2C Address
 
             int i = 10;
             while (CAN_OK != i2c_can->begin(I2C_CAN_125KBPS))    // init can bus : baudrate = 125k
@@ -181,7 +179,7 @@ void MeanWellCanClass::updateSettings()
         	_mcp2515_irq = pin.mcp2515.irq;
 	        pinMode(_mcp2515_irq, INPUT_PULLUP);
 
-            auto frequency = Configuration.get().MCP2515.Controller_Frequency;
+            auto frequency = config.MCP2515.Controller_Frequency;
 	        auto mcp_frequency = MCP_8MHZ;
 	        if (20000000UL == frequency) { mcp_frequency = MCP_20MHZ; }
     	    else if (16000000UL == frequency) { mcp_frequency = MCP_16MHZ; }
@@ -417,7 +415,6 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
     switch (readUnsignedInt16(frame)) { // parse Command
     case 0x0000: // OPERATION 1 byte ON/OFF control
         _rp.operation = *(frame + 2);
-        _lastUpdate = millis();
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging) MessageOutput.printf("%s Operation: %02X %s\r\n", _providerName, _rp.operation, _rp.operation ? "On" : "Off");
 #endif
@@ -425,7 +422,6 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
 
     case 0x0020: // VOUT_SET 2 bytes Output voltage setting (format: value, F=0.01)
         _rp.outputVoltageSet = scaleValue(readUnsignedInt16(frame + 2), 0.01f);
-        _lastUpdate = millis();
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging) MessageOutput.printf("%s OutputVoltage(VOUT_SET): %.2fV\r\n", _providerName, _rp.outputVoltageSet);
 #endif
@@ -433,7 +429,6 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
 
     case 0x0030: // IOUT_SET 2 bytes Output current setting (format: value, F=0.01)
         _rp.outputCurrentSet = scaleValue(readUnsignedInt16(frame + 2), 0.01f);
-        _lastUpdate = millis();
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging) MessageOutput.printf("%s OutputCurrent(IOUT_SET): %.2fA\r\n", _providerName, _rp.outputCurrentSet);
 #endif
@@ -441,7 +436,6 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
 
     case 0x0040: // FAULT_STATUS  2 bytes Abnormal status
         _rp.FaultStatus = readUnsignedInt16(frame + 2);
-        _lastUpdate = millis();
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging)
             MessageOutput.printf("%s FAULT_STATUS : %s : HI_TEMP: %d, OP_OFF: %d, AC_FAIL: %d, SHORT: %d, OLP: %d, OVP: %d, OTP: %d\r\n", _providerName,
@@ -459,7 +453,6 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
     case 0x0050: // READ_VIN	2 bytes Input voltage read value (format: value, F=0.1)
         _rp.inputVoltage = scaleValue(readUnsignedInt16(frame + 2), 0.1f);
         if (_model < NPB_Model_t::NPB_1200_24) _rp.inputVoltage = 230.0;
-        _lastUpdate = millis();
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging) MessageOutput.printf("%s InputVoltage: %.1fV\r\n", _providerName, _rp.inputVoltage);
 #endif
@@ -468,7 +461,6 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
     case 0x0060: // READ_VOUT 2 bytes Output voltage read value (format: value, F=0.01)
         _rp.outputVoltage = scaleValue(readUnsignedInt16(frame + 2), 0.01f);
         calcPower();
-        _lastUpdate = millis();
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging) MessageOutput.printf("%s OutputVoltage: %.2fV\r\n", _providerName, _rp.outputVoltage);
 #endif
@@ -477,7 +469,6 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
     case 0x0061: // READ_IOUT 2 bytes Output current read value (format: value, F=0.01)
         _rp.outputCurrent = scaleValue(readUnsignedInt16(frame + 2), 0.01f);
         calcPower();
-        _lastUpdate = millis();
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging) MessageOutput.printf("%s OutputCurrent: %.2fA\r\n", _providerName, _rp.outputCurrent);
 #endif
@@ -485,7 +476,6 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
 
     case 0x0062: // READ_TEMPERATURE_1 2 bytes Internal ambient temperature (format: value, F=0.1)
         _rp.internalTemperature = scaleValue(readSignedInt16(frame + 2), 0.1f);
-        _lastUpdate = millis();
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging) MessageOutput.printf("%s Temperature: %.1f°C\r\n", _providerName, _rp.internalTemperature);
 #endif
@@ -493,7 +483,7 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
 
     case 0x0080: // MFR_ID_B0B5 6 bytes Manufacturer's name
         memcpy(reinterpret_cast<char*>(_rp.ManufacturerName), reinterpret_cast<char*>(frame + 2), 6);
-        break;
+        return;
 
     case 0x0081: // MFR_ID_B6B11 6 bytes Manufacturer's name
         strncpy(reinterpret_cast<char*>(&(_rp.ManufacturerName[6])), reinterpret_cast<char*>(frame + 2), 6);
@@ -503,7 +493,6 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
             else
                 break;
         }
-        _lastUpdate = millis();
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging) MessageOutput.printf("%s Manufacturer Name: '%s'\r\n", _providerName, _rp.ManufacturerName);
 #endif
@@ -511,7 +500,7 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
 
     case 0x0082: // MFR_MODEL_B0B51 6 bytes Manufacturer's model name
         memcpy(reinterpret_cast<char*>(_rp.ManufacturerModelName), reinterpret_cast<char*>(frame + 2), 6);
-        break;
+        return;
 
     case 0x0083: // MFR_MODEL_B6B11 6 bytes Manufacturer's model name
         {
@@ -523,7 +512,7 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
                 break;
         }
 
-        MeanWell_CONFIG_T& cMeanWell = Configuration.get().MeanWell;
+        auto& cMeanWell = Configuration.get().MeanWell;
         if (strcmp(_rp.ManufacturerModelName, "NPB-450-48") == 0) {
             _model = NPB_Model_t::NPB_450_48;
             cMeanWell.CurrentLimitMin = 1.36f; // 1.36A
@@ -586,8 +575,6 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
         if (cMeanWell.MinVoltage < cMeanWell.VoltageLimitMin || cMeanWell.MinVoltage > cMeanWell.VoltageLimitMax) cMeanWell.MinVoltage = cMeanWell.VoltageLimitMin;
         if (cMeanWell.MaxVoltage < cMeanWell.VoltageLimitMin || cMeanWell.MaxVoltage > cMeanWell.VoltageLimitMax) cMeanWell.MaxVoltage = cMeanWell.VoltageLimitMax;
 
-        _lastUpdate = millis();
-
 //#ifdef MEANWELL_DEBUG_ENABLED
         //if (_verboseLogging)
             MessageOutput.printf("%s Manufacturer Model Name: '%s' %d\r\n", _providerName, _rp.ManufacturerModelName, static_cast<int>(_model));
@@ -597,7 +584,6 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
 
     case 0x0084: // MFR_REVISION_B0B5 6 bytes Firmware revision
         memcpy(reinterpret_cast<char*>(_rp.FirmwareRevision), reinterpret_cast<char*>(frame + 2), 6);
-        _lastUpdate = millis();
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging) {
             char hex[13];
@@ -616,7 +602,6 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
 
     case 0x0085: // MFR_LOCATION_B0B2 3 bytes Manufacturer's factory location
         strncpy(reinterpret_cast<char*>(_rp.ManufacturerFactoryLocation), reinterpret_cast<char*>(frame + 2), 3);
-        _lastUpdate = millis();
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging) MessageOutput.printf("%s Manufacturer Factory Location: '%s'\r\n", _providerName, _rp.ManufacturerFactoryLocation);
 #endif
@@ -624,7 +609,6 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
 
     case 0x0086: // MFR_DATE_B0B5 6 bytes Manufacturer date
         strncpy(reinterpret_cast<char*>(_rp.ManufacturerDate), reinterpret_cast<char*>(frame + 2), 6);
-        _lastUpdate = millis();
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging) MessageOutput.printf("%s Manufacturer Date: '%s'\r\n", _providerName, _rp.ManufacturerDate);
 #endif
@@ -632,11 +616,10 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
 
     case 0x0087: // MFR_SERIAL_B0B5 6 bytes Product serial number
         memcpy(reinterpret_cast<char*>(_rp.ProductSerialNo), reinterpret_cast<char*>(frame + 2), 6);
-        break;
+        return;
 
     case 0x0088: // MFR_SERIAL_B6B11 6 bytes Product serial number
         strncpy(reinterpret_cast<char*>(&(_rp.ProductSerialNo[6])), reinterpret_cast<char*>(frame + 2), 6);
-        _lastUpdate = millis();
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging) MessageOutput.printf("%s Product Serial No '%s'\r\n", _providerName, _rp.ProductSerialNo);
 #endif
@@ -644,7 +627,6 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
 
     case 0x00B0: // CURVE_CC 2 bytes Constant current setting of charge curve (format: value, F=0.01)
         _rp.curveCC = scaleValue(readUnsignedInt16(frame + 2), 0.01f);
-        _lastUpdate = millis();
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging) MessageOutput.printf("%s CurveCC: %.2fA\r\n", _providerName, _rp.curveCC);
 #endif
@@ -652,7 +634,6 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
 
     case 0x00B1: // CURVE_CV 2 bytes Constant voltage setting of charge curve (format: value, F=0.01)
         _rp.curveCV = scaleValue(readUnsignedInt16(frame + 2), 0.01f);
-        _lastUpdate = millis();
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging) MessageOutput.printf("%s CurveCV: %.2fV\r\n", _providerName, _rp.curveCV);
 #endif
@@ -660,7 +641,6 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
 
     case 0x00B2: // CURVE_FV 2 bytes Floating voltage setting of charge curve (format: value, F=0.01)
         _rp.curveFV = scaleValue(readUnsignedInt16(frame + 2), 0.01f);
-        _lastUpdate = millis();
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging) MessageOutput.printf("%s CurveFV: %.2fV\r\n", _providerName, _rp.curveFV);
 #endif
@@ -668,7 +648,6 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
 
     case 0x00B3: // CURVE_TC 2 bytes Taper current setting value of charging curve (format: value, F=0.01)
         _rp.curveTC = scaleValue(readUnsignedInt16(frame + 2), 0.01f);
-        _lastUpdate = millis();
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging) MessageOutput.printf("%s CurveTC: %.2fA\r\n", _providerName, _rp.curveTC);
 #endif
@@ -676,7 +655,6 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
 
     case 0x00B4: // CURVE_CONFIG 2 bytes Configuration setting of charge curve
         _rp.CurveConfig = readUnsignedInt16(frame + 2);
-        _lastUpdate = millis();
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging)
             MessageOutput.printf("%s CURVE_CONFIG : %s : CUVE: %d, STGS: %d, TCS: %d, CUVS: %X\r\n", _providerName,
@@ -690,7 +668,6 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
 
     case 0x00B5: // CURVE_CC_TIMEOUT 2 bytes CC charge timeout setting of charging curve
         _rp.curveCC_Timeout = readUnsignedInt16(frame + 2);
-        _lastUpdate = millis();
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging) MessageOutput.printf("%s CurveCC_Timeout: %d minutes\r\n", _providerName, _rp.curveCC_Timeout);
 #endif
@@ -698,7 +675,6 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
 
     case 0x00B6: // CURVE_CV_TIMEOUT 2 bytes CV charge timeout setting of charging curve
         _rp.curveCV_Timeout = readUnsignedInt16(frame + 2);
-        _lastUpdate = millis();
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging) MessageOutput.printf("%s CurveCV_Timeout: %d minutes\r\n", _providerName, _rp.curveCV_Timeout);
 #endif
@@ -706,7 +682,6 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
 
     case 0x00B7: // CURVE_FV_TIMEOUT 2 bytes FV charge timeout setting of charging curve
         _rp.curveFV_Timeout = readUnsignedInt16(frame + 2);
-        _lastUpdate = millis();
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging) MessageOutput.printf("%s CurveFV_Timeout: %d minutes\r\n", _providerName, _rp.curveFV_Timeout);
 #endif
@@ -714,7 +689,6 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
 
     case 0x00B8: // CHG_STATUS 2 bytes Charging status reporting
         _rp.ChargeStatus = readUnsignedInt16(frame + 2);
-        _lastUpdate = millis();
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging)
             MessageOutput.printf("%s CHG_STATUS : %s : BTNC: %d, WAKUP_STOP: %d, FVM: %d, CVM: %d, CCM: %d, FULLM: %d\r\n", _providerName,
@@ -733,11 +707,10 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
             uint16_t ChgRstVbat = readUnsignedInt16(frame + 2);
             if (_verboseLogging) MessageOutput.printf("%s CHG_RST_VBAT: %d\r\n", _providerName, ChgRstVbat);
         }
-        break;
+        return;
 
     case 0x00C0: // SCALING_FACTOR 2 bytes Scaling ratio
         _rp.scalingFactor = readUnsignedInt16(frame + 2);
-        _lastUpdate = millis();
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging) MessageOutput.printf("%s ScalingFactor: %d, %04X\r\n", _providerName, _rp.scalingFactor, _rp.scalingFactor);
 #endif
@@ -745,7 +718,6 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
 
     case 0x00C1: // SYSTEM_STATUS 2 bytes System Status
         _rp.SystemStatus = readUnsignedInt16(frame + 2);
-        _lastUpdate = millis();
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging)
             MessageOutput.printf("%s SYSTEM_STATUS : %s : EEPER: %d, INITIAL_STATE: %d, DC_OK: %d\r\n", _providerName,
@@ -758,7 +730,6 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
 
     case 0x00C2: // SYSTEM_CONFIG 2 bytes System Configuration
         _rp.SystemConfig = readUnsignedInt16(frame + 2);
-        _lastUpdate = millis();
 #ifdef MEANWELL_DEBUG_ENABLED
         if (_verboseLogging) {
             const char* OperationInit[4] = {
@@ -777,7 +748,10 @@ void MeanWellCanClass::onReceive(uint8_t* frame, uint8_t len)
 
     default:;
         MessageOutput.printf("%s CAN: Unknown Command %04X, len %d\r\n", _providerName, readUnsignedInt16(frame), len);
+        return;
     }
+
+    _lastUpdate = millis();
 }
 
 bool MeanWellCanClass::updateAvailable(uint32_t since) const
@@ -788,7 +762,7 @@ bool MeanWellCanClass::updateAvailable(uint32_t since) const
 
 void MeanWellCanClass::setupParameter()
 {
-    const MeanWell_CONFIG_T& cMeanWell = Configuration.get().MeanWell;
+    auto const& cMeanWell = Configuration.get().MeanWell;
 
     bool temp = _verboseLogging;
     _verboseLogging = true;
@@ -915,7 +889,7 @@ void MeanWellCanClass::updateEEPROMwrites2NVS() {
 
 void MeanWellCanClass::loop()
 {
-    const CONFIG_T& config = Configuration.get();
+    auto const& config = Configuration.get();
 
     if (!config.MeanWell.Enabled || !_initialized) {
         return;
@@ -959,7 +933,7 @@ void MeanWellCanClass::loop()
     for (uint8_t i = 0; i < Hoymiles.getNumInverters(); i++) {
         auto inv = Hoymiles.getInverterByPos(i);
         if (inv != NULL) {
-            if (inv->serial() != Configuration.get().PowerLimiter.InverterId) {
+            if (inv->serial() != config.PowerLimiter.InverterId) {
                 InverterPower += inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_PAC);
                 if (first) {
                     isProducing = inv->isProducing();
@@ -984,79 +958,76 @@ void MeanWellCanClass::loop()
         MessageOutput.printf("%s %lu ms, House Power: %.1fW, Grid Power: %.1fW, Inverter (%s) Day Power: %.1fW, Batt con. Inverter (%s), Charger Power: %.1fW\r\n", _providerName,
             millis() - t_start, PowerMeter.getHousePower(), GridPower, invName.c_str(), InverterPower, BattInvName.c_str(), _rp.outputPower);
 
-    if (!Battery.initialized())
-        goto exit;
+    auto stats = Battery.getStats();
+
+    if (!Battery.initialized()) goto exit;
 
     if (_automaticCharge) {
         if (_verboseLogging)
             MessageOutput.printf("%s automatic mode, it's %s, SOC: %.1f%%, %s%s%scharge%sabled, ChargeTemperatur is %svalid, %s is %sproducing, %s is %sproducing, Charger is %s", _providerName,
                 SunPosition.isDayPeriod() ? "day" : "night",
-                Battery.getStats()->getSoC(),
-                Battery.getStats()->getAlarm().overVoltage ? "alarmOverVoltage, " : "",
-                Battery.getStats()->getAlarm().underTemperature ? "alarmUnderTemperature, " : "",
-                Battery.getStats()->getAlarm().overTemperature ? "alarmOverTemperature, " : "",
-                Battery.getStats()->getChargeEnabled() ? "En" : "Dis",
-                Battery.getStats()->isChargeTemperatureValid()? "" : "not ",
+                stats->getSoC(),
+                stats->getAlarm().overVoltage ? "alarmOverVoltage, " : "",
+                stats->getAlarm().underTemperature ? "alarmUnderTemperature, " : "",
+                stats->getAlarm().overTemperature ? "alarmOverTemperature, " : "",
+                stats->getChargeEnabled() ? "En" : "Dis",
+                stats->isChargeTemperatureValid()? "" : "not ",
                 invName.c_str(), isProducing ? "" : "not ",
                 BattInvName.c_str(), batteryConnected_isProducing ? "" : "not ",
                 _rp.operation ? "ON" : "OFF");
 
         boolean _fullChargeRequested = false;
-        if (Battery.getStats()->getFullChargeRequest()) {
-            _fullChargeRequested = true;
-        }
-
-        if (!Battery.getStats()->getChargeEnabled()) {
-            _fullChargeRequested = false;
-        }
+        if (stats->getFullChargeRequest()) { _fullChargeRequested = true; }
+        if (!stats->getChargeEnabled()) { _fullChargeRequested = false; }
 
         // check if battery overvoltage, or night, or inverter is not producing, than switch of charger
-        if (Battery.getStats()->getAlarm().overVoltage
-            || Battery.getStats()->getAlarm().underTemperature
-            || Battery.getStats()->getAlarm().overTemperature
-            || !Battery.getStats()->isChargeTemperatureValid()
-            || !SunPosition.isDayPeriod()
-            || batteryConnected_isProducing
-            || !Battery.getStats()->getChargeEnabled()
-            || (!_fullChargeRequested
-                && Battery.getStats()->getSoC() >= Configuration.get().Battery.Stop_Charging_BatterySoC_Threshold
-               )
-            || (!isProducing && Configuration.get().MeanWell.mustInverterProduce) )
+        if (stats->getAlarm().overVoltage ||
+            stats->getAlarm().underTemperature ||
+            stats->getAlarm().overTemperature ||
+            !stats->isChargeTemperatureValid() ||
+            !SunPosition.isDayPeriod() ||
+            batteryConnected_isProducing ||
+            !stats->getChargeEnabled() ||
+            (!_fullChargeRequested &&
+             stats->getSoC() >= config.Battery.Stop_Charging_BatterySoC_Threshold
+            ) ||
+            (!isProducing && config.MeanWell.mustInverterProduce) )
         {
             switchChargerOff("");
 
             // check if battery request immediate charging or SoC is less than Stop_Charging_BatterySoC_Threshold (20 ... 100%)
             // and inverter is producing and reachable and day
             // than switch on charger
-        } else if ( (_fullChargeRequested
-                    || Battery.getStats()->getSoC() < Configuration.get().Battery.Stop_Charging_BatterySoC_Threshold
-                    )
-                    && (
-                        (   isProducing
-                         && isReachable
-                         && Configuration.get().MeanWell.mustInverterProduce
-                        )
-                        || !Configuration.get().MeanWell.mustInverterProduce
-                    )
-                    && SunPosition.isDayPeriod()
+        } else if ( (_fullChargeRequested ||
+                     stats->getSoC() < config.Battery.Stop_Charging_BatterySoC_Threshold
+                    ) &&
+                    (
+                      (isProducing &&
+                       isReachable &&
+                       config.MeanWell.mustInverterProduce
+                      ) ||
+                      !config.MeanWell.mustInverterProduce
+                    ) &&
+                    SunPosition.isDayPeriod()
                   )
         {
-            if (!_rp.operation
-                 && (GridPower < -config.MeanWell.MinCurrent * Battery.getStats()->getVoltage()
-                     || Battery.getStats()->getImmediateChargingRequest()
-                     || _fullChargeRequested
-                    )
+            if (!_rp.operation &&
+                (GridPower < -config.MeanWell.MinCurrent * stats->getVoltage() ||
+                 stats->getImmediateChargingRequest() ||
+                 _fullChargeRequested
+                )
                )
             {
                 if (_verboseLogging) MessageOutput.println(", switch Charger ON");
                 // only start if charger is off and enough GridPower is available
                 setAutomaticChargeMode(true);
                 setPower(true);
+                float RecommendedChargeVoltageLimit = stats->getRecommendedChargeVoltageLimit();
                 setValue(config.MeanWell.MinCurrent, MEANWELL_SET_CURRENT); // set minimum current to softstart charging
                 setValue(config.MeanWell.MinCurrent, MEANWELL_SET_CURVE_CC); // set minimum current to softstart charging
-                setValue(Battery.getStats()->getRecommendedChargeVoltageLimit() - 0.25f, MEANWELL_SET_CURVE_CV); // set to battery recommended charge voltage according to BMS value and user manual
-                setValue(Battery.getStats()->getRecommendedChargeVoltageLimit() - 0.30f, MEANWELL_SET_CURVE_FV); // set to battery recommended charge voltage according to BMS value and user manual
-                setValue(Battery.getStats()->getRecommendedChargeVoltageLimit() - 0.25f, MEANWELL_SET_VOLTAGE); // set to battery recommended charge voltage according to BMS value and user manual
+                setValue(RecommendedChargeVoltageLimit - 0.25f, MEANWELL_SET_CURVE_CV); // set to battery recommended charge voltage according to BMS value and user manual
+                setValue(RecommendedChargeVoltageLimit - 0.30f, MEANWELL_SET_CURVE_FV); // set to battery recommended charge voltage according to BMS value and user manual
+                setValue(RecommendedChargeVoltageLimit - 0.25f, MEANWELL_SET_VOLTAGE); // set to battery recommended charge voltage according to BMS value and user manual
                 readCmd(ChargerID, 0x0060); // read VOUT
                 readCmd(ChargerID, 0x0061); // read IOUT
             } else {
@@ -1064,17 +1035,17 @@ void MeanWellCanClass::loop()
             }
 
             static boolean _chargeImmediateRequested = false;
-            if (Battery.getStats()->getSoC() >= (Configuration.get().Battery.Stop_Charging_BatterySoC_Threshold - 10)
-                && !_fullChargeRequested)
+            if (stats->getSoC() >= (config.Battery.Stop_Charging_BatterySoC_Threshold - 10) &&
+                !_fullChargeRequested)
             {
                 _chargeImmediateRequested = false;
             }
 
-            if (_fullChargeRequested
-                || (   (Battery.getStats()->getImmediateChargingRequest() || _chargeImmediateRequested)
-                     && Battery.getStats()->getSoC() < (Configuration.get().Battery.Stop_Charging_BatterySoC_Threshold - 10)
-                   )
+            if (_fullChargeRequested ||
+                ((stats->getImmediateChargingRequest() || _chargeImmediateRequested) &&
+                  stats->getSoC() < (config.Battery.Stop_Charging_BatterySoC_Threshold - 10)
                 )
+               )
             {
                 if (_verboseLogging) MessageOutput.printf("%s Immediate Charge requested", _providerName);
                 setValue(config.MeanWell.MaxCurrent, MEANWELL_SET_CURRENT);
@@ -1083,7 +1054,7 @@ void MeanWellCanClass::loop()
             } else {
                 // Zero Grid Export Charging Algorithm (Charger consums at operation minimum 180 Watt = 3.6A*50V)
                 if (_verboseLogging) MessageOutput.printf("%s Zero Grid Charger controller", _providerName);
-                float pCharger = config.MeanWell.MinCurrent * Battery.getStats()->getVoltage(); // Minimum power usage of charger
+                float pCharger = config.MeanWell.MinCurrent * stats->getVoltage(); // Minimum power usage of charger
                 float hysteresis = 25.0;
                 float minPowerNeeded = pCharger;
                 float efficiency = 95.0 / 100.0;
@@ -1096,27 +1067,32 @@ void MeanWellCanClass::loop()
                 if ((GridPower < -(minPowerNeeded + hysteresis)) && ((fabs(GridPower) - minPowerNeeded) > config.MeanWell.Hysteresis)) { // 25 Watt Hysteresic
                     if (_verboseLogging) MessageOutput.printf(", increment");
                     // Solar Inverter produces enough power, we export to the Grid
-                    if (_rp.outputCurrent >= config.MeanWell.MaxCurrent) {
+                    if (_rp.outputCurrent >= config.MeanWell.MaxCurrent)
+                    {
                         // do nothing, _OutputCurrentSetting && CurveCC is higher than actual OutputCurrent, the charger is regulating
                         if (_verboseLogging) MessageOutput.print(" not");
                     }
                     // check if outputCurrent is less than recommended charging current from battery
                     // if so than increase charging current by 0,5A (round about 25W)
-                    else if (_rp.outputCurrent < Battery.getStats()->getRecommendedChargeCurrentLimit()) {
-                        float increment = fabs(GridPower) / Battery.getStats()->getVoltage() * efficiency;
+                    else if (_rp.outputCurrent < stats->getRecommendedChargeCurrentLimit())
+                    {
+                        float increment = fabs(GridPower) / stats->getVoltage() * efficiency;
                         if (_verboseLogging) MessageOutput.printf(" by %.2f A", increment);
                         setValue(_rp.outputCurrentSet + increment, MEANWELL_SET_CURRENT);
                         setValue(_rp.outputCurrentSet, MEANWELL_SET_CURVE_CC);
                     }
                 } else if ((GridPower >= 0.0) && (_rp.outputCurrent > 0.0f)) {
                     if (_verboseLogging) MessageOutput.printf(", decrement");
-                    float decrement = GridPower / Battery.getStats()->getVoltage() * efficiency;
+                    float decrement = GridPower / stats->getVoltage() * efficiency;
                     // check if Solar Inverter produces not enough power, then we have to reduce switch off the charger
                     // otherwise we have to reduce the OutputCurrent
-                    if ((_rp.outputCurrent < config.MeanWell.MinCurrent - 0.01f
-                            && _rp.outputCurrentSet >= config.MeanWell.MinCurrent - 0.01f
-                            && _rp.outputCurrentSet <= config.MeanWell.MinCurrent + 0.024f)
-                        || (_rp.outputCurrentSet - decrement < config.MeanWell.MinCurrent)) {
+                    if ((_rp.outputCurrent < config.MeanWell.MinCurrent - 0.01f &&
+                         _rp.outputCurrentSet >= config.MeanWell.MinCurrent - 0.01f &&
+                         _rp.outputCurrentSet <= config.MeanWell.MinCurrent + 0.024f
+                        ) ||
+                        (_rp.outputCurrentSet - decrement < config.MeanWell.MinCurrent)
+                       )
+                    {
                         // we have to switch off the charger, the charger consums with minimum OutputCurrent to much power.
                         // we can not reduce the power consumption and have to switch off the charger
                         // or battery is full and charger reduces output current via charge algorithm
@@ -1137,7 +1113,7 @@ void MeanWellCanClass::loop()
                 } else {
                     switchChargerOff(", unknown reason");
                 }
-                if (Battery.getStats()->getAlarm().overCurrentCharge || Battery.getStats()->getWarning().highCurrentCharge) {
+                if (stats->getAlarm().overCurrentCharge || stats->getWarning().highCurrentCharge) {
                 }
             }
         }
@@ -1149,33 +1125,41 @@ void MeanWellCanClass::loop()
         // Full charge or immediately charge requests handling in "non Automatic" mode
         static bool _FullChargeRequest = false;
         static bool _ChargeImmediately = false;
-        if (Battery.getStats()->getFullChargeRequest()) _FullChargeRequest = true;
-        if (Battery.getStats()->getImmediateChargingRequest()) _ChargeImmediately = true;
-        if ( (Battery.getStats()->getFullChargeRequest() || _FullChargeRequest
-              || Battery.getStats()->getImmediateChargingRequest() || _ChargeImmediately)
-            && !Battery.getStats()->getAlarm().overVoltage
-            && Battery.getStats()->getAlarm().underTemperature
-            && Battery.getStats()->getAlarm().overTemperature
-            && Battery.getStats()->isChargeTemperatureValid()
-            && SunPosition.isDayPeriod()
-            && Battery.getStats()->getChargeEnabled())
+        if (stats->getFullChargeRequest()) _FullChargeRequest = true;
+        if (stats->getImmediateChargingRequest()) _ChargeImmediately = true;
+        if ( (stats->getFullChargeRequest() || _FullChargeRequest ||
+              stats->getImmediateChargingRequest() || _ChargeImmediately
+             ) &&
+             !stats->getAlarm().overVoltage &&
+             !stats->getAlarm().underTemperature &&
+             !stats->getAlarm().overTemperature &&
+             stats->isChargeTemperatureValid() &&
+             SunPosition.isDayPeriod() &&
+             stats->getChargeEnabled()
+           )
         {
             if (!_rp.operation) {
                 if (_verboseLogging) MessageOutput.printf("%s charge request\r\n", _FullChargeRequest?"Full":"Immediately");
 
                 setPower(true);
+                float RecommendedChargeVoltageLimit = stats->getRecommendedChargeVoltageLimit();
                 setValue(config.MeanWell.MaxCurrent, MEANWELL_SET_CURRENT); // set maximum current to start charging
                 setValue(config.MeanWell.MaxCurrent, MEANWELL_SET_CURVE_CC); // set maximum current to start charging
-                setValue(Battery.getStats()->getRecommendedChargeVoltageLimit() - 0.25f, MEANWELL_SET_CURVE_CV); // set to battery recommended charge voltage according to BMS value and user manual
-                setValue(Battery.getStats()->getRecommendedChargeVoltageLimit() - 0.30f, MEANWELL_SET_CURVE_FV); // set to battery recommended charge voltage according to BMS value and user manual
-                setValue(Battery.getStats()->getRecommendedChargeVoltageLimit() - 0.25f, MEANWELL_SET_VOLTAGE); // set to battery recommended charge voltage according to BMS value and user manual
+                setValue(RecommendedChargeVoltageLimit - 0.25f, MEANWELL_SET_CURVE_CV); // set to battery recommended charge voltage according to BMS value and user manual
+                setValue(RecommendedChargeVoltageLimit - 0.30f, MEANWELL_SET_CURVE_FV); // set to battery recommended charge voltage according to BMS value and user manual
+                setValue(RecommendedChargeVoltageLimit - 0.25f, MEANWELL_SET_VOLTAGE); // set to battery recommended charge voltage according to BMS value and user manual
             }
 
-            if (_ChargeImmediately && !_FullChargeRequest && Battery.getStats()->getSoC() >= Configuration.get().Battery.Stop_Charging_BatterySoC_Threshold ) {
+            if ( _ChargeImmediately &&
+                !_FullChargeRequest &&
+                stats->getSoC() >= config.Battery.Stop_Charging_BatterySoC_Threshold
+               )
+            {
                 switchChargerOff("Battery immediately charge completed");
                 _ChargeImmediately = false;
             }
-            if (_FullChargeRequest && Battery.getStats()->getSoC() >= 99.9 ) {
+            if (_FullChargeRequest && stats->getSoC() >= 99.9 )
+            {
                 switchChargerOff("Battery full charge completed");
                 _FullChargeRequest = false;
             }
@@ -1225,12 +1209,13 @@ void MeanWellCanClass::setValue(float in, uint8_t parameterType)
     if (_verboseLogging)
         MessageOutput.printf("%s setValue %s: %.2f%c ... ", _providerName, type[parameterType], in, unit[parameterType]);
 
-    const MeanWell_CONFIG_T& cMeanWell = Configuration.get().MeanWell;
+    auto const& cMeanWell = Configuration.get().MeanWell;
+    auto stats = Battery.getStats();
 
     switch (parameterType) {
     case MEANWELL_SET_VOLTAGE:
-        in = min(in, Battery.getStats()->getRecommendedChargeVoltageLimit()); // Pylontech US3000C max voltage limit
-        in = max(in, Battery.getStats()->getRecommendedDischargeVoltageLimit()); // Pylontech US3000C min voltage limit
+        in = min(in, stats->getRecommendedChargeVoltageLimit()); // Pylontech US3000C max voltage limit
+        in = max(in, stats->getRecommendedDischargeVoltageLimit()); // Pylontech US3000C min voltage limit
 
         readCmd(ChargerID, 0x0020); // read UOUT_SET
         if (fabs(_rp.outputVoltageSet - in) > 0.01) {
@@ -1242,8 +1227,8 @@ void MeanWellCanClass::setValue(float in, uint8_t parameterType)
         break;
 
     case MEANWELL_SET_CURVE_CV:
-        in = min(in, Battery.getStats()->getRecommendedChargeVoltageLimit()); // Pylontech US3000C max voltage limit
-        in = max(in, Battery.getStats()->getRecommendedDischargeVoltageLimit()); // Pylontech US3000C min voltage limit
+        in = min(in, stats->getRecommendedChargeVoltageLimit()); // Pylontech US3000C max voltage limit
+        in = max(in, stats->getRecommendedDischargeVoltageLimit()); // Pylontech US3000C min voltage limit
 
         readCmd(ChargerID, 0x00B1); // read Curve_CV
         if (fabs(_rp.curveCV - in) > 0.01) {
@@ -1254,9 +1239,9 @@ void MeanWellCanClass::setValue(float in, uint8_t parameterType)
         break;
 
     case MEANWELL_SET_CURVE_FV:
-        in = min(in, Battery.getStats()->getRecommendedChargeVoltageLimit()); // Pylontech US3000C max voltage limit
+        in = min(in, stats->getRecommendedChargeVoltageLimit()); // Pylontech US3000C max voltage limit
         in = min(in, _rp.curveCV); // Pylontech US3000C max voltage limit, must be below or equal constant voltage curveCV
-        in = max(in, Battery.getStats()->getRecommendedDischargeVoltageLimit()); // Pylontech US3000C min voltage limit
+        in = max(in, stats->getRecommendedDischargeVoltageLimit()); // Pylontech US3000C min voltage limit
 
         readCmd(ChargerID, 0x00B2); // read Curve_FV
         if (fabs(_rp.curveFV - in) > 0.01) {

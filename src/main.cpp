@@ -90,13 +90,13 @@ void setup()
             MessageOutput.print("failed... ");
         }
     }
-    if (Configuration.get().Cfg.Version != CONFIG_VERSION) {
+    CONFIG_T& config = Configuration.get();
+    if (config.Cfg.Version != CONFIG_VERSION) {
         MessageOutput.print("migrated... ");
         Configuration.migrate();
     }
     MessageOutput.println("done");
 
-    CONFIG_T& config = Configuration.get();
     PinMapping.init(String(config.Dev_PinMapping)); // Load PinMapping
 
     SerialPortManager.init();

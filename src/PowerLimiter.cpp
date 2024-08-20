@@ -43,7 +43,7 @@ void PowerLimiterClass::init(Scheduler& scheduler)
     // to control MosFETs between battery and inverter
     // added by skippermeister
     _switchMosFetOffTimer=0;
-    const PowerLimiter_CONFIG_T& cPL = Configuration.get().PowerLimiter;
+    auto const& cPL = Configuration.get().PowerLimiter;
     bool noDCpowerSwitch = PinMapping.get().pre_charge < 0 && PinMapping.get().full_power < 0;
     if (noDCpowerSwitch) {
         MessageOutput.printf("no MosFET pins configured to control DC power of inverter %" PRIx64 " channel %d\r\n",
@@ -357,7 +357,7 @@ void PowerLimiterClass::loop()
 
     if (_verboseLogging && !config.PowerLimiter.IsInverterSolarPowered) {
         MessageOutput.printf("%s%s: battery interface %sabled, SoC: %.1f%%, StartTH: %d %%, StopTH: %d %%, SoC age: %d s, ignore: %s\r\n", TAG, __FUNCTION__,
-            (Configuration.get().Battery.Enabled ? "en" : "dis"),
+            (config.Battery.Enabled ? "en" : "dis"),
             Battery.getStats()->getSoC(),
             config.PowerLimiter.BatterySocStartThreshold,
             config.PowerLimiter.BatterySocStopThreshold,
@@ -447,7 +447,7 @@ static float getInverterEfficiency(std::shared_ptr<InverterAbstract> inverter)
  */
 int32_t PowerLimiterClass::inverterPowerDcToAc(std::shared_ptr<InverterAbstract> inverter, int32_t dcPower)
 {
-    PowerLimiter_CONFIG_T& cPL = Configuration.get().PowerLimiter;
+    auto const& cPL = Configuration.get().PowerLimiter;
 
     float inverterEfficiencyFactor = getInverterEfficiency(inverter);
 
@@ -973,7 +973,7 @@ float PowerLimiterClass::getLoadCorrectedVoltage()
         return 0.0;
     }
 
-    CONFIG_T& config = Configuration.get();
+    auto const& config = Configuration.get();
 
     float acPower = _inverter->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_PAC);
     if (_verboseLogging) MessageOutput.printf("%s%s: acPower %.1f\r\n", TAG, __FUNCTION__, acPower);
@@ -989,7 +989,7 @@ float PowerLimiterClass::getLoadCorrectedVoltage()
 bool PowerLimiterClass::testThreshold(float socThreshold, float voltThreshold,
     std::function<bool(float, float)> compare)
 {
-    CONFIG_T& config = Configuration.get();
+    auto const& config = Configuration.get();
 
     // prefer SoC provided through battery interface, unless disabled by user
     auto stats = Battery.getStats();
@@ -1009,7 +1009,7 @@ bool PowerLimiterClass::testThreshold(float socThreshold, float voltThreshold,
 
 bool PowerLimiterClass::isStartThresholdReached()
 {
-    PowerLimiter_CONFIG_T& cPL = Configuration.get().PowerLimiter;
+    auto const& cPL = Configuration.get().PowerLimiter;
 
     return testThreshold(
         cPL.BatterySocStartThreshold,
@@ -1019,7 +1019,7 @@ bool PowerLimiterClass::isStartThresholdReached()
 
 bool PowerLimiterClass::isStopThresholdReached()
 {
-    PowerLimiter_CONFIG_T& cPL = Configuration.get().PowerLimiter;
+    auto const& cPL = Configuration.get().PowerLimiter;
 
     return testThreshold(
         cPL.BatterySocStopThreshold,
@@ -1029,7 +1029,7 @@ bool PowerLimiterClass::isStopThresholdReached()
 
 bool PowerLimiterClass::isBelowStopThreshold()
 {
-    PowerLimiter_CONFIG_T& cPL = Configuration.get().PowerLimiter;
+    auto const& cPL = Configuration.get().PowerLimiter;
 
     return testThreshold(
         cPL.BatterySocStopThreshold,
@@ -1040,7 +1040,7 @@ bool PowerLimiterClass::isBelowStopThreshold()
 /// @brief calculate next inverter restart in millis
 void PowerLimiterClass::calcNextInverterRestart()
 {
-    CONFIG_T& config = Configuration.get();
+    auto const& config = Configuration.get();
 
     // first check if restart is configured at all
     if (config.PowerLimiter.RestartHour < 0) {
@@ -1113,7 +1113,7 @@ bool PowerLimiterClass::manageBatteryDCpowerSwitch()
     // skip algorithm if we have not implemented the MosFETs between battery and inverter
     if (PinMapping.get().pre_charge < 0 && PinMapping.get().full_power < 0) return true;
 
-    PowerLimiter_CONFIG_T& cPL = Configuration.get().PowerLimiter;
+    auto const& cPL = Configuration.get().PowerLimiter;
 
     if (Configuration.get().Battery.Enabled // Battery must be enabled
         && !SunPosition.isAnnouceDayPeriod() //

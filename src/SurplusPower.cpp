@@ -43,7 +43,7 @@ SurplusPowerClass SurplusPower;
  * return:  true = enabled, false = not enabled
  */
 bool SurplusPowerClass::useSurplusPower(void) const {
-    CONFIG_T const& config = Configuration.get();
+    auto const& config = Configuration.get();
 
     return (config.PowerLimiter.SurplusPowerEnabled) ? true : false;
 }
@@ -103,7 +103,7 @@ int32_t SurplusPowerClass::calcSurplusPower(int32_t const requestedPower) {
     auto targetVoltage = (vStOfOp == MODE_ABSORPTION) ? _absorptionVoltage - DELTA_VOLTAGE: _floatVoltage - DELTA_VOLTAGE;
 
     // state machine: hold, increase or decrease the surplus power
-    CONFIG_T& config = Configuration.get();
+    auto const& config = Configuration.get();
     int32_t addPower = 0;
     switch (_surplusState) {
 

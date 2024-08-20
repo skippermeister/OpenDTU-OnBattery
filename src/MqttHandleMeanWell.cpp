@@ -75,7 +75,7 @@ void MqttHandleMeanWellClass::unsubscribeTopics()
 
 void MqttHandleMeanWellClass::loop()
 {
-    const CONFIG_T& config = Configuration.get();
+    auto const& config = Configuration.get();
 
     std::unique_lock<std::mutex> mqttLock(_mqttMutex);
 
@@ -95,7 +95,7 @@ void MqttHandleMeanWellClass::loop()
         return;
     }
 
-    const MeanWell_CONFIG_T& cMeanWell = Configuration.get().MeanWell;
+    auto const& cMeanWell = Configuration.get().MeanWell;
 
     const String subtopic = "meanwell/";
     MqttSettings.publish(subtopic + "data_age", String((millis() - MeanWellCan.getLastUpdate()) / 1000));

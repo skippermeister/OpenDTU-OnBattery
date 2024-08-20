@@ -33,7 +33,7 @@ void MqttHandleVedirectClass::forceUpdate()
 
 void MqttHandleVedirectClass::loop()
 {
-    CONFIG_T& config = Configuration.get();
+    auto const& config = Configuration.get();
 
     if (!MqttSettings.getConnected() || !config.Vedirect.Enabled || !VictronMppt.isDataValid()) {
         return;

@@ -27,7 +27,7 @@ void WebApiZeroExportClass::init(AsyncWebServer& server, Scheduler& scheduler)
 
 void WebApiZeroExportClass::onStatus(AsyncWebServerRequest* request)
 {
-    const ZeroExport_CONFIG_T& cZeroExport = Configuration.get().ZeroExport;
+    auto const& cZeroExport = Configuration.get().ZeroExport;
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
     JsonObject root = response->getRoot();
@@ -154,7 +154,7 @@ void WebApiZeroExportClass::onAdminPost(AsyncWebServerRequest* request)
         MessageOutput.println(buffer);
     }
 */
-    ZeroExport_CONFIG_T& cZeroExport = Configuration.get().ZeroExport;
+    auto& cZeroExport = Configuration.get().ZeroExport;
     ZeroExport.setVerboseLogging(root["verbose_logging"].as<bool>());
     cZeroExport.Enabled = root["enabled"].as<bool>();
     cZeroExport.UpdatesOnly = root["updatesonly"].as<bool>();

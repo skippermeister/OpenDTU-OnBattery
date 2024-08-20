@@ -148,7 +148,7 @@ String MqttHandleInverterClass::getTopic(std::shared_ptr<InverterAbstract> inv, 
 
 void MqttHandleInverterClass::onMqttMessage(const espMqttClientTypes::MessageProperties& properties, const char* topic, const uint8_t* payload, const size_t len, const size_t index, const size_t total)
 {
-    const Mqtt_CONFIG_T& cMqtt = Configuration.get().Mqtt;
+    auto const& cMqtt = Configuration.get().Mqtt;
 
     char token_topic[MQTT_MAX_TOPIC_STRLEN + 40]; // respect all subtopics
     strncpy(token_topic, topic, MQTT_MAX_TOPIC_STRLEN + 40); // convert const char* to char*

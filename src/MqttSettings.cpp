@@ -29,7 +29,7 @@ void MqttSettingsClass::NetworkEvent(network_event event)
 void MqttSettingsClass::onMqttConnect(const bool sessionPresent)
 {
     MessageOutput.println("Connected to MQTT.");
-    const Mqtt_CONFIG_T& cMqtt = Configuration.get().Mqtt;
+    auto const& cMqtt = Configuration.get().Mqtt;
     publish(cMqtt.Lwt.Topic, cMqtt.Lwt.Value_Online);
 
     std::lock_guard<std::mutex> lock(_clientLock);
@@ -114,7 +114,7 @@ void MqttSettingsClass::performConnect()
         }
 
         MessageOutput.println("Connecting to MQTT...");
-        const Mqtt_CONFIG_T& cMqtt = Configuration.get().Mqtt;
+        auto const& cMqtt = Configuration.get().Mqtt;
         const String willTopic = getPrefix() + cMqtt.Lwt.Topic;
         const String clientId = getClientId();
         if (cMqtt.Tls.Enabled) {
@@ -148,7 +148,7 @@ void MqttSettingsClass::performConnect()
 
 void MqttSettingsClass::performDisconnect()
 {
-    const Mqtt_CONFIG_T& cMqtt = Configuration.get().Mqtt;
+    auto const& cMqtt = Configuration.get().Mqtt;
     publish(cMqtt.Lwt.Topic, cMqtt.Lwt.Value_Offline);
     std::lock_guard<std::mutex> lock(_clientLock);
     if (_mqttClient == nullptr) {

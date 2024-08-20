@@ -64,7 +64,7 @@ void WebApiWsLiveClass::generateOnBatteryJsonResponse(JsonVariant& root, bool al
     auto victronAge = VictronMppt.getDataAgeMillis();
     if (all || (victronAge > 0 && (millis() - _lastPublishVictron) > victronAge)) {
         auto vedirectObj = root["vedirect"].to<JsonObject>();
-        vedirectObj["enabled"] = Configuration.get().Vedirect.Enabled;
+        vedirectObj["enabled"] = config.Vedirect.Enabled;
 
         if (config.Vedirect.Enabled) {
             auto totalVeObj = vedirectObj["total"].to<JsonObject>();
@@ -80,7 +80,7 @@ void WebApiWsLiveClass::generateOnBatteryJsonResponse(JsonVariant& root, bool al
 #ifdef USE_CHARGER_HUAWEI
     if (all || (HuaweiCan.getLastUpdate() - _lastPublishCharger) < halfOfAllMillis) {
         auto huaweiObj = root["huawei"].to<JsonObject>();
-        huaweiObj["enabled"] = Configuration.get().Huawei.Enabled;
+        huaweiObj["enabled"] = config.Huawei.Enabled;
 
         if (config.Huawei.Enabled) {
             const RectifierParameters_t* rp = HuaweiCan.get();
@@ -90,7 +90,7 @@ void WebApiWsLiveClass::generateOnBatteryJsonResponse(JsonVariant& root, bool al
 #ifdef USE_CHARGER_MEANWELL
     if (all || (MeanWellCan.getLastUpdate() - _lastPublishCharger) < halfOfAllMillis) {
         auto meanwellObj = root["meanwell"].to<JsonObject>();
-        meanwellObj["enabled"] = Configuration.get().MeanWell.Enabled;
+        meanwellObj["enabled"] = config.MeanWell.Enabled;
 
         if (config.MeanWell.Enabled) {
             addTotalField(meanwellObj, "Power", MeanWellCan._rp.inputPower, "W", 2);
@@ -103,7 +103,7 @@ void WebApiWsLiveClass::generateOnBatteryJsonResponse(JsonVariant& root, bool al
     auto spStats = Battery.getStats();
     if (all || spStats->updateAvailable(_lastPublishBattery)) {
         auto batteryObj = root["battery"].to<JsonObject>();
-        batteryObj["enabled"] = Configuration.get().Battery.Enabled;
+        batteryObj["enabled"] = config.Battery.Enabled;
 
         if (config.Battery.Enabled) {
             if (spStats->isSoCValid()) {
@@ -128,7 +128,7 @@ void WebApiWsLiveClass::generateOnBatteryJsonResponse(JsonVariant& root, bool al
 
     if (all || (PowerMeter.getLastUpdate() - _lastPublishPowerMeter) < halfOfAllMillis) {
         auto powerMeterObj = root["power_meter"].to<JsonObject>();
-        powerMeterObj["enabled"] = Configuration.get().PowerMeter.Enabled;
+        powerMeterObj["enabled"] = config.PowerMeter.Enabled;
 
         if (config.PowerMeter.Enabled) {
             addTotalField(powerMeterObj, "GridPower", PowerMeter.getPowerTotal(), "W", 1);
@@ -140,7 +140,7 @@ void WebApiWsLiveClass::generateOnBatteryJsonResponse(JsonVariant& root, bool al
 
 #if defined(USE_REFUsol_INVERTER)
     auto refusolObj = root["refusol"].to<JsonObject>();
-    refusolObj["enabled"] = Configuration.get().REFUsol.Enabled;
+    refusolObj["enabled"] = config.REFUsol.Enabled;
     auto totalREFUsolObj = refusolObj["total"].to<JsonObject>();
 
     if (config.REFUsol.Enabled) {

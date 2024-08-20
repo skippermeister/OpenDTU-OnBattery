@@ -44,7 +44,7 @@ void MqttHandleMeanWellHassClass::loop()
 
 void MqttHandleMeanWellHassClass::publishConfig()
 {
-    CONFIG_T& config = Configuration.get();
+    auto const& config = Configuration.get();
     if (!config.Mqtt.Hass.Enabled ||
         !config.MeanWell.Enabled ||
         !MqttSettings.getConnected())

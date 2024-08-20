@@ -32,7 +32,7 @@ void WebApiREFUsolClass::onREFUsolStatus(AsyncWebServerRequest* request)
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& root = response->getRoot();
-    const REFUsol_CONFIG_T& cREFUsol = Configuration.get().REFUsol;
+    auto const& cREFUsol = Configuration.get().REFUsol;
 
     root["enabled"] = cREFUsol.Enabled;
     root["pollinterval"] = cREFUsol.PollInterval;
@@ -84,7 +84,7 @@ void WebApiREFUsolClass::onREFUsolAdminPost(AsyncWebServerRequest* request)
         return;
     }
 
-    REFUsol_CONFIG_T& cREFUsol = Configuration.get().REFUsol;
+    auto& cREFUsol = Configuration.get().REFUsol;
     cREFUsol.Enabled = root["enabled"].as<bool>();
     cREFUsol.UpdatesOnly = root["updatesonly"].as<bool>();
     cREFUsol.PollInterval = root["pollinterval"].as<uint32_t>();

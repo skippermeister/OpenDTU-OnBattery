@@ -667,7 +667,7 @@ void LedStripClass::loop()
     _ledRGBState[1] = LedRGBState_t::OffI;
 
     if (_allMode == LedRGBState_t::On) {
-        const CONFIG_T& config = Configuration.get();
+        auto const& config = Configuration.get();
 
         // Update network status
 

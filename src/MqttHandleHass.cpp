@@ -49,7 +49,7 @@ void MqttHandleHassClass::forceUpdate()
 
 void MqttHandleHassClass::publishConfig()
 {
-    const CONFIG_T& config = Configuration.get();
+    auto const& config = Configuration.get();
     if (!config.Mqtt.Hass.Enabled ||
        (!MqttSettings.getConnected() && Hoymiles.isAllRadioIdle()) )
     {
@@ -281,6 +281,8 @@ void MqttHandleHassClass::publishInverterBinarySensor(std::shared_ptr<InverterAb
 
 void MqttHandleHassClass::publishDtuSensor(const char* name, const char* device_class, const char* category, const char* icon, const char* unit_of_measure, const char* subTopic)
 {
+    auto const& config = Configuration.get();
+
     String id = name;
     id.toLowerCase();
     id.replace(" ", "_");
@@ -307,9 +309,8 @@ void MqttHandleHassClass::publishDtuSensor(const char* name, const char* device_
     }
     root["stat_t"] = MqttSettings.getPrefix() + "dtu" + "/" + topic;
 
-    root["avty_t"] = MqttSettings.getPrefix() + Configuration.get().Mqtt.Lwt.Topic;
+    root["avty_t"] = MqttSettings.getPrefix() + config.Mqtt.Lwt.Topic;
 
-    const CONFIG_T& config = Configuration.get();
     root["pl_avail"] = config.Mqtt.Lwt.Value_Online;
     root["pl_not_avail"] = config.Mqtt.Lwt.Value_Offline;
 

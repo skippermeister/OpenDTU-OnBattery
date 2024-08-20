@@ -42,7 +42,7 @@ bool HuaweiCanCommClass::init() {
         return false;
     }
 
-    const CHARGER_t& pin = PinMapping.get().charger;
+    auto const& pin = PinMapping.get().charger;
     switch (pin.provider) {
 #ifdef USE_CHARGER_CAN0
         case Charger_Provider_t::CAN0:
@@ -54,8 +54,9 @@ bool HuaweiCanCommClass::init() {
 
             g_config = TWAI_GENERAL_CONFIG_DEFAULT(tx, rx, TWAI_MODE_NORMAL);
             // g_config.bus_off_io = (gpio_num_t)can0_stb;
+#if defined(BOARD_HAS_PSRAM)
             g_config.intr_flags = ESP_INTR_FLAG_LEVEL2;
-
+#endif
             twai_timing_config_t t_config = TWAI_TIMING_CONFIG_250KBITS();
             twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
 

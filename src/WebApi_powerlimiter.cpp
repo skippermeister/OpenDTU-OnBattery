@@ -157,7 +157,7 @@ void WebApiPowerLimiterClass::onAdminPost(AsyncWebServerRequest* request)
         return;
     }
 
-    CONFIG_T& config = Configuration.get();
+    auto& config = Configuration.get();
     config.PowerLimiter.Enabled = root["enabled"].as<bool>();
     config.PowerLimiter.VerboseLogging = root["verbose_logging"].as<bool>();
     config.PowerLimiter.UpdatesOnly = root["updatesonly"].as<bool>();

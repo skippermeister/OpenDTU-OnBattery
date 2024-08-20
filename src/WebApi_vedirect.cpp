@@ -30,7 +30,7 @@ void WebApiVedirectClass::onVedirectStatus(AsyncWebServerRequest* request)
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& root = response->getRoot();
-    const CONFIG_T& config = Configuration.get();
+    auto const& config = Configuration.get();
 
     root["enabled"] = config.Vedirect.Enabled;
     root["updatesonly"] = config.Vedirect.UpdatesOnly;
@@ -72,7 +72,7 @@ void WebApiVedirectClass::onVedirectAdminPost(AsyncWebServerRequest* request)
         return;
     }
 
-    CONFIG_T& config = Configuration.get();
+    auto& config = Configuration.get();
     config.Vedirect.Enabled = root["enabled"].as<bool>();
     config.Vedirect.UpdatesOnly = root["updatesonly"].as<bool>();
     VictronMppt.setVerboseLogging(root["verbose_logging"].as<bool>());

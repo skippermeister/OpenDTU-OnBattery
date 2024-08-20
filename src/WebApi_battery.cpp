@@ -32,36 +32,36 @@ void WebApiBatteryClass::onStatus(AsyncWebServerRequest* request)
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& root = response->getRoot();
-    const Battery_CONFIG_T& cBattery = Configuration.get().Battery;
+    auto const& config = Configuration.get();
 
-    root["enabled"] = cBattery.Enabled;
-    root["verbose_logging"] = cBattery.VerboseLogging;
-    root["updatesonly"] = cBattery.UpdatesOnly;
-    root["provider"] = cBattery.Provider;
+    root["enabled"] = config.Battery.Enabled;
+    root["verbose_logging"] = config.Battery.VerboseLogging;
+    root["updatesonly"] = config.Battery.UpdatesOnly;
+    root["provider"] = config.Battery.Provider;
     root["io_providername"] = PinMapping.get().battery.providerName;
-    root["can_controller_frequency"] = Configuration.get().MCP2515.Controller_Frequency;
+    root["can_controller_frequency"] = config.MCP2515.Controller_Frequency;
 #ifdef USE_JKBMS_CONTROLLER
-    root["jkbms_interface"] = cBattery.JkBms.Interface;
-    root["jkbms_polling_interval"] = root["pollinterval"] = cBattery.PollInterval; // cBattery.JkBms.PollingInterval;
+    root["jkbms_interface"] = config.Battery.JkBms.Interface;
+    root["jkbms_polling_interval"] = root["pollinterval"] = config.Battery.PollInterval; // config.Battery.JkBms.PollingInterval;
 #else
     root["jkbms_interface"] = 0;
     root["jkbms_polling_interval"] = 0;
 #endif
 
-    root["pollinterval"] = cBattery.PollInterval;
-    root["min_charge_temp"] = cBattery.MinChargeTemperature;
-    root["max_charge_temp"] = cBattery.MaxChargeTemperature;
-    root["min_discharge_temp"] = cBattery.MinDischargeTemperature;
-    root["max_discharge_temp"] = cBattery.MaxDischargeTemperature;
-    root["stop_charging_soc"] = cBattery.Stop_Charging_BatterySoC_Threshold;
-    root["numberOfBatteries"] = cBattery.numberOfBatteries;
+    root["pollinterval"] = config.Battery.PollInterval;
+    root["min_charge_temp"] = config.Battery.MinChargeTemperature;
+    root["max_charge_temp"] = config.Battery.MaxChargeTemperature;
+    root["min_discharge_temp"] = config.Battery.MinDischargeTemperature;
+    root["max_discharge_temp"] = config.Battery.MaxDischargeTemperature;
+    root["stop_charging_soc"] = config.Battery.Stop_Charging_BatterySoC_Threshold;
+    root["numberOfBatteries"] = config.Battery.numberOfBatteries;
 
 #ifdef USE_MQTT_BATTERY
-    root["mqtt_soc_topic"] = cBattery.Mqtt.SocTopic;
-    root["mqtt_soc_json_path"] = cBattery.Mqtt.SocJsonPath;
-    root["mqtt_voltage_topic"] = cBattery.Mqtt.VoltageTopic;
-    root["mqtt_voltage_json_path"] = cBattery.Mqtt.VoltageJsonPath;
-    root["mqtt_voltage_unit"] = cBattery.Mqtt.VoltageUnit;
+    root["mqtt_soc_topic"] = config.Battery.Mqtt.SocTopic;
+    root["mqtt_soc_json_path"] = config.Battery.Mqtt.SocJsonPath;
+    root["mqtt_voltage_topic"] = config.Battery.Mqtt.VoltageTopic;
+    root["mqtt_voltage_json_path"] = config.Battery.Mqtt.VoltageJsonPath;
+    root["mqtt_voltage_unit"] = config.Battery.Mqtt.VoltageUnit;
 #else
     root["mqtt_soc_topic"] = "";
     root["mqtt_soc_json_path"] = "";
@@ -70,11 +70,11 @@ void WebApiBatteryClass::onStatus(AsyncWebServerRequest* request)
     root["mqtt_voltage_unit"] = 0;
 #endif
 #if defined(USE_MQTT_BATTERY) || defined(USE_VICTRON_SMART_SHUNT)
-    root["recommended_charge_voltage"] = cBattery.RecommendedChargeVoltage;
-    root["recommended_discharge_voltage"] = cBattery.RecommendedDischargeVoltage;
+    root["recommended_charge_voltage"] = config.Battery.RecommendedChargeVoltage;
+    root["recommended_discharge_voltage"] = config.Battery.RecommendedDischargeVoltage;
 #else
-    root["recommended_charge_voltage"] = 0;
-    root["recommended_discharge_voltage"] = 0;
+    root["recommended_charge_voltage"] = Battery.getStats()->getRecommendedChargeVoltageLimit();
+    root["recommended_discharge_voltage"] = Battery.getStats()->getRecommendedDischargeVoltageLimit();;
 #endif
 
     WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
@@ -124,36 +124,36 @@ void WebApiBatteryClass::onAdminPost(AsyncWebServerRequest* request)
         return;
     }
 
-    Battery_CONFIG_T& cBattery = Configuration.get().Battery;
-    cBattery.Enabled = root["enabled"].as<bool>();
-    cBattery.VerboseLogging = root["verbose_logging"].as<bool>();
-    cBattery.UpdatesOnly = root["updatesonly"].as<bool>();
-    cBattery.Provider = root["provider"].as<uint8_t>();
-    Configuration.get().MCP2515.Controller_Frequency = root["can_controller_frequency"].as<uint32_t>();
+    auto& config = Configuration.get();
+    config.Battery.Enabled = root["enabled"].as<bool>();
+    config.Battery.VerboseLogging = root["verbose_logging"].as<bool>();
+    config.Battery.UpdatesOnly = root["updatesonly"].as<bool>();
+    config.Battery.Provider = root["provider"].as<uint8_t>();
+    config.MCP2515.Controller_Frequency = root["can_controller_frequency"].as<uint32_t>();
 #ifdef USE_JKBMS_CONTROLLER
-    cBattery.JkBms.Interface = root["jkbms_interface"].as<uint8_t>();
-    cBattery.JkBms.PollingInterval = root["pollinterval"].as<uint32_t>(); // root["jkbms_polling_interval"].as<uint8_t>();
+    config.Battery.JkBms.Interface = root["jkbms_interface"].as<uint8_t>();
+    config.Battery.JkBms.PollingInterval = root["pollinterval"].as<uint32_t>(); // root["jkbms_polling_interval"].as<uint8_t>();
 #endif
-    cBattery.PollInterval = root["pollinterval"].as<uint32_t>();
-    cBattery.MinChargeTemperature = root["min_charge_temp"].as<int8_t>();
-    cBattery.MaxChargeTemperature = root["max_charge_temp"].as<int8_t>();
-    cBattery.MinDischargeTemperature = root["min_discharge_temp"].as<int8_t>();
-    cBattery.MaxDischargeTemperature = root["max_discharge_temp"].as<int8_t>();
-    cBattery.Stop_Charging_BatterySoC_Threshold = root["stop_charging_soc"].as<uint8_t>();
-    cBattery.numberOfBatteries = root["numberOfBatteries"].as<int8_t>();
-    if (Configuration.get().Battery.numberOfBatteries > MAX_BATTERIES)
-        Configuration.get().Battery.numberOfBatteries = MAX_BATTERIES;
+    config.Battery.PollInterval = root["pollinterval"].as<uint32_t>();
+    config.Battery.MinChargeTemperature = root["min_charge_temp"].as<int8_t>();
+    config.Battery.MaxChargeTemperature = root["max_charge_temp"].as<int8_t>();
+    config.Battery.MinDischargeTemperature = root["min_discharge_temp"].as<int8_t>();
+    config.Battery.MaxDischargeTemperature = root["max_discharge_temp"].as<int8_t>();
+    config.Battery.Stop_Charging_BatterySoC_Threshold = root["stop_charging_soc"].as<uint8_t>();
+    config.Battery.numberOfBatteries = root["numberOfBatteries"].as<int8_t>();
+    if (config.Battery.numberOfBatteries > MAX_BATTERIES)
+        config.Battery.numberOfBatteries = MAX_BATTERIES;
 
 #ifdef USE_MQTT_BATTERY
-    strlcpy(cBattery.Mqtt.SocTopic, root["mqtt_soc_topic"].as<String>().c_str(), sizeof(cBattery.Mqtt.SocTopic));
-    strlcpy(cBattery.Mqtt.SocJsonPath, root["mqtt_soc_json_path"].as<String>().c_str(), sizeof(cBattery.Mqtt.SocJsonPath));
-    strlcpy(cBattery.Mqtt.VoltageTopic, root["mqtt_voltage_topic"].as<String>().c_str(), sizeof(cBattery.Mqtt.VoltageTopic));
-    strlcpy(cBattery.Mqtt.VoltageJsonPath, root["mqtt_voltage_json_path"].as<String>().c_str(), sizeof(cBattery.Mqtt.VoltageJsonPath));
-    cBattery.Mqtt.VoltageUnit = static_cast<BatteryVoltageUnit>(root["mqtt_voltage_unit"].as<uint8_t>());
+    strlcpy(config.Battery.Mqtt.SocTopic, root["mqtt_soc_topic"].as<String>().c_str(), sizeof(config.Battery.Mqtt.SocTopic));
+    strlcpy(config.Battery.Mqtt.SocJsonPath, root["mqtt_soc_json_path"].as<String>().c_str(), sizeof(config.Battery.Mqtt.SocJsonPath));
+    strlcpy(config.Battery.Mqtt.VoltageTopic, root["mqtt_voltage_topic"].as<String>().c_str(), sizeof(config.Battery.Mqtt.VoltageTopic));
+    strlcpy(config.Battery.Mqtt.VoltageJsonPath, root["mqtt_voltage_json_path"].as<String>().c_str(), sizeof(config.Battery.Mqtt.VoltageJsonPath));
+    config.Battery.Mqtt.VoltageUnit = static_cast<BatteryVoltageUnit>(root["mqtt_voltage_unit"].as<uint8_t>());
 #endif
 #if defined(USE_MQTT_BATTERY) || defined(USE_VICTRON_SMART_SHUNT)
-    cBattery.RecommendedChargeVoltage = root["recommended_charge_voltage"].as<float>();
-    cBattery.RecommendedDischargeVoltage = root["recommended_discharge_voltage"].as<float>();
+    config.Battery.RecommendedChargeVoltage = root["recommended_charge_voltage"].as<float>();
+    config.Battery.RecommendedDischargeVoltage = root["recommended_discharge_voltage"].as<float>();
 #endif
 
     WebApi.writeConfig(retMsg);

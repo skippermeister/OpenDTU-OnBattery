@@ -136,22 +136,22 @@ void WebApiHuaweiClass::onAdminGet(AsyncWebServerRequest* request)
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& root = response->getRoot();
-    const Huawei_CONFIG_T& cHuawei = Configuration.get().Huawei;
+    auto const& config = Configuration.get();
 
-    root["enabled"] = cHuawei.Enabled;
-    root["verbose_logging"] = cHuawei.VerboseLogging;
+    root["enabled"] = config.Huawei.Enabled;
+    root["verbose_logging"] = config.Huawei.VerboseLogging;
     root["charger_type"] = "HUAWEI";
     root["io_providername"] = PinMapping.get().charger.providerName;
-    if (HuaweiCanComm.isMCP2515Provider()) root["can_controller_frequency"] = Configuration.get().MCP2515.Controller_Frequency;
-    root["auto_power_enabled"] = cHuawei.Auto_Power_Enabled;
-    root["auto_power_batterysoc_limits_enabled"] = cHuawei.Auto_Power_BatterySoC_Limits_Enabled;
-    root["emergency_charge_enabled"] = cHuawei.Emergency_Charge_Enabled;
-    root["voltage_limit"] = static_cast<int>(cHuawei.Auto_Power_Voltage_Limit * 100) / 100.0;
-    root["enable_voltage_limit"] = static_cast<int>(cHuawei.Auto_Power_Enable_Voltage_Limit * 100) / 100.0;
-    root["lower_power_limit"] = cHuawei.Auto_Power_Lower_Power_Limit;
-    root["upper_power_limit"] = cHuawei.Auto_Power_Upper_Power_Limit;
-    root["stop_batterysoc_threshold"] = cHuawei.Auto_Power_Stop_BatterySoC_Threshold;
-    root["target_power_consumption"] = cHuawei.Auto_Power_Target_Power_Consumption;
+    if (HuaweiCanComm.isMCP2515Provider()) root["can_controller_frequency"] = config.MCP2515.Controller_Frequency;
+    root["auto_power_enabled"] = config.Huawei.Auto_Power_Enabled;
+    root["auto_power_batterysoc_limits_enabled"] = config.Huawei.Auto_Power_BatterySoC_Limits_Enabled;
+    root["emergency_charge_enabled"] = config.Huawei.Emergency_Charge_Enabled;
+    root["voltage_limit"] = static_cast<int>(config.Huawei.Auto_Power_Voltage_Limit * 100) / 100.0;
+    root["enable_voltage_limit"] = static_cast<int>(config.Huawei.Auto_Power_Enable_Voltage_Limit * 100) / 100.0;
+    root["lower_power_limit"] = config.Huawei.Auto_Power_Lower_Power_Limit;
+    root["upper_power_limit"] = config.Huawei.Auto_Power_Upper_Power_Limit;
+    root["stop_batterysoc_threshold"] = config.Huawei.Auto_Power_Stop_BatterySoC_Threshold;
+    root["target_power_consumption"] = config.Huawei.Auto_Power_Target_Power_Consumption;
 
     WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 }
@@ -184,7 +184,7 @@ void WebApiHuaweiClass::onAdminPost(AsyncWebServerRequest* request)
         return;
     }
 
-    CONFIG_T& config = Configuration.get();
+    auto& config = Configuration.get();
     config.Huawei.Enabled = root["enabled"].as<bool>();
     config.Huawei.VerboseLogging = root["verbose_logging"];
     if (HuaweiCanComm.isMCP2515Provider()) config.MCP2515.Controller_Frequency = root["can_controller_frequency"].as<uint32_t>();

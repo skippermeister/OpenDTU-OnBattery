@@ -58,7 +58,7 @@ void WebApiNetworkClass::onNetworkAdminGet(AsyncWebServerRequest* request)
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& root = response->getRoot();
-    const CONFIG_T& config = Configuration.get();
+    auto const& config = Configuration.get();
 
     root["hostname"] = config.WiFi.Hostname;
     root["dhcp"] = config.WiFi.Dhcp;
@@ -175,49 +175,47 @@ void WebApiNetworkClass::onNetworkAdminPost(AsyncWebServerRequest* request)
         return;
     }
 
-    WiFi_CONFIG_T& cWiFi = Configuration.get().WiFi;
-    cWiFi.Ip[0] = ipaddress[0];
-    cWiFi.Ip[1] = ipaddress[1];
-    cWiFi.Ip[2] = ipaddress[2];
-    cWiFi.Ip[3] = ipaddress[3];
-    cWiFi.Netmask[0] = netmask[0];
-    cWiFi.Netmask[1] = netmask[1];
-    cWiFi.Netmask[2] = netmask[2];
-    cWiFi.Netmask[3] = netmask[3];
-    cWiFi.Gateway[0] = gateway[0];
-    cWiFi.Gateway[1] = gateway[1];
-    cWiFi.Gateway[2] = gateway[2];
-    cWiFi.Gateway[3] = gateway[3];
-    cWiFi.Dns1[0] = dns1[0];
-    cWiFi.Dns1[1] = dns1[1];
-    cWiFi.Dns1[2] = dns1[2];
-    cWiFi.Dns1[3] = dns1[3];
-    cWiFi.Dns2[0] = dns2[0];
-    cWiFi.Dns2[1] = dns2[1];
-    cWiFi.Dns2[2] = dns2[2];
-    cWiFi.Dns2[3] = dns2[3];
-    strlcpy(cWiFi.Ssid, root["ssid"].as<String>().c_str(), sizeof(cWiFi.Ssid));
-    strlcpy(cWiFi.Password, root["password"].as<String>().c_str(), sizeof(cWiFi.Password));
-    strlcpy(cWiFi.Hostname, root["hostname"].as<String>().c_str(), sizeof(cWiFi.Hostname));
+    auto& config = Configuration.get();
+    config.WiFi.Ip[0] = ipaddress[0];
+    config.WiFi.Ip[1] = ipaddress[1];
+    config.WiFi.Ip[2] = ipaddress[2];
+    config.WiFi.Ip[3] = ipaddress[3];
+    config.WiFi.Netmask[0] = netmask[0];
+    config.WiFi.Netmask[1] = netmask[1];
+    config.WiFi.Netmask[2] = netmask[2];
+    config.WiFi.Netmask[3] = netmask[3];
+    config.WiFi.Gateway[0] = gateway[0];
+    config.WiFi.Gateway[1] = gateway[1];
+    config.WiFi.Gateway[2] = gateway[2];
+    config.WiFi.Gateway[3] = gateway[3];
+    config.WiFi.Dns1[0] = dns1[0];
+    config.WiFi.Dns1[1] = dns1[1];
+    config.WiFi.Dns1[2] = dns1[2];
+    config.WiFi.Dns1[3] = dns1[3];
+    config.WiFi.Dns2[0] = dns2[0];
+    config.WiFi.Dns2[1] = dns2[1];
+    config.WiFi.Dns2[2] = dns2[2];
+    config.WiFi.Dns2[3] = dns2[3];
+    strlcpy(config.WiFi.Ssid, root["ssid"].as<String>().c_str(), sizeof(config.WiFi.Ssid));
+    strlcpy(config.WiFi.Password, root["password"].as<String>().c_str(), sizeof(config.WiFi.Password));
+    strlcpy(config.WiFi.Hostname, root["hostname"].as<String>().c_str(), sizeof(config.WiFi.Hostname));
     if (root["dhcp"].as<bool>()) {
-        cWiFi.Dhcp = true;
+        config.WiFi.Dhcp = true;
     } else {
-        cWiFi.Dhcp = false;
+        config.WiFi.Dhcp = false;
     }
-    cWiFi.ApTimeout = root["aptimeout"].as<uint>();
+    config.WiFi.ApTimeout = root["aptimeout"].as<uint>();
 
-    Mdns_CONFIG_T& cMdns = Configuration.get().Mdns;
-    cMdns.Enabled = root["mdnsenabled"].as<bool>();
+    config.Mdns.Enabled = root["mdnsenabled"].as<bool>();
 
 #ifdef USE_ModbusDTU
-    Modbus_CONFIG_T& cModbus = Configuration.get().Modbus;
-    cModbus.modbus_tcp_enabled = root["modbus_tcp_enabled"].as<bool>();
-    cModbus.modbus_delaystart = root["modbus_delaystart"].as<bool>();
-    strlcpy(cModbus.mfrname, root["mfrname"].as<String>().c_str(), sizeof(cModbus.mfrname));
-    strlcpy(cModbus.modelname, root["modelname"].as<String>().c_str(), sizeof(cModbus.modelname));
-    strlcpy(cModbus.options, root["options"].as<String>().c_str(), sizeof(cModbus.options));
-    strlcpy(cModbus.version, root["version"].as<String>().c_str(), sizeof(cModbus.version));
-    strlcpy(cModbus.serial, root["serial"].as<String>().c_str(), sizeof(cModbus.serial));
+    config.Modbus.modbus_tcp_enabled = root["modbus_tcp_enabled"].as<bool>();
+    config.Modbus.modbus_delaystart = root["modbus_delaystart"].as<bool>();
+    strlcpy(config.Modbus.mfrname, root["mfrname"].as<String>().c_str(), sizeof(config.Modbus.mfrname));
+    strlcpy(config.Modbus.modelname, root["modelname"].as<String>().c_str(), sizeof(config.Modbus.modelname));
+    strlcpy(config.Modbus.options, root["options"].as<String>().c_str(), sizeof(config.Modbus.options));
+    strlcpy(config.Modbus.version, root["version"].as<String>().c_str(), sizeof(config.Modbus.version));
+    strlcpy(config.Modbus.serial, root["serial"].as<String>().c_str(), sizeof(config.Modbus.serial));
 #endif
 
     WebApi.writeConfig(retMsg);
