@@ -178,7 +178,7 @@ void WebApiHuaweiClass::onAdminPost(AsyncWebServerRequest* request)
         !(root.containsKey("lower_power_limit")) ||
         !(root.containsKey("upper_power_limit")))
     {
-        retMsg["message"] = ValuesAreMissing;
+        retMsg["message"] = "Values are missing!";
         retMsg["code"] = WebApiError::GenericValueMissing;
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;

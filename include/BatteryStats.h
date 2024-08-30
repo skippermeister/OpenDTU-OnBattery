@@ -103,6 +103,7 @@ class BatteryStats {
         bool isCurrentValid() const { return _lastUpdateCurrent > 0; }
 
         virtual float getChargeCurrentLimitation() const { return FLT_MAX; };
+        virtual float getDischargeCurrentLimitation() const { return FLT_MAX; };
 
     protected:
         virtual void mqttPublish() /*const*/;
@@ -264,7 +265,8 @@ public:
     bool isDischargeTemperatureValid() const final { return true; }; // FIXME: to be done
 
     void mqttPublish() /*const*/ final;
-    float getChargeCurrentLimitation() const { return _chargeCurrentLimitation; } ;
+    float getChargeCurrentLimitation() const { return chargeCurrentLimit; } ;
+    float getDischargeCurrentLimitation() const { return dischargeCurrentLimit; } ;
 
     uint32_t getMqttFullPublishIntervalMs() const final { return 60 * 1000; }
 
@@ -351,6 +353,7 @@ public:
     float getRecommendedChargeCurrentLimit() const final { return totals.ChargeDischargeManagementInfo.chargeCurrentLimit; };
     float getChargeCurrentLimitation() const { return totals.ChargeDischargeManagementInfo.chargeCurrentLimit; } ;
     float getRecommendedDischargeCurrentLimit() const final { return totals.ChargeDischargeManagementInfo.dischargeCurrentLimit; };
+    float getDischargeCurrentLimitation() const { return totals.ChargeDischargeManagementInfo.dischargeCurrentLimit; } ;
     float getMaximumChargeCurrentLimit() const final { return totals.SystemParameters.chargeCurrentLimit; };
     float getMaximumDischargeCurrentLimit() const final { return totals.SystemParameters.dischargeCurrentLimit; };
 
@@ -500,6 +503,7 @@ class PytesBatteryStats : public BatteryStats {
         void generatePackCommonJsonResponse(JsonObject& packObject, const uint8_t m) const final;
         void mqttPublish() /* const */ final;
         float getChargeCurrentLimitation() const { return _chargeCurrentLimit; } ;
+        float getDischargeCurrentLimitation() const { return _dischargeCurrentLimit; } ;
 
     private:
         void setManufacturer(String&& m) { _manufacturer = std::move(m); }
@@ -520,9 +524,9 @@ class PytesBatteryStats : public BatteryStats {
         float _dischargeCurrentLimit;
 
         uint16_t _stateOfHealth;
+        uint16_t _chargeCycles;
+        uint16_t _balance;
 
-        // total current into (positive) or from (negative)
-        // the battery, i.e., the charging current
         float _temperature;
 
         uint16_t _cellMinMilliVolt;
@@ -541,8 +545,8 @@ class PytesBatteryStats : public BatteryStats {
         uint8_t _moduleCountBlockingCharge;
         uint8_t _moduleCountBlockingDischarge;
 
-        uint16_t _totalCapacity;
-        uint16_t _availableCapacity;
+        float _totalCapacity;
+        float _availableCapacity;
 
         float _chargedEnergy = -1;
         float _dischargedEnergy = -1;
@@ -562,6 +566,7 @@ class SBSBatteryStats : public BatteryStats {
         void mqttPublish() /*const*/ final;
         float getChargeCurrent() const { return _current; } ;
         float getChargeCurrentLimitation() const { return _chargeCurrentLimit; } ;
+        float getDischargeCurrentLimitation() const { return _dischargeCurrentLimit; } ;
 
         uint8_t get_number_of_packs() const final { return 1; };
 
@@ -624,6 +629,7 @@ public:
     float getRecommendedDischargeVoltageLimit() const final { return ChargeDischargeManagementInfo.dischargeVoltageLimit; };
     float getRecommendedChargeCurrentLimit() const final { return ChargeDischargeManagementInfo.chargeCurrentLimit; };
     float getChargeCurrentLimitation() const { return ChargeDischargeManagementInfo.chargeCurrentLimit; } ;
+    float getDischargeCurrentLimitation() const { return ChargeDischargeManagementInfo.dischargeCurrentLimit; } ;
 
     bool isChargeTemperatureValid() const final
     {
@@ -681,6 +687,7 @@ class DalyBmsBatteryStats : public BatteryStats {
         float getRecommendedChargeCurrentLimit() const final { return WarningValues.maxPackChargeCurrent * 0.9; }; // 10% below warning level
         float getChargeCurrentLimitation() const final { return WarningValues.maxPackChargeCurrent * 0.9; };
         float getRecommendedDischargeCurrentLimit() const final { return WarningValues.maxPackDischargeCurrent * 0.9; }; // 10% below warning level
+        float getDischargeCurrentLimitation() const final { return WarningValues.maxPackDischargeCurrent * 0.9; }; // 10% below warning level
         float getMaximumChargeCurrentLimit() const final { return WarningValues.maxPackChargeCurrent; };
         float getMaximumDischargeCurrentLimit() const final { return WarningValues.maxPackDischargeCurrent; };
 

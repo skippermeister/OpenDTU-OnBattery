@@ -128,7 +128,7 @@ struct PinMapping_t {
     RS232_t victron[3];
 
 #if defined(USE_REFUsol_INVERTER)
-    RS485_t refusol;
+    RS485_t REFUsol;
 #endif
 
     Battery_t battery;

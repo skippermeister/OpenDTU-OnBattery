@@ -7,7 +7,6 @@
 #include "ArduinoJson.h"
 #include "AsyncJson.h"
 #include "Configuration.h"
-#include "ErrorMessages.h"
 #include "MqttHandleVedirectHass.h"
 #include "MqttHandleHass.h"
 #include "MqttSettings.h"
@@ -27,7 +26,8 @@ void WebApiPowerMeterClass::init(AsyncWebServer& server, Scheduler& scheduler)
     server.on("/api/powermeter/config", HTTP_GET, std::bind(&WebApiPowerMeterClass::onAdminGet, this, _1));
     server.on("/api/powermeter/config", HTTP_POST, std::bind(&WebApiPowerMeterClass::onAdminPost, this, _1));
     server.on("/api/powermeter/testhttpjsonrequest", HTTP_POST, std::bind(&WebApiPowerMeterClass::onTestHttpJsonRequest, this, _1));
-    server.on("/api/powermeter/testhttpsmlrequest", HTTP_POST, std::bind(&WebApiPowerMeterClass::onTestHttpSmlRequest, this, _1));}
+    server.on("/api/powermeter/testhttpsmlrequest", HTTP_POST, std::bind(&WebApiPowerMeterClass::onTestHttpSmlRequest, this, _1));
+}
 
 void WebApiPowerMeterClass::onStatus(AsyncWebServerRequest* request)
 {
@@ -83,31 +83,31 @@ void WebApiPowerMeterClass::onAdminPost(AsyncWebServerRequest* request)
     auto& retMsg = response->getRoot();
 
     if (!(root.containsKey("enabled") && root.containsKey("source"))) {
-        retMsg["message"] = ValuesAreMissing;
+        retMsg["message"] = "Values are missing!";
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;
     }
 
     auto checkHttpConfig = [&](JsonObject const& cfg) -> bool {
-        if (!cfg.containsKey("url")
-                || (!cfg["url"].as<String>().startsWith("http://")
-                    && !cfg["url"].as<String>().startsWith("https://"))) {
+        if (!cfg.containsKey("url") ||
+            ( !cfg["url"].as<String>().startsWith("http://") && !cfg["url"].as<String>().startsWith("https://") )
+           ) {
             retMsg["message"] = "URL must either start with http:// or https://!";
             response->setLength();
             request->send(response);
             return false;
         }
 
-        if ((cfg["auth_type"].as<uint8_t>() != HttpRequestConfig::Auth::None)
-                && (cfg["username"].as<String>().length() == 0 || cfg["password"].as<String>().length() == 0)) {
+        if ((cfg["auth_type"].as<uint8_t>() != HttpRequestConfig::Auth::None) &&
+            (cfg["username"].as<String>().length() == 0 || cfg["password"].as<String>().length() == 0)
+           ) {
             retMsg["message"] = "Username or password must not be empty!";
             response->setLength();
             request->send(response);
             return false;
         }
 
-        if (!cfg.containsKey("timeout")
-                || cfg["timeout"].as<uint16_t>() <= 0) {
+        if (!cfg.containsKey("timeout") || cfg["timeout"].as<uint16_t>() <= 0) {
             retMsg["message"] = "Timeout must be greater than 0 ms!";
             response->setLength();
             request->send(response);
@@ -199,7 +199,7 @@ void WebApiPowerMeterClass::onTestHttpJsonRequest(AsyncWebServerRequest* request
     auto res = upMeter->poll();
     using values_t = PowerMeterHttpJson::power_values_t;
     if (std::holds_alternative<values_t>(res)) {
-        retMsg["type"] = Success;
+        retMsg["type"] = "success";
         auto vals = std::get<values_t>(res);
         auto pos = snprintf(response, sizeof(response), "Result: %5.2fW", vals[0]);
         for (size_t i = 1; i < vals.size(); ++i) {
@@ -239,7 +239,7 @@ void WebApiPowerMeterClass::onTestHttpSmlRequest(AsyncWebServerRequest* request)
     upMeter->init();
     auto res = upMeter->poll();
     if (res.isEmpty()) {
-        retMsg["type"] = Success;
+        retMsg["type"] = "success";
         snprintf(response, sizeof(response), "Result: %5.2fW", upMeter->getPowerTotal());
     } else {
         snprintf(response, sizeof(response), "%s", res.c_str());

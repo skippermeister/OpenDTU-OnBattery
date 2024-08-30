@@ -32,7 +32,7 @@ void WebApiWsLiveClass::init(AsyncWebServer& server, Scheduler& scheduler)
     using std::placeholders::_5;
     using std::placeholders::_6;
 
-    server.on("/api/livedata/status", HTTP_GET, std::bind(&WebApiWsLiveClass::onLivedataStatus, this, _1));
+    server.on(HttpLink, HTTP_GET, std::bind(&WebApiWsLiveClass::onLivedataStatus, this, _1));
 
     server.addHandler(&_ws);
     _ws.onEvent(std::bind(&WebApiWsLiveClass::onWebsocketEvent, this, _1, _2, _3, _4, _5, _6));
@@ -221,9 +221,9 @@ void WebApiWsLiveClass::sendDataTaskCb()
             _ws.textAll(buffer);
 
         } catch (const std::bad_alloc& bad_alloc) {
-            MessageOutput.printf("Call to /api/livedata/status temporarely out of resources. Reason: \"%s\".\r\n", bad_alloc.what());
+            MessageOutput.printf("Calling %s temporarily out of resources. Reason: \"%s\".\r\n", HttpLink, bad_alloc.what());
         } catch (const std::exception& exc) {
-            MessageOutput.printf("Unknown exception in /api/livedata/status. Reason: \"%s\".\r\n", exc.what());
+            MessageOutput.printf("Unknown exception in %s. Reason: \"%s\".\r\n", HttpLink, exc.what());
         }
     }
 }
@@ -238,10 +238,17 @@ void WebApiWsLiveClass::generateCommonJsonResponse(JsonVariant& root)
     JsonObject hintObj = root["hints"].to<JsonObject>();
     struct tm timeinfo;
     hintObj["time_sync"] = !getLocalTime(&timeinfo, 5);
-    hintObj["radio_problem"] = (Hoymiles.getRadioNrf()->isInitialized()
-                                   && (!Hoymiles.getRadioNrf()->isConnected() || !Hoymiles.getRadioNrf()->isPVariant()))
+    hintObj["radio_problem"] =
+#ifdef USE_RADIO_NRF
+            ( Hoymiles.getRadioNrf()->isInitialized() &&
+            ( !Hoymiles.getRadioNrf()->isConnected() || !Hoymiles.getRadioNrf()->isPVariant())
+            )
+#endif
+#if defined(USE_RADIO_NRF) && defined(USE_RADIO_CMT)
+            ||
+#endif
 #ifdef USE_RADIO_CMT
-        || (Hoymiles.getRadioCmt()->isInitialized() && (!Hoymiles.getRadioCmt()->isConnected()))
+            ( Hoymiles.getRadioCmt()->isInitialized() && !Hoymiles.getRadioCmt()->isConnected() )
 #endif
         ;
 
@@ -404,10 +411,10 @@ void WebApiWsLiveClass::onLivedataStatus(AsyncWebServerRequest* request)
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 
     } catch (const std::bad_alloc& bad_alloc) {
-        MessageOutput.printf("Call to /api/livedata/status temporarely out of resources. Reason: \"%s\".\r\n", bad_alloc.what());
+        MessageOutput.printf("Calling %s temporarily out of resources. Reason: \"%s\".\r\n", HttpLink, bad_alloc.what());
         WebApi.sendTooManyRequests(request);
     } catch (const std::exception& exc) {
-        MessageOutput.printf("Unknown exception in /api/livedata/status. Reason: \"%s\".\r\n", exc.what());
+        MessageOutput.printf("Unknown exception in %s. Reason: \"%s\".\r\n", HttpLink, exc.what());
         WebApi.sendTooManyRequests(request);
     }
 }

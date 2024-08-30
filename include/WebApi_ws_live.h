@@ -13,6 +13,8 @@ public:
     void init(AsyncWebServer& server, Scheduler& scheduler);
 
 private:
+    static constexpr char const HttpLink[] = "/api/livedata/status";
+
     static void generateInverterCommonJsonResponse(JsonObject& root, std::shared_ptr<InverterAbstract> inv);
     static void generateInverterChannelJsonResponse(JsonObject& root, std::shared_ptr<InverterAbstract> inv);
     static void generateCommonJsonResponse(JsonVariant& root);

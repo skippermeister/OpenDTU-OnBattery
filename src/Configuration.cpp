@@ -233,6 +233,10 @@ bool ConfigurationClass::write()
     refusol["enabled"] = config.REFUsol.Enabled;
     refusol["updatesonly"] = config.REFUsol.UpdatesOnly;
     refusol["pollinterval"] = config.REFUsol.PollInterval;
+    refusol["uss_address"] = config.REFUsol.USSaddress;
+    refusol["baudrate"] = config.REFUsol.Baudrate;
+    refusol["parity"] = config.REFUsol.Parity;
+    refusol["verbose_logging"] = config.REFUsol.VerboseLogging;
 #endif
 
     JsonObject powermeter = doc["powermeter"].to<JsonObject>();
@@ -628,9 +632,13 @@ bool ConfigurationClass::read()
 
 #ifdef USE_REFUsol_INVERTER
     JsonObject refusol = doc["refusol"];
-    config.REFUsol.Enabled = true; //refusol["enabled"] | REFUsol_ENABLED;
+    config.REFUsol.Enabled = refusol["enabled"] | REFUsol_ENABLED;
     config.REFUsol.UpdatesOnly = refusol["updatesonly"] | REFUsol_UPDATESONLY;
     config.REFUsol.PollInterval = refusol["pollinterval"] | REFUsol_POLLINTERVAL;
+    config.REFUsol.USSaddress = refusol["uss_address"] | 1;
+    config.REFUsol.Baudrate = refusol["baudrate"] | 57600;
+    config.REFUsol.Parity = refusol["parity"] | REFUsol_CONFIG_T::Parity_t::None;
+    config.REFUsol.VerboseLogging = refusol["verbose_logging"] | false;
 #endif
 
     JsonObject powermeter = doc["powermeter"];

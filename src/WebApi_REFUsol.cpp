@@ -9,7 +9,6 @@
 #include "ArduinoJson.h"
 #include "AsyncJson.h"
 #include "Configuration.h"
-#include "ErrorMessages.h"
 #include "REFUsolRS485Receiver.h"
 #include "WebApi.h"
 #include "WebApi_errors.h"
@@ -37,7 +36,10 @@ void WebApiREFUsolClass::onREFUsolStatus(AsyncWebServerRequest* request)
     root["enabled"] = cREFUsol.Enabled;
     root["pollinterval"] = cREFUsol.PollInterval;
     root["updatesonly"] = cREFUsol.UpdatesOnly;
-    root["verbose_logging"] = REFUsol.getVerboseLogging();
+    root["uss_address"] = cREFUsol.USSaddress;
+    root["baudrate"] = cREFUsol.Baudrate;
+    root["parity"] = cREFUsol.Parity;
+    root["verbose_logging"] = cREFUsol.VerboseLogging;
 
     WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 }
@@ -76,10 +78,19 @@ void WebApiREFUsolClass::onREFUsolAdminPost(AsyncWebServerRequest* request)
     }
 
     if (root["pollinterval"].as<uint32_t>() == 0) {
-        retMsg["message"] = "Poll interval must be a number between 5 and 65535!";
+        retMsg["message"] = "Poll interval must be a number between 1 and 60!";
         retMsg["code"] = WebApiError::MqttPublishInterval;
-        retMsg["param"]["min"] = 5;
-        retMsg["param"]["max"] = 65535;
+        retMsg["param"]["min"] = 1;
+        retMsg["param"]["max"] = 60;
+        WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
+        return;
+    }
+
+    if (root["uss_address"].as<uint8_t>() < 1 || root["uss_address"].as<uint8_t>() > 31) {
+        retMsg["message"] = "USS address must be a number between 1 and 31!";
+        retMsg["code"] = WebApiError::GenericRangeError;
+        retMsg["param"]["min"] = 1;
+        retMsg["param"]["max"] = 31;
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;
     }
@@ -88,7 +99,10 @@ void WebApiREFUsolClass::onREFUsolAdminPost(AsyncWebServerRequest* request)
     cREFUsol.Enabled = root["enabled"].as<bool>();
     cREFUsol.UpdatesOnly = root["updatesonly"].as<bool>();
     cREFUsol.PollInterval = root["pollinterval"].as<uint32_t>();
-    REFUsol.setVerboseLogging(root["verbose_logging"].as<bool>());
+    cREFUsol.USSaddress = root["uss_address"].as<uint8_t>();
+    cREFUsol.Baudrate = root["baudrate"].as<uint16_t>();
+    cREFUsol.Parity = root["parity"].as<REFUsol_CONFIG_T::Parity_t>();
+    cREFUsol.VerboseLogging = root["verbose_logging"].as<bool>();
 
     WebApi.writeConfig(retMsg);
 

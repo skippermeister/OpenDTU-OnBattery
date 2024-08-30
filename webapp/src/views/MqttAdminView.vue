@@ -9,7 +9,7 @@
                 <InputElement :label="$t('mqttadmin.EnableMqtt')" v-model="mqttConfigList.enabled" type="checkbox"
                     wide4_1 />
 
-                <InputElement v-show="mqttConfigList.enabled" :label="$t('mqttadmin.EnableHass')"
+                <InputElement v-show="'hass_enabled' in mqttConfigList && mqttConfigList.enabled" :label="$t('mqttadmin.EnableHass')"
                     v-model="mqttConfigList.hass_enabled" type="checkbox" wide4_1 />
 
                 <InputElement v-show="mqttConfigList.enabled" :label="$t('mqttadmin.VerboseLogging')"
@@ -86,7 +86,7 @@
             </CardElement>
 
             <CardElement :text="$t('mqttadmin.HassParameters')" textVariant="text-bg-primary" add-space
-                v-show="mqttConfigList.enabled && mqttConfigList.hass_enabled">
+                v-show="'hass_enabled' in mqttConfigList && mqttConfigList.enabled && mqttConfigList.hass_enabled">
                 <InputElement :label="$t('mqttadmin.HassPrefixTopic')" v-model="mqttConfigList.hass_topic" type="text"
                     maxlength="32" wide3_4 :placeholder="$t('mqttadmin.HassPrefixTopicHint')" />
 

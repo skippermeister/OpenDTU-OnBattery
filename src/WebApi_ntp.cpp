@@ -4,7 +4,6 @@
  */
 #include "WebApi_ntp.h"
 #include "Configuration.h"
-#include "ErrorMessages.h"
 #include "NtpSettings.h"
 #include "SunPosition.h"
 #include "WebApi.h"
@@ -110,7 +109,7 @@ void WebApiNtpClass::onNtpAdminPost(AsyncWebServerRequest* request)
             && root.containsKey("sunsettype")
             && root.containsKey("sunrise")
             && root.containsKey("sunset"))) {
-        retMsg["message"] = ValuesAreMissing;
+        retMsg["message"] = "Values are missing!";
         retMsg["code"] = WebApiError::GenericValueMissing;
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;
@@ -206,7 +205,7 @@ void WebApiNtpClass::onNtpTimePost(AsyncWebServerRequest* request)
             && root.containsKey("hour")
             && root.containsKey("minute")
             && root.containsKey("second"))) {
-        retMsg["message"] = ValuesAreMissing;
+        retMsg["message"] = "Values are missing!";
         retMsg["code"] = WebApiError::GenericValueMissing;
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;
@@ -279,7 +278,7 @@ void WebApiNtpClass::onNtpTimePost(AsyncWebServerRequest* request)
     struct timeval now = { .tv_sec = t, .tv_usec = 0 };
     settimeofday(&now, NULL);
 
-    retMsg["type"] = Success;
+    retMsg["type"] = "success";
     retMsg["message"] = "Time updated!";
     retMsg["code"] = WebApiError::NtpTimeUpdated;
 

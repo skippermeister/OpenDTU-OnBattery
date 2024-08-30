@@ -3,36 +3,51 @@
 
 #include "Configuration.h"
 #include <TaskSchedulerDeclarations.h>
-#include <TimeoutHelper.h>
-#include <deque>
 #include <espMqttClient.h>
-#include <functional>
 #include <mutex>
-
-enum class ZeroExportTopic : unsigned {
-    Enabled,
-    MaxGrid,
-    MinimumLimit,
-    PowerHysteresis,
-    Tn
-};
+#include <deque>
+#include <functional>
+#include <frozen/map.h>
+#include <frozen/string.h>
 
 class MqttHandleZeroExportClass {
 public:
     MqttHandleZeroExportClass();
     void init(Scheduler& scheduler);
 
+    void forceUpdate();
+
+    void subscribeTopics();
+    void unsubscribeTopics();
+
+    enum class Topic : unsigned {
+        Enabled,
+        MaxGrid,
+        MinimumLimit,
+        PowerHysteresis,
+        Tn
+    };
+
 private:
     void loop();
 
-    void onMqttMessage(ZeroExportTopic t,
+    static constexpr frozen::string _cmdtopic = "zeroexport/cmd/";
+    static constexpr frozen::map<frozen::string, Topic, 5> _subscriptions = {
+        { "enabled",         Topic::Enabled },
+        { "MaxGrid",         Topic::MaxGrid },
+        { "MinimumLimit",    Topic::MinimumLimit },
+        { "PowerHysteresis", Topic::PowerHysteresis },
+        { "Tn",              Topic::Tn },
+    };
+
+    void onMqttMessage(Topic t,
         const espMqttClientTypes::MessageProperties& properties,
         const char* topic, const uint8_t* payload, size_t len,
         size_t index, size_t total);
 
     Task _loopTask;
 
-    TimeoutHelper _lastPublish;
+    uint32_t _lastPublish;
 
     // MQTT callbacks to process updates on subscribed topics are executed in
     // the MQTT thread's context. we use this queue to switch processing the

@@ -626,6 +626,7 @@ bool PinMappingClass::isValidREFUsolConfig() const
         && _pinMapping.REFUsol.rx != _pinMapping.REFUsol.tx
         && _pinMapping.REFUsol.rts != _pinMapping.REFUsol.rx
         && _pinMapping.REFUsol.rts != _pinMapping.REFUsol.tx;
+}
 #endif
 
 void PinMappingClass::createPinMappingJson() const

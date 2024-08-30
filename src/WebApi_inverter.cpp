@@ -98,7 +98,7 @@ void WebApiInverterClass::onInverterAdd(AsyncWebServerRequest* request)
 
     if (!(root.containsKey("serial")
             && root.containsKey("name"))) {
-        retMsg["message"] = ValuesAreMissing;
+        retMsg["message"] = "Values are missing!";
         retMsg["code"] = WebApiError::GenericValueMissing;
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;
@@ -108,7 +108,7 @@ void WebApiInverterClass::onInverterAdd(AsyncWebServerRequest* request)
     const uint64_t serial = strtoll(root["serial"].as<String>().c_str(), NULL, 16);
 
     if (serial == 0) {
-        retMsg["message"] = SerialMustBeGreaterZero;
+        retMsg["message"] = "Serial must be a number > 0!";
         retMsg["code"] = WebApiError::InverterSerialZero;
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;
@@ -169,7 +169,7 @@ void WebApiInverterClass::onInverterEdit(AsyncWebServerRequest* request)
     auto& retMsg = response->getRoot();
 
     if (!(root.containsKey("id") && root.containsKey("serial") && root.containsKey("name") && root.containsKey("channel"))) {
-        retMsg["message"] = ValuesAreMissing;
+        retMsg["message"] = "Values are missing!";
         retMsg["code"] = WebApiError::GenericValueMissing;
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;
@@ -186,7 +186,7 @@ void WebApiInverterClass::onInverterEdit(AsyncWebServerRequest* request)
     const uint64_t serial = strtoll(root["serial"].as<String>().c_str(), NULL, 16);
 
     if (serial == 0) {
-        retMsg["message"] = SerialMustBeGreaterZero;
+        retMsg["message"] = "Serial must be a number > 0!";
         retMsg["code"] = WebApiError::InverterSerialZero;
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;
@@ -287,7 +287,7 @@ void WebApiInverterClass::onInverterDelete(AsyncWebServerRequest* request)
     auto& retMsg = response->getRoot();
 
     if (!(root.containsKey("id"))) {
-        retMsg["message"] = ValuesAreMissing;
+        retMsg["message"] = "Values are missing!";
         retMsg["code"] = WebApiError::GenericValueMissing;
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;
@@ -331,7 +331,7 @@ void WebApiInverterClass::onInverterOrder(AsyncWebServerRequest* request)
     auto& retMsg = response->getRoot();
 
     if (!(root.containsKey("order"))) {
-        retMsg["message"] = ValuesAreMissing;
+        retMsg["message"] = "Values are missing!";
         retMsg["code"] = WebApiError::GenericValueMissing;
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;

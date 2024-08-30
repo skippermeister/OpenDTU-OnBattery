@@ -121,6 +121,12 @@
             "chip_int1gpio": 2,
             "chip_int2gpio": 1
         },
+
+        "refusol": {
+            "rs485_tx": 45,
+            "rs485_rx": 47,
+            "rs485_rts": 21
+        },
         "victron": {
             "rs232_rx": 40,
             "rs232_tx": -1,
@@ -166,14 +172,6 @@
             "en": -1,
             "cs": -1
         },
-        "huawei": {
-            "miso": 48,
-            "mosi": 35,
-            "clk": 36,
-            "irq": 47,
-            "cs": 37,
-            "power": 38
-        },
         "cmt": {
             "clk": 6,
             "cs": 4,
@@ -181,6 +179,14 @@
             "sdio": 5,
             "gpio2": 3,
             "gpio3": 8
+        },
+        "charger": {
+            "mcp2515_miso": 48,
+            "mcp2515_mosi": 35,
+            "mcp2515_clk": 36,
+            "mcp2515_irq": 47,
+            "mcp2515_cs": 37,
+            "mcp2515_power": 38
         },
         "eth": {
             "enabled": false,

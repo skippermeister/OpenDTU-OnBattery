@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #pragma once
 
-#include "ErrorMessages.h"
 #include "WebApi_REFUsol.h"
 #include "WebApi_ZeroExport.h"
 #include "WebApi_battery.h"

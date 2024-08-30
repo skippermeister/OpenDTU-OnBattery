@@ -340,10 +340,13 @@ void PytesBatteryStats::getLiveViewData(JsonVariant& root) const
     addLiveViewValue(root, "dischargeVoltageLimit", _dischargeVoltageLimit, "V", 1);
     addLiveViewValue(root, "dischargeCurrentLimit", _dischargeCurrentLimit, "A", 1);
     addLiveViewValue(root, "stateOfHealth", _stateOfHealth, "%", 0);
+    if (_chargeCycles > 0) {
+        addLiveViewValue(root, "cycles", _chargeCycles, "", 0);
+    }
     addLiveViewValue(root, "temperature", _temperature, "°C", 1);
 
-    addLiveViewValue(root, "capacity", _totalCapacity, "Ah", 0);
-    addLiveViewValue(root, "remainingCapacity", _availableCapacity, "Ah", 0);
+    addLiveViewValue(root, "capacity", _totalCapacity, "Ah", 2);
+    addLiveViewValue(root, "remainingCapacity", _availableCapacity, "Ah", 2);
 
     if (_chargedEnergy != -1) {
         addLiveViewValue(root, "chargedEnergy", _chargedEnergy, "kWh", 1);
@@ -1111,6 +1114,8 @@ void PytesBatteryStats::mqttPublish() /* const */
     MqttSettings.publish("battery/settings/dischargeVoltageLimitation", String(_dischargeVoltageLimit));
 
     MqttSettings.publish("battery/stateOfHealth", String(_stateOfHealth));
+    MqttSettings.publish("battery/chargeCycles", String(_chargeCycles));
+    MqttSettings.publish("battery/balance", String(_balance));
     MqttSettings.publish("battery/temperature", String(_temperature));
 
     if (_chargedEnergy != -1) {

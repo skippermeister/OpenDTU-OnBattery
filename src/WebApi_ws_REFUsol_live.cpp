@@ -28,7 +28,7 @@ void WebApiWsREFUsolLiveClass::init(AsyncWebServer& server, Scheduler& scheduler
     using std::placeholders::_6;
 
     //_server = &server;
-    server.on("/api/refusollivedata/status", HTTP_GET, std::bind(&WebApiWsREFUsolLiveClass::onLivedataStatus, this, _1));
+    server.on(HttpLink, HTTP_GET, std::bind(&WebApiWsREFUsolLiveClass::onLivedataStatus, this, _1));
 
     server.addHandler(&_ws);
     _ws.onEvent(std::bind(&WebApiWsREFUsolLiveClass::onWebsocketEvent, this, _1, _2, _3, _4, _5, _6));
@@ -76,9 +76,9 @@ void WebApiWsREFUsolLiveClass::sendDataTaskCb()
         }
 
     } catch (std::bad_alloc& bad_alloc) {
-        MessageOutput.printf("Calling /api/refusollivedata/status has temporarily run out of resources. Reason: \"%s\".\r\n", bad_alloc.what());
+        MessageOutput.printf("Calling %s temporarily out of resources. Reason: \"%s\".\r\n", HttpLink, bad_alloc.what());
     } catch (const std::exception& exc) {
-        MessageOutput.printf("Unknown exception in /api/refusollivedata/status. Reason: \"%s\".\r\n", exc.what());
+        MessageOutput.printf("Unknown exception in %s. Reason: \"%s\".\r\n", HttpLink, exc.what());
     }
 
     _lastWsPublish.reset();
@@ -111,10 +111,10 @@ void WebApiWsREFUsolLiveClass::onLivedataStatus(AsyncWebServerRequest* request)
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 
     } catch (std::bad_alloc& bad_alloc) {
-        MessageOutput.printf("Calling /api/refusollivedata/status has temporarily run out of resources. Reason: \"%s\".\r\n", bad_alloc.what());
+        MessageOutput.printf("Calling %s temporarily out of resources. Reason: \"%s\".\r\n", HttpLink, bad_alloc.what());
         WebApi.sendTooManyRequests(request);
     } catch (const std::exception& exc) {
-        MessageOutput.printf("Unknown exception in /api/refusollivedata/status. Reason: \"%s\".\r\n", exc.what());
+        MessageOutput.printf("Unknown exception in %s. Reason: \"%s\".\r\n", HttpLink, exc.what());
         WebApi.sendTooManyRequests(request);
     }
 }

@@ -27,23 +27,42 @@
 
         <form @submit="savePowerLimiterConfig" v-if="!configAlert">
             <CardElement :text="$t('powerlimiteradmin.General')" textVariant="text-bg-primary">
-                <InputElement :label="$t('powerlimiteradmin.Enable')" v-model="powerLimiterConfigList.enabled"
-                    type="checkbox" wide4_1 />
+                <InputElement
+                    :label="$t('powerlimiteradmin.Enable')"
+                    v-model="powerLimiterConfigList.enabled"
+                    type="checkbox"
+                    wide4_1 />
 
-                <InputElement v-show="isEnabled()" :label="$t('powerlimiteradmin.UpdatesOnly')"
-                    v-model="powerLimiterConfigList.updatesonly" type="checkbox" wide4_1 />
+                <InputElement
+                    v-show="isEnabled()"
+                    :label="$t('powerlimiteradmin.UpdatesOnly')"
+                    v-model="powerLimiterConfigList.updatesonly"
+                    type="checkbox"
+                    wide4_1 />
 
-                <InputElement v-show="isEnabled()" :label="$t('powerlimiteradmin.VerboseLogging')"
-                    v-model="powerLimiterConfigList.verbose_logging" type="checkbox" wide4_1 />
+                <InputElement
+                    v-show="isEnabled()"
+                    :label="$t('powerlimiteradmin.VerboseLogging')"
+                    v-model="powerLimiterConfigList.verbose_logging"
+                    type="checkbox"
+                    wide4_1 />
 
-                <InputElement v-show="isEnabled() && hasPowerMeter()"
+                <InputElement
+                    v-show="isEnabled() && hasPowerMeter()"
                     :label="$t('powerlimiteradmin.TargetPowerConsumption')"
                     :tooltip="$t('powerlimiteradmin.TargetPowerConsumptionHint')"
-                    v-model="powerLimiterConfigList.target_power_consumption" postfix="W" type="number" wide4_2 />
+                    v-model="powerLimiterConfigList.target_power_consumption"
+                    postfix="W"
+                    type="number"
+                    wide4_2 />
 
-                <InputElement v-show="isEnabled()" :label="$t('powerlimiteradmin.TargetPowerConsumptionHysteresis')"
+                <InputElement
+                    v-show="isEnabled()"
+                    :label="$t('powerlimiteradmin.TargetPowerConsumptionHysteresis')"
                     :tooltip="$t('powerlimiteradmin.TargetPowerConsumptionHysteresisHint')"
-                    v-model="powerLimiterConfigList.target_power_consumption_hysteresis" postfix="W" type="number"
+                    v-model="powerLimiterConfigList.target_power_consumption_hysteresis"
+                    postfix="W"
+                    type="number"
                     wide4_2 />
             </CardElement>
 
@@ -67,13 +86,26 @@
                     </div>
                 </div>
 
-                <InputElement :label="$t('powerlimiteradmin.InverterIsSolarPowered')"
-                    v-model="powerLimiterConfigList.is_inverter_solar_powered" type="checkbox" wide4_1 />
+                <InputElement
+                    :label="$t('powerlimiteradmin.InverterIsSolarPowered')"
+                    v-model="powerLimiterConfigList.is_inverter_solar_powered"
+                    type="checkbox"
+                    wide4_1 />
 
-                <InputElement v-show="canUseOverscaling()"
+                <InputElement
+                    v-show="canUseBatteryDischargeAtNight()"
+                    :label="$t('powerlimiteradmin.BatteryDischargeAtNight')"
+                    v-model="powerLimiterConfigList.battery_always_use_at_night"
+                    type="checkbox"
+                    wide4_1 />
+
+                <InputElement
+                    v-show="canUseOverscaling()"
                     :label="$t('powerlimiteradmin.UseOverscalingToCompensateShading')"
                     :tooltip="$t('powerlimiteradmin.UseOverscalingToCompensateShadingHint')"
-                    v-model="powerLimiterConfigList.use_overscaling_to_compensate_shading" type="checkbox" wide4_1 />
+                    v-model="powerLimiterConfigList.use_overscaling_to_compensate_shading"
+                    type="checkbox"
+                    wide4_1 />
 
                 <div class="row mb-3" v-if="needsChannelSelection()">
                     <label for="inverter_channel" class="col-sm-4 col-form-label">
@@ -91,25 +123,42 @@
                     </div>
                 </div>
 
-                <InputElement :label="$t('powerlimiteradmin.LowerPowerLimit')"
+                <InputElement
+                    :label="$t('powerlimiteradmin.LowerPowerLimit')"
                     :tooltip="$t('powerlimiteradmin.LowerPowerLimitHint')"
-                    v-model="powerLimiterConfigList.lower_power_limit" placeholder="50" min="10" postfix="W"
-                    type="number" wide4_2 />
-
-                <InputElement :label="$t('powerlimiteradmin.BaseLoadLimit')"
-                    :tooltip="$t('powerlimiteradmin.BaseLoadLimitHint')"
-                    v-model="powerLimiterConfigList.base_load_limit" placeholder="200"
-                    :min="(powerLimiterConfigList.lower_power_limit + 1).toString()" postfix="W" type="number"
+                    v-model="powerLimiterConfigList.lower_power_limit"
+                    placeholder="50" min="10"
+                    postfix="W"
+                    type="number"
                     wide4_2 />
 
-                <InputElement :label="$t('powerlimiteradmin.UpperPowerLimit')"
-                    :tooltip="$t('powerlimiteradmin.UpperPowerLimitHint')"
-                    v-model="powerLimiterConfigList.upper_power_limit" placeholder="800"
-                    min="(powerLimiterConfigList.base_load_limit + 1).toString()" postfix="W" type="number" wide4_2 />
+                <InputElement
+                    :label="$t('powerlimiteradmin.BaseLoadLimit')"
+                    :tooltip="$t('powerlimiteradmin.BaseLoadLimitHint')"
+                    v-model="powerLimiterConfigList.base_load_limit"
+                    placeholder="200"
+                    :min="(powerLimiterConfigList.lower_power_limit + 1).toString()"
+                    postfix="W"
+                    type="number"
+                    wide4_2 />
 
-                <InputElement v-show="hasPowerMeter()" :label="$t('powerlimiteradmin.InverterIsBehindPowerMeter')"
+                <InputElement
+                    :label="$t('powerlimiteradmin.UpperPowerLimit')"
+                    :tooltip="$t('powerlimiteradmin.UpperPowerLimitHint')"
+                    v-model="powerLimiterConfigList.upper_power_limit"
+                    placeholder="800"
+                    min="(powerLimiterConfigList.base_load_limit + 1).toString()"
+                    postfix="W"
+                    type="number"
+                    wide4_2 />
+
+                <InputElement
+                    v-show="hasPowerMeter()"
+                    :label="$t('powerlimiteradmin.InverterIsBehindPowerMeter')"
                     v-model="powerLimiterConfigList.is_inverter_behind_powermeter"
-                    :tooltip="$t('powerlimiteradmin.InverterIsBehindPowerMeterHint')" type="checkbox" wide4_1 />
+                    :tooltip="$t('powerlimiteradmin.InverterIsBehindPowerMeterHint')"
+                    type="checkbox"
+                    wide4_1 />
 
                 <div class="row mb-3" v-if="!powerLimiterConfigList.is_inverter_solar_powered">
                     <label for="inverter_restart" class="col-sm-4 col-form-label">
@@ -135,8 +184,12 @@
                 <div class="alert alert-secondary" role="alert" v-html="$t('powerlimiteradmin.SurplusPowerInfo')">
                 </div>
 
-                <InputElement :label="$t('powerlimiteradmin.EnableSurplusPower')"
-                    v-model="powerLimiterConfigList.surplus_power_enabled" type="checkbox" wide4_1 />
+                <InputElement
+                    :label="$t('powerlimiteradmin.EnableSurplusPower')"
+                    v-model="powerLimiterConfigList.surplus_power_enabled"
+                    type="checkbox"
+                    wide4_1 />
+
             </CardElement>
 
             <CardElement :text="$t('powerlimiteradmin.SolarPassthrough')" textVariant="text-bg-primary" add-space
@@ -144,16 +197,18 @@
                 <div class="alert alert-secondary" role="alert" v-html="$t('powerlimiteradmin.SolarpassthroughInfo')">
                 </div>
 
-                <InputElement :label="$t('powerlimiteradmin.EnableSolarPassthrough')"
+                <InputElement
+                    :label="$t('powerlimiteradmin.EnableSolarPassthrough')"
                     v-model="powerLimiterConfigList.solar_passthrough_enabled" type="checkbox" wide4_1 />
 
                 <div v-if="powerLimiterConfigList.solar_passthrough_enabled">
-                    <InputElement :label="$t('powerlimiteradmin.BatteryDischargeAtNight')"
-                        v-model="powerLimiterConfigList.battery_always_use_at_night" type="checkbox" wide4_1 />
-
-                    <InputElement :label="$t('powerlimiteradmin.SolarPassthroughLosses')"
-                        v-model="powerLimiterConfigList.solar_passthrough_losses" placeholder="3" min="0" max="10"
-                        postfix="%" type="number" wide4_2 />
+                    <InputElement
+                        :label="$t('powerlimiteradmin.SolarPassthroughLosses')"
+                        v-model="powerLimiterConfigList.solar_passthrough_losses"
+                        placeholder="3" min="0" max="10"
+                        postfix="%"
+                        type="number"
+                        wide4_2 />
 
                     <div class="alert alert-secondary" role="alert"
                         v-html="$t('powerlimiteradmin.SolarPassthroughLossesInfo')"></div>
@@ -162,52 +217,93 @@
 
             <CardElement :text="$t('powerlimiteradmin.SocThresholds')" textVariant="text-bg-primary" add-space
                 v-if="canUseSoCThresholds()">
-                <InputElement :label="$t('powerlimiteradmin.IgnoreSoc')" v-model="powerLimiterConfigList.ignore_soc"
-                    type="checkbox" wide4_1 />
+                <InputElement
+                    :label="$t('powerlimiteradmin.IgnoreSoc')"
+                    v-model="powerLimiterConfigList.ignore_soc"
+                    type="checkbox"
+                    wide4_1 />
 
                 <div v-if="!powerLimiterConfigList.ignore_soc">
                     <div class="alert alert-secondary" role="alert" v-html="$t('powerlimiteradmin.BatterySocInfo')">
                     </div>
 
-                    <InputElement :label="$t('powerlimiteradmin.StartThreshold')"
-                        v-model="powerLimiterConfigList.battery_soc_start_threshold" placeholder="80" min="0" max="100"
-                        postfix="%" type="number" wide4_2 />
+                    <InputElement
+                        :label="$t('powerlimiteradmin.StartThreshold')"
+                        v-model="powerLimiterConfigList.battery_soc_start_threshold"
+                        placeholder="80" min="0" max="100"
+                        postfix="%"
+                        type="number"
+                        wide4_2 />
 
-                    <InputElement :label="$t('powerlimiteradmin.StopThreshold')"
-                        v-model="powerLimiterConfigList.battery_soc_stop_threshold" placeholder="20" min="0" max="100"
-                        postfix="%" type="number" wide4_2 />
+                    <InputElement
+                        :label="$t('powerlimiteradmin.StopThreshold')"
+                        v-model="powerLimiterConfigList.battery_soc_stop_threshold"
+                        placeholder="20" min="0" max="100"
+                        postfix="%"
+                        type="number"
+                        wide4_2 />
 
-                    <InputElement :label="$t('powerlimiteradmin.FullSolarPassthroughStartThreshold')"
+                    <InputElement
+                        :label="$t('powerlimiteradmin.FullSolarPassthroughStartThreshold')"
                         :tooltip="$t('powerlimiteradmin.FullSolarPassthroughStartThresholdHint')"
-                        v-model="powerLimiterConfigList.full_solar_passthrough_soc" v-if="isSolarPassthroughEnabled()"
-                        placeholder="80" min="0" max="100" postfix="%" type="number" wide4_2 />
+                        v-model="powerLimiterConfigList.full_solar_passthrough_soc"
+                        v-if="isSolarPassthroughEnabled()"
+                        placeholder="80" min="0" max="100"
+                        postfix="%"
+                        type="number"
+                        wide4_2 />
                 </div>
             </CardElement>
 
             <CardElement :text="$t('powerlimiteradmin.VoltageThresholds')" textVariant="text-bg-primary" add-space
                 v-if="canUseVoltageThresholds()">
-                <InputElement :label="$t('powerlimiteradmin.StartThreshold')"
-                    v-model="powerLimiterConfigList.voltage_start_threshold" placeholder="50" min="16" max="66"
-                    postfix="V" type="number" step="0.01" wide4_2 />
+                <InputElement
+                    :label="$t('powerlimiteradmin.StartThreshold')"
+                    v-model="powerLimiterConfigList.voltage_start_threshold"
+                    placeholder="50" min="16" max="66"
+                    postfix="V"
+                    type="number"
+                    step="0.01"
+                    wide4_2 />
 
-                <InputElement :label="$t('powerlimiteradmin.StopThreshold')"
-                    v-model="powerLimiterConfigList.voltage_stop_threshold" placeholder="49" min="16" max="66"
-                    postfix="V" type="number" step="0.01" wide4_2 />
+                <InputElement
+                    :label="$t('powerlimiteradmin.StopThreshold')"
+                    v-model="powerLimiterConfigList.voltage_stop_threshold"
+                    placeholder="49" min="16" max="66"
+                    postfix="V"
+                    type="number"
+                    step="0.01"
+                    wide4_2 />
 
                 <div v-if="isSolarPassthroughEnabled()">
-                    <InputElement :label="$t('powerlimiteradmin.FullSolarPassthroughStartThreshold')"
+                    <InputElement
+                        :label="$t('powerlimiteradmin.FullSolarPassthroughStartThreshold')"
                         :tooltip="$t('powerlimiteradmin.FullSolarPassthroughStartThresholdHint')"
-                        v-model="powerLimiterConfigList.full_solar_passthrough_start_voltage" placeholder="49" min="16"
-                        max="66" postfix="V" type="number" step="0.01" wide4_2 />
+                        v-model="powerLimiterConfigList.full_solar_passthrough_start_voltage"
+                        placeholder="49" min="16"
+                        max="66"
+                        postfix="V"
+                        type="number"
+                        step="0.01"
+                        wide4_2 />
 
-                    <InputElement :label="$t('powerlimiteradmin.VoltageSolarPassthroughStopThreshold')"
-                        v-model="powerLimiterConfigList.full_solar_passthrough_stop_voltage" placeholder="49" min="16"
-                        max="66" postfix="V" type="number" step="0.01" wide4_2 />
+                    <InputElement
+                        :label="$t('powerlimiteradmin.VoltageSolarPassthroughStopThreshold')"
+                        v-model="powerLimiterConfigList.full_solar_passthrough_stop_voltage"
+                        placeholder="49" min="16" max="66"
+                        postfix="V"
+                        type="number"
+                        step="0.01"
+                        wide4_2 />
                 </div>
 
-                <InputElement :label="$t('powerlimiteradmin.VoltageLoadCorrectionFactor')"
-                    v-model="powerLimiterConfigList.voltage_load_correction_factor" placeholder="0.0001" postfix="1/A"
-                    type="number" step="0.0001" wide4_2 />
+                <InputElement
+                    :label="$t('powerlimiteradmin.VoltageLoadCorrectionFactor')"
+                    v-model="powerLimiterConfigList.voltage_load_correction_factor"
+                    placeholder="0.0001" postfix="1/A"
+                    type="number"
+                    step="0.0001"
+                    wide4_2 />
 
                 <div class="alert alert-secondary" role="alert"
                     v-html="$t('powerlimiteradmin.VoltageLoadCorrectionInfo')"></div>
@@ -332,6 +428,10 @@ export default defineComponent({
             const meta = this.powerLimiterMetaData;
             const canUse = this.isEnabled() && meta.charge_controller_enabled && !cfg.is_inverter_solar_powered;
             return canUse;
+        },
+        canUseBatteryDischargeAtNight() {
+            const cfg = this.powerLimiterConfigList;
+            return !cfg.is_inverter_solar_powered;
         },
         canUseSolarPassthrough() {
             const cfg = this.powerLimiterConfigList;

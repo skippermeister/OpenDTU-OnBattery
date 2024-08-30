@@ -14,6 +14,8 @@ public:
     void init(AsyncWebServer& server, Scheduler& scheduler);
 
 private:
+    static constexpr char const HttpLink[] = "/api/huaweilivedata/status";
+
     void generateCommonJsonResponse(JsonVariant& root);
     void onLivedataStatus(AsyncWebServerRequest* request);
     void onWebsocketEvent(AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType type, void* arg, uint8_t* data, size_t len);

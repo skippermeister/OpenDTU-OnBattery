@@ -13,6 +13,7 @@
 #include "MqttHandlePowerLimiter.h"
 #include "MqttHandleVedirectHass.h"
 #include "MqttHandleVedirect.h"
+#include "MqttHandleZeroExport.h"
 #include "MqttSettings.h"
 #include "WebApi.h"
 #include "WebApi_errors.h"
@@ -61,12 +62,6 @@ void WebApiMqttClass::onMqttStatus(AsyncWebServerRequest* request)
     root["hass_retain"] = cMqtt.Hass.Retain;
     root["hass_topic"] = cMqtt.Hass.Topic;
     root["hass_individualpanels"] = cMqtt.Hass.IndividualPanels;
-#else
-    root["hass_enabled"] = false;
-    root["hass_expire"] = false;
-    root["hass_retain"] = false;
-    root["hass_topic"] = "";
-    root["hass_individualpanels"] = false;
 #endif
     root["verbose_logging"] = MqttSettings.getVerboseLogging();
 
@@ -109,12 +104,6 @@ void WebApiMqttClass::onMqttAdminGet(AsyncWebServerRequest* request)
     root["hass_retain"] = cMqtt.Hass.Retain;
     root["hass_topic"] = cMqtt.Hass.Topic;
     root["hass_individualpanels"] = cMqtt.Hass.IndividualPanels;
-#else
-    root["hass_enabled"] = false;
-    root["hass_expire"] = false;
-    root["hass_retain"] = false;
-    root["hass_topic"] = "";
-    root["hass_individualpanels"] = false;
 #endif
 
     WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);;
@@ -162,7 +151,7 @@ void WebApiMqttClass::onMqttAdminPost(AsyncWebServerRequest* request)
 #endif
             ))
     {
-        retMsg["message"] = ValuesAreMissing;
+        retMsg["message"] = "Values are missing!";
         retMsg["code"] = WebApiError::GenericValueMissing;
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;
@@ -343,6 +332,7 @@ void WebApiMqttClass::onMqttAdminPost(AsyncWebServerRequest* request)
         MqttHandleMeanWell.unsubscribeTopics();
 #endif
         MqttHandlePowerLimiter.unsubscribeTopics();
+        MqttHandleZeroExport.unsubscribeTopics();
 
         strlcpy(cMqtt.Topic, root["topic"].as<String>().c_str(), sizeof(cMqtt.Topic));
         MqttHandleInverter.subscribeTopics();
@@ -352,6 +342,8 @@ void WebApiMqttClass::onMqttAdminPost(AsyncWebServerRequest* request)
 #ifdef USE_CHARGER_MEANWELL
         MqttHandleMeanWell.subscribeTopics();
 #endif
+        MqttHandlePowerLimiter.subscribeTopics();
+        MqttHandleZeroExport.subscribeTopics();
     }
 
     WebApi.writeConfig(retMsg);
@@ -375,6 +367,7 @@ void WebApiMqttClass::onMqttAdminPost(AsyncWebServerRequest* request)
 #endif
     MqttHandlePowerLimiter.forceUpdate();
     MqttHandleVedirect.forceUpdate();
+    MqttHandleZeroExport.forceUpdate();
 }
 
 String WebApiMqttClass::getTlsCertInfo(const char* cert)

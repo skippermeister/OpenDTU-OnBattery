@@ -88,15 +88,16 @@ void WebApiMeanWellClass::onAdminPost(AsyncWebServerRequest* request)
     auto& retMsg = response->getRoot();
 
     if (!(root.containsKey("enabled")
-            && root.containsKey("pollinterval")
-            && root.containsKey("updatesonly")
-            && root.containsKey("min_voltage")
-            && root.containsKey("max_voltage")
-            && root.containsKey("min_current")
-            && root.containsKey("max_current")
-            && root.containsKey("hysteresis")
-            && root.containsKey("verbose_logging"))) {
-        retMsg["message"] = ValuesAreMissing;
+        && root.containsKey("pollinterval")
+        && root.containsKey("updatesonly")
+        && root.containsKey("min_voltage")
+        && root.containsKey("max_voltage")
+        && root.containsKey("min_current")
+        && root.containsKey("max_current")
+        && root.containsKey("hysteresis")
+        && root.containsKey("verbose_logging")))
+    {
+        retMsg["message"] = "Values are missing!";
         retMsg["code"] = WebApiError::GenericValueMissing;
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;
@@ -278,8 +279,8 @@ void WebApiMeanWellClass::onLimitPost(AsyncWebServerRequest* request)
         }
     }
 
-    retMsg["type"] = Success;
-    retMsg["message"] = SettingsSaved;
+    retMsg["type"] = "success";
+    retMsg["message"] = "Settings saved!";
     retMsg["code"] = WebApiError::GenericSuccess;
 
     WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
@@ -348,8 +349,8 @@ void WebApiMeanWellClass::onPowerPost(AsyncWebServerRequest* request)
         }
     }
 
-    retMsg["type"] = Success;
-    retMsg["message"] = SettingsSaved;
+    retMsg["type"] = "success";
+    retMsg["message"] = "Settings saved!";
     retMsg["code"] = WebApiError::GenericSuccess;
 
     WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);

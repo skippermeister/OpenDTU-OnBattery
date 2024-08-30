@@ -73,7 +73,7 @@ void WebApiLimitClass::onLimitPost(AsyncWebServerRequest* request)
     if (!(root.containsKey("serial")
             && root.containsKey("limit_value")
             && root.containsKey("limit_type"))) {
-        retMsg["message"] = ValuesAreMissing;
+        retMsg["message"] = "Values are missing!";
         retMsg["code"] = WebApiError::GenericValueMissing;
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;
@@ -83,7 +83,7 @@ void WebApiLimitClass::onLimitPost(AsyncWebServerRequest* request)
     const uint64_t serial = strtoll(root["serial"].as<String>().c_str(), NULL, 16);
 
     if (serial == 0) {
-        retMsg["message"] = SerialMustBeGreaterZero;
+        retMsg["message"] = "Serial must be a number > 0!";
         retMsg["code"] = WebApiError::LimitSerialZero;
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;
@@ -121,8 +121,8 @@ void WebApiLimitClass::onLimitPost(AsyncWebServerRequest* request)
 
     inv->sendActivePowerControlRequest(limit, type);
 
-    retMsg["type"] = Success;
-    retMsg["message"] = SettingsSaved;
+    retMsg["type"] = "success";
+    retMsg["message"] = "Settings saved!";
     retMsg["code"] = WebApiError::GenericSuccess;
 
     WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);

@@ -326,24 +326,26 @@ int16_t ZeroExportClass::pid_Regler(void)
     return payload;
 }
 
-void ZeroExportClass::setParameter(float value, ZeroExportTopic parameter)
+void ZeroExportClass::setParameter(float value, MqttHandleZeroExportClass::Topic parameter)
 {
     auto& config = Configuration.get();
+    using Topic = MqttHandleZeroExportClass::Topic;
+
     switch (parameter) {
-    case ZeroExportTopic::Enabled:
-        config.ZeroExport.Enabled = static_cast<int>(value) == 0 ? false : true;
-        break;
-    case ZeroExportTopic::MaxGrid:
-        config.ZeroExport.MaxGrid = value;
-        break;
-    case ZeroExportTopic::MinimumLimit:
-        config.ZeroExport.MinimumLimit = value;
-        break;
-    case ZeroExportTopic::PowerHysteresis:
-        config.ZeroExport.PowerHysteresis = value;
-        break;
-    case ZeroExportTopic::Tn:
-        config.ZeroExport.Tn = value;
-        break;
+        case Topic::Enabled:
+            config.ZeroExport.Enabled = static_cast<int>(value) == 0 ? false : true;
+            break;
+        case Topic::MaxGrid:
+            config.ZeroExport.MaxGrid = value;
+            break;
+        case Topic::MinimumLimit:
+            config.ZeroExport.MinimumLimit = value;
+            break;
+        case Topic::PowerHysteresis:
+            config.ZeroExport.PowerHysteresis = value;
+            break;
+        case Topic::Tn:
+            config.ZeroExport.Tn = value;
+            break;
     }
 }

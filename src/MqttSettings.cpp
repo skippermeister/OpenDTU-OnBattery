@@ -85,8 +85,7 @@ void MqttSettingsClass::onMqttDisconnect(espMqttClientTypes::DisconnectReason re
     default:
         MessageOutput.println("Unknown");
     }
-    _mqttReconnectTimer.once(
-        2, +[](MqttSettingsClass* instance) { instance->performConnect(); }, this);
+    _mqttReconnectTimer.once(2, +[](MqttSettingsClass* instance) { instance->performConnect(); }, this);
 }
 
 void MqttSettingsClass::onMqttMessage(const espMqttClientTypes::MessageProperties& properties, const char* topic, const uint8_t* payload, const size_t len, const size_t index, const size_t total)
@@ -163,8 +162,7 @@ void MqttSettingsClass::performReconnect()
 
     createMqttClientObject();
 
-    _mqttReconnectTimer.once(
-        2, +[](MqttSettingsClass* instance) { instance->performConnect(); }, this);
+    _mqttReconnectTimer.once(2, +[](MqttSettingsClass* instance) { instance->performConnect(); }, this);
 }
 
 bool MqttSettingsClass::getConnected()

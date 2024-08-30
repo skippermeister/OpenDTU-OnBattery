@@ -412,7 +412,8 @@ void HuaweiCanClass::updateSettings()
       _mode = HUAWEI_MODE_AUTO_INT;
     }
 
-    xTaskCreate(HuaweiCanCommunicationTask,"HUAWEI_CAN_0",1536,NULL,0,&_HuaweiCanCommunicationTaskHdl);
+    xTaskCreate(HuaweiCanCommunicationTask, "HUAWEI_CAN_0", 2048/*stack size*/,
+        NULL/*params*/, 0/*prio*/, &_HuaweiCanCommunicationTaskHdl);
 
     MessageOutput.printf("%s::%s CAN Bus Controller initialized Successfully!\r\n", TAG, __FUNCTION__);
     _initialized = true;

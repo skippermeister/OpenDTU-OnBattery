@@ -62,20 +62,20 @@ void WebApiConfigClass::onConfigDelete(AsyncWebServerRequest* request)
     auto& retMsg = response->getRoot();
 
     if (!(root.containsKey("delete"))) {
-        retMsg["message"] = ValuesAreMissing;
+        retMsg["message"] = "Values are missing!";
         retMsg["code"] = WebApiError::GenericValueMissing;
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;
     }
 
     if (root["delete"].as<bool>() == false) {
-        retMsg["message"] = NotDeletedAnything;
+        retMsg["message"] = "Not deleted anything!";
         retMsg["code"] = WebApiError::ConfigNotDeleted;
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;
     }
 
-    retMsg["type"] = Success;
+    retMsg["type"] = "success";
     retMsg["message"] = "Configuration resettet. Rebooting now...";
     retMsg["code"] = WebApiError::ConfigSuccess;
 

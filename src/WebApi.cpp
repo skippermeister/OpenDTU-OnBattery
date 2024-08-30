@@ -103,7 +103,7 @@ void WebApiClass::writeConfig(JsonVariant& retMsg, const WebApiError code, const
         retMsg["message"] = "Write failed!";
         retMsg["code"] = WebApiError::GenericWriteFailed;
     } else {
-        retMsg["type"] = Success;
+        retMsg["type"] = "success";
         retMsg["message"] = message;
         retMsg["code"] = code;
     }

@@ -7,7 +7,6 @@
 #include "ArduinoJson.h"
 #include "AsyncJson.h"
 #include "Configuration.h"
-#include "ErrorMessages.h"
 #include "WebApi.h"
 #include "WebApi_errors.h"
 #include "helper.h"
@@ -66,7 +65,7 @@ void WebApiVedirectClass::onVedirectAdminPost(AsyncWebServerRequest* request)
         !root.containsKey("updatesonly") ||
         !root.containsKey("verbose_logging"))
     {
-        retMsg["message"] = ValuesAreMissing;
+        retMsg["message"] = "Values are missing!";
         retMsg["code"] = WebApiError::GenericValueMissing;
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;

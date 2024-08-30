@@ -7,7 +7,6 @@
 #include "ArduinoJson.h"
 #include "AsyncJson.h"
 #include "Configuration.h"
-#include "ErrorMessages.h"
 #include "MqttHandlePowerLimiterHass.h"
 #include "MqttHandleVedirectHass.h"
 #include "PowerLimiter.h"
@@ -41,7 +40,6 @@ void WebApiPowerLimiterClass::onStatus(AsyncWebServerRequest* request)
     root["is_inverter_behind_powermeter"] = config.PowerLimiter.IsInverterBehindPowerMeter;
     root["is_inverter_solar_powered"] = config.PowerLimiter.IsInverterSolarPowered;
     root["use_overscaling_to_compensate_shading"] = config.PowerLimiter.UseOverscalingToCompensateShading;
-//    root["inverter_id"] = config.PowerLimiter.InverterId;
     root["inverter_serial"] = String(config.PowerLimiter.InverterId); //config.Inverter[config.PowerLimiter.InverterId].Serial;
     root["inverter_channel_id"] = config.PowerLimiter.InverterChannelId;
     root["target_power_consumption"] = config.PowerLimiter.TargetPowerConsumption;
@@ -151,7 +149,7 @@ void WebApiPowerLimiterClass::onAdminPost(AsyncWebServerRequest* request)
     // support a simpler API, like only sending the "enabled" key which only
     // changes that key, we need to refactor all of the code below.
     if (!root.containsKey("enabled")) {
-        retMsg["message"] = ValuesAreMissing;
+        retMsg["message"] = "Values are missing!";
         retMsg["code"] = WebApiError::GenericValueMissing;
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;
@@ -166,13 +164,13 @@ void WebApiPowerLimiterClass::onAdminPost(AsyncWebServerRequest* request)
     if (config.Vedirect.Enabled) {
         config.PowerLimiter.SolarPassThroughEnabled = root["solar_passthrough_enabled"].as<bool>();
         config.PowerLimiter.SolarPassThroughLosses = root["solar_passthrough_losses"].as<uint8_t>();
-        config.PowerLimiter.BatteryAlwaysUseAtNight= root["battery_always_use_at_night"].as<bool>();
         config.PowerLimiter.FullSolarPassThroughStartVoltage = static_cast<int>(root["full_solar_passthrough_start_voltage"].as<float>() * 100) / 100.0;
         config.PowerLimiter.FullSolarPassThroughStopVoltage = static_cast<int>(root["full_solar_passthrough_stop_voltage"].as<float>() * 100) / 100.0;
     }
 
     config.PowerLimiter.IsInverterBehindPowerMeter = root["is_inverter_behind_powermeter"].as<bool>();
     config.PowerLimiter.IsInverterSolarPowered = root["is_inverter_solar_powered"].as<bool>();
+    config.PowerLimiter.BatteryAlwaysUseAtNight= root["battery_always_use_at_night"].as<bool>();
     config.PowerLimiter.UseOverscalingToCompensateShading = root["use_overscaling_to_compensate_shading"].as<bool>();
     //config.PowerLimiter.InverterId = root["inverter_id"].as<uint64_t>();
     config.PowerLimiter.InverterId = root["inverter_serial"].as<uint64_t>();

@@ -7,15 +7,6 @@
 #include "MqttSettings.h"
 #include <ctime>
 
-#define TOPIC_SUB_LIMIT_PERSISTENT_RELATIVE "limit_persistent_relative"
-#define TOPIC_SUB_LIMIT_PERSISTENT_ABSOLUTE "limit_persistent_absolute"
-#define TOPIC_SUB_LIMIT_NONPERSISTENT_RELATIVE "limit_nonpersistent_relative"
-#define TOPIC_SUB_LIMIT_NONPERSISTENT_ABSOLUTE "limit_nonpersistent_absolute"
-#define TOPIC_SUB_POWER "power"
-#define TOPIC_SUB_RESTART "restart"
-
-#define PUBLISH_MAX_INTERVAL 60000
-
 MqttHandleInverterClass MqttHandleInverter;
 
 MqttHandleInverterClass::MqttHandleInverterClass()
@@ -32,6 +23,32 @@ void MqttHandleInverterClass::init(Scheduler& scheduler)
     _loopTask.enable();
 }
 
+void MqttHandleInverterClass::subscribeTopics()
+{
+    String const& prefix = MqttSettings.getPrefix();
+
+    auto subscribe = [&prefix, this](char const* subTopic, Topic t) {
+        String fullTopic(prefix + _cmdtopic.data() + subTopic);
+        MqttSettings.subscribe(fullTopic.c_str(), 0,
+                std::bind(&MqttHandleInverterClass::onMqttMessage, this, t,
+                    std::placeholders::_1, std::placeholders::_2,
+                    std::placeholders::_3, std::placeholders::_4,
+                    std::placeholders::_5, std::placeholders::_6));
+    };
+
+    for (auto const& s : _subscriptions) {
+        subscribe(s.first.data(), s.second);
+    }
+}
+
+void MqttHandleInverterClass::unsubscribeTopics()
+{
+    String const prefix = MqttSettings.getPrefix() + _cmdtopic.data();
+    for (auto const& s : _subscriptions) {
+        MqttSettings.unsubscribe(prefix + s.first.data());
+    }
+}
+
 void MqttHandleInverterClass::loop()
 {
     _loopTask.setInterval(Configuration.get().Mqtt.PublishInterval * TASK_SECOND);
@@ -41,7 +58,7 @@ void MqttHandleInverterClass::loop()
         return;
     }
 
-    // Loop all inverters
+     // Loop all inverters
     for (uint8_t i = 0; i < Hoymiles.getNumInverters(); i++) {
         auto inv = Hoymiles.getInverterByPos(i);
 
@@ -146,129 +163,94 @@ String MqttHandleInverterClass::getTopic(std::shared_ptr<InverterAbstract> inv, 
     return inv->serialString() + "/" + chanNum + "/" + chanName;
 }
 
-void MqttHandleInverterClass::onMqttMessage(const espMqttClientTypes::MessageProperties& properties, const char* topic, const uint8_t* payload, const size_t len, const size_t index, const size_t total)
+void MqttHandleInverterClass::onMqttMessage(Topic t, const espMqttClientTypes::MessageProperties& properties, const char* topic, const uint8_t* payload, const size_t len, const size_t index, const size_t total)
 {
-    auto const& cMqtt = Configuration.get().Mqtt;
-
-    char token_topic[MQTT_MAX_TOPIC_STRLEN + 40]; // respect all subtopics
-    strncpy(token_topic, topic, MQTT_MAX_TOPIC_STRLEN + 40); // convert const char* to char*
-
-    char* serial_str;
-    char* subtopic;
-    char* setting;
-    char* rest = &token_topic[strlen(cMqtt.Topic)];
-
-    serial_str = strtok_r(rest, "/", &rest);
-    subtopic = strtok_r(rest, "/", &rest);
-    setting = strtok_r(rest, "/", &rest);
-
-    if (serial_str == NULL || subtopic == NULL || setting == NULL) {
+    std::string strValue(reinterpret_cast<const char*>(payload), len);
+    float payload_val = -1;
+    try {
+        payload_val = std::stof(strValue);
+    }
+    catch (std::invalid_argument const& e) {
+        MessageOutput.printf("[MqttHandleInverter] cannot parse payload of topic '%s' as float: %s\r\n", topic, strValue.c_str());
         return;
     }
+
+    char token_topic[64];
+    strncpy(token_topic, &topic[strlen(Configuration.get().Mqtt.Topic)], sizeof(token_topic)); // convert const char* to char*
+    token_topic[sizeof(token_topic)-1] = 0; // force to terminate the string.
+    char* serial_str = strtok(token_topic, "/");
+
+    if (serial_str == NULL) { return; }
 
     const uint64_t serial = strtoull(serial_str, 0, 16);
 
     auto inv = Hoymiles.getInverterBySerial(serial);
 
     if (inv == nullptr) {
-        MessageOutput.printf("Inverter %s not found\r\n", serial_str);
+        MessageOutput.println("Inverter not found");
         return;
     }
-
-    // check if subtopic is unequal cmd
-    if (strcmp(subtopic, "cmd")) {
-        return;
-    }
-
-    char* strlimit = new char[len + 1];
-    memcpy(strlimit, payload, len);
-    strlimit[len] = '\0';
-    const float payload_val = strtof(strlimit, NULL);
-    delete[] strlimit;
 
     if (payload_val < 0) {
         MessageOutput.printf("MQTT payload < 0 received --> ignoring\r\n");
         return;
     }
 
-    if (!strcmp(setting, TOPIC_SUB_LIMIT_PERSISTENT_RELATIVE)) {
-        // Set inverter limit relative persistent
-        if (MqttSettings.getVerboseLogging())
-            MessageOutput.printf("Limit Persistent: %.1f %%\r\n", payload_val);
-        inv->sendActivePowerControlRequest(payload_val, PowerLimitControlType::RelativPersistent);
-
-    } else if (!strcmp(setting, TOPIC_SUB_LIMIT_PERSISTENT_ABSOLUTE)) {
-        // Set inverter limit absolute persistent
-        if (MqttSettings.getVerboseLogging())
-            MessageOutput.printf("Limit Persistent: %.1f W\r\n", payload_val);
-        inv->sendActivePowerControlRequest(payload_val, PowerLimitControlType::AbsolutPersistent);
-
-    } else if (!strcmp(setting, TOPIC_SUB_LIMIT_NONPERSISTENT_RELATIVE)) {
-        // Set inverter limit relative non persistent
-        if (MqttSettings.getVerboseLogging())
-            MessageOutput.printf("Limit Non-Persistent: %.1f %%\r\n", payload_val);
-        if (!properties.retain) {
-            inv->sendActivePowerControlRequest(payload_val, PowerLimitControlType::RelativNonPersistent);
-        } else {
+    switch (t) {
+        case Topic::LimitPersistentRelative:
+            // Set inverter limit relative persistent
             if (MqttSettings.getVerboseLogging())
-                MessageOutput.println("Ignored because retained");
-        }
+                MessageOutput.printf("Limit Persistent: %.1f %%\r\n", payload_val);
+            inv->sendActivePowerControlRequest(payload_val, PowerLimitControlType::RelativPersistent);
+            break;
 
-    } else if (!strcmp(setting, TOPIC_SUB_LIMIT_NONPERSISTENT_ABSOLUTE)) {
-        // Set inverter limit absolute non persistent
-        if (MqttSettings.getVerboseLogging())
-            MessageOutput.printf("Limit Non-Persistent: %.1f W\r\n", payload_val);
-        if (!properties.retain) {
-            inv->sendActivePowerControlRequest(payload_val, PowerLimitControlType::AbsolutNonPersistent);
-        } else {
+        case Topic::LimitPersistentAbsolute:
+            // Set inverter limit absolute persistent
             if (MqttSettings.getVerboseLogging())
-                MessageOutput.println("Ignored because retained");
-        }
+                MessageOutput.printf("Limit Persistent: %.1f W\r\n", payload_val);
+            inv->sendActivePowerControlRequest(payload_val, PowerLimitControlType::AbsolutPersistent);
+            break;
 
-    } else if (!strcmp(setting, TOPIC_SUB_POWER)) {
-        // Turn inverter on or off
-        if (MqttSettings.getVerboseLogging())
-            MessageOutput.printf("Set inverter power to: %d\r\n", static_cast<int32_t>(payload_val));
-        inv->sendPowerControlRequest(static_cast<int32_t>(payload_val) > 0);
-
-    } else if (!strcmp(setting, TOPIC_SUB_RESTART)) {
-        // Restart inverter
-        if (MqttSettings.getVerboseLogging())
-            MessageOutput.printf("Restart inverter\r\n");
-        if (!properties.retain && payload_val == 1) {
-            inv->sendRestartControlRequest();
-        } else {
+        case Topic::LimitNonPersistentRelative:
+            // Set inverter limit relative non persistent
             if (MqttSettings.getVerboseLogging())
-                MessageOutput.println("Ignored because retained or numeric value not '1'");
-        }
+                MessageOutput.printf("Limit Non-Persistent: %.1f %%\r\n", payload_val);
+            if (!properties.retain) {
+                inv->sendActivePowerControlRequest(payload_val, PowerLimitControlType::RelativNonPersistent);
+            } else {
+                if (MqttSettings.getVerboseLogging())
+                    MessageOutput.println("Ignored because retained");
+            }
+            break;
+
+        case Topic::LimitNonPersistentAbsolute:
+            // Set inverter limit absolute non persistent
+            if (MqttSettings.getVerboseLogging())
+                MessageOutput.printf("Limit Non-Persistent: %.1f W\r\n", payload_val);
+            if (!properties.retain) {
+                inv->sendActivePowerControlRequest(payload_val, PowerLimitControlType::AbsolutNonPersistent);
+            } else {
+                if (MqttSettings.getVerboseLogging())
+                    MessageOutput.println("Ignored because retained");
+            }
+            break;
+
+        case Topic::Power:
+            // Turn inverter on or off
+            if (MqttSettings.getVerboseLogging())
+                MessageOutput.printf("Set inverter power to: %d\r\n", static_cast<int32_t>(payload_val));
+            inv->sendPowerControlRequest(static_cast<int32_t>(payload_val) > 0);
+            break;
+
+        case Topic::Restart:
+            // Restart inverter
+            if (MqttSettings.getVerboseLogging())
+                MessageOutput.printf("Restart inverter\r\n");
+            if (!properties.retain && payload_val == 1) {
+                inv->sendRestartControlRequest();
+            } else {
+                if (MqttSettings.getVerboseLogging())
+                    MessageOutput.println("Ignored because retained or numeric value not '1'");
+            }
     }
-}
-
-void MqttHandleInverterClass::subscribeTopics()
-{
-    using std::placeholders::_1;
-    using std::placeholders::_2;
-    using std::placeholders::_3;
-    using std::placeholders::_4;
-    using std::placeholders::_5;
-    using std::placeholders::_6;
-
-    const String topic = MqttSettings.getPrefix();
-    MqttSettings.subscribe(String(topic + "+/cmd/" + TOPIC_SUB_LIMIT_PERSISTENT_RELATIVE), 0, std::bind(&MqttHandleInverterClass::onMqttMessage, this, _1, _2, _3, _4, _5, _6));
-    MqttSettings.subscribe(String(topic + "+/cmd/" + TOPIC_SUB_LIMIT_PERSISTENT_ABSOLUTE), 0, std::bind(&MqttHandleInverterClass::onMqttMessage, this, _1, _2, _3, _4, _5, _6));
-    MqttSettings.subscribe(String(topic + "+/cmd/" + TOPIC_SUB_LIMIT_NONPERSISTENT_RELATIVE), 0, std::bind(&MqttHandleInverterClass::onMqttMessage, this, _1, _2, _3, _4, _5, _6));
-    MqttSettings.subscribe(String(topic + "+/cmd/" + TOPIC_SUB_LIMIT_NONPERSISTENT_ABSOLUTE), 0, std::bind(&MqttHandleInverterClass::onMqttMessage, this, _1, _2, _3, _4, _5, _6));
-    MqttSettings.subscribe(String(topic + "+/cmd/" + TOPIC_SUB_POWER), 0, std::bind(&MqttHandleInverterClass::onMqttMessage, this, _1, _2, _3, _4, _5, _6));
-    MqttSettings.subscribe(String(topic + "+/cmd/" + TOPIC_SUB_RESTART), 0, std::bind(&MqttHandleInverterClass::onMqttMessage, this, _1, _2, _3, _4, _5, _6));
-}
-
-void MqttHandleInverterClass::unsubscribeTopics()
-{
-    const String topic = MqttSettings.getPrefix();
-    MqttSettings.unsubscribe(String(topic + "+/cmd/" + TOPIC_SUB_LIMIT_PERSISTENT_RELATIVE));
-    MqttSettings.unsubscribe(String(topic + "+/cmd/" + TOPIC_SUB_LIMIT_PERSISTENT_ABSOLUTE));
-    MqttSettings.unsubscribe(String(topic + "+/cmd/" + TOPIC_SUB_LIMIT_NONPERSISTENT_RELATIVE));
-    MqttSettings.unsubscribe(String(topic + "+/cmd/" + TOPIC_SUB_LIMIT_NONPERSISTENT_ABSOLUTE));
-    MqttSettings.unsubscribe(String(topic + "+/cmd/" + TOPIC_SUB_POWER));
-    MqttSettings.unsubscribe(String(topic + "+/cmd/" + TOPIC_SUB_RESTART));
 }

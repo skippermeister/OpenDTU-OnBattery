@@ -10,6 +10,7 @@ enum WebApiError {
     GenericValueMissing,
     GenericWriteFailed,
     GenericInternalServerError,
+    GenericRangeError,
 
     DtuBase = 2000,
     DtuSerialZero,

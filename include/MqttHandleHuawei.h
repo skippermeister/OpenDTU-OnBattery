@@ -10,6 +10,8 @@
 #include <mutex>
 #include <deque>
 #include <functional>
+#include <frozen/map.h>
+#include <frozen/string.h>
 
 class MqttHandleHuaweiClass {
 public:
@@ -30,6 +32,15 @@ private:
         LimitOfflineVoltage,
         LimitOfflineCurrent,
         Mode
+    };
+
+    static constexpr frozen::string _cmdtopic = "huawei/cmd/";
+    static constexpr frozen::map<frozen::string, Topic, 5> _subscriptions = {
+        { "limit_online_voltage",  Topic::LimitOnlineVoltage },
+        { "limit_online_current",  Topic::LimitOnlineCurrent },
+        { "limit_offline_voltage", Topic::LimitOfflineVoltage },
+        { "limit_offline_current", Topic::LimitOfflineCurrent },
+        { "mode",                  Topic::Mode },
     };
 
     void onMqttMessage(Topic t,

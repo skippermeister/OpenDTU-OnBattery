@@ -84,7 +84,8 @@
             </div>
         </CardElement>
 
-        <CardElement :text="$t('mqttinfo.HassSummary')" textVariant="text-bg-primary" add-space>
+        <CardElement :text="$t('mqttinfo.HassSummary')" textVariant="text-bg-primary" add-space
+            v-show="'hass_enabled' in mqttDataList">
             <div class="table-responsive">
                 <table class="table table-hover table-condensed">
                     <tbody>

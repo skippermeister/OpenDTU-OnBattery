@@ -7,7 +7,6 @@
 #include "REFUsolRS485Receiver.h"
 #include <Arduino.h>
 #include <TaskSchedulerDeclarations.h>
-#include <mutex>
 
 #ifndef REFUsol_PIN_RX
 #define REFUsol_PIN_RX 22
@@ -38,12 +37,6 @@ private:
     REFUsolStruct _last {}; // last value store for MQTT publishing
 
     uint32_t _lastPublish;
-
-    // MQTT callbacks to process updates on subscribed topics are executed in
-    // the MQTT thread's context. we use this queue to switch processing the
-    // user requests into the main loop's context (TaskScheduler context).
-    mutable std::mutex _mqttMutex;
-    std::deque<std::function<void()>> _mqttCallbacks;
 };
 
 extern MqttHandleREFUsolClass MqttHandleREFUsol;

@@ -41,7 +41,7 @@ typedef struct {
     char serNo[REFUsol_MAX_VALUE_LEN]; // serial number
     char firmware[REFUsol_MAX_VALUE_LEN]; // firmware release number
     uint8_t currentStateOfOperation; // current state of operation e. g. OFF or Bulk
-    uint8_t error; // error code
+    uint32_t error; // error code
     uint8_t status; // status code
     uint32_t totalOperatingHours;
     float acVoltage; // ac voltage in V
@@ -71,6 +71,7 @@ typedef struct {
     float deviceSpecificOffset;
     float plantSpecificOffset;
     float cosPhi;
+    float cosPhiPvPeak[11];
     float effectivCosPhi;
     float variableOffset;
     float fixedOffset;
@@ -99,7 +100,25 @@ typedef union {
         uint8_t H;
         uint8_t L;
     };
-} WORD_t;
+} BigEndianWord_t;
+
+typedef union {
+    uint16_t W;
+    struct {
+        uint8_t L;
+        uint8_t H;
+    };
+} LittleEndianWord_t;
+
+typedef union {
+    uint32_t DW;
+    struct {
+        uint8_t LL;
+        uint8_t LH;
+        uint8_t HL;
+        uint8_t HH;
+    };
+} LittleEndianDoubleWord_t;
 
 typedef union {
     struct {
@@ -111,13 +130,13 @@ typedef union {
                 union {
                     uint64_t PKW;
                     struct {
-                        WORD_t PKE;
-                        WORD_t IND;
-                        WORD_t PWE1;
-                        WORD_t PWE2;
+                        BigEndianWord_t PKE;
+                        BigEndianWord_t IND;
+                        BigEndianWord_t PWE1;
+                        BigEndianWord_t PWE2;
                     };
                 };
-                WORD_t PZD;
+                BigEndianWord_t PZD;
             };
             uint8_t net[252];
         };
@@ -146,6 +165,7 @@ public:
     void init(Scheduler& scheduler); // initialize HardewareSerial
     void deinit(void);
     void updateSettings();
+    bool readParameters();
     uint32_t getLastUpdate(); // timestamp of last successful frame read
     bool isDataValid(void); // return true if data valid and not outdated
 
@@ -153,8 +173,8 @@ public:
 
     void generateJsonResponse(JsonVariant& root);
 
-    bool getVerboseLogging(void) { return _verbose_logging; };
-    void setVerboseLogging(bool logging) { _verbose_logging = logging; };
+    bool getVerboseLogging(void) { return _verboseLogging; };
+    void setVerboseLogging(bool logging) { _verboseLogging = logging; };
 
 private:
     static char constexpr _serialPortOwner[] = "REFUsol";
@@ -185,7 +205,7 @@ private:
     void getFixedOffset(uint8_t adr);
     void getVariableOffset(uint8_t adr);
     void getOptionCosPhi(uint8_t adr);
-    void getCosPhi(uint8_t adr);
+    void getCosPhi(uint8_t adr, uint16_t ind);
     void getTemperatursensor(uint8_t adr, uint16_t ind = 0);
     void getActualStatus(uint8_t adr);
     void getFehlercode(uint8_t adr);
@@ -196,7 +216,7 @@ private:
 
     void setPKW_ANZ(uint8_t anz) { PKW_ANZ = anz; }
     void setPZD_ANZ(uint8_t anz) { PZD_ANZ = anz; }
-    void compute(uint8_t adr, bool mirror, uint16_t TaskID, uint16_t PNU, int16_t IND, void* PWE, uint8_t pzd_anz, void* PZD);
+    void compute(uint8_t adr, bool mirror, uint16_t TaskID, uint8_t SP, uint16_t PNU, int16_t IND, void* PWE, uint8_t pzd_anz, void* PZD);
     void computeTelegram(uint8_t adr, bool mirror, uint16_t TaskID, uint16_t PNU, int16_t IND);
     void computeTelegram(uint8_t adr, bool mirror, uint16_t TaskID, uint16_t PNU, int16_t IND, void* PWE);
     void computeTelegram(uint8_t adr, bool mirror, uint16_t TaskID, uint16_t PNU, int16_t IND, void* PWE, void* PZD);
@@ -216,7 +236,9 @@ private:
     uint8_t PKW_ANZ = 4;
     uint8_t PZD_ANZ = 0;
 
-    uint16_t RS485BaudRate = 57600;
+    uint16_t RS485BaudRate;
+    int8_t _rtsPin;
+    int _StartInterval;
 
     void DebugNoResponse(uint16_t p);
     bool DebugDecodedTelegram = true;
@@ -224,11 +246,12 @@ private:
     bool DebugRawTelegram = true;
     int MaximumResponseTime = 20;
 
-    uint8_t adr = 1;
+    uint8_t adr;
 
     bool _initialized = false;
+    bool _allParametersRead = false;
 
-    bool _verbose_logging = false;
+    bool _verboseLogging = false;
 };
 
 extern REFUsolRS485ReceiverClass REFUsol;

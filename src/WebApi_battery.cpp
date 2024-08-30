@@ -109,7 +109,7 @@ void WebApiBatteryClass::onAdminPost(AsyncWebServerRequest* request)
         !root.containsKey("provider") ||
         !root.containsKey("verbose_logging"))
     {
-        retMsg["message"] = ValuesAreMissing;
+        retMsg["message"] = "Values are missing!";
         retMsg["code"] = WebApiError::GenericValueMissing;
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;

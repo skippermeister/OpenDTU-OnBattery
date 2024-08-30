@@ -34,7 +34,7 @@ public:
     bool getVerboseLogging(void) { return _verboseLogging; };
     void setVerboseLogging(bool logging) { _verboseLogging = logging; };
 
-    void setParameter(float value, ZeroExportTopic parameter);
+    void setParameter(float value, MqttHandleZeroExportClass::Topic parameter);
 
 private:
     void loop();

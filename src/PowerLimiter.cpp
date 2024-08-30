@@ -298,7 +298,7 @@ void PowerLimiterClass::loop()
     if (_verboseLogging) MessageOutput.printf("%s ******************* ENTER **********************\r\n", TAG);
 
     // Check if next inverter restart time is reached
-    if ((_nextInverterRestart > 1) && (millis() - _nextInverterRestart > 0)) {
+    if ((_nextInverterRestart > 1) && (_nextInverterRestart <= millis())) {
         MessageOutput.printf("%s%s: send inverter restart\r\n", TAG, __FUNCTION__);
         _inverter->sendRestartControlRequest();
         calcNextInverterRestart();
@@ -307,13 +307,13 @@ void PowerLimiterClass::loop()
     // Check if NTP time is set and next inverter restart not calculated yet
     if ((config.PowerLimiter.RestartHour >= 0) && (_nextInverterRestart == 0)) {
         // check every 5 seconds
-        if (millis() - _nextCalculateCheck > 5 * 1000) {
+        if (_nextCalculateCheck < millis()) {
             struct tm timeinfo;
             if (getLocalTime(&timeinfo, 5)) {
                 calcNextInverterRestart();
             } else {
                 MessageOutput.printf("%s%s: inverter restart calculation: NTP not ready\r\n", TAG, __FUNCTION__);
-                _nextCalculateCheck = millis();
+                _nextCalculateCheck += 5000;
             }
         }
     }
@@ -338,8 +338,7 @@ void PowerLimiterClass::loop()
             return true;
         }
 
-        if (config.PowerLimiter.SolarPassThroughEnabled &&
-            config.PowerLimiter.BatteryAlwaysUseAtNight &&
+        if (config.PowerLimiter.BatteryAlwaysUseAtNight &&
             !isDayPeriod &&
             !_batteryDischargeEnabled)
         {
@@ -378,7 +377,7 @@ void PowerLimiterClass::loop()
     }
 
     // Calculate and set Power Limit (NOTE: might reset _inverter to nullptr!)
-    bool limitUpdated = calcPowerLimit(_inverter, getSolarPower(), _batteryDischargeEnabled);
+    bool limitUpdated = calcPowerLimit(_inverter, getSolarPower(), getBatteryDischargeLimit(), _batteryDischargeEnabled);
 
     _lastCalculation = millis();
 
@@ -402,7 +401,7 @@ float PowerLimiterClass::getBatteryVoltage(bool log)
 {
     if (!_inverter) {
         // there should be no need to call this method if no target inverter is known
-        MessageOutput.println("[DPL::getBatteryVoltage] no inverter (programmer error)");
+        MessageOutput.printf("[%s%s: no inverter (programmer error)\r\n", TAG, __FUNCTION__);
         return 0.0;
     }
 
@@ -511,17 +510,18 @@ uint8_t PowerLimiterClass::getPowerLimiterState()
 }
 
 // Logic table ("PowerMeter value" can be "base load setting" as a fallback)
-// | Case # | batteryPower | solarPower     | useFullSolarPassthrough | Resulting inverter limit                               |
-// | 1      | false        |  < 20 W        | doesn't matter          | 0 (inverter off)                                       |
-// | 2      | false        | >= 20 W        | doesn't matter          | min(PowerMeter value, solarPower)                      |
-// | 3      | true         | doesn't matter | false                   | PowerMeter value (Battery can supply unlimited energy) |
-// | 4      | true         | fully passed   | true                    | max(PowerMeter value, solarPower)                      |
+// | Case # | batteryPower | solarPower     | batteryLimit   | useFullSolarPassthrough | Resulting inverter limit                               |
+// | 1      | false        |  < 20 W        | doesn't matter | doesn't matter          | 0 (inverter off)                                       |
+// | 2      | false        | >= 20 W        | doesn't matter | doesn't matter          | min(PowerMeter value, solarPower)                      |
+// | 3      | true         | fully passed   | applied        | false                   | min(PowerMeter value  batteryLimit+solarPower)         |
+// | 4      | true         | fully passed   | doesn't matter | true                    | max(PowerMeter value, solarPower)                      |
 
-bool PowerLimiterClass::calcPowerLimit(std::shared_ptr<InverterAbstract> inverter, int32_t solarPowerDC, bool batteryPower)
+bool PowerLimiterClass::calcPowerLimit(std::shared_ptr<InverterAbstract> inverter, int32_t solarPowerDC, int32_t batteryPowerLimitDC, bool batteryPower)
 {
-    if (_verboseLogging) MessageOutput.printf("%s%s: battery use %s, solar power (DC): %d W\r\n", TAG, __FUNCTION__,
-                (batteryPower?"allowed":"prevented"), solarPowerDC);
-
+    if (_verboseLogging)
+        MessageOutput.printf("%s%s: battery use %s, solar power (DC): %d W, battery limit (DC): %d W\r\n",
+                TAG, __FUNCTION__,
+                (batteryPower?"allowed":"prevented"), solarPowerDC, batteryPowerLimitDC);
     // Case 1:
     if (solarPowerDC <= 0 && !batteryPower) {
         return shutdown(Status::NoEnergy);
@@ -555,6 +555,7 @@ bool PowerLimiterClass::calcPowerLimit(std::shared_ptr<InverterAbstract> inverte
     // old and unreliable. TODO(schlimmchen): is this comment outdated?
     auto inverterOutput = static_cast<int32_t>(inverter->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_PAC));
 
+    auto batteryPowerLimitAC = inverterPowerDcToAc(inverter, batteryPowerLimitDC);
     auto solarPowerAC = inverterPowerDcToAc(inverter, solarPowerDC);
 
     auto const& config = Configuration.get();
@@ -570,12 +571,14 @@ bool PowerLimiterClass::calcPowerLimit(std::shared_ptr<InverterAbstract> inverte
                 baseLoad,
                 (meterIncludesInv?"":"NOT "));
 
-        MessageOutput.printf("%s%s: power meter: %d W, power meter valid: %s, inverter output: %d W, solar power (AC): %d\r\n",
+        MessageOutput.printf("%s%s: power meter value: %d W, "
+            "power meter valid: %s, inverter output: %d W, solar power (AC): %d, battery limit (AC): %d W\r\n",
             TAG, __FUNCTION__,
             meterValue,
             (meterValid?"yes":"no"),
             inverterOutput,
-            solarPowerAC);
+            solarPowerAC,
+            batteryPowerLimitAC);
     }
 
     auto newPowerLimit = baseLoad;
@@ -599,9 +602,18 @@ bool PowerLimiterClass::calcPowerLimit(std::shared_ptr<InverterAbstract> inverte
 
         // do not drain the battery. use as much power as needed to match the
         // household consumption, but not more than the available solar power.
-        if (_verboseLogging) MessageOutput.printf("%s%s: limited to solar power: %d W\r\n", TAG, __FUNCTION__, newPowerLimit);
+        if (_verboseLogging)
+            MessageOutput.printf("%s%s: limited to solar power: %d W\r\n", TAG, __FUNCTION__, newPowerLimit);
 
         return setNewPowerLimit(inverter, newPowerLimit);
+    } else { // on batteryPower
+        // Apply battery-provided discharge power limit.
+        if (newPowerLimit > batteryPowerLimitAC + solarPowerAC) {
+            newPowerLimit = batteryPowerLimitAC + solarPowerAC;
+            if (_verboseLogging) {
+                MessageOutput.printf("%s%s: limited by battery to: %d W\r\n", TAG, __FUNCTION__, newPowerLimit);
+            }
+        }
     }
 
 
@@ -963,6 +975,26 @@ int32_t PowerLimiterClass::getSolarPower()
     if (solarPower < 20) { return 0; } // too little to work with
 
     return solarPower;
+}
+
+int32_t PowerLimiterClass::getBatteryDischargeLimit()
+{
+    auto currentLimit = Battery.getStats()->getDischargeCurrentLimitation();
+
+    if (currentLimit == FLT_MAX) {
+        // the returned value is arbitrary, as long as it's
+        // greater than the inverters max DC power consumption.
+        return 10 * 1000;
+    }
+
+    // This uses inverter voltage since there is a voltage drop between
+    // battery and inverter, so since we are regulating the inverter
+    // power we should use its voltage.
+    auto const& config = Configuration.get();
+    auto channel = static_cast<ChannelNum_t>(config.PowerLimiter.InverterChannelId);
+    float inverterVoltage = _inverter->Statistics()->getChannelFieldValue(TYPE_DC, channel, FLD_UDC);
+
+    return static_cast<int32_t>(inverterVoltage * currentLimit);
 }
 
 float PowerLimiterClass::getLoadCorrectedVoltage()

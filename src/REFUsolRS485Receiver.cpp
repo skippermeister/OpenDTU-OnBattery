@@ -35,40 +35,51 @@ void REFUsolRS485ReceiverClass::init(Scheduler& scheduler)
 
     updateSettings();
 
-    if (!Configuration.get().REFUsol.Enabled) {
-        MessageOutput.println("not enabled");
-        return;
-    }
-
     MessageOutput.println("done");
 }
 
 void REFUsolRS485ReceiverClass::updateSettings(void)
 {
-    if (!Configuration.get().REFUsol.Enabled) {
+    if (_initialized) {
         deinit();
         _loopTask.disable();
+    }
+
+    auto const& cREFUsol = Configuration.get().REFUsol;
+    if (!cREFUsol.Enabled) {
+        MessageOutput.println("REFUsol receiver not enabled");
         return;
     }
 
-    _loopTask.enable();
-
-    if (!PinMapping.isValidREFUsolConfig()) {
-        MessageOutput.println("Invalid TX/RX/RTS pin config");
-        return;
-    }
+    _verboseLogging = cREFUsol.VerboseLogging;
 
     auto const& pin = PinMapping.get().REFUsol;
+    if (!PinMapping.isValidREFUsolConfig()) {
+        MessageOutput.printf("Invalid TX=%d/RX=%d/RTS=%d pin config", pin.rx, pin.tx, pin.rts);
+        return;
+    }
+
+    adr = cREFUsol.USSaddress;
 
     if (!_initialized) {
-        RS485BaudRate = 57600;
         auto oHwSerialPort = SerialPortManager.allocatePort(_serialPortOwner);
         if (!oHwSerialPort) { return; }
 
         _upSerial = std::make_unique<HardwareSerial>(*oHwSerialPort);
 
-        _upSerial->begin(RS485BaudRate, SERIAL_8N1, pin.rx, pin.tx);
-        MessageOutput.printf("RS485 (Type %d) port rx = %d, tx = %d", pin.rts >= 0 ? 1 : 2, pin.rx, pin.tx);
+        _upSerial->begin(cREFUsol.Baudrate,
+            cREFUsol.Parity==REFUsol_CONFIG_T::Parity_t::Even?SERIAL_8E1:
+            cREFUsol.Parity==REFUsol_CONFIG_T::Parity_t::Odd?SERIAL_8O1:
+            SERIAL_8N1,
+            pin.rx, pin.tx);
+        static constexpr const char *Parity[3] = {"NONE", "EVEN", "ODD"};
+        MessageOutput.printf("RS485 (Type %d) @ %u Baud with %s parity, USS adr = %u, port rx = %d, tx = %d",
+            pin.rts >= 0 ? 1 : 2,
+            cREFUsol.Baudrate, Parity[cREFUsol.Parity],
+            cREFUsol.USSaddress,
+            pin.rx, pin.tx);
+        _StartInterval = (int)((1000000.0*2*(1+8+1+1))/cREFUsol.Baudrate+0.5);
+        RS485BaudRate = cREFUsol.Baudrate;
         if (pin.rts >= 0) {
             /*
              * REFUsol inverter is connected via a RS485 module. Two different types of modules are supported.
@@ -93,46 +104,125 @@ void REFUsolRS485ReceiverClass::updateSettings(void)
         }
 
         _initialized = true;
+        _allParametersRead = false;
+
+        _loopTask.enable();
 
         MessageOutput.println(" initialized successfully.");
     }
+}
 
-    MessageOutput.print("Read basic infos and parameters. ");
+bool REFUsolRS485ReceiverClass::readParameters()
+{
+    static int8_t state=0;
+    static int8_t index=1;
 
-    getPVpeak(adr);
-    getPVlimit(adr);
-    getDeviceSpecificOffset(adr);
-    getPlantSpecificOffset(adr);
-    getOptionCosPhi(adr);
+    if (_allParametersRead) { return false; }
 
-    Frame.effectivCosPhi = 0.0;
+    if (_verboseLogging) MessageOutput.printf("%s Read basic infos and parameters ... ", TAG);
+
+    switch(state) {
+        case 0:
+            if (_verboseLogging) MessageOutput.println("get total operating hours");
+            getTotalOperatingHours(adr);
+            state++;
+            return true;
+
+        case 1:
+            if (_verboseLogging) MessageOutput.println("get PV peak");
+            getPVpeak(adr);
+            state++;
+            return true;
+
+        case 2:
+            if (_verboseLogging) MessageOutput.println("get PV limit");
+            getPVlimit(adr);
+            state++;
+            return true;
+
+        case 3:
+            if (_verboseLogging) MessageOutput.println("get device specific offset");
+            getDeviceSpecificOffset(adr);
+            state++;
+            return true;
+
+        case 4:
+            if (_verboseLogging) MessageOutput.println("get plant specific offset");
+            getPlantSpecificOffset(adr);
+            state++;
+            return true;
+
+        case 5:
+            if (_verboseLogging) MessageOutput.println("get option cos phi");
+            getOptionCosPhi(adr);
+            state++;
+            return true;
+
+        case 6:
+            switch (Frame.optionCosPhi) {
+                case 0:
+                    break;
+                case 1:
+                    if (_verboseLogging) MessageOutput.println("get fixed offset");
+                    getFixedOffset(adr);
+                    state++;
+                    return true;
+                case 2:
+                    if (_verboseLogging) MessageOutput.println("get variable offset");
+                    getVariableOffset(adr);
+                    state++;
+                    return true;
+                case 3:
+                    if (_verboseLogging) MessageOutput.printf("get cos phi(P=%d%%)\r\n", (index-1)*10);
+                    getCosPhi(adr, index++);
+                    if (index>11) state++;
+                    return true;
+                case 4:
+                    if (_verboseLogging) MessageOutput.println("get cos phi");
+                    getCosPhi(adr, 0);
+                    state++;
+                    return true;
+                default:;
+            }
+            break;
+
+        default:;
+    }
+
+    Frame.effectivCosPhi = NaN;
     switch (Frame.optionCosPhi) {
     case 0:
         Frame.effectivCosPhi = Frame.deviceSpecificOffset + Frame.plantSpecificOffset;
         break;
     case 1:
-        getFixedOffset(adr);
         if (Frame.fixedOffset > NaN)
             Frame.effectivCosPhi = Frame.deviceSpecificOffset + Frame.plantSpecificOffset + Frame.fixedOffset;
         break;
     case 2:
-        getVariableOffset(adr);
         if (Frame.variableOffset > NaN)
             Frame.effectivCosPhi = Frame.deviceSpecificOffset + Frame.plantSpecificOffset + Frame.variableOffset;
         break;
     case 3:
-        // to be done
-        Frame.effectivCosPhi = Frame.deviceSpecificOffset + Frame.plantSpecificOffset + Frame.cosPhi;
+        if (Frame.cosPhiPvPeak[0] > NaN)
+            Frame.effectivCosPhi = Frame.deviceSpecificOffset + Frame.plantSpecificOffset + Frame.cosPhiPvPeak[0];
         break;
     case 4:
-        getCosPhi(adr);
-        if (Frame.cosPhi > NaN) {
+        if (Frame.cosPhi > NaN)
             Frame.effectivCosPhi = Frame.deviceSpecificOffset + Frame.plantSpecificOffset + Frame.cosPhi;
-        }
         break;
     default:;
+        MessageOutput.printf("%s unknown option cos phi: %d\r\n", TAG, Frame.optionCosPhi);
     }
-    if (Frame.optionCosPhi >= 0) MessageOutput.printf("%s Effektiver Cos Phi : %.2f°\r\n", TAG, Frame.effectivCosPhi);
+
+    if (_verboseLogging) {
+        if (Frame.optionCosPhi > NaN) MessageOutput.printf("Effektive Cos Phi : %.2f°\r\n", Frame.effectivCosPhi);
+    }
+
+    state=0;
+    index=1;
+    _allParametersRead = true;
+
+    return true;
 }
 
 void REFUsolRS485ReceiverClass::deinit(void)
@@ -174,65 +264,168 @@ void REFUsolRS485ReceiverClass::loop()
         return;
     }
 
+    if (readParameters()) {
+        setLastUpdate();
+        return;
+    }
+
     static int state = 0;
+    static int state2 = 0;
     switch (state) {
     case 0:
     case 5:
-        MessageOutput.printf("%s DC Spannungen\r\n", TAG);
-        getDCpower(adr);
-        getDCcurrent(adr);
-        getDCvoltage(adr);
-        getACpower(adr);
-        state++;
+        if (_verboseLogging) MessageOutput.printf("%s get ", TAG);
+        switch (state2) {
+            case 0:
+                if (_verboseLogging) MessageOutput.println("DC power");
+                getDCpower(adr);
+                state2++;
+                break;
+            case 1:
+                if (_verboseLogging)MessageOutput.println("DC current");
+                getDCcurrent(adr);
+                state2++;
+                break;
+            case 2:
+                if (_verboseLogging)MessageOutput.println("DC voltage");
+                getDCvoltage(adr);
+                state2++;
+                break;
+            case 3:
+                if (_verboseLogging)MessageOutput.println("AC power");
+                getACpower(adr);
+                state2=0;
+                state++;
+        }
         break;
 
     case 1:
     case 6:
-        MessageOutput.printf("%s AC Spannungen\r\n", TAG);
-        getACvoltage(adr, 0);
-        getACvoltage(adr, 1);
-        getACvoltage(adr, 2);
-        getACvoltage(adr, 3);
-        state++;
+        if (_verboseLogging) MessageOutput.printf("%s get AC voltage index: %d\r\n", TAG, state2);
+        switch (state2) {
+            case 0:
+                getACvoltage(adr, 0);
+                state2++;
+                break;
+            case 1:
+                getACvoltage(adr, 1);
+                state2++;
+                break;
+            case 2:
+                getACvoltage(adr, 2);
+                state2++;
+                break;
+            case 3:
+                getACvoltage(adr, 3);
+                state2=0;
+                state++;
+        }
         break;
 
     case 2:
     case 7:
-        MessageOutput.printf("%s AC Ströme\r\n", TAG);
-        getACcurrent(adr, 0);
-        getACcurrent(adr, 1);
-        getACcurrent(adr, 2);
-        getACcurrent(adr, 3);
-        state++;
+        if (_verboseLogging) MessageOutput.printf("%s get AC current index: %d\r\n", TAG, state2);
+        switch (state2) {
+            case 0:
+                getACcurrent(adr, 0);
+                state2++;
+                break;
+            case 1:
+                getACcurrent(adr, 1);
+                state2++;
+                break;
+            case 2:
+                getACcurrent(adr, 2);
+                state2++;
+                break;
+            case 3:
+                getACcurrent(adr, 3);
+                state2=0;
+                state++;
+        }
         break;
 
     case 3:
     case 8:
-        MessageOutput.printf("%s Phasen Frequenzen\r\n", TAG);
-        getACfrequency(adr, 1);
-        getACfrequency(adr, 2);
-        getACfrequency(adr, 3);
-        state++;
+        if (_verboseLogging) MessageOutput.printf("%s get phase frequency index: %d\r\n", TAG, state2);
+        switch (state2) {
+            case 0:
+                getACfrequency(adr, 1);
+                state2++;
+                break;
+            case 1:
+                getACfrequency(adr, 2);
+                state2++;
+                break;
+            case 2:
+                getACfrequency(adr, 3);
+                state2=0;
+                state++;
+        }
         break;
 
     case 4:
     case 9:
-        MessageOutput.printf("%s Yield Solar Power\r\n", TAG);
-        getYieldDay(adr);
-        getYieldMonth(adr);
-        getYieldYear(adr);
-        getYieldTotal(adr);
-        getTotalOperatingHours(adr);
-        state++;
+        if (_verboseLogging) MessageOutput.printf("%s get yield solar power ", TAG);
+        switch (state2) {
+            case 0:
+                if (_verboseLogging) MessageOutput.println("today");
+                getYieldDay(adr);
+                state2++;
+                break;
+            case 1:
+                if (_verboseLogging) MessageOutput.println("month");
+                getYieldMonth(adr);
+                state2++;
+                break;
+            case 2:
+                if (_verboseLogging) MessageOutput.println("year");
+                getYieldYear(adr);
+                state2++;
+                break;
+            case 3:
+                if (_verboseLogging) MessageOutput.println("total");
+                getYieldTotal(adr);
+                state2=0;
+                state++;
+        }
         break;
 
     case 10:
-        getTemperatursensor(adr, 1);
-        getTemperatursensor(adr, 2);
-        getTemperatursensor(adr, 3);
-        getTemperatursensor(adr, 4);
-        state=0;
+        if (_verboseLogging) MessageOutput.printf("%s get temperature sensor index: %d\r\n", TAG, state2);
+        switch (state2) {
+            case 0:
+                getTemperatursensor(adr, 1);
+                state2++;
+                break;
+            case 1:
+                getTemperatursensor(adr, 2);
+                state2++;
+                break;
+            case 2:
+                getTemperatursensor(adr, 3);
+                state2++;
+                break;
+            case 3:
+                getTemperatursensor(adr, 4);
+                state2=0;
+                state++;
+        }
         break;
+    case 11:
+        if (_verboseLogging) MessageOutput.printf("%s get error code\r\n", TAG);
+        getFehlercode(adr);
+        state++;
+        break;
+    case 12:
+        if (_verboseLogging) MessageOutput.printf("%s get actual status\r\n", TAG);
+        getActualStatus(adr);
+        state++;
+        break;
+    case 13:
+        if (_verboseLogging) MessageOutput.printf("%s get total operating hours\r\n", TAG);
+        getTotalOperatingHours(adr);
+        state=0;
     }
 
     setLastUpdate();
@@ -242,42 +435,73 @@ void REFUsolRS485ReceiverClass::loop()
 
 void REFUsolRS485ReceiverClass::debugRawTelegram(TELEGRAM_t* t, uint8_t len)
 {
+    if (!_verboseLogging) return;
+
     if (DebugRawTelegram) {
-        for (uint8_t i = 0; i < len; i++) {
-            MessageOutput.printf("%02X ", t->buffer[i]);
+        if (t->STX == 0x02) {   // valid frame received
+            MessageOutput.printf("STX: 0X%02X LGE: %u, ADR: %d, ", t->STX, t->LGE, t->ADR);
+            uint16_t PNU = ((rTelegram.PKE.H & 0xF) << 8) | rTelegram.PKE.L;
+            uint8_t TaskID = (t->PKE.H)>>4;
+            uint8_t SP = ((t->PKE.H & 0x08) >> 3);
+            MessageOutput.printf("PKE: 0X%02X%02X, TaskID: %1X, SP: %u, PNU: %u, ", t->PKE.H, t->PKE.L, TaskID, SP, PNU);
+            MessageOutput.printf("IND: 0X%02X%02X, ", t->IND.H, t->IND.L);
+            MessageOutput.printf("PWE:[0X%02X%02X, ", t->PWE1.H, t->PWE1.L);
+            MessageOutput.printf("0X%02X%02X] \r\n", t->PWE2.H, t->PWE2.L);
+
+            for (uint8_t i = 11; i < len; i++) {
+                MessageOutput.printf("%02X ", t->buffer[i]);
+            }
+            MessageOutput.println();
+
+        } else {
+            for (uint8_t i = 0; i < len; i++) {
+                MessageOutput.printf("%02X ", t->buffer[i]);
+            }
+            MessageOutput.println();
         }
-        MessageOutput.println();
     }
 }
 
 float REFUsolRS485ReceiverClass::PWE2Float(float scale)
 {
-    return static_cast<float>((rTelegram.PWE1.H << 24) + (rTelegram.PWE1.L << 16) + (rTelegram.PWE2.H << 8) + (rTelegram.PWE2.L)) * scale;
+    LittleEndianDoubleWord_t value;
+
+    value.HH = rTelegram.PWE1.H;
+    value.HL = rTelegram.PWE1.L;
+    value.LH = rTelegram.PWE2.H;
+    value.LL = rTelegram.PWE2.L;
+    return static_cast<float>(value.DW) * scale;
 }
 
 uint32_t REFUsolRS485ReceiverClass::PWE2Uint32(void)
 {
-    return (rTelegram.PWE1.H << 24) + (rTelegram.PWE1.L << 16) + (rTelegram.PWE2.H << 8) + (rTelegram.PWE2.L);
+    LittleEndianDoubleWord_t value;
+
+    value.HH = rTelegram.PWE1.H;
+    value.HL = rTelegram.PWE1.L;
+    value.LH = rTelegram.PWE2.H;
+    value.LL = rTelegram.PWE2.L;
+    return value.DW;
 }
 
 void REFUsolRS485ReceiverClass::computeTelegram(uint8_t adr, bool mirror, uint16_t TaskID, uint16_t PNU, int16_t IND)
 {
-    compute(adr, mirror, TaskID, PNU, IND, reinterpret_cast<void*>(NULL), PZD_ANZ,  reinterpret_cast<void*>(NULL));
+    compute(adr, mirror, TaskID, 0, PNU, IND, reinterpret_cast<void*>(NULL), PZD_ANZ,  reinterpret_cast<void*>(NULL));
 }
 void REFUsolRS485ReceiverClass::computeTelegram(uint8_t adr, bool mirror, uint16_t TaskID, uint16_t PNU, int16_t IND, void* PWE)
 {
-    compute(adr, mirror, TaskID, PNU, IND, PWE, PZD_ANZ, reinterpret_cast<void*>(NULL));
+    compute(adr, mirror, TaskID, 0, PNU, IND, PWE, PZD_ANZ, reinterpret_cast<void*>(NULL));
 }
 void REFUsolRS485ReceiverClass::computeTelegram(uint8_t adr, bool mirror, uint16_t TaskID, uint16_t PNU, int16_t IND, void* PWE, void* PZD)
 {
-    compute(adr, mirror, TaskID, PNU, IND, PWE, PZD_ANZ, PZD);
+    compute(adr, mirror, TaskID, 0, PNU, IND, PWE, PZD_ANZ, PZD);
 }
 void REFUsolRS485ReceiverClass::computeTelegram(uint8_t adr, bool mirror, uint16_t TaskID, uint16_t PNU, int16_t IND, void* PWE, uint8_t pzd_anz, void* PZD)
 {
-    compute(adr, mirror, TaskID, PNU, IND, PWE, pzd_anz, PZD);
+    compute(adr, mirror, TaskID, 0, PNU, IND, PWE, pzd_anz, PZD);
 }
 
-void REFUsolRS485ReceiverClass::compute(uint8_t adr, bool mirror, uint16_t TaskID, uint16_t PNU, int16_t IND, void* PWE, uint8_t pzd_anz, void* PZD)
+void REFUsolRS485ReceiverClass::compute(uint8_t adr, bool mirror, uint16_t TaskID, uint8_t SP, uint16_t PNU, int16_t IND, void* PWE, uint8_t pzd_anz, void* PZD)
 {
     uint8_t bcc = 0;
     uint8_t lge = 0;
@@ -285,15 +509,14 @@ void REFUsolRS485ReceiverClass::compute(uint8_t adr, bool mirror, uint16_t TaskI
     adr &= 0b00011111;
     sTelegram.STX = 0x02;
     sTelegram.ADR = adr | (mirror ? 0b01000000 : 0b00000000);
-    lge += 1;
-    lge += 1;
-
-    sTelegram.PKE.H = (PNU | (TaskID & 0xF) << 12) >> 8;
-    sTelegram.PKE.L = (PNU | (TaskID & 0xF) << 12) & 0xFF;
     lge += 2;
 
-    sTelegram.IND.H = (IND | (TaskID & 0x100)) >> 8;
-    sTelegram.IND.L = (IND | (TaskID & 0x100)) & 0xFF;
+    sTelegram.PKE.H = ((PNU & 0b0000011111111111) | (SP << 11) | ((TaskID & 0b1111) << 12)) >> 8;
+    sTelegram.PKE.L =  (PNU & 0b0000011111111111) & 0xFF;
+    lge += 2;
+
+    sTelegram.IND.H = (IND | (TaskID & 0b1100000000)) >> 8;
+    sTelegram.IND.L = IND & 0xFF;
     lge += 2;
 
     switch (TaskID) {
@@ -306,28 +529,29 @@ void REFUsolRS485ReceiverClass::compute(uint8_t adr, bool mirror, uint16_t TaskI
     case 0b1100:    // Change PWE (array word), and store in the EEPROM 1), 2)
     case 0b1110:    // Change PWE (word), and store in the EEPROM 2)
         if (PKW_ANZ > 3) {
-            sTelegram.buffer[++lge] = 0;
-            sTelegram.buffer[++lge] = 0;
+            sTelegram.buffer[++lge] = 0;    // PWE1.H
+            sTelegram.buffer[++lge] = 0;    // PWE1.L
         }
         if ((TaskID == 0b0000) || (TaskID == 0b0001) || (TaskID == 0b0110) || (TaskID == 0b1001)) {
-            sTelegram.buffer[++lge] = 0;
-            sTelegram.buffer[++lge] = 0;
+            sTelegram.buffer[++lge] = 0;    // PWE2.H
+            sTelegram.buffer[++lge] = 0;    // PWE2.L
         } else {
-            sTelegram.buffer[++lge] = (*(reinterpret_cast<uint16_t*>(PWE))) >> 8;
-            sTelegram.buffer[++lge] = (*(reinterpret_cast<uint16_t*>(PWE))) & 0xFF;
+            sTelegram.buffer[++lge] = (*(reinterpret_cast<LittleEndianWord_t*>(PWE))).H;   // PWE2.H
+            sTelegram.buffer[++lge] = (*(reinterpret_cast<LittleEndianWord_t*>(PWE))).L; // PWE2.L
         }
         break;
 
     case 0b0011:    // Change PWE (double word)
     case 0b1000:    // ChangePWEarray
     case 0b1101:    // Change PWE (double word), and store in EEPROM 2)
-        sTelegram.buffer[++lge] = (*(reinterpret_cast<uint32_t*>(PWE))) >> 24;
-        sTelegram.buffer[++lge] = (*(reinterpret_cast<uint32_t*>(PWE))) >> 16;
-        sTelegram.buffer[++lge] = (*(reinterpret_cast<uint32_t*>(PWE))) >> 8;
-        sTelegram.buffer[++lge] = (*(reinterpret_cast<uint32_t*>(PWE))) & 0xFF;
+        sTelegram.buffer[++lge] = (*(reinterpret_cast<LittleEndianDoubleWord_t*>(PWE))).HH;
+        sTelegram.buffer[++lge] = (*(reinterpret_cast<LittleEndianDoubleWord_t*>(PWE))).HL;
+        sTelegram.buffer[++lge] = (*(reinterpret_cast<LittleEndianDoubleWord_t*>(PWE))).LH;
+        sTelegram.buffer[++lge] = (*(reinterpret_cast<LittleEndianDoubleWord_t*>(PWE))).LL;
         break;
 
-    case 0b100001111:   // Change text
+    case 0b1000001111:   // Change first text field
+    case 0b1100001111:   // Change second text field
         {
         bool flag = false;
         uint8_t* s =  reinterpret_cast<uint8_t*>(PWE);
@@ -340,7 +564,8 @@ void REFUsolRS485ReceiverClass::compute(uint8_t adr, bool mirror, uint16_t TaskI
                 sTelegram.buffer[++lge] = 0x20;
         }
     } break;
-    case 0b000001111:   // Request text
+    case 0b0000001111:   // Request first text field
+    case 0b0100001111:   // Request second text field
         sTelegram.buffer[++lge] = 0;
         sTelegram.buffer[++lge] = 0;
         if (PKW_ANZ == 4) {
@@ -352,8 +577,8 @@ void REFUsolRS485ReceiverClass::compute(uint8_t adr, bool mirror, uint16_t TaskI
 
     for (int i = 0; i < pzd_anz; i++) {
         if (PZD) {
-            sTelegram.buffer[++lge] = (*(reinterpret_cast<uint32_t*>(PZD))) >> 8;
-            sTelegram.buffer[++lge] = (*(reinterpret_cast<uint32_t*>(PZD))) & 0xFF;
+            sTelegram.buffer[++lge] = (*(reinterpret_cast<LittleEndianWord_t*>(PZD))).H;
+            sTelegram.buffer[++lge] = (*(reinterpret_cast<LittleEndianWord_t*>(PZD))).L;
         } else {
             sTelegram.buffer[++lge] = 0;
             sTelegram.buffer[++lge] = 0;
@@ -365,17 +590,21 @@ void REFUsolRS485ReceiverClass::compute(uint8_t adr, bool mirror, uint16_t TaskI
     }
     sTelegram.BCC = bcc;
 
-    if (DebugDecodedTelegram) {
-        MessageOutput.printf("%s ADR: %02X, LGE: %02X, PKE: %02X%02X, IND: %02X%02X", TAG,
+    if (_verboseLogging && DebugDecodedTelegram) {
+        MessageOutput.printf("%s ADR: %u, LGE: %u, TaskID: %1X, SP: %u, PNU: %u, PKE: 0x%02X%02X, IND: 0x%02X%02X", TAG,
             sTelegram.ADR,
             sTelegram.LGE,
+            (sTelegram.PKE.H>>4) & 0xF, // TaskID
+            (sTelegram.PKE.H & 0x08)>>3,    // SP bit
+            PNU,
             sTelegram.PKE.H, sTelegram.PKE.L,
             sTelegram.IND.H, sTelegram.IND.L);
         if (TaskID <= RequestText) {
-            MessageOutput.printf(", PWE1: %02X%02X", sTelegram.PWE1.H, sTelegram.PWE1.L);
+            MessageOutput.printf(", PWE:[0x%02X%02X", sTelegram.PWE1.H, sTelegram.PWE1.L);
             if (PKW_ANZ == 4) {
-                MessageOutput.printf(", PWE2: %02X%02X", sTelegram.PWE2.H, sTelegram.PWE2.L);
+                MessageOutput.printf(" 0x%02X%02X", sTelegram.PWE2.H, sTelegram.PWE2.L);
             }
+            MessageOutput.print("]");
 
         } else {
             MessageOutput.print(", PWE: [");
@@ -391,7 +620,7 @@ void REFUsolRS485ReceiverClass::compute(uint8_t adr, bool mirror, uint16_t TaskI
             for (int i = 0; i < pzd_anz; i++) {
                 if (i > 0)
                     MessageOutput.write(' ');
-                MessageOutput.printf("%02X%02X", sTelegram.buffer[idx + i * 2 + 1], sTelegram.buffer[idx + i * 2]);
+                MessageOutput.printf("0x%02X%02X", sTelegram.buffer[idx + i * 2 + 1], sTelegram.buffer[idx + i * 2]);
             }
             MessageOutput.write(']');
         }
@@ -400,18 +629,21 @@ void REFUsolRS485ReceiverClass::compute(uint8_t adr, bool mirror, uint16_t TaskI
 
     sendTelegram();
 
-    parse();
+//    parse();
 }
 
 void REFUsolRS485ReceiverClass::sendTelegram(void)
 {
-    //  int StartInterval = (int)((1000000.0*2*(1+8+1+1))/RS485BaudRate+0.5);
-    //  digitalWrite(RTSPin, RS485Transmit);
-    //  delayMicroseconds(StartInterval);
+    if (_rtsPin >= 0) {
+        digitalWrite(_rtsPin, HIGH);
+        delayMicroseconds(_StartInterval);
+    }
+
     _upSerial->write(sTelegram.buffer, sTelegram.LGE + 1);
     _upSerial->write(sTelegram.BCC);
     _upSerial->flush();
-    //  digitalWrite(RTSPin, RS485Receive);
+
+    if (_rtsPin >= 0) digitalWrite(_rtsPin, LOW);
 }
 
 uint8_t REFUsolRS485ReceiverClass::receiveTelegram(void)
@@ -489,6 +721,18 @@ void REFUsolRS485ReceiverClass::DebugNoResponse(uint16_t p)
 
 void REFUsolRS485ReceiverClass::parse(void)
 {
+// Aktueller Zustand
+static constexpr char const *StringActualStatus[8] = {
+  "Initialization",
+  "Off",
+  "Activation",
+  "Standby",
+  "Operation",
+  "Shutdown",
+  "Short outage",
+  "Disturbance"
+};
+
     if (!receiveTelegram()) {
         // DebugNoResponse(p);
         return;
@@ -498,164 +742,192 @@ void REFUsolRS485ReceiverClass::parse(void)
     PNU = (rTelegram.PKE.H & 0xF) << 8;
     PNU |= rTelegram.PKE.L;
 
+    LittleEndianWord_t IND;
+    IND.L = rTelegram.IND.L;
+    IND.H = rTelegram.IND.H;
+
     switch (PNU) {
     case 1104:
-        Frame.dcVoltage = PWE2Float(1.0);
-        MessageOutput.printf("%s DC Voltage: %.1f V\r\n", TAG, Frame.dcVoltage);
+        Frame.dcVoltage = PWE2Float(0.1);
+        if (_verboseLogging) MessageOutput.printf("%s DC voltage: %.1f V\r\n", TAG, Frame.dcVoltage);
         break;
     case 1105:
         Frame.dcCurrent = PWE2Float(0.1);
-        MessageOutput.printf("%s DC Current: %.1f V\r\n", TAG, Frame.dcCurrent);
+        if (_verboseLogging) MessageOutput.printf("%s DC current: %.1f V\r\n", TAG, Frame.dcCurrent);
         break;
     case 1106:
-        Frame.acPower = PWE2Float(1.0);
-        MessageOutput.printf("%s AC Power: %.0f W\r\n", TAG, Frame.acPower);
+        Frame.acPower = PWE2Float(0.1);
+        if (_verboseLogging) MessageOutput.printf("%s AC power: %.0f W\r\n", TAG, Frame.acPower);
         break;
     case 1107:
-        Frame.dcPower = PWE2Float(1.0);
-        MessageOutput.printf("%s DC Power: %.0f W\r\n", TAG, Frame.dcPower);
+        Frame.dcPower = PWE2Float(0.1);
+        if (_verboseLogging) MessageOutput.printf("%s DC power: %.0f W\r\n", TAG, Frame.dcPower);
         break;
     case 1123:
         Frame.acVoltage = PWE2Float(0.1);
-        MessageOutput.printf("%s L1-L3 (eff): %.1f V\r\n", TAG, Frame.acVoltage);
+        if (_verboseLogging) MessageOutput.printf("%s L1-L3 voltage (eff): %.1f V\r\n", TAG, Frame.acVoltage);
         break;
     case 1121:
-        switch (rTelegram.IND.W & 0x0F) {
+        switch (IND.W) {
         case 0:
             Frame.acVoltageL1 = PWE2Float(0.1);
-            MessageOutput.printf("%s L1         : %.1f V\r\n", TAG, Frame.acVoltageL1);
+            if (_verboseLogging) MessageOutput.printf("%s L1 voltage: %.1f V\r\n", TAG, Frame.acVoltageL1);
             break;
         case 1:
             Frame.acVoltageL2 = PWE2Float(0.1);
-            MessageOutput.printf("%s L2         : %.1f V\r\n", TAG, Frame.acVoltageL2);
+            if (_verboseLogging) MessageOutput.printf("%s L2 voltage: %.1f V\r\n", TAG, Frame.acVoltageL2);
             break;
         case 2:
             Frame.acVoltageL3 = PWE2Float(0.1);
-            MessageOutput.printf("%s L3         : %.1f V\r\n", TAG, Frame.acVoltageL3);
+            if (_verboseLogging) MessageOutput.printf("%s L3 voltage: %.1f V\r\n", TAG, Frame.acVoltageL3);
             break;
+        default:;
+            MessageOutput.printf("%s undefined AC voltage index: %d\r\n", TAG, IND.W);
         }
         break;
     case 1124:
         Frame.acCurrent = PWE2Float(0.1);
-        MessageOutput.printf("%s Summe L1-L3: %.1f A\r\n", TAG, Frame.acCurrent);
+        if (_verboseLogging) MessageOutput.printf("%s L1-L3 sum current: %.1f A\r\n", TAG, Frame.acCurrent);
         break;
     case 1141:
-        switch (rTelegram.IND.W & 0x0F) {
+        switch (IND.W) {
         case 0:
             Frame.acCurrentL1 = PWE2Float(0.1);
-            MessageOutput.printf("%s L1         : %.1f A\r\n", TAG, Frame.acCurrentL1);
+            if (_verboseLogging) MessageOutput.printf("%s L1 current: %.1f A\r\n", TAG, Frame.acCurrentL1);
             break;
         case 1:
             Frame.acCurrentL2 = PWE2Float(0.1);
-            MessageOutput.printf("%s L2         : %.1f A\r\n", TAG, Frame.acCurrentL2);
+            if (_verboseLogging) MessageOutput.printf("%s L2 current: %.1f A\r\n", TAG, Frame.acCurrentL2);
             break;
         case 2:
             Frame.acCurrentL3 = PWE2Float(0.1);
-            MessageOutput.printf("%s L3         : %.1f A\r\n", TAG, Frame.acCurrentL3);
+            if (_verboseLogging) MessageOutput.printf("%s L3 current: %.1f A\r\n", TAG, Frame.acCurrentL3);
             break;
+        default:;
+            if (_verboseLogging) MessageOutput.printf("%s undefined AC current index: %d\r\n", TAG, IND.W);
         }
         break;
     case 1122:
-        switch (rTelegram.IND.W & 0x0F) {
+        switch (IND.W) {
         case 0:
-            Frame.freqL1 = PWE2Float(0.1);
-            MessageOutput.printf("%s L1 : %.1f Hz\r\n", TAG, Frame.freqL1);
+            Frame.freqL1 = PWE2Float(0.01);
+            if (_verboseLogging) MessageOutput.printf("%s L1: %.2f Hz\r\n", TAG, Frame.freqL1);
             break;
         case 1:
-            Frame.freqL2 = PWE2Float(0.1);
-            MessageOutput.printf("%s L2 : %.1f Hz\r\n", TAG, Frame.freqL2);
+            Frame.freqL2 = PWE2Float(0.01);
+            if (_verboseLogging) MessageOutput.printf("%s L2: %.2f Hz\r\n", TAG, Frame.freqL2);
             break;
         case 2:
-            Frame.freqL3 = PWE2Float(0.1);
-            MessageOutput.printf("%s L3 : %.1f Hz\r\n", TAG, Frame.freqL3);
+            Frame.freqL3 = PWE2Float(0.01);
+            if (_verboseLogging) MessageOutput.printf("%s L3: %.2f Hz\r\n", TAG, Frame.freqL3);
             break;
+        default:;
+            MessageOutput.printf("%s undefined frequency index: %d\r\n", TAG, IND.W);
         }
         break;
     case 1150:
-        Frame.YieldDay = PWE2Float(0.001);
-        MessageOutput.printf("%s Today       : %.1f W\r\n", TAG, Frame.YieldDay);
+        Frame.YieldDay = PWE2Float(0.1);
+        if (_verboseLogging) MessageOutput.printf("%s Yield today: %.1f W\r\n", TAG, Frame.YieldDay);
         break;
     case 1151:
-        Frame.YieldTotal = PWE2Float(0.001);
-        MessageOutput.printf("%s Total       : %.3f kWh\r\n", TAG, Frame.YieldTotal);
+        Frame.YieldTotal = PWE2Float(0.1);
+        if (_verboseLogging) MessageOutput.printf("%s Yield total: %.3f kWh\r\n", TAG, Frame.YieldTotal);
         break;
     case 1152:
         Frame.totalOperatingHours = PWE2Uint32();
-        MessageOutput.printf("%s Gesamtbetriebsstunden: %u\r\n", TAG, Frame.totalOperatingHours);
+        if (_verboseLogging) MessageOutput.printf("%s Total operating hours: %u:%u\r\n", TAG, Frame.totalOperatingHours/60, Frame.totalOperatingHours%60);
         break;
     case 1153:
-        Frame.YieldMonth = PWE2Float(0.001);
-        MessageOutput.printf("%s Actual month: %.3f kWh\r\n", TAG, Frame.YieldMonth);
+        Frame.YieldMonth = PWE2Float(0.1);
+        if (_verboseLogging) MessageOutput.printf("%s Yield actual month: %.3f kWh\r\n", TAG, Frame.YieldMonth);
         break;
     case 1154:
-        Frame.YieldYear = PWE2Float(0.001);
-        MessageOutput.printf("%s Actual year : %.3f kWh\r\n", TAG, Frame.YieldYear);
+        Frame.YieldYear = PWE2Float(0.1);
+        if (_verboseLogging) MessageOutput.printf("%s Yield actual year: %.3f kWh\r\n", TAG, Frame.YieldYear);
         break;
     case 1155:
-        Frame.pvPeak = PWE2Float(0.001);
-        MessageOutput.printf("%s PV Nennleistung: %.3f kW\r\n", TAG, Frame.pvPeak);
+        Frame.pvPeak = PWE2Float(0.1);
+        if (_verboseLogging) MessageOutput.printf("%s PV peak: %.3f kW\r\n", TAG, Frame.pvPeak);
         break;
     case 1162:
-        Frame.pvLimit = PWE2Float(0.001);
-        MessageOutput.printf("%s PV Leistungsbegrenzung: %.1f%%\r\n", TAG, Frame.pvLimit);
+        Frame.pvLimit = PWE2Float(0.1);
+        if (_verboseLogging) MessageOutput.printf("%s PV limited: %.1f%%\r\n", TAG, Frame.pvLimit);
         break;
     case 51:
         Frame.deviceSpecificOffset = PWE2Float(0.01);
-        MessageOutput.printf("%s Gerätespezifischer Offset zum Winkelversatz : %.2f°\r\n", TAG, Frame.deviceSpecificOffset);
+        if (_verboseLogging) MessageOutput.printf("%s Device specific offset: %.2f°\r\n", TAG, Frame.deviceSpecificOffset);
         break;
     case 1164:
         Frame.optionCosPhi = PWE2Uint32();
-        MessageOutput.printf("%s Cos Phi : %.2f°\r\n", TAG, Frame.cosPhi);
+        if (_verboseLogging) MessageOutput.printf("%s Option Cos Phi: %d\r\n", TAG, Frame.optionCosPhi);
         break;
     case 1165:
         Frame.plantSpecificOffset = PWE2Float(0.01);
-        MessageOutput.printf("%s Anlagenspezifischer Offset zum Winkelversatz : %.2f°\r\n", TAG, Frame.plantSpecificOffset);
+        if (_verboseLogging) MessageOutput.printf("%s Plant specfic offset: %.2f°\r\n", TAG, Frame.plantSpecificOffset);
         break;
     case 1166:
         Frame.fixedOffset = PWE2Float(0.01);
-        MessageOutput.printf("%s Fixer Offset zum Winkelversatz : %.2f°\r\n", TAG, Frame.fixedOffset);
+        if (_verboseLogging) MessageOutput.printf("%s Fixed offset: %.2f°\r\n", TAG, Frame.fixedOffset);
         break;
     case 1167:
         Frame.variableOffset = PWE2Float(0.01);
-        MessageOutput.printf("%s Variabler Offset zum Winkelversatz : %.2f°\r\n", TAG, Frame.variableOffset);
+        if (_verboseLogging) MessageOutput.printf("%s Variable offset: %.2f°\r\n", TAG, Frame.variableOffset);
+        break;
+    case 1168:
+        if (IND.W <= 10) {
+            Frame.cosPhiPvPeak[IND.W] = PWE2Float(0.01);
+            if (_verboseLogging) MessageOutput.printf("%s PW peak Cos Phi[%d]: %.2f°\r\n", TAG, IND.W, Frame.cosPhiPvPeak[IND.W]);
+        } else {
+            MessageOutput.printf("%s Cos Phi of PV peak index out of range: %d\r\n", TAG, IND.W);
+        }
+
         break;
     case 1169:
         Frame.cosPhi = PWE2Float(0.01);
+        if (_verboseLogging) MessageOutput.printf("%s Cos Phi: %.2f°\r\n", TAG, Frame.cosPhi);
         break;
     case 1193:
         Frame.temperatureExtern = PWE2Float(0.1);
-        MessageOutput.printf("%s Temperatur extern Sensor %.1f°C\r\n", TAG, Frame.temperatureExtern);
+        if (_verboseLogging) MessageOutput.printf("%s Temperatur extern Sensor %.1f°C\r\n", TAG, Frame.temperatureExtern);
         break;
     case 92:
-        switch (rTelegram.IND.W & 0x0F) {
+        if (_verboseLogging) MessageOutput.printf("%s Temperature ", TAG);
+        switch (IND.W) {
         case 0:
             Frame.temperatureRight = PWE2Float(0.1);
-            MessageOutput.printf("%s Kühlkörper rechts %.1f°C\r\n", TAG, Frame.temperatureRight);
+            if (_verboseLogging) MessageOutput.printf("heat sink right %.1f°C\r\n", Frame.temperatureRight);
             break;
         case 1:
             Frame.temperatureTopLeft = PWE2Float(0.1);
-            MessageOutput.printf("%s Temperatur Gerät innen oben links: %.1f°C\r\n", TAG, Frame.temperatureTopLeft);
+            if (_verboseLogging) MessageOutput.printf("device internal upper left: %.1f°C\r\n", Frame.temperatureTopLeft);
             break;
         case 2:
             Frame.temperatureBottomRight = PWE2Float(0.1);
-            MessageOutput.printf("%s Temperatur Gerät innen unten rechts: %.1f°C\r\n", TAG, Frame.temperatureBottomRight);
+            if (_verboseLogging) MessageOutput.printf("device internal bottom right: %.1f°C\r\n", Frame.temperatureBottomRight);
             break;
         case 3:
             Frame.temperatureLeft = PWE2Float(0.1);
-            MessageOutput.printf("%s Temperatur Kühlkörper links: %.1f°C\r\n", TAG, Frame.temperatureLeft);
+            if (_verboseLogging) MessageOutput.printf("heat sink left: %.1f°C\r\n", Frame.temperatureLeft);
             break;
+        default:;
+            MessageOutput.printf("\r\n%s undefined sensor index: %d\r\n", TAG, IND.W);
         }
         break;
     case 500:
-        MessageOutput.printf("%s Device Error: %d\r\n", TAG, PWE2Uint32());
+        Frame.error = PWE2Uint32();
+        if (_verboseLogging) MessageOutput.printf("%s Device Error: 0x%06X\r\n", TAG, Frame.error);
         break;
     case 501:
-        MessageOutput.printf("%s Actual Status: %d\r\n", TAG, PWE2Uint32());
+        Frame.status = PWE2Uint32();
+        if (_verboseLogging) MessageOutput.printf("%s Actual Status: %d - %s\r\n", TAG,
+            Frame.status,
+            (Frame.status <= 7) ? StringActualStatus[Frame.status] : "unkown status");
         break;
     case 2000:
-        MessageOutput.printf("%s actual Password: %d\r\n", TAG, PWE2Uint32());
+        if (_verboseLogging) MessageOutput.printf("%s actual Password: %d\r\n", TAG, PWE2Uint32());
         break;
     default:;
+        MessageOutput.printf("%s undefined PNU: %d\r\n", TAG, PNU);
     }
 }
 
@@ -789,9 +1061,14 @@ void REFUsolRS485ReceiverClass::getOptionCosPhi(uint8_t adr)
 }
 
 // get Cos Phi in 0.01°
-void REFUsolRS485ReceiverClass::getCosPhi(uint8_t adr)
+void REFUsolRS485ReceiverClass::getCosPhi(uint8_t adr, uint16_t ind)
 {
-    computeTelegram(adr, false, RequestPWE, 1169, 0);
+    if (ind == 0) {
+        computeTelegram(adr, false, RequestPWE, 1169, 0);
+    } else {
+        if (ind > 11) ind = 11;
+        computeTelegram(adr, false, RequestPWE, 1168, ind - 1);
+    }
 }
 
 /*
@@ -813,12 +1090,12 @@ void REFUsolRS485ReceiverClass::getTemperatursensor(uint8_t adr, uint16_t ind)
 
 void REFUsolRS485ReceiverClass::getFehlercode(uint8_t adr)
 {
-    computeTelegram(adr, false, RequestPWEarray, 500, 0);
+    computeTelegram(adr, false, RequestPWE, 500, 0);
 }
 
 void REFUsolRS485ReceiverClass::getActualStatus(uint8_t adr)
 {
-    computeTelegram(adr, false, RequestPWEarray, 501, 0);
+    computeTelegram(adr, false, RequestPWE, 501, 0);
 }
 
 void REFUsolRS485ReceiverClass::getPassword(uint8_t adr)
@@ -931,7 +1208,7 @@ void REFUsolRS485ReceiverClass::generateJsonResponse(JsonVariant& root)
     addYieldValue(root, "YieldMonth", Frame.YieldMonth, "kWh", 3);
     addYieldValue(root, "YieldYear", Frame.YieldYear, "kWh", 3);
     addYieldValue(root, "YieldTotal", Frame.YieldTotal, "kWh", 3);
-    addYieldValue(root, "pvPeak", Frame.pvPeak, "kW", 3);
+    addYieldValue(root, "pvPeak", Frame.pvPeak, "kWp", 3);
     addYieldValue(root, "pvLimit", Frame.pvLimit, "kW", 3);
 
     /*

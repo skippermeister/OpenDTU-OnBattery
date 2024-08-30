@@ -20,7 +20,7 @@ void PowerMeterUdpSmaHomeManager::Soutput(int kanal, int index, int art, int tar
         char const* name, float value, uint32_t timestamp)
 {
     if (_verboseLogging) {
-        MessageOutput.printf("%s %s = %.1f (timestamp %d)\r\n", TAG, name, value, timestamp);
+        MessageOutput.printf("%s %s = %.1f (timestamp %u)\r\n", TAG, name, value, timestamp);
     }
 }
 

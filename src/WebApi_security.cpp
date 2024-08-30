@@ -4,7 +4,6 @@
  */
 #include "WebApi_security.h"
 #include "Configuration.h"
-#include "ErrorMessages.h"
 #include "WebApi.h"
 #include "WebApi_errors.h"
 #include "helper.h"
@@ -51,7 +50,7 @@ void WebApiSecurityClass::onSecurityPost(AsyncWebServerRequest* request)
 
     if (!root.containsKey("password")
         && root.containsKey("allow_readonly")) {
-        retMsg["message"] = ValuesAreMissing;
+        retMsg["message"] = "Values are missing!";
         retMsg["code"] = WebApiError::GenericValueMissing;
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;
@@ -82,7 +81,7 @@ void WebApiSecurityClass::onAuthenticateGet(AsyncWebServerRequest* request)
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& retMsg = response->getRoot();
-    retMsg["type"] = Success;
+    retMsg["type"] = "success";
     retMsg["message"] = "Authentication successful!";
     retMsg["code"] = WebApiError::SecurityAuthSuccess;
 

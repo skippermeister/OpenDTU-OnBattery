@@ -19,6 +19,18 @@
                             </td>
                         </tr>
                         <tr>
+                            <th>{{ $t('refusolinfo.USSaddress') }}</th>
+                            <td>{{ refusolDataList.uss_address }}</td>
+                        </tr>
+                        <tr>
+                            <th>{{ $t('refusolinfo.Baudrate') }}</th>
+                            <td>{{ refusolDataList.baudrate }}</td>
+                        </tr>
+                        <tr>
+                            <th>{{ $t('refusolinfo.Parity') }}</th>
+                            <td>{{ getParity(refusolDataList.parity) }}</td>
+                        </tr>
+                        <tr>
                             <th>{{ $t('refusolinfo.VerboseLogging') }}</th>
                             <td>
                                 <StatusBadge :status="refusolDataList.verbose_logging" true_text="refusolinfo.Enabled"
@@ -64,6 +76,12 @@ export default defineComponent({
                     this.refusolDataList = data;
                     this.dataLoading = false;
                 });
+        },
+        getParity(value: number) {
+            if (value == 0) return "None";
+            else if (value == 1) return "Even";
+            else if (value == 2) return "Odd";
+            else return "undefined";
         },
     },
 });

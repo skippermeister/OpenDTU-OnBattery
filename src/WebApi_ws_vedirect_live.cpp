@@ -28,7 +28,7 @@ void WebApiWsVedirectLiveClass::init(AsyncWebServer& server, Scheduler& schedule
     using std::placeholders::_5;
     using std::placeholders::_6;
 
-    server.on("/api/vedirectlivedata/status", HTTP_GET, std::bind(&WebApiWsVedirectLiveClass::onLivedataStatus, this, _1));
+    server.on(HttpLink, HTTP_GET, std::bind(&WebApiWsVedirectLiveClass::onLivedataStatus, this, _1));
 
     server.addHandler(&_ws);
     _ws.onEvent(std::bind(&WebApiWsVedirectLiveClass::onWebsocketEvent, this, _1, _2, _3, _4, _5, _6));
@@ -93,9 +93,9 @@ void WebApiWsVedirectLiveClass::sendDataTaskCb()
             }
 
         } catch (std::bad_alloc& bad_alloc) {
-            MessageOutput.printf("Calling /api/vedirectlivedata/status has temporarily run out of resources. Reason: \"%s\".\r\n", bad_alloc.what());
+            MessageOutput.printf("Calling %s temporarily out of resources. Reason: \"%s\".\r\n", HttpLink, bad_alloc.what());
         } catch (const std::exception& exc) {
-            MessageOutput.printf("Unknown exception in /api/vedirectlivedata/status. Reason: \"%s\".\r\n", exc.what());
+            MessageOutput.printf("Unknown exception in %s. Reason: \"%s\".\r\n", HttpLink, exc.what());
         }
 
     }
@@ -106,30 +106,10 @@ void WebApiWsVedirectLiveClass::sendDataTaskCb()
 }
 
 template <typename T>
-void addOutputValue(const JsonObject& output, std::string const& name,
+void addValue(const JsonObject& root, std::string const& name,
     T&& value, std::string const& unit, uint8_t precision)
 {
-    auto jsonValue = output[name];
-    jsonValue["v"] = value;
-    jsonValue["u"] = unit;
-    jsonValue["d"] = precision;
-}
-
-template <typename T>
-void addInputValue(const JsonObject& input, std::string const& name,
-    T&& value, std::string const& unit, uint8_t precision)
-{
-    auto jsonValue = input[name];
-    jsonValue["v"] = value;
-    jsonValue["u"] = unit;
-    jsonValue["d"] = precision;
-}
-
-template <typename T>
-void addDeviceValue(const JsonObject& device, std::string const& name,
-    T&& value, std::string const& unit, uint8_t precision)
-{
-    auto jsonValue = device[name];
+    auto jsonValue = root[name];
     jsonValue["v"] = value;
     jsonValue["u"] = unit;
     jsonValue["d"] = precision;
@@ -172,58 +152,58 @@ void WebApiWsVedirectLiveClass::populateJson(const JsonObject &root, const VeDir
     if (mpptData.hasLoad || mpptData.Capabilities.second & (1<<0)) {  // Load output present ?
         device["LOAD"] = mpptData.loadOutputState_LOAD ? "ON" : "OFF";
         if (mpptData.hasLoad || mpptData.Capabilities.second & (1<<12) ) // Load current IL in Text protocol
-            addDeviceValue(device, "IL", mpptData.loadCurrent_IL_mA/1000.0, "A", 2);
+            addValue(device, "IL", mpptData.loadCurrent_IL_mA/1000.0, "A", 2);
         else if (mpptData.LoadCurrent.first > 0)
-            addDeviceValue(device, "IL", mpptData.LoadCurrent.second / 1000.0, "A", 2);
+            addValue(device, "IL", mpptData.LoadCurrent.second / 1000.0, "A", 2);
         if (mpptData.LoadOutputVoltage.first > 0)
-            addDeviceValue(device, "LoadOutputVoltage", mpptData.LoadOutputVoltage.second / 1000.0, "V", 2);
+            addValue(device, "LoadOutputVoltage", mpptData.LoadOutputVoltage.second / 1000.0, "V", 2);
     }
     device["CS"]   = mpptData.getCsAsString();
     device["MPPT"] = mpptData.getMpptAsString();
     device["OR"]   = mpptData.getOrAsString();
     device["ERR"]  = mpptData.getErrAsString();
-    addDeviceValue(device, "HSDS", mpptData.daySequenceNr_HSDS, "d", 0);
+    addValue(device, "HSDS", mpptData.daySequenceNr_HSDS, "d", 0);
     if (mpptData.ChargerMaximumCurrent.first > 0)
-        addDeviceValue(device, "ChargerMaxCurrent", mpptData.ChargerMaximumCurrent.second / 1000.0, "A", 1);
+        addValue(device, "ChargerMaxCurrent", mpptData.ChargerMaximumCurrent.second / 1000.0, "A", 1);
     if (mpptData.VoltageSettingsRange.first > 0) {
         device["VoltageSettingsRange"] = String(mpptData.VoltageSettingsRange.second & 0xFF)
                 + " - "
                 + String(mpptData.VoltageSettingsRange.second >> 8) + String(" V");
-//        addDeviceValue(device, "VoltageSettingsMin", mpptData.VoltageSettingsRange.second & 0xFF, "V", 0);
-//        addDeviceValue(device, "VoltageSettingsMax", mpptData.VoltageSettingsRange.second >> 8, "V", 0);
+//        addValue(device, "VoltageSettingsMin", mpptData.VoltageSettingsRange.second & 0xFF, "V", 0);
+//        addValue(device, "VoltageSettingsMax", mpptData.VoltageSettingsRange.second >> 8, "V", 0);
     }
     if (mpptData.MpptTemperatureMilliCelsius.first > 0)
-        addDeviceValue(device, "MpptTemperature", mpptData.MpptTemperatureMilliCelsius.second / 1000.0, "°C", 1);
+        addValue(device, "MpptTemperature", mpptData.MpptTemperatureMilliCelsius.second / 1000.0, "°C", 1);
 
     // battery info
     const JsonObject output = values["output"].to<JsonObject>();
-    addOutputValue(output, "P", mpptData.batteryOutputPower_W, "W", 0);
-    addOutputValue(output, "V", mpptData.batteryVoltage_V_mV/1000.0, "V", 2);
-    addOutputValue(output, "I", mpptData.batteryCurrent_I_mA/1000.0, "A", 2);
-    addOutputValue(output, "E", mpptData.mpptEfficiency_Percent, "%", 1);
+    addValue(output, "P", mpptData.batteryOutputPower_W, "W", 0);
+    addValue(output, "V", mpptData.batteryVoltage_V_mV/1000.0, "V", 2);
+    addValue(output, "I", mpptData.batteryCurrent_I_mA/1000.0, "A", 2);
+    addValue(output, "E", mpptData.mpptEfficiency_Percent, "%", 1);
     if (mpptData.BatteryType.first > 0)
         output["BatteryType"]   = mpptData.getBatteryTypeAsString();
     if (mpptData.BatteryAbsorptionMilliVolt.first > 0)
-        addOutputValue(output, "BatteryAbsorptionVoltage", mpptData.BatteryAbsorptionMilliVolt.second / 1000.0, "V", 2);
+        addValue(output, "BatteryAbsorptionVoltage", mpptData.BatteryAbsorptionMilliVolt.second / 1000.0, "V", 2);
     if (mpptData.BatteryFloatMilliVolt.first > 0)
-        addOutputValue(output, "BatteryFloatVoltage", mpptData.BatteryFloatMilliVolt.second / 1000.0, "V", 2);
+        addValue(output, "BatteryFloatVoltage", mpptData.BatteryFloatMilliVolt.second / 1000.0, "V", 2);
     if (mpptData.BatteryMaximumCurrent.first > 0)
-        addOutputValue(output, "BatteryMaxCurrent", mpptData.BatteryMaximumCurrent.second / 1000.0, "A", 1);
+        addValue(output, "BatteryMaxCurrent", mpptData.BatteryMaximumCurrent.second / 1000.0, "A", 1);
     if (mpptData.SmartBatterySenseTemperatureMilliCelsius.first > 0)
-        addOutputValue(output, "BatteryTemperature", mpptData.SmartBatterySenseTemperatureMilliCelsius.second / 1000.0, "°C", 1);
+        addValue(output, "BatteryTemperature", mpptData.SmartBatterySenseTemperatureMilliCelsius.second / 1000.0, "°C", 1);
 
     // panel info
     const JsonObject input = values["input"].to<JsonObject>();
     if (mpptData.NetworkTotalDcInputPowerMilliWatts.first > 0)
-        addInputValue(input, "NetworkPower", mpptData.NetworkTotalDcInputPowerMilliWatts.second / 1000.0, "W", 0);
-    addInputValue(input, "PPV", mpptData.panelPower_PPV_W, "W", 0);
-    addInputValue(input, "VPV", mpptData.panelVoltage_VPV_mV/1000.0, "V", 2);
-    addInputValue(input, "IPV", mpptData.panelCurrent_mA/1000.0, "A", 2);
-    addInputValue(input, "YieldToday", mpptData.yieldToday_H20_Wh/1000.0, "kWh", 2);
-    addInputValue(input, "YieldYesterday", mpptData.yieldYesterday_H22_Wh/1000.0, "kWh", 2);
-    addInputValue(input, "YieldTotal", mpptData.yieldTotal_H19_Wh/1000.0, "kWh", 2);
-    addInputValue(input, "MaximumPowerToday", mpptData.maxPowerToday_H21_W, "W", 0);
-    addInputValue(input, "MaximumPowerYesterday", mpptData.maxPowerYesterday_H23_W, "W", 0);
+        addValue(input, "NetworkPower", mpptData.NetworkTotalDcInputPowerMilliWatts.second / 1000.0, "W", 0);
+    addValue(input, "PPV", mpptData.panelPower_PPV_W, "W", 0);
+    addValue(input, "VPV", mpptData.panelVoltage_VPV_mV/1000.0, "V", 2);
+    addValue(input, "IPV", mpptData.panelCurrent_mA/1000.0, "A", 2);
+    addValue(input, "YieldToday", mpptData.yieldToday_H20_Wh/1000.0, "kWh", 2);
+    addValue(input, "YieldYesterday", mpptData.yieldYesterday_H22_Wh/1000.0, "kWh", 2);
+    addValue(input, "YieldTotal", mpptData.yieldTotal_H19_Wh/1000.0, "kWh", 2);
+    addValue(input, "MaximumPowerToday", mpptData.maxPowerToday_H21_W, "W", 0);
+    addValue(input, "MaximumPowerYesterday", mpptData.maxPowerYesterday_H23_W, "W", 0);
 }
 
 void WebApiWsVedirectLiveClass::onWebsocketEvent(AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType type, void* arg, uint8_t* data, size_t len)
@@ -250,10 +230,10 @@ void WebApiWsVedirectLiveClass::onLivedataStatus(AsyncWebServerRequest* request)
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 
     } catch (std::bad_alloc& bad_alloc) {
-        MessageOutput.printf("Calling /api/vedirectlivedata/status has temporarily run out of resources. Reason: \"%s\".\r\n", bad_alloc.what());
+        MessageOutput.printf("Calling %s temporarily out of resources. Reason: \"%s\".\r\n", HttpLink, bad_alloc.what());
         WebApi.sendTooManyRequests(request);
     } catch (const std::exception& exc) {
-        MessageOutput.printf("Unknown exception in /api/vedirectlivedata/status. Reason: \"%s\".\r\n", exc.what());
+        MessageOutput.printf("Unknown exception in %s. Reason: \"%s\".\r\n", HttpLink, exc.what());
         WebApi.sendTooManyRequests(request);
     }
 }

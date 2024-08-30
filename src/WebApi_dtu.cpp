@@ -109,7 +109,7 @@ void WebApiDtuClass::onDtuAdminPost(AsyncWebServerRequest* request)
 #endif
             && root.containsKey("nrf_palevel")))
     {
-        retMsg["message"] = ValuesAreMissing;
+        retMsg["message"] = "Values are missing!";
         retMsg["code"] = WebApiError::GenericValueMissing;
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;
@@ -132,16 +132,17 @@ void WebApiDtuClass::onDtuAdminPost(AsyncWebServerRequest* request)
         return;
     }
 
+#ifdef USE_RADIO_NRF
     if (root["nrf_palevel"].as<uint8_t>() > 3) {
-        retMsg["message"] = InvalidPowerLevelSetting;
+        retMsg["message"] = "Invalid power level setting!";
         retMsg["code"] = WebApiError::DtuInvalidPowerLevel;
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;
     }
-
+#endif
 #ifdef USE_RADIO_CMT
     if (root["cmt_palevel"].as<int8_t>() < -10 || root["cmt_palevel"].as<int8_t>() > 20) {
-        retMsg["message"] = InvalidPowerLevelSetting;
+        retMsg["message"] = "Invalid power level setting!";
         retMsg["code"] = WebApiError::DtuInvalidPowerLevel;
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;

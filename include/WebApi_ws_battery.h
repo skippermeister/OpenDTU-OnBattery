@@ -12,11 +12,12 @@ public:
     void init(AsyncWebServer& server, Scheduler& scheduler);
 
 private:
+    static constexpr char const HttpLink[] = "/api/batterylivedata/status";
+
     void generateCommonJsonResponse(JsonVariant& root);
     void onLivedataStatus(AsyncWebServerRequest* request);
     void onWebsocketEvent(AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType type, void* arg, uint8_t* data, size_t len);
 
-    //AsyncWebServer* _server;
     AsyncWebSocket _ws;
 
     uint32_t _lastUpdateCheck = 0;

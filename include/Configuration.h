@@ -350,6 +350,10 @@ struct REFUsol_CONFIG_T {
     bool Enabled;
     bool UpdatesOnly;
     uint32_t PollInterval;
+    uint8_t USSaddress;
+    uint16_t Baudrate;
+    enum Parity_t { None, Even, Odd } Parity;
+    bool VerboseLogging;
 };
 #endif
 

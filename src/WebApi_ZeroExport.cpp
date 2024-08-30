@@ -6,7 +6,6 @@
 #include "ArduinoJson.h"
 #include "AsyncJson.h"
 #include "Configuration.h"
-#include "ErrorMessages.h"
 #include "MessageOutput.h"
 #include "MqttSettings.h"
 #include "PowerMeter.h"
@@ -35,7 +34,6 @@ void WebApiZeroExportClass::onStatus(AsyncWebServerRequest* request)
     root["enabled"] = cZeroExport.Enabled;
     root["updatesonly"] = cZeroExport.UpdatesOnly;
     root["verbose_logging"] = ZeroExport.getVerboseLogging();
-//    root["InverterId"] = cZeroExport.InverterId; // the bid mask of the inverter Ids
     JsonArray serials = root["serials"].to<JsonArray>();
     for (uint8_t i = 0; i < INV_MAX_COUNT; i++) {
         if (cZeroExport.serials[i] != 0) {
@@ -137,12 +135,11 @@ void WebApiZeroExportClass::onAdminPost(AsyncWebServerRequest* request)
     if (!(root.containsKey("enabled")
             && root.containsKey("updatesonly")
             && root.containsKey("verbose_logging")
-//            && root.containsKey("InverterId")
             && root.containsKey("MaxGrid")
             && root.containsKey("PowerHysteresis")
             && root.containsKey("MinimumLimit")
             && root.containsKey("Tn"))) {
-        retMsg["message"] = ValuesAreMissing;
+        retMsg["message"] = "Values are missing!";
         retMsg["code"] = WebApiError::GenericValueMissing;
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;
@@ -160,7 +157,6 @@ void WebApiZeroExportClass::onAdminPost(AsyncWebServerRequest* request)
     cZeroExport.UpdatesOnly = root["updatesonly"].as<bool>();
     cZeroExport.MaxGrid = root["MaxGrid"].as<uint16_t>();
     cZeroExport.PowerHysteresis = root["PowerHysteresis"].as<uint16_t>();
-//    cZeroExport.InverterId = root["InverterId"].as<uint16_t>();
 
     if (root.containsKey("serials")) {
         JsonArray serials = root["serials"].as<JsonArray>();
@@ -181,8 +177,8 @@ void WebApiZeroExportClass::onAdminPost(AsyncWebServerRequest* request)
 
     Configuration.write();
 
-    retMsg["type"] = Success;
-    retMsg["message"] = SettingsSaved;
+    retMsg["type"] = "success";
+    retMsg["message"] = "Settings saved!";
     retMsg["code"] = WebApiError::GenericSuccess;
 
     WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);

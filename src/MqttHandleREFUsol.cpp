@@ -32,19 +32,9 @@ void MqttHandleREFUsolClass::loop()
 {
     auto const& config = Configuration.get();
 
-    std::unique_lock<std::mutex> mqttLock(_mqttMutex);
-
     if (!config.REFUsol.Enabled) {
-        _mqttCallbacks.clear();
         return;
     }
-
-    for (auto& callback : _mqttCallbacks) {
-        callback();
-    }
-    _mqttCallbacks.clear();
-
-    mqttLock.unlock();
 
     if (!MqttSettings.getConnected() ||
         (millis() - _lastPublish) < config.Mqtt.PublishInterval * 1000 ||

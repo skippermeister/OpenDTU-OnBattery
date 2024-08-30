@@ -91,7 +91,7 @@ bool VictronMpptClass::isDataValid() const
         if (upController->isDataValid()) { return true; }
     }
 
-    return !_controllers.empty();
+    return false;
 }
 
 bool VictronMpptClass::isDataValid(size_t idx) const

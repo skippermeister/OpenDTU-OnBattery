@@ -14,6 +14,8 @@ public:
     void init(AsyncWebServer& server, Scheduler& scheduler);
 
 private:
+    static constexpr char const HttpLink[] = "/api/vedirectlivedata/status";
+
     void generateCommonJsonResponse(JsonVariant& root, bool fullUpdate);
     static void populateJson(const JsonObject &root, const VeDirectMpptController::data_t &mpptData);
     void onLivedataStatus(AsyncWebServerRequest* request);

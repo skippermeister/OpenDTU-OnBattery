@@ -429,6 +429,9 @@
         "Enabled": "@:base.Enabled",
         "Disabled": "@:base.Disabled",
         "UpdatesOnly": "@:base.UpdatesOnly",
+        "Baudrate": "@:powermeteradmin.sdmbaudrate",
+        "Parity": "Parité",
+        "USSaddress": "USS adresse",
         "VerboseLogging": "@:base.VerboseLogging"
     },
     "vedirectinfo": {
@@ -642,6 +645,9 @@
         "PollInterval": "@:dtuadmin.PollInterval",
         "Seconds": "@:dtuadmin.Seconds",
         "UpdatesOnly": "@:base.UpdatesOnly",
+        "Baudrate": "@:refusolinfo.Baudrate",
+        "Parity": "@:refusolinfo.Parity",
+        "USSaddress": "@:refusolinfo.USSaddress",
         "VerboseLogging": "@:base.VerboseLogging"
     },
     "zeroexportadmin": {

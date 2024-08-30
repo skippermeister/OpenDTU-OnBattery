@@ -29,7 +29,7 @@ void WebApiWsHuaweiLiveClass::init(AsyncWebServer& server, Scheduler& scheduler)
     using std::placeholders::_5;
     using std::placeholders::_6;
 
-    server.on("/api/huaweilivedata/status", HTTP_GET, std::bind(&WebApiWsHuaweiLiveClass::onLivedataStatus, this, _1));
+    server.on(HttpLink, HTTP_GET, std::bind(&WebApiWsHuaweiLiveClass::onLivedataStatus, this, _1));
 
     server.addHandler(&_ws);
     _ws.onEvent(std::bind(&WebApiWsHuaweiLiveClass::onWebsocketEvent, this, _1, _2, _3, _4, _5, _6));
@@ -68,10 +68,20 @@ void WebApiWsHuaweiLiveClass::sendDataTaskCb()
             _ws.textAll(buffer);
         }
     } catch (std::bad_alloc& bad_alloc) {
-        MessageOutput.printf("Calling /api/huaweilivedata/status has temporarily run out of resources. Reason: \"%s\".\r\n", bad_alloc.what());
+        MessageOutput.printf("Calling %s temporarily out of resources. Reason: \"%s\".\r\n", HttpLink, bad_alloc.what());
     } catch (const std::exception& exc) {
-        MessageOutput.printf("Unknown exception in /api/huaweilivedata/status. Reason: \"%s\".\r\n", exc.what());
+        MessageOutput.printf("Unknown exception in %s. Reason: \"%s\".\r\n", HttpLink, exc.what());
     }
+}
+
+template <typename T>
+void addValue(const JsonObject& root, std::string const& name,
+    T&& value, std::string const& unit, uint8_t precision)
+{
+    auto jsonValue = root[name];
+    jsonValue["v"] = value;
+    jsonValue["u"] = unit;
+    jsonValue["d"] = precision;
 }
 
 void WebApiWsHuaweiLiveClass::generateCommonJsonResponse(JsonVariant& root)
@@ -79,26 +89,16 @@ void WebApiWsHuaweiLiveClass::generateCommonJsonResponse(JsonVariant& root)
     const RectifierParameters_t * rp = HuaweiCan.get();
 
     root["data_age"] = (millis() - HuaweiCan.getLastUpdate()) / 1000;
-    root["input_voltage"]["v"] = rp->input_voltage;
-    root["input_voltage"]["u"] = "V";
-    root["input_current"]["v"] = rp->input_current;
-    root["input_current"]["u"] = "A";
-    root["input_power"]["v"] = rp->input_power;
-    root["input_power"]["u"] = "W";
-    root["output_voltage"]["v"] = rp->output_voltage;
-    root["output_voltage"]["u"] = "V";
-    root["output_current"]["v"] = rp->output_current;
-    root["output_current"]["u"] = "A";
-    root["max_output_current"]["v"] = rp->max_output_current;
-    root["max_output_current"]["u"] = "A";
-    root["output_power"]["v"] = rp->output_power;
-    root["output_power"]["u"] = "W";
-    root["input_temp"]["v"] = rp->input_temp;
-    root["input_temp"]["u"] = "°C";
-    root["output_temp"]["v"] = rp->output_temp;
-    root["output_temp"]["u"] = "°C";
-    root["efficiency"]["v"] = rp->efficiency * 100;
-    root["efficiency"]["u"] = "%";
+    addValue(root, "input_voltage", rp->input_voltage, "V", 2);
+    addValue(root, "input_current", rp->input_current, "A", 1);
+    addValue(root, "input_power", rp->input_power, "W", 0);
+    addValue(root, "output_voltage", rp->output_voltage, "V", 2);
+    addValue(root, "output_current", rp->output_current, "A", 2);
+    addValue(root, "max_output_current", rp->max_output_current, "A", 2);
+    addValue(root, "output_power", rp->output_power, "W", 0);
+    addValue(root, "input_temp", rp->input_temp, "°C", 1);
+    addValue(root, "output_temp", rp->output_temp, "°C", 1);
+    addValue(root, "efficiency", rp->efficiency * 100, "%", 1);
 }
 
 void WebApiWsHuaweiLiveClass::onWebsocketEvent(AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType type, void* arg, uint8_t* data, size_t len)
@@ -125,10 +125,10 @@ void WebApiWsHuaweiLiveClass::onLivedataStatus(AsyncWebServerRequest* request)
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 
     } catch (std::bad_alloc& bad_alloc) {
-        MessageOutput.printf("Calling /api/huaweilivedata/status has temporarily run out of resources. Reason: \"%s\".\r\n", bad_alloc.what());
+        MessageOutput.printf("Calling %s temporarily out of resources. Reason: \"%s\".\r\n", HttpLink, bad_alloc.what());
         WebApi.sendTooManyRequests(request);
     } catch (const std::exception& exc) {
-        MessageOutput.printf("Unknown exception in /api/huaweilivedata/status. Reason: \"%s\".\r\n", exc.what());
+        MessageOutput.printf("Unknown exception in %s. Reason: \"%s\".\r\n", HttpLink, exc.what());
         WebApi.sendTooManyRequests(request);
     }
 }

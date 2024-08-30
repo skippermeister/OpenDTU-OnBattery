@@ -3,7 +3,6 @@
  * Copyright (C) 2022-2024 Thomas Basler and others
  */
 #include "WebApi_power.h"
-#include "ErrorMessages.h"
 #include "WebApi.h"
 #include "WebApi_errors.h"
 #include <AsyncJson.h>
@@ -61,7 +60,7 @@ void WebApiPowerClass::onPowerPost(AsyncWebServerRequest* request)
     if (!(root.containsKey("serial")
             && (root.containsKey("power")
                 || root.containsKey("restart")))) {
-        retMsg["message"] = ValuesAreMissing;
+        retMsg["message"] = "Values are missing!";
         retMsg["code"] = WebApiError::GenericValueMissing;
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;
@@ -71,7 +70,7 @@ void WebApiPowerClass::onPowerPost(AsyncWebServerRequest* request)
     const uint64_t serial = strtoll(root["serial"].as<String>().c_str(), NULL, 16);
 
     if (serial == 0) {
-        retMsg["message"] = SerialMustBeGreaterZero;
+        retMsg["message"] = "Serial must be a number > 0!";
         retMsg["code"] = WebApiError::PowerSerialZero;
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;
@@ -94,8 +93,8 @@ void WebApiPowerClass::onPowerPost(AsyncWebServerRequest* request)
         }
     }
 
-    retMsg["type"] = Success;
-    retMsg["message"] = SettingsSaved;
+    retMsg["type"] = "success";
+    retMsg["message"] = "Settings saved!";
     retMsg["code"] = WebApiError::GenericSuccess;
 
     WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);

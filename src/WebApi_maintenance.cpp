@@ -30,14 +30,14 @@ void WebApiMaintenanceClass::onRebootPost(AsyncWebServerRequest* request)
 
     auto& retMsg = response->getRoot();
     if (!(root.containsKey("reboot"))) {
-        retMsg["message"] = ValuesAreMissing;
+        retMsg["message"] = "Values are missing!";
         retMsg["code"] = WebApiError::GenericValueMissing;
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;
     }
 
     if (root["reboot"].as<bool>()) {
-        retMsg["type"] = Success;
+        retMsg["type"] = "success";
         retMsg["message"] = "Reboot triggered!";
         retMsg["code"] = WebApiError::MaintenanceRebootTriggered;
 

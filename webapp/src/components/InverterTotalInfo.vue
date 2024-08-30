@@ -1,7 +1,6 @@
 <template>
     <div class="row row-cols-1 row-cols-md-3 g-3">
-        <div v-if="totalREFUsolData != null">
-        <div class="col" v-if="totalREFUsolData.enabled">
+        <div class="col" v-if="totalREFUsolData != null && totalREFUsolData.enabled">
             <CardElement centerContent textVariant="text-bg-success"
                 :text="$t('invertertotalinfo.REFUsolTotalDeliveredTotal')">
                 <h2>
@@ -13,7 +12,7 @@
                 </h2>
             </CardElement>
         </div>
-        <div class="col" v-if="totalREFUsolData.enabled">
+        <div class="col" v-if="totalREFUsolData != null && totalREFUsolData.enabled">
             <CardElement centerContent textVariant="text-bg-success"
                 :text="$t('invertertotalinfo.REFUsolTotalDeliveredDay')">
                 <h2>
@@ -25,8 +24,9 @@
                 </h2>
             </CardElement>
         </div>
-        <div class="col" v-if="totalREFUsolData.enabled">
-            <CardElement centerContent textVariant="text-bg-success" :text="$t('invertertotalinfo.REFUsolTotalPower')">
+        <div class="col" v-if="totalREFUsolData != null && totalREFUsolData.enabled">
+            <CardElement centerContent textVariant="text-bg-success"
+                :text="$t('invertertotalinfo.REFUsolTotalPower')">
                 <h2>
                     {{ $n(totalREFUsolData.total.Power.v, 'decimal', {
                         minimumFractionDigits: totalREFUsolData.total.Power.d,
@@ -35,7 +35,6 @@
                     <small class="text-muted">{{ totalREFUsolData.total.Power.u }}</small>
                 </h2>
             </CardElement>
-        </div>
         </div>
 
         <div class="col" v-if="totalVeData.enabled">
@@ -51,7 +50,8 @@
             </CardElement>
         </div>
         <div class="col" v-if="totalVeData.enabled">
-            <CardElement centerContent textVariant="text-bg-success" :text="$t('invertertotalinfo.MpptTotalYieldDay')">
+            <CardElement centerContent textVariant="text-bg-success"
+                :text="$t('invertertotalinfo.MpptTotalYieldDay')">
                 <h2>
                     {{ $n(totalVeData.total.YieldDay.v, 'decimal', {
                         minimumFractionDigits: totalVeData.total.YieldDay.d,
@@ -62,7 +62,8 @@
             </CardElement>
         </div>
         <div class="col" v-if="totalVeData.enabled">
-            <CardElement centerContent textVariant="text-bg-success" :text="$t('invertertotalinfo.MpptTotalPower')">
+            <CardElement centerContent textVariant="text-bg-success"
+                :text="$t('invertertotalinfo.MpptTotalPower')">
                 <h2>
                     {{ $n(totalVeData.total.Power.v, 'decimal', {
                         minimumFractionDigits: totalVeData.total.Power.d,

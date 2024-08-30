@@ -8,7 +8,6 @@
 #include "MeanWell_can.h"
 #include "MessageOutput.h"
 #include "MqttSettings.h"
-// #include "Failsafe.h"
 #include "WebApi_MeanWell.h"
 #include <ctime>
 
@@ -41,32 +40,25 @@ void MqttHandleMeanWellClass::subscribeTopics()
     String const& prefix = MqttSettings.getPrefix();
 
     auto subscribe = [&prefix, this](char const* subTopic, Topic t) {
-        String fullTopic(prefix + "meanwell/cmd/" + subTopic);
+        String fullTopic(prefix + _cmdtopic.data() + subTopic);
         MqttSettings.subscribe(fullTopic.c_str(), 0,
             std::bind(&MqttHandleMeanWellClass::onMqttMessage, this, t,
                 std::placeholders::_1, std::placeholders::_2,
                 std::placeholders::_3, std::placeholders::_4,
                 std::placeholders::_5, std::placeholders::_6));
     };
-    subscribe("limit_voltage", Topic::LimitVoltage);
-    subscribe("limit_current", Topic::LimitCurrent);
-    subscribe("limit_curveCV", Topic::LimitCurveCV);
-    subscribe("limit_curveCC", Topic::LimitCurveCC);
-    subscribe("limit_curveFV", Topic::LimitCurveFV);
-    subscribe("limit_curveTC", Topic::LimitCurveTC);
-    subscribe("mode", Topic::Mode);
+
+    for (auto const& s : _subscriptions) {
+        subscribe(s.first.data(), s.second);
+    }
 }
 
 void MqttHandleMeanWellClass::unsubscribeTopics()
 {
-    String const& prefix = MqttSettings.getPrefix() + "meanwell/cmd/";
-    MqttSettings.unsubscribe(String(prefix + "limit_voltage"));
-    MqttSettings.unsubscribe(String(prefix + "limit_current"));
-    MqttSettings.unsubscribe(String(prefix + "limit_curveCV"));
-    MqttSettings.unsubscribe(String(prefix + "limit_curveCC"));
-    MqttSettings.unsubscribe(String(prefix + "limit_curveFV"));
-    MqttSettings.unsubscribe(String(prefix + "limit_curveTC"));
-    MqttSettings.unsubscribe(String(prefix + "mode"));
+    String const prefix = MqttSettings.getPrefix() + _cmdtopic.data();
+    for (auto const& s : _subscriptions) {
+        MqttSettings.unsubscribe(prefix + s.first.data());
+    }
 }
 
 #define MQTTpublish(value)                                              \
@@ -95,6 +87,8 @@ void MqttHandleMeanWellClass::loop()
         return;
     }
 
+    _lastPublish = millis();
+
     auto const& cMeanWell = Configuration.get().MeanWell;
 
     const String subtopic = "meanwell/";
@@ -116,9 +110,6 @@ void MqttHandleMeanWellClass::loop()
     MQTTpublish(curveTC);
     MQTTpublish(internalTemperature);
     MQTTpublish(efficiency);
-
-    _lastPublish = millis();
-    yield();
 }
 
 void MqttHandleMeanWellClass::onMqttMessage(Topic t,

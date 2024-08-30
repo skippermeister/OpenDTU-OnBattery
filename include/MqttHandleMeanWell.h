@@ -6,10 +6,12 @@
 #include "Configuration.h"
 #include <MeanWell_can.h>
 #include <TaskSchedulerDeclarations.h>
+#include <mutex>
 #include <deque>
 #include <espMqttClient.h>
 #include <functional>
-#include <mutex>
+#include <frozen/map.h>
+#include <frozen/string.h>
 
 class MqttHandleMeanWellClass {
 public:
@@ -30,6 +32,17 @@ private:
         LimitCurveFV,
         LimitCurveTC,
         Mode
+    };
+
+    static constexpr frozen::string _cmdtopic = "meanwell/cmd/";
+    static constexpr frozen::map<frozen::string, Topic, 7> _subscriptions = {
+        { "limit_voltage", Topic::LimitVoltage },
+        { "limit_current", Topic::LimitCurrent },
+        { "limit_curveCV", Topic::LimitCurveCV },
+        { "limit_curveCC", Topic::LimitCurveCC },
+        { "limit_curveFV", Topic::LimitCurveFV },
+        { "limit_curveTC", Topic::LimitCurveTC },
+        { "mode",          Topic::Mode },
     };
 
     void loop();

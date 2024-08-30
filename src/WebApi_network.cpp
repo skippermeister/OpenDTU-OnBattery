@@ -4,7 +4,6 @@
  */
 #include "WebApi_network.h"
 #include "Configuration.h"
-#include "ErrorMessages.h"
 #include "NetworkSettings.h"
 #include "WebApi.h"
 #include "WebApi_errors.h"
@@ -109,7 +108,7 @@ void WebApiNetworkClass::onNetworkAdminPost(AsyncWebServerRequest* request)
             && root.containsKey("dns1")
             && root.containsKey("dns2")
             && root.containsKey("aptimeout"))) {
-        retMsg["message"] = ValuesAreMissing;
+        retMsg["message"] = "Values are missing!";
         retMsg["code"] = WebApiError::GenericValueMissing;
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;

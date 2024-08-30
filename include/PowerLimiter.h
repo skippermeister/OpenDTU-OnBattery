@@ -106,11 +106,12 @@ private:
     float getBatteryVoltage(bool log = false);
     int32_t inverterPowerDcToAc(std::shared_ptr<InverterAbstract> inverter, int32_t dcPower);
     void unconditionalSolarPassthrough(std::shared_ptr<InverterAbstract> inverter);
-    bool calcPowerLimit(std::shared_ptr<InverterAbstract> inverter, int32_t solarPower, bool batteryPower);
+    bool calcPowerLimit(std::shared_ptr<InverterAbstract> inverter, int32_t solarPower, int32_t batteryPowerLimit, bool batteryPower);
     bool setNewPowerLimit(std::shared_ptr<InverterAbstract> inverter, int32_t newPowerLimit);
     bool updateInverter();
     int32_t scalePowerLimit(std::shared_ptr<InverterAbstract> inverter, int32_t newLimit, int32_t currentLimitWatts);
     int32_t getSolarPower();
+    int32_t getBatteryDischargeLimit();
     float getLoadCorrectedVoltage();
     bool testThreshold(float socThreshold, float voltThreshold, std::function<bool(float, float)> compare);
     bool isStartThresholdReached();
