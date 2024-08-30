@@ -178,7 +178,8 @@ void MqttHandleInverterClass::onMqttMessage(Topic t, const espMqttClientTypes::M
     char token_topic[64];
     strncpy(token_topic, &topic[strlen(Configuration.get().Mqtt.Topic)], sizeof(token_topic)); // convert const char* to char*
     token_topic[sizeof(token_topic)-1] = 0; // force to terminate the string.
-    char* serial_str = strtok(token_topic, "/");
+    char *saveptr;
+    char* serial_str = strtok_r(token_topic, "/", &saveptr);
 
     if (serial_str == NULL) { return; }
 

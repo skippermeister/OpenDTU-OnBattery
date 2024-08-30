@@ -78,7 +78,7 @@ void REFUsolRS485ReceiverClass::updateSettings(void)
             cREFUsol.Baudrate, Parity[cREFUsol.Parity],
             cREFUsol.USSaddress,
             pin.rx, pin.tx);
-        _StartInterval = (int)((1000000.0*2*(1+8+1+1))/cREFUsol.Baudrate+0.5);
+        _StartInterval = static_cast<int>((1000000.0*2*(1+8+1+1))/cREFUsol.Baudrate+0.5);
         RS485BaudRate = cREFUsol.Baudrate;
         if (pin.rts >= 0) {
             /*
