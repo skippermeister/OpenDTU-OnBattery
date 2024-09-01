@@ -72,15 +72,10 @@ export interface Vedirect {
     total: Total;
 }
 
-export interface MeanWell {
-  enabled: boolean;
-  Power: ValueObject;
+export interface Charger {
+    enabled: boolean;
+    Power: ValueObject;
 }
-
-// export interface Huawei {
-//   enabled: boolean;
-//   Power: ValueObject;
-// }
 
 export interface Battery {
   enabled: boolean;
@@ -104,7 +99,7 @@ export interface LiveData {
     // huawei: Huawei;
     refusol: REFUsol;
     vedirect: Vedirect;
-    meanwell: MeanWell;
+    charger: Charger;
     battery: Battery;
     power_meter: PowerMeter;
 }

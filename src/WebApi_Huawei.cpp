@@ -18,9 +18,9 @@ void WebApiHuaweiClass::init(AsyncWebServer& server, Scheduler& scheduler)
 {
     using std::placeholders::_1;
 
-    server.on("/api/huawei/status", HTTP_GET, std::bind(&WebApiHuaweiClass::onStatus, this, _1));
-    server.on("/api/huawei/config", HTTP_GET, std::bind(&WebApiHuaweiClass::onAdminGet, this, _1));
-    server.on("/api/huawei/config", HTTP_POST, std::bind(&WebApiHuaweiClass::onAdminPost, this, _1));
+    server.on("/api/charger/status", HTTP_GET, std::bind(&WebApiHuaweiClass::onStatus, this, _1));
+    server.on("/api/charger/config", HTTP_GET, std::bind(&WebApiHuaweiClass::onAdminGet, this, _1));
+    server.on("/api/charger/config", HTTP_POST, std::bind(&WebApiHuaweiClass::onAdminPost, this, _1));
     server.on("/api/huawei/limit/config", HTTP_POST, std::bind(&WebApiHuaweiClass::onPost, this, _1));
 }
 
@@ -140,18 +140,20 @@ void WebApiHuaweiClass::onAdminGet(AsyncWebServerRequest* request)
 
     root["enabled"] = config.Huawei.Enabled;
     root["verbose_logging"] = config.Huawei.VerboseLogging;
-    root["charger_type"] = "HUAWEI";
+    root["chargerType"] = "Huawei R4850G2";
     root["io_providername"] = PinMapping.get().charger.providerName;
     if (HuaweiCanComm.isMCP2515Provider()) root["can_controller_frequency"] = config.MCP2515.Controller_Frequency;
-    root["auto_power_enabled"] = config.Huawei.Auto_Power_Enabled;
-    root["auto_power_batterysoc_limits_enabled"] = config.Huawei.Auto_Power_BatterySoC_Limits_Enabled;
-    root["emergency_charge_enabled"] = config.Huawei.Emergency_Charge_Enabled;
-    root["voltage_limit"] = static_cast<int>(config.Huawei.Auto_Power_Voltage_Limit * 100) / 100.0;
-    root["enable_voltage_limit"] = static_cast<int>(config.Huawei.Auto_Power_Enable_Voltage_Limit * 100) / 100.0;
-    root["lower_power_limit"] = config.Huawei.Auto_Power_Lower_Power_Limit;
-    root["upper_power_limit"] = config.Huawei.Auto_Power_Upper_Power_Limit;
-    root["stop_batterysoc_threshold"] = config.Huawei.Auto_Power_Stop_BatterySoC_Threshold;
-    root["target_power_consumption"] = config.Huawei.Auto_Power_Target_Power_Consumption;
+
+    auto huawei = root["huawei"].to<JsonObject>();
+    huawei["auto_power_enabled"]                   = config.Huawei.Auto_Power_Enabled;
+    huawei["auto_power_batterysoc_limits_enabled"] = config.Huawei.Auto_Power_BatterySoC_Limits_Enabled;
+    huawei["emergency_charge_enabled"]             = config.Huawei.Emergency_Charge_Enabled;
+    huawei["voltage_limit"]                        = static_cast<int>(config.Huawei.Auto_Power_Voltage_Limit * 100) / 100.0;
+    huawei["enable_voltage_limit"]                 = static_cast<int>(config.Huawei.Auto_Power_Enable_Voltage_Limit * 100) / 100.0;
+    huawei["lower_power_limit"]                    = config.Huawei.Auto_Power_Lower_Power_Limit;
+    huawei["upper_power_limit"]                    = config.Huawei.Auto_Power_Upper_Power_Limit;
+    huawei["stop_batterysoc_threshold"]            = config.Huawei.Auto_Power_Stop_BatterySoC_Threshold;
+    huawei["target_power_consumption"]             = config.Huawei.Auto_Power_Target_Power_Consumption;
 
     WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 }
@@ -170,13 +172,13 @@ void WebApiHuaweiClass::onAdminPost(AsyncWebServerRequest* request)
 
     auto& retMsg = response->getRoot();
 
-    if (!(root.containsKey("enabled")) ||
-        !(root.containsKey("verbose_logging")) ||
-        !(root.containsKey("auto_power_enabled")) ||
-        !(root.containsKey("emergency_charge_enabled")) ||
-        !(root.containsKey("voltage_limit")) ||
-        !(root.containsKey("lower_power_limit")) ||
-        !(root.containsKey("upper_power_limit")))
+    if (!root.containsKey("enabled") ||
+        !root.containsKey("verbose_logging") ||
+        !root["huawei"].containsKey("auto_power_enabled") ||
+        !root["huawei"].containsKey("emergency_charge_enabled") ||
+        !root["huawei"].containsKey("voltage_limit") ||
+        !root["huawei"].containsKey("lower_power_limit") ||
+        !root["huawei"].containsKey("upper_power_limit"))
     {
         retMsg["message"] = "Values are missing!";
         retMsg["code"] = WebApiError::GenericValueMissing;
@@ -188,15 +190,15 @@ void WebApiHuaweiClass::onAdminPost(AsyncWebServerRequest* request)
     config.Huawei.Enabled = root["enabled"].as<bool>();
     config.Huawei.VerboseLogging = root["verbose_logging"];
     if (HuaweiCanComm.isMCP2515Provider()) config.MCP2515.Controller_Frequency = root["can_controller_frequency"].as<uint32_t>();
-    config.Huawei.Auto_Power_Enabled = root["auto_power_enabled"].as<bool>();
-    config.Huawei.Auto_Power_BatterySoC_Limits_Enabled = root["auto_power_batterysoc_limits_enabled"].as<bool>();
-    config.Huawei.Emergency_Charge_Enabled = root["emergency_charge_enabled"].as<bool>();
-    config.Huawei.Auto_Power_Voltage_Limit = root["voltage_limit"].as<float>();
-    config.Huawei.Auto_Power_Enable_Voltage_Limit = root["enable_voltage_limit"].as<float>();
-    config.Huawei.Auto_Power_Lower_Power_Limit = root["lower_power_limit"].as<float>();
-    config.Huawei.Auto_Power_Upper_Power_Limit = root["upper_power_limit"].as<float>();
-    config.Huawei.Auto_Power_Stop_BatterySoC_Threshold = root["stop_batterysoc_threshold"];
-    config.Huawei.Auto_Power_Target_Power_Consumption = root["target_power_consumption"];
+    config.Huawei.Auto_Power_Enabled                   = root["huawei"]["auto_power_enabled"].as<bool>();
+    config.Huawei.Auto_Power_BatterySoC_Limits_Enabled = root["huawei"]["auto_power_batterysoc_limits_enabled"].as<bool>();
+    config.Huawei.Emergency_Charge_Enabled             = root["huawei"]["emergency_charge_enabled"].as<bool>();
+    config.Huawei.Auto_Power_Voltage_Limit             = root["huawei"]["voltage_limit"].as<float>();
+    config.Huawei.Auto_Power_Enable_Voltage_Limit      = root["huawei"]["enable_voltage_limit"].as<float>();
+    config.Huawei.Auto_Power_Lower_Power_Limit         = root["huawei"]["lower_power_limit"].as<float>();
+    config.Huawei.Auto_Power_Upper_Power_Limit         = root["huawei"]["upper_power_limit"].as<float>();
+    config.Huawei.Auto_Power_Stop_BatterySoC_Threshold = root["huawei"]["stop_batterysoc_threshold"];
+    config.Huawei.Auto_Power_Target_Power_Consumption  = root["huawei"]["target_power_consumption"];
 
     WebApi.writeConfig(retMsg);
 

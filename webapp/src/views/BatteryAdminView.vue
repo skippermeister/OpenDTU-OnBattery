@@ -10,11 +10,14 @@
                     type="checkbox" wide4_1 />
 
                 <div v-show="batteryConfigList.enabled">
-                    <InputElement :label="$t('batteryadmin.UpdatesOnly')" v-model="batteryConfigList.updatesonly"
+                    <InputElement :label="$t('batteryadmin.UpdatesOnly')"
+                        v-model="batteryConfigList.updatesonly"
                         type="checkbox" wide4_1 />
 
-                    <InputElement :label="$t('batteryadmin.VerboseLogging')" v-model="batteryConfigList.verbose_logging"
+                    <InputElement :label="$t('batteryadmin.VerboseLogging')"
+                        v-model="batteryConfigList.verbose_logging"
                         type="checkbox" wide4_1 />
+
                     <div class="row mb-3">
                         <label class="col-sm-4 col-form-label">
                             {{ $t('batteryadmin.Provider')}} {{ getIoProvider() }} {{ $t('batteryadmin.Interface')}}

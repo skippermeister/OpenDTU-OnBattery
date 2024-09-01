@@ -132,14 +132,14 @@
                 </h2>
             </CardElement>
         </div>
-        <div class="col" v-if="meanwellData.enabled">
-            <CardElement centerContent textVariant="text-bg-success" :text="$t('invertertotalinfo.MeanWellPower')">
+        <div class="col" v-if="chargerData.enabled">
+            <CardElement centerContent textVariant="text-bg-success" :text="$t('invertertotalinfo.ChargerPower')">
                 <h2>
-                    {{ $n(meanwellData.Power.v, 'decimal', {
-                        minimumFractionDigits: meanwellData.Power.d,
-                        maximumFractionDigits: meanwellData.Power.d
+                    {{ $n(chargerData.Power.v, 'decimal', {
+                        minimumFractionDigits: chargerData.Power.d,
+                        maximumFractionDigits: chargerData.Power.d
                     }) }}
-                    <small class="text-muted">{{ meanwellData.Power.u }}</small>
+                    <small class="text-muted">{{ chargerData.Power.u }}</small>
                 </h2>
             </CardElement>
         </div>
@@ -198,7 +198,7 @@
 </template>
 
 <script lang="ts">
-import type { Battery, Total, Vedirect, REFUsol, MeanWell, PowerMeter } from '@/types/LiveDataStatus';
+import type { Battery, Total, Vedirect, REFUsol, Charger, PowerMeter } from '@/types/LiveDataStatus';
 import CardElement from './CardElement.vue';
 import { defineComponent, type PropType } from 'vue';
 
@@ -212,7 +212,7 @@ export default defineComponent({
         totalREFUsolData: { type: Object as PropType<REFUsol>, required: true },
         totalBattData: { type: Object as PropType<Battery>, required: true },
         powerMeterData: { type: Object as PropType<PowerMeter>, required: true },
-        meanwellData: { type: Object as PropType<MeanWell>, required: true },
+        chargerData: { type: Object as PropType<Charger>, required: true },
     },
 });
 </script>

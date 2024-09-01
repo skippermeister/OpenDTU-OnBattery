@@ -19,9 +19,9 @@ void WebApiMeanWellClass::init(AsyncWebServer& server, Scheduler& scheduler)
 {
     using std::placeholders::_1;
 
-    server.on("/api/meanwell/status", HTTP_GET, std::bind(&WebApiMeanWellClass::onStatus, this, _1));
-    server.on("/api/meanwell/config", HTTP_GET, std::bind(&WebApiMeanWellClass::onAdminGet, this, _1));
-    server.on("/api/meanwell/config", HTTP_POST, std::bind(&WebApiMeanWellClass::onAdminPost, this, _1));
+    server.on("/api/charger/status", HTTP_GET, std::bind(&WebApiMeanWellClass::onStatus, this, _1));
+    server.on("/api/charger/config", HTTP_GET, std::bind(&WebApiMeanWellClass::onAdminGet, this, _1));
+    server.on("/api/charger/config", HTTP_POST, std::bind(&WebApiMeanWellClass::onAdminPost, this, _1));
 
     server.on("/api/meanwell/limit/config", HTTP_GET, std::bind(&WebApiMeanWellClass::onLimitGet, this, _1));
     server.on("/api/meanwell/limit/config", HTTP_POST, std::bind(&WebApiMeanWellClass::onLimitPost, this, _1));
@@ -55,20 +55,22 @@ void WebApiMeanWellClass::onAdminGet(AsyncWebServerRequest* request)
 
     root["enabled"] = config.MeanWell.Enabled;
     root["verbose_logging"] = config.MeanWell.VerboseLogging;
+    root["updatesonly"] = config.MeanWell.UpdatesOnly;
     root["chargerType"] = (strcmp(MeanWellCan._rp.ManufacturerName, "MEANWELL") == 0) ?
             String(MeanWellCan._rp.ManufacturerName) + " " + String(MeanWellCan._rp.ManufacturerModelName):
-            "MeanWell NPB-450/750/1200/1700-24/48";
+            "MEANWELL NPB-450/750/1200/1700-24/48";
     root["io_providername"] = PinMapping.get().charger.providerName;
     if (MeanWellCan.isMCP2515Provider()) root["can_controller_frequency"] = config.MCP2515.Controller_Frequency;
-    root["pollinterval"] = config.MeanWell.PollInterval;
-    root["updatesonly"] = config.MeanWell.UpdatesOnly;
-    root["min_voltage"] = config.MeanWell.MinVoltage;
-    root["max_voltage"] = config.MeanWell.MaxVoltage;
-    root["min_current"] = config.MeanWell.MinCurrent;
-    root["max_current"] = config.MeanWell.MaxCurrent;
-    root["hysteresis"] = config.MeanWell.Hysteresis;
-    root["EEPROMwrites"] = MeanWellCan.getEEPROMwrites();
-    root["mustInverterProduce"] = config.MeanWell.mustInverterProduce;
+
+    auto meanwell = root["meanwell"].to<JsonObject>();
+    meanwell["pollinterval"] = config.MeanWell.PollInterval;
+    meanwell["min_voltage"]  = config.MeanWell.MinVoltage;
+    meanwell["max_voltage"]  = config.MeanWell.MaxVoltage;
+    meanwell["min_current"]  = config.MeanWell.MinCurrent;
+    meanwell["max_current"]  = config.MeanWell.MaxCurrent;
+    meanwell["hysteresis"]   = config.MeanWell.Hysteresis;
+    meanwell["EEPROMwrites"] = MeanWellCan.getEEPROMwrites();
+    meanwell["mustInverterProduce"] = config.MeanWell.mustInverterProduce;
 
     WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 }
@@ -87,15 +89,15 @@ void WebApiMeanWellClass::onAdminPost(AsyncWebServerRequest* request)
 
     auto& retMsg = response->getRoot();
 
-    if (!(root.containsKey("enabled")
-        && root.containsKey("pollinterval")
-        && root.containsKey("updatesonly")
-        && root.containsKey("min_voltage")
-        && root.containsKey("max_voltage")
-        && root.containsKey("min_current")
-        && root.containsKey("max_current")
-        && root.containsKey("hysteresis")
-        && root.containsKey("verbose_logging")))
+    if (!root.containsKey("enabled") ||
+        !root.containsKey("updatesonly") ||
+        !root.containsKey("verbose_logging") ||
+        !root["meanwell"].containsKey("pollinterval") ||
+        !root["meanwell"].containsKey("min_voltage") ||
+        !root["meanwell"].containsKey("max_voltage") ||
+        !root["meanwell"].containsKey("min_current") ||
+        !root["meanwell"].containsKey("max_current") ||
+        !root["meanwell"].containsKey("hysteresis"))
     {
         retMsg["message"] = "Values are missing!";
         retMsg["code"] = WebApiError::GenericValueMissing;
@@ -103,7 +105,7 @@ void WebApiMeanWellClass::onAdminPost(AsyncWebServerRequest* request)
         return;
     }
 
-    if (root["pollinterval"].as<uint32_t>() == 0) {
+    if (root["meanwell"]["pollinterval"].as<uint32_t>() == 0) {
         retMsg["message"] = "Poll interval must be a number between 5 and 65535!";
         retMsg["code"] = WebApiError::MqttPublishInterval;
         retMsg["param"]["min"] = 5;
@@ -113,17 +115,17 @@ void WebApiMeanWellClass::onAdminPost(AsyncWebServerRequest* request)
     }
 
     auto& config = Configuration.get();
-    config.MeanWell.Enabled = root["enabled"].as<bool>();
+    config.MeanWell.Enabled        = root["enabled"].as<bool>();
     config.MeanWell.VerboseLogging = root["verbose_logging"].as<bool>();
-    config.MeanWell.UpdatesOnly = root["updatesonly"].as<bool>();
+    config.MeanWell.UpdatesOnly    = root["updatesonly"].as<bool>();
     if (MeanWellCan.isMCP2515Provider()) config.MCP2515.Controller_Frequency = root["can_controller_frequency"].as<uint32_t>();
-    config.MeanWell.PollInterval = root["pollinterval"].as<uint32_t>();
-    config.MeanWell.MinVoltage = root["min_voltage"].as<float>();
-    config.MeanWell.MaxVoltage = root["max_voltage"].as<float>();
-    config.MeanWell.MinCurrent = root["min_current"].as<float>();
-    config.MeanWell.MaxCurrent = root["max_current"].as<float>();
-    config.MeanWell.Hysteresis = root["hysteresis"].as<float>();
-    config.MeanWell.mustInverterProduce = root["mustInverterProduce"].as<bool>();
+    config.MeanWell.PollInterval   = root["meanwell"]["pollinterval"].as<uint32_t>();
+    config.MeanWell.MinVoltage     = root["meanwell"]["min_voltage"].as<float>();
+    config.MeanWell.MaxVoltage     = root["meanwell"]["max_voltage"].as<float>();
+    config.MeanWell.MinCurrent     = root["meanwell"]["min_current"].as<float>();
+    config.MeanWell.MaxCurrent     = root["meanwell"]["max_current"].as<float>();
+    config.MeanWell.Hysteresis     = root["meanwell"]["hysteresis"].as<float>();
+    config.MeanWell.mustInverterProduce = root["meanwell"]["mustInverterProduce"].as<bool>();
 
     WebApi.writeConfig(retMsg);
 

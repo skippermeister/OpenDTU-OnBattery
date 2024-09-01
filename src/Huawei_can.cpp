@@ -52,7 +52,7 @@ bool HuaweiCanCommClass::init() {
 
             MessageOutput.printf("CAN0 port rx = %d, tx = %d\r\n", rx, tx);
 
-            g_config = TWAI_GENERAL_CONFIG_DEFAULT(tx, rx, TWAI_MODE_NORMAL);
+            twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(tx, rx, TWAI_MODE_NORMAL);
             // g_config.bus_off_io = (gpio_num_t)can0_stb;
 #if defined(BOARD_HAS_PSRAM)
             g_config.intr_flags = ESP_INTR_FLAG_LEVEL2;
@@ -85,7 +85,7 @@ bool HuaweiCanCommClass::init() {
             auto scl = pin.i2c.scl;
             auto sda = pin.i2c.sda;
 
-            MessageOutput.printf("I2C CAN Bus @ I2C%d scl = %d, sda = %d\r\n", pin.provider==Charger_Provider_t::I2C0>=0?0:1, scl, sda);
+            MessageOutput.printf("I2C CAN Bus @ I2C%d scl = %d, sda = %d\r\n", pin.provider==Charger_Provider_t::I2C0?0:1, scl, sda);
 
             i2c_can = new I2C_CAN(pin.provider == Charger_Provider_t::I2C0?&Wire:&Wire1, 0x25, scl, sda, 400000UL);     // Set I2C Address
 

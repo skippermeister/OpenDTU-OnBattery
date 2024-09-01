@@ -79,21 +79,21 @@ void WebApiWsLiveClass::generateOnBatteryJsonResponse(JsonVariant& root, bool al
 
 #ifdef USE_CHARGER_HUAWEI
     if (all || (HuaweiCan.getLastUpdate() - _lastPublishCharger) < halfOfAllMillis) {
-        auto huaweiObj = root["huawei"].to<JsonObject>();
-        huaweiObj["enabled"] = config.Huawei.Enabled;
+        auto chargerObj = root["charger"].to<JsonObject>();
+        chargerObj["enabled"] = config.Huawei.Enabled;
 
         if (config.Huawei.Enabled) {
             const RectifierParameters_t* rp = HuaweiCan.get();
-            addTotalField(huaweiObj, "Power", rp->input_power, "W", 2);
+            addTotalField(chargerObj, "Power", rp->input_power, "W", 2);
         }
 #endif
 #ifdef USE_CHARGER_MEANWELL
     if (all || (MeanWellCan.getLastUpdate() - _lastPublishCharger) < halfOfAllMillis) {
-        auto meanwellObj = root["meanwell"].to<JsonObject>();
-        meanwellObj["enabled"] = config.MeanWell.Enabled;
+        auto chargerObj = root["charger"].to<JsonObject>();
+        chargerObj["enabled"] = config.MeanWell.Enabled;
 
         if (config.MeanWell.Enabled) {
-            addTotalField(meanwellObj, "Power", MeanWellCan._rp.inputPower, "W", 2);
+            addTotalField(chargerObj, "Power", MeanWellCan._rp.inputPower, "W", 2);
         }
 #endif
 

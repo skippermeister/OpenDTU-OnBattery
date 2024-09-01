@@ -103,7 +103,7 @@ public:
     uint32_t getParameterValue(uint8_t parameter);
     void setParameterValue(uint16_t in, uint8_t parameterType);
 
-    bool isMCP2515Provider() { return PinMapping.get()charger.provider == Charger_Provider_t::MCP2515; }
+    bool isMCP2515Provider() { return PinMapping.get().charger.provider == Charger_Provider_t::MCP2515; }
 
 private:
     void sendRequest();

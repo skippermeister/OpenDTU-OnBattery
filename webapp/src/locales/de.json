@@ -471,7 +471,7 @@
         "BatteryPower": "Batterie Leistung",
         "GridPower": "Leistung / Netz",
         "HousePower": "Leistung / Haus",
-        "MeanWellPower": "Leistung / AC Ladegerät"
+        "ChargerPower": "Leistung / AC Ladegerät"
     },
     "inverterchannelproperty": {
         "Power": "Leistung",
@@ -1058,7 +1058,7 @@
     "acchargeradmin": {
         "ChargerSettings": "AC-Ladegerät Einstellungen",
         "ChargerConfiguration": "AC-Ladegerät Konfiguration",
-        "ChargerParameter": "MeanWell Parameter",
+        "ChargerParameter": "Ladegerät Parameter",
         "Enable": "Aktiviere ",
         "on": " an ",
         "UpdatesOnly": "@:base.UpdatesOnly",
@@ -1074,9 +1074,27 @@
         "Volts": "Volt",
         "Amps": "Ampere",
         "Watts": "Watt",
+        "Percent": "@:zeroexportadmin.Percent",
         "Seconds": "@:dtuadmin.Seconds",
         "EEPROMwrites": "@:meanwell.EEPROMwrites",
-        "mustInverterProduce": "Prüfe ob Inverter erzeugt solare Energie"
+        "mustInverterProduce": "Prüfe ob Inverter erzeugt solare Energie",
+
+        "EnableAutoPower": "Automatische Leistungssteuerung",
+        "EnableBatterySoCLimits": "Ladezustand einer angeschlossenen Batterie berücksichtigen",
+        "Limits": "Limits",
+        "BatterySoCLimits": "Batterie SoC-Limits",
+        "VoltageLimit": "Ladespannungslimit",
+        "enableVoltageLimit": "Start Spannungslimit",
+        "stopVoltageLimitHint": "Maximal Spannung des Ladegeräts. Entspricht der geünschten Ladeschlussspannung der Batterie. Verwendet für die Automatische Leistungssteuerung und beim Notfallladen",
+        "enableVoltageLimitHint": "Die automatische Leistungssteuerung wird deaktiviert wenn die Ausgangsspannung über diesem Wert liegt und wenn gleichzeitig die Ausgangsleistung unter die minimale Leistung fällt.\nDie automatische Leistungssteuerung wird re-aktiveiert wenn die Batteriespannung unter diesen Wert fällt.",
+        "upperPowerLimitHint": "Maximale Ausgangsleistung. Verwendet für die Automatische Leistungssteuerung und beim Notfallladen",
+        "lowerPowerLimit": "Minimale Leistung",
+        "upperPowerLimit": "Maximale Leistung",
+        "StopBatterySoCThreshold": "Laden bei SoC beenden",
+        "StopBatterySoCThresholdHint": "Zur Verlängerung der Akku-Lebensdauer kann der Ladevorgang bei einem bestimmten SoC gestoppt werden.\nHinweis: Manche LiFePO-Akkus müssen gelegentlich voll geladen werden, um die SoC-Anzeige akkurat zu halten.",
+        "EnableEmergencyCharge": "Notfallladen: Batterie wird mit maximaler Leistung geladen wenn durch das Batterie BMS angefordert",
+        "targetPowerConsumption": "Angestrebter Netzbezug",
+        "targetPowerConsumptionHint": "Bei postiven Werten wird die eingestellte Leistung aus dem Stromnetz bezogen. Bei negativen Werten wird das Netzteil vorzeitig abgeschaltet."
     },
     "battery": {
         "battery": "Batterie",
@@ -1129,7 +1147,7 @@
         "dischargeEnabled": "Entladen ermöglicht",
         "chargeImmediately1": "Sofortiges Laden angefordert (SOC 5~9%)",
         "chargeImmediately2": "Sofortiges Laden angefordert (SOC 9~13%)",
-        "fullChargeRequest": "Voll laden angefordert (SOC<97% letze 30 Tage)",
+        "fullChargeRequest": "Voll laden angefordert (SOC<97% letzte 30 Tage)",
         "cellBalanceActive": "Ausgleich der Zellen aktiv",
 
         "issues": "Meldungen",
