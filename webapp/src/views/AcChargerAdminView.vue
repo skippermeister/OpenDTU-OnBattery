@@ -200,7 +200,6 @@ import BootstrapAlert from "@/components/BootstrapAlert.vue";
 import CardElement from '@/components/CardElement.vue';
 import FormFooter from '@/components/FormFooter.vue';
 import InputElement from '@/components/InputElement.vue';
-import { BIconInfoCircle } from 'bootstrap-icons-vue';
 import type { AcChargerConfig } from '@/types/AcChargerConfig';
 import { authHeader, handleResponse } from '@/utils/authentication';
 import { defineComponent } from 'vue';
@@ -211,8 +210,7 @@ export default defineComponent({
         BootstrapAlert,
         CardElement,
         FormFooter,
-        InputElement,
-        BIconInfoCircle
+        InputElement
     },
     data() {
         return {
