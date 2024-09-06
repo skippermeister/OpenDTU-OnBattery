@@ -159,7 +159,7 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
 #endif
 
     auto batteryPinObj = curPin["battery"].to<JsonObject>();
-#if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER) || defined(USE_JKBMS_CONTROLLER)
+#if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_GOBEL_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER) || defined(USE_JKBMS_CONTROLLER)  || defined(USE_JBDBMS_CONTROLLER)
     if (pin.battery.provider == Battery_Provider_t::RS485) {
         batteryPinObj["rs485_rx"] = pin.battery.rs485.rx;
         batteryPinObj["rs485_tx"] = pin.battery.rs485.tx;
@@ -175,12 +175,9 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
 #if defined(USE_DALYBMS_CONTROLLER)
         if (pin.battery.wakeup >= 0) batteryPinObj["wakeup"] = pin.battery.wakeup;
 #endif
-    }
-#if defined(USE_PYLONTECH_CAN_RECEIVER) || defined(USE_PYTES_CAN_RECEIVER)
-    else
+    } else
 #endif
-#endif
-#if defined(USE_PYLONTECH_CAN_RECEIVER) || defined(USE_PYTES_CAN_RECEIVER)
+#if defined(USE_PYLONTECH_CAN_RECEIVER) || defined(USE_PYTES_CAN_RECEIVER) || defined(USE_SBS_CAN_RECEIVER)
     if (pin.battery.provider == Battery_Provider_t::CAN0) {
         batteryPinObj["can0_rx"] = pin.battery.can0.rx;
         batteryPinObj["can0_tx"] = pin.battery.can0.tx;
@@ -196,8 +193,9 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
         batteryPinObj["mcp2515_clk"] = pin.battery.mcp2515.clk;
         batteryPinObj["mcp2515_irq"] = pin.battery.mcp2515.irq;
         batteryPinObj["mcp2515_cs"] = pin.battery.mcp2515.cs;
-    }
+    } else
 #endif
+    {}
 
     auto chargerPinObj = curPin["charger"].to<JsonObject>();
 #if defined(USE_CHARGER_HUAWEI)

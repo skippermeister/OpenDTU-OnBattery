@@ -31,7 +31,7 @@
                         </div>
                     </div>
 
-                    <InputElement v-show="batteryConfigList.provider < 5"
+                    <InputElement v-show="batteryConfigList.provider < 3"
                         :label="$t('batteryadmin.NumberOfBatteries')"
                         v-model="batteryConfigList.numberOfBatteries" type="number" min="1" max="5" wide4_1 />
                 </div>
@@ -40,17 +40,17 @@
             <div v-show="batteryConfigList.enabled">
                 <CardElement :text="$t('batteryadmin.BatteryParameter')" textVariant="text-bg-primary" add-space>
 
-                    <InputElement v-show="batteryConfigList.provider < 5"
+                    <InputElement v-show="batteryConfigList.provider < 7"
                         :label="$t('batteryadmin.PollInterval')"
                         v-model="batteryConfigList.pollinterval" type="number" min="2" max="90" wide4_2
                         :postfix="$t('batteryadmin.Seconds')" />
 
-                    <InputElement v-if="batteryConfigList.provider >= 5"
+                    <InputElement v-if="batteryConfigList.provider >= 7"
                         :label="$t('batteryadmin.RecommendedChargeVoltage')"
                         v-model="batteryConfigList.recommended_charge_voltage" type="number" min="21" max="80"
                         step="0.1" wide4_2 :postfix="$t('batteryadmin.Volts')" />
 
-                    <InputElement v-if="batteryConfigList.provider >= 5"
+                    <InputElement v-if="batteryConfigList.provider >= 7"
                         :label="$t('batteryadmin.RecommendedDischargeVoltage')"
                         v-model="batteryConfigList.recommended_discharge_voltage" type="number" min="21" max="80"
                         step="0.1" wide4_2 :postfix="$t('batteryadmin.Volts')" />
@@ -69,7 +69,8 @@
                         v-model="batteryConfigList.max_discharge_temp" type="number" step="1" min="-25" max="75" wide4_2
                         :postfix="$t('batteryadmin.Celsius')" />
 
-                    <InputElement :label="$t('batteryadmin.StopChargingSoC')"
+                    <InputElement v-if="batteryConfigList.provider != 9"
+                        :label="$t('batteryadmin.StopChargingSoC')"
                         v-model="batteryConfigList.stop_charging_soc" type="number" step="1" min="20" max="100" wide4_2
                         :tooltip="$t('batteryadmin.StopChargingSoCHint')" :postfix="$t('batteryadmin.Percent')" />
 
@@ -92,31 +93,14 @@
                     </div>
                 </CardElement>
 
-                <CardElement v-show="batteryConfigList.provider == 3" :text="$t('batteryadmin.JkBmsConfiguration')"
-                    textVariant="text-bg-primary" addSpace>
-                    <div class="row mb-3">
-                        <label class="col-sm-2 col-form-label">
-                            {{ $t('batteryadmin.JkBmsInterface') }}
-                        </label>
-                        <div class="col-sm-3">
-                            <select class="form-select" v-model="batteryConfigList.jkbms_interface">
-                                <option v-for="jkBmsInterface in jkBmsInterfaceTypeList" :key="jkBmsInterface.key"
-                                    :value="jkBmsInterface.key">
-                                    {{ $t(`batteryadmin.JkBmsInterface` + jkBmsInterface.value) }}
-                                </option>
-                            </select>
-                        </div>
-                    </div>
-                </CardElement>
-
-                <template v-if="batteryConfigList.enabled && batteryConfigList.provider == 6">
+                <template v-if="batteryConfigList.enabled && batteryConfigList.provider == 8">
                     <CardElement :text="$t('batteryadmin.MqttSocConfiguration')" textVariant="text-bg-primary" addSpace>
 
                         <InputElement :label="$t('batteryadmin.MqttSocTopic')"
-                            v-model="batteryConfigList.mqtt_soc_topic" type="text" maxlength="256" />
+                            v-model="batteryConfigList.mqtt.soc_topic" type="text" maxlength="256" />
 
                         <InputElement :label="$t('batteryadmin.MqttJsonPath')"
-                            v-model="batteryConfigList.mqtt_soc_json_path" type="text" maxlength="128"
+                            v-model="batteryConfigList.mqtt.soc_json_path" type="text" maxlength="128"
                             :tooltip="$t('batteryadmin.MqttJsonPathDescription')" />
 
                     </CardElement>
@@ -125,10 +109,10 @@
                         addSpace>
 
                         <InputElement :label="$t('batteryadmin.MqttVoltageTopic')"
-                            v-model="batteryConfigList.mqtt_voltage_topic" type="text" maxlength="256" />
+                            v-model="batteryConfigList.mqtt.voltage_topic" type="text" maxlength="256" />
 
                         <InputElement :label="$t('batteryadmin.MqttJsonPath')"
-                            v-model="batteryConfigList.mqtt_voltage_json_path" type="text" maxlength="128"
+                            v-model="batteryConfigList.mqtt.voltage_json_path" type="text" maxlength="128"
                             :tooltip="$t('batteryadmin.MqttJsonPathDescription')" />
 
                         <div class="row mb-3">
@@ -137,9 +121,64 @@
                             </label>
                             <div class="col-sm-1">
                                 <select id="mqtt_voltage_unit" class="form-select"
-                                    v-model="batteryConfigList.mqtt_voltage_unit">
+                                    v-model="batteryConfigList.mqtt.voltage_unit">
                                     <option v-for="u in voltageUnitTypeList" :key="u.key" :value="u.key">
                                         {{ u.value }}
+                                    </option>
+                                </select>
+                            </div>
+                        </div>
+                    </CardElement>
+                </template>
+
+                <template v-if="batteryConfigList.enabled && batteryConfigList.provider == 9">
+                    <CardElement :text="$t('batteryadmin.ZendureConfiguration')" textVariant="text-bg-primary" addSpace>
+                        <div class="row mb-3">
+                            <label for="zendure_device_type" class="col-sm-2 col-form-label">
+                                {{ $t('batteryadmin.ZendureDeviceType') }}
+                            </label>
+                            <div class="col-sm-10">
+                                <select
+                                    id="zendure_device_type"
+                                    class="form-select"
+                                    v-model="batteryConfigList.zendure.device_type">
+                                    <option v-for="u in zendureDeviceTypeList" :key="u.key" :value="u.key">
+                                        {{ u.value }}
+                                    </option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <InputElement :label="$t('batteryadmin.ZendureDeviceSerial')"
+                            v-model="batteryConfigList.zendure.device_serial"
+                            type="text" minlength="8" maxlength="8"/>
+
+                        <InputElement :label="$t('batteryadmin.ZendureMaxOutput')"
+                            v-model="batteryConfigList.zendure.max_output"
+                            type="number" min="100" max="2000" step="100"
+                            :postfix="$t('batteryadmin.Watt')"/>
+
+                        <InputElement :label="$t('batteryadmin.ZendureMinSoc')"
+                            v-model="batteryConfigList.zendure.soc_min"
+                            type="number" min="0" max="60" step="1"
+                            :postfix="$t('batteryadmin.Percent')"/>
+
+                        <InputElement :label="$t('batteryadmin.ZendureMaxSoc')"
+                            v-model="batteryConfigList.zendure.soc_max"
+                            type="number" min="40" max="100" step="1"
+                            :postfix="$t('batteryadmin.Percent')"/>
+
+                        <div class="row mb-3">
+                            <label for="zendure_bypass_mode" class="col-sm-2 col-form-label">
+                                {{ $t('batteryadmin.ZendureBypassMode') }}
+                            </label>
+                            <div class="col-sm-10">
+                                <select
+                                    id="zendure_bypass_mode"
+                                    class="form-select"
+                                   v-model="batteryConfigList.zendure.bypass_mode">
+                                    <option v-for="u in zendureBypassModeList" :key="u.key" :value="u.key">
+                                        {{ $t(`batteryadmin.ZendureBypassMode` + u.value) }}
                                     </option>
                                 </select>
                             </div>
@@ -180,16 +219,26 @@ export default defineComponent({
             showAlert: false,
             providerTypeList: [
                 { key: 0, value: 'Pylontech' },
-                { key: 1, value: 'Pytes' },
-                { key: 2, value: 'SBSCan' },
-                { key: 3, value: 'JkBmsSerial' },
-                { key: 4, value: 'DalyBms' },
-                { key: 5, value: 'Victron' },
-                { key: 6, value: 'Mqtt' },
+                { key: 1, value: 'GobelPowerRN' },
+                { key: 2, value: 'Pytes' },
+                { key: 3, value: 'SBSCan' },
+                { key: 4, value: 'JkBmsSerial' },
+                { key: 5, value: 'JbdBmsSerial' },
+                { key: 6, value: 'DalyBms' },
+                { key: 7, value: 'Victron' },
+                { key: 8, value: 'Mqtt' },
+                { key: 9, value: 'ZendureLocalMqtt' },
             ],
-            jkBmsInterfaceTypeList: [
-                { key: 0, value: 'Uart' },
-                { key: 1, value: 'Transceiver' },
+            zendureDeviceTypeList: [
+                { key: 0, value: 'Hub 1200' },
+                { key: 1, value: 'Hub 2000' },
+                { key: 2, value: 'AIO 2400' },
+                { key: 3, value: 'Ace 2000' },
+                { key: 4, value: 'Hyper 2000' },
+            ],
+            zendureBypassModeList: [
+                { key: 0, value: 'Automatic' },
+                { key: 1, value: 'AlwaysOff' },
             ],
             frequencyTypeList: [
                 { key: 8, value: 8000000 },
@@ -209,13 +258,14 @@ export default defineComponent({
     },
     methods: {
         getIoProvider() {
-            if (((this.batteryConfigList.provider == 1 || this.batteryConfigList.provider == 2) &&
+            if ((this.batteryConfigList.provider == 1 && this.batteryConfigList.io_providername != 'RS485') ||
+                ((this.batteryConfigList.provider == 2 || this.batteryConfigList.provider == 3) &&
                  (this.batteryConfigList.io_providername == 'RS232' || this.batteryConfigList.io_providername == 'RS485')
                 ) ||
-                (this.batteryConfigList.provider > 2 && this.batteryConfigList.provider < 5 &&
+                (this.batteryConfigList.provider > 3 && this.batteryConfigList.provider < 7 &&
                  (this.batteryConfigList.io_providername != 'RS232' && this.batteryConfigList.io_providername != 'RS485')
                 ) ||
-                (this.batteryConfigList.provider == 5 && this.batteryConfigList.io_providername != 'RS232'))
+                (this.batteryConfigList.provider == 7 && this.batteryConfigList.io_providername != 'RS232'))
             {
                 this.alertMessage = 'I/O interface ' + this.batteryConfigList.io_providername + ' is not supported for this battery provider. Please configure correct interface in pinmapping.json file';
                 this.alertType = 'error';
@@ -224,7 +274,7 @@ export default defineComponent({
                 this.showAlert = false;
             }
 
-            return this.batteryConfigList.provider < 6 ? this.batteryConfigList.io_providername : 'MQTT';
+            return this.batteryConfigList.provider < 8 ? this.batteryConfigList.io_providername : 'MQTT';
         },
         getBatteryConfig() {
             this.dataLoading = true;

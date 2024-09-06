@@ -3,12 +3,15 @@
 #include "MessageOutput.h"
 #include "PylontechCanReceiver.h"
 #include "PylontechRS485Receiver.h"
+#include "GobelRS485Receiver.h"
 #include "JkBmsController.h"
+#include "JbdBmsController.h"
 #include "VictronSmartShunt.h"
 #include "MqttBattery.h"
 #include "DalyBmsController.h"
 #include "PytesCanReceiver.h"
 #include "SBSCanReceiver.h"
+#include "ZendureBattery.h"
 
 BatteryClass Battery;
 
@@ -77,8 +80,13 @@ void BatteryClass::updateSettings()
             }
             break;
 #endif
+#ifdef USE_GOBEL_RS485_RECEIVER
+        case 1:
+            _upProvider = std::make_unique<GobelRS485Receiver>();
+            break;
+#endif
 #if defined(USE_PYTES_CAN_RECEIVER) || defined(USE_PYTES_RS485_RECEIVER)
-        case 1: // Initialize Pytes Battery
+        case 2: // Initialize Pytes Battery
             switch (ioProvider) {
 #ifdef USE_PYTES_RS485_RECEIVER
                 case Battery_Provider_t::RS485:
@@ -97,7 +105,7 @@ void BatteryClass::updateSettings()
             break;
 #endif
 #ifdef USE_SBS_CAN_RECEIVER
-        case 2:
+        case 3:
             switch (ioProvider) {
 #ifdef USE_SBS_RS485_RECEIVER
                 case Battery_Provider_t::RS485:
@@ -116,30 +124,38 @@ void BatteryClass::updateSettings()
             break;
 #endif
 #ifdef USE_JKBMS_CONTROLLER
-        case 3:
+        case 4:
             if (ioProvider == Battery_Provider_t::RS232 || ioProvider == Battery_Provider_t::RS485)
                 _upProvider = std::make_unique<JkBms::Controller>();
             break;
 #endif
+#ifdef USE_JBDBMS_CONTROLLER
+        case 5:
+            _upProvider = std::make_unique<JbdBms::Controller>();
+            break;        default:;
+#endif
 #ifdef USE_DALYBMS_CONTROLLER
-        case 4:
+        case 6:
             if (ioProvider == Battery_Provider_t::RS232 || ioProvider == Battery_Provider_t::RS485)
                 _upProvider = std::make_unique<DalyBmsController>();
             break;
 #endif
-
 #ifdef USE_VICTRON_SMART_SHUNT
-        case 5:
+        case 7:
             if (ioProvider == Battery_Provider_t::RS232)
                 _upProvider = std::make_unique<VictronSmartShunt>();
             break;
 #endif
 #ifdef USE_MQTT_BATTERY
-        case 6:
+        case 8:
             _upProvider = std::make_unique<MqttBattery>();
             break;
 #endif
-        default:;
+#ifdef USE_MQTT_ZENDURE_BATTERY
+        case 9:
+            _upProvider = std::make_unique<ZendureBattery>();
+            break;
+#endif
     }
 
     if (_upProvider == nullptr) {

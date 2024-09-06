@@ -1,37 +1,31 @@
-#ifdef USE_JKBMS_CONTROLLER
-
+#ifdef USE_JBDBMS_CONTROLLER
 #pragma once
 
-#include <TimeoutHelper.h>
 #include <memory>
 #include <vector>
 #include <frozen/string.h>
 
 #include "Battery.h"
-#include "JkBmsSerialMessage.h"
-#include "JkBmsDummy.h"
-
-//#define JKBMS_DUMMY_SERIAL
+#include "JbdBmsSerialMessage.h"
+#include "JbdBmsController.h"
 
 class DataPointContainer;
 
-namespace JkBms {
+namespace JbdBms {
 
 class Controller : public BatteryProvider {
     public:
         Controller() = default;
 
-        bool init() final;
+        bool init(bool verboseLogging) final;
         void deinit() final;
         void loop() final;
         std::shared_ptr<BatteryStats> getStats() const final { return _stats; }
 
-        bool initialized() const final { return _initialized; };
-
     private:
-        static char constexpr _serialPortOwner[] = "JK BMS";
+        static char constexpr _serialPortOwner[] = "JBD BMS";
 
-#ifdef JKBMS_DUMMY_SERIAL
+#ifdef JBDBMS_DUMMY_SERIAL
         std::unique_ptr<DummySerial> _upSerial;
 #else
         std::unique_ptr<HardwareSerial> _upSerial;
@@ -64,11 +58,15 @@ class Controller : public BatteryProvider {
         enum class ReadState : unsigned {
             Idle,
             WaitingForFrameStart,
-            FrameStartReceived,
-            StartMarkerReceived,
-            FrameLengthMsbReceived,
-            ReadingFrame
+            FrameStartReceived, // 1 Byte: 0xDD
+            StateReceived,
+            CommandCodeReceived,
+            ReadingDataContent,
+            DataContentReceived,
+            ReadingCheckSum,
+            CheckSumReceived,
         };
+
         ReadState _readState;
         void setReadState(ReadState state) {
             _readState = state;
@@ -76,16 +74,15 @@ class Controller : public BatteryProvider {
 
 //        bool _verboseLogging = true;
         Status _lastStatus = Status::Initializing;
-        TimeoutHelper _lastStatusPrinted;
+        uint32_t _lastStatusPrinted = 0;
         uint32_t _lastRequest = 0;
-        uint16_t _frameLength = 0;
-        uint8_t _protocolVersion = -1;
-        SerialResponse::tData _buffer = {};
-        std::shared_ptr<JkBmsBatteryStats> _stats = std::make_shared<JkBmsBatteryStats>();
+        uint8_t _dataLength = 0;
+        JbdBms::SerialResponse::tData _buffer = {};
+        std::shared_ptr<JbdBmsBatteryStats> _stats =
+            std::make_shared<JbdBmsBatteryStats>();
 
         bool _initialized = false;
 };
 
-} /* namespace JkBms */
-
+} /* namespace JbdBms */
 #endif

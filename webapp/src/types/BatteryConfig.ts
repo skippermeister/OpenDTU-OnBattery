@@ -1,3 +1,20 @@
+export interface ZendureParameter {
+    device_type: number;
+    device_serial: string;
+    soc_min: number;
+    soc_max: number;
+    bypass_mode: number;
+    max_output: number;
+}
+
+export interface MqttParameter {
+    soc_topic: string;
+    soc_json_path: string;
+    voltage_topic: string;
+    voltage_json_path: string;
+    voltage_unit: number;
+}
+
 export interface BatteryConfig {
     enabled: boolean;
     numberOfBatteries: number;
@@ -7,13 +24,7 @@ export interface BatteryConfig {
     provider: number;
     io_providername: string;
     can_controller_frequency: number;
-    jkbms_interface: number;
-    jkbms_polling_interval: number;
-    mqtt_soc_topic: string;
-    mqtt_soc_json_path: string;
-    mqtt_voltage_topic: string;
-    mqtt_voltage_json_path: string;
-    mqtt_voltage_unit: number;
+
     min_charge_temp: number;
     max_charge_temp: number;
     min_discharge_temp: number;
@@ -21,4 +32,7 @@ export interface BatteryConfig {
     stop_charging_soc: number;
     recommended_charge_voltage: number;
     recommended_discharge_voltage: number;
+
+    mqtt: MqttParameter;
+    zendure: ZendureParameter;
 }

@@ -261,7 +261,7 @@ PinMappingClass::PinMappingClass()
     _pinMapping.REFUsol.rts = REFUSOL_PIN_RTS;
 #endif
 
-#if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER) || defined(USE_JKBMS_CONTROLLER)
+#if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_GOBEL_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER) || defined(USE_JKBMS_CONTROLLER)  || defined(USE_JBDBMS_CONTROLLER)
     _pinMapping.battery.provider = Battery_Provider_t::RS485;
     _pinMapping.battery.rs485.rx = BATTERY_PIN_RX;
     _pinMapping.battery.rs485.tx = BATTERY_PIN_TX;
@@ -384,7 +384,7 @@ void PinMappingClass::init(const String& deviceMapping)
                 }
 #endif
 
-#if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER) || defined(USE_JKMS_CONTROLLER)
+#if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_GOBEL_RS485_RECEIVER)|| defined(USE_DALYBMS_CONTROLLER) || defined(USE_JKMS_CONTROLLER)
                 if (doc[i]["battery"].containsKey("rs485_rx")) {
                     _pinMapping.battery.provider = Battery_Provider_t::RS485;
                     _pinMapping.battery.rs485.rx = doc[i]["battery"]["rs485_rx"] | BATTERY_PIN_RX;
@@ -397,10 +397,7 @@ void PinMappingClass::init(const String& deviceMapping)
 #if defined(USE_DALYBMS_CONTROLLER)
                     _pinMapping.battery.wakeup = doc[i]["battery"]["wakeup"] | BATTERY_PIN_WAKEUP;
 #endif
-                }
-#if defined(USE_DALYBMS_CONTROLLER) || defined(USE_JKBMS_CONTROLLER)
-                else
-#endif
+                } else
 #endif
 #if defined(USE_DALYBMS_CONTROLLER) || defined(USE_JKBMS_CONTROLLER)
                 if (doc[i]["battery"].containsKey("rs232_rx")) {
@@ -410,17 +407,18 @@ void PinMappingClass::init(const String& deviceMapping)
 #if defined(USE_DALYBMS_CONTROLLER)
                     _pinMapping.battery.wakeup = doc[i]["battery"]["wakeup"] | BATTERY_PIN_WAKEUP;
 #endif
-                }
-#if defined(USE_PYLONTECH_CAN_RECEIVER) || defined(USE_PYTES_CAN_RECEIVER)
-                else
+                } else
 #endif
-#endif
-#if defined(USE_PYLONTECH_CAN_RECEIVER) || defined(USE_PYTES_CAN_RECEIVER)
+#if defined(USE_PYLONTECH_CAN_RECEIVER) || defined(USE_PYTES_CAN_RECEIVER) || defined(USE_SBS_CAN_RECEIVER)
+#ifdef USE_BATTERY_CAN0
                 if (doc[i]["battery"].containsKey("can0_rx")) {
                     _pinMapping.battery.provider = Battery_Provider_t::CAN0;
                     _pinMapping.battery.can0.rx = doc[i]["battery"]["can0_rx"] | -1;
                     _pinMapping.battery.can0.tx = doc[i]["battery"]["can0_tx"] | -1;
-                } else if (doc[i]["battery"].containsKey("i2c0_scl")) {
+                } else
+#endif
+#ifdef USE_BATTERY_I2C
+                 if (doc[i]["battery"].containsKey("i2c0_scl")) {
                     _pinMapping.battery.provider = Battery_Provider_t::I2C0;
                     _pinMapping.battery.i2c.scl = doc[i]["battery"]["i2c0_scl"] | -1;
                     _pinMapping.battery.i2c.sda = doc[i]["battery"]["i2c0_sda"] | -1;
@@ -428,7 +426,10 @@ void PinMappingClass::init(const String& deviceMapping)
                     _pinMapping.battery.provider = Battery_Provider_t::I2C1;
                     _pinMapping.battery.i2c.scl = doc[i]["battery"]["i2c1_scl"] | -1;
                     _pinMapping.battery.i2c.sda = doc[i]["battery"]["i2c1_sda"] | -1;
-                } else if (doc[i]["battery"].containsKey("mcp2515_miso")) {
+                } else
+#endif
+#ifdef USE_BATTERY_MCP2515
+                 if (doc[i]["battery"].containsKey("mcp2515_miso")) {
                     _pinMapping.battery.provider = Battery_Provider_t::MCP2515;
                     _pinMapping.battery.mcp2515.miso = doc[i]["battery"]["mcp2515_miso"] | -1;
                     _pinMapping.battery.mcp2515.mosi = doc[i]["battery"]["mcp2515_mosi"] | -1;
@@ -436,6 +437,7 @@ void PinMappingClass::init(const String& deviceMapping)
                     _pinMapping.battery.mcp2515.irq = doc[i]["battery"]["mcp2515_irq"] | -1;
                     _pinMapping.battery.mcp2515.cs = doc[i]["battery"]["mcp2515_cs"] | -1;
                 } else
+#endif
 #endif
                 {
                     _pinMapping.battery.provider = Battery_Provider_t::RS485;
@@ -453,11 +455,15 @@ void PinMappingClass::init(const String& deviceMapping)
                 _pinMapping.charger.power = doc[i]["charger"]["power"] | CHARGER_PIN_POWER;
 #endif
 
+#ifdef USE_CHARGER_CAN0
                 if (doc[i]["charger"].containsKey("can0_rx")) {
                     _pinMapping.charger.provider = Charger_Provider_t::CAN0;
                     _pinMapping.charger.can0.rx = doc[i]["charger"]["can0_rx"] | -1;
                     _pinMapping.charger.can0.tx = doc[i]["charger"]["can0_tx"] | -1;
-                } else if (doc[i]["battery"].containsKey("i2c0_scl")) {
+                } else
+#endif
+#ifdef USE_CHARGER_I2C
+                 if (doc[i]["charger"].containsKey("i2c0_scl")) {
                     _pinMapping.charger.provider = Charger_Provider_t::I2C0;
                     _pinMapping.charger.i2c.scl = doc[i]["charger"]["i2c0_scl"] | -1;
                     _pinMapping.charger.i2c.sda = doc[i]["charger"]["i2c0_sda"] | -1;
@@ -465,14 +471,19 @@ void PinMappingClass::init(const String& deviceMapping)
                     _pinMapping.charger.provider = Charger_Provider_t::I2C1;
                     _pinMapping.charger.i2c.scl = doc[i]["charger"]["i2c1_scl"] | -1;
                     _pinMapping.charger.i2c.sda = doc[i]["charger"]["i2c1_sda"] | -1;
-                } else if (doc[i]["charger"].containsKey("mcp2515_miso")) {
+                } else
+#endif
+#ifdef USE_CHARGER_MCP2515
+                 if (doc[i]["charger"].containsKey("mcp2515_miso")) {
                     _pinMapping.charger.provider = Charger_Provider_t::MCP2515;
                     _pinMapping.charger.mcp2515.miso = doc[i]["charger"]["mcp2515_miso"] | -1;
                     _pinMapping.charger.mcp2515.mosi = doc[i]["charger"]["mcp2515_mosi"] | -1;
                     _pinMapping.charger.mcp2515.clk = doc[i]["charger"]["mcp2515_clk"] | -1;
                     _pinMapping.charger.mcp2515.irq = doc[i]["charger"]["mcp2515_irq"] | -1;
                     _pinMapping.charger.mcp2515.cs = doc[i]["charger"]["mcp2515_cs"] | -1;
-                } else {
+                } else
+#endif
+                {
                     // default to CAN0
                     _pinMapping.charger.provider = Charger_Provider_t::CAN0;
                     _pinMapping.charger.can0.rx = doc[i]["charger"]["can0_rx"] | CAN0_PIN_RX;
@@ -550,7 +561,7 @@ bool PinMappingClass::isValidEthConfig() const
 
 bool PinMappingClass::isValidBatteryConfig() const
 {
-#if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER) || defined(USE_JKBMS_CONTROLLER)
+#if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_GOBEL_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER) || defined(USE_JKBMS_CONTROLLER)  || defined(USE_JBDBMS_CONTROLLER)
     if (_pinMapping.battery.provider == Battery_Provider_t::RS485)
         return    _pinMapping.battery.rs485.rx > 0
                && _pinMapping.battery.rs485.tx >= 0
@@ -572,16 +583,21 @@ bool PinMappingClass::isValidBatteryConfig() const
 #endif
            ;
 #endif
-#if defined(USE_PYLONTECH_CAN_RECEIVER) || defined(USE_PYTES_CAN_RECEIVER)
+#if defined(USE_PYLONTECH_CAN_RECEIVER) || defined(USE_PYTES_CAN_RECEIVER) || defined(USE_SBS_CAN_RECEIVER)
+#ifdef USE_BATTERY_CAN0
     if (_pinMapping.battery.provider == Battery_Provider_t::CAN0)
         return    _pinMapping.battery.can0.rx > 0
                && _pinMapping.battery.can0.tx > 0
                && _pinMapping.battery.can0.rx != _pinMapping.battery.can0.tx;
+#endif
+#ifdef USE_BATTERY_I2C
     if ((_pinMapping.battery.provider == Battery_Provider_t::I2C0) ||
         (_pinMapping.battery.provider == Battery_Provider_t::I2C1))
         return    _pinMapping.battery.i2c.scl > 0
                && _pinMapping.battery.i2c.sda > 0
                && _pinMapping.battery.i2c.scl != _pinMapping.battery.i2c.sda;
+#endif
+#ifdef USE_CHARGER_MCP2515
     if (_pinMapping.battery.provider == Battery_Provider_t::MCP2515)
         return _pinMapping.battery.mcp2515.miso > 0 &&
                _pinMapping.battery.mcp2515.mosi > 0 &&
@@ -589,25 +605,32 @@ bool PinMappingClass::isValidBatteryConfig() const
                _pinMapping.battery.mcp2515.irq > 0 &&
                _pinMapping.battery.mcp2515.cs > 0;
 #endif
+#endif
     return false;
 }
 
 bool PinMappingClass::isValidChargerConfig() const
 {
 #if defined(USE_CHARGER_MEANWELL) || defined(USE_CHARGER_HUAWEI)
+#ifdef USE_CHARGER_CAN0
     if (_pinMapping.charger.provider == Charger_Provider_t::CAN0)
         return _pinMapping.charger.can0.rx >= 0 &&
                _pinMapping.charger.can0.tx >= 0;
+#endif
+#ifdef USE_CHARGER_I2C
     if ((_pinMapping.charger.provider == Charger_Provider_t::I2C0) ||
         (_pinMapping.battery.provider == Battery_Provider_t::I2C1))
         return _pinMapping.charger.i2c.scl >= 0 &&
                _pinMapping.charger.i2c.sda >= 0;
+#endif
+#ifdef USE_CHARGER_MCP2515
     if (_pinMapping.charger.provider == Charger_Provider_t::MCP2515)
         return _pinMapping.charger.mcp2515.miso >= 0 &&
                _pinMapping.charger.mcp2515.mosi >= 0 &&
                _pinMapping.charger.mcp2515.clk >= 0 &&
                _pinMapping.charger.mcp2515.irq >= 0 &&
                _pinMapping.charger.mcp2515.cs >= 0;
+#endif
 #endif
     return false;
 }
@@ -708,7 +731,7 @@ void PinMappingClass::createPinMappingJson() const
 #endif
 
     JsonObject battery = doc["battery"].to<JsonObject>();
-#if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER) || defined(USE_JKBMS_CONTROLLER)
+#if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_GOBEL_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER) || defined(USE_JKBMS_CONTROLLER)  || defined(USE_JBDBMS_CONTROLLER)
     if (_pinMapping.battery.provider == Battery_Provider_t::RS485) {
         battery["rs485_rx"]  = _pinMapping.battery.rs485.rx;
         battery["rs485_tx"]  = _pinMapping.battery.rs485.tx;
@@ -716,15 +739,15 @@ void PinMappingClass::createPinMappingJson() const
 #if defined(USE_DALYBMS_CONTROLLER)
         battery["wakeup"] = _pinMapping.battery.wakeup;
 #endif
-    } else {
+    } else if (_pinMapping.battery.provider == Battery_Provider_t::RS232) {
         battery["rs232_rx"]  = _pinMapping.battery.rs232.rx;
         battery["rs232_tx"]  = _pinMapping.battery.rs232.tx;
 #if defined(USE_DALYBMS_CONTROLLER)
         battery["wakeup"] = _pinMapping.battery.wakeup;
 #endif
-    }
+    } else
 #endif
-#if defined(USE_PYLONTECH_CAN_RECEIVER) || defined(USE_PYTES_CAN_RECEIVER)
+#if defined(USE_PYLONTECH_CAN_RECEIVER) || defined(USE_PYTES_CAN_RECEIVER) || defined(USE_SBS_CAN_RECEIVER)
     if (_pinMapping.battery.provider == Battery_Provider_t::CAN0) {
         battery["can0_rx"] = _pinMapping.battery.can0.rx;
         battery["can0_tx"] = _pinMapping.battery.can0.tx;
@@ -740,8 +763,9 @@ void PinMappingClass::createPinMappingJson() const
     } else if (_pinMapping.battery.provider == Battery_Provider_t::I2C1) {
         battery["i2c1_scl"] = _pinMapping.battery.i2c.scl;
         battery["i2c1_sda"] = _pinMapping.battery.i2c.sda;
-    }
+    } else
 #endif
+    {}
 
 #if defined(USE_CHARGER_MEANWELL) || defined(USE_CHARGER_HUAWEI)
     JsonObject charger = doc["charger"].to<JsonObject>();

@@ -54,7 +54,7 @@ struct Battery_t {
     const char *providerName;
     Battery_Provider_t provider;
     union {
-#if defined(USE_PYLONTECH_CAN_RECEIVER) || defined(USE_PYTES_CAN_RECEIVER)
+#if defined(USE_PYLONTECH_CAN_RECEIVER) || defined(USE_PYTES_CAN_RECEIVER) || defined(USE_SBS_CAN_RECEIVER)
         struct {
             int8_t rx;
             int8_t tx;
@@ -65,7 +65,7 @@ struct Battery_t {
             int8_t sda;
         } i2c;
 #endif
-#if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER) || defined(USE_JKBMS_CONTROLLER)
+#if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_GOBEL_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER) || defined(USE_JKBMS_CONTROLLER)
         RS232_t rs232;
         RS485_t rs485;
 #endif

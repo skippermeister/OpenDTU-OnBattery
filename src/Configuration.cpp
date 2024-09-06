@@ -295,16 +295,13 @@ bool ConfigurationClass::write()
     battery["numberOfBatteries"] = config.Battery.numberOfBatteries;
     battery["pollinterval"] = config.Battery.PollInterval;
     battery["provider"] = config.Battery.Provider;
-#ifdef USE_JKBMS_CONTROLLER
-    battery["jkbms_interface"] = config.Battery.JkBms.Interface;
-    battery["jkbms_polling_interval"] = config.Battery.JkBms.PollingInterval;
-#endif
 #ifdef USE_MQTT_BATTERY
-    battery["mqtt_soc_topic"] = config.Battery.Mqtt.SocTopic;
-    battery["mqtt_soc_json_path"] = config.Battery.Mqtt.SocJsonPath;
-    battery["mqtt_voltage_topic"] = config.Battery.Mqtt.VoltageTopic;
-    battery["mqtt_voltage_json_path"] = config.Battery.Mqtt.VoltageJsonPath;
-    battery["mqtt_voltage_unit"] = config.Battery.Mqtt.VoltageUnit;
+    JsonObject battery_mqtt = root["mqtt"].to<JsonObject>();
+    battery_mqtt["soc_topic"] = config.Battery.Mqtt.SocTopic;
+    battery_mqtt["soc_json_path"] = config.Battery.Mqtt.SocJsonPath;
+    battery_mqtt["voltage_topic"] = config.Battery.Mqtt.VoltageTopic;
+    battery_mqtt["voltage_json_path"] = config.Battery.Mqtt.VoltageJsonPath;
+    battery_mqtt["voltage_unit"] = config.Battery.Mqtt.VoltageUnit;
 #endif
     battery["min_charge_temp"] = config.Battery.MinChargeTemperature;
     battery["max_charge_temp"] = config.Battery.MaxChargeTemperature;
@@ -314,6 +311,16 @@ bool ConfigurationClass::write()
 #if defined(USE_MQTT_BATTERY) || defined(USE_VICTRON_SMART_SHUNT)
     battery["recommended_charge_voltage"] = config.Battery.RecommendedChargeVoltage;
     battery["recommended_discharge_voltage"] = config.Battery.RecommendedDischargeVoltage;
+#endif
+#ifdef USE_MQTT_ZENDURE_BATTERY
+    JsonObject battery_zendure = battery["zendure"].to<JsonObject>();
+
+    battery_zendure["device_type"] = config.Battery.Zendure.DeviceType;
+    battery_zendure["device_serial"] = config.Battery.Zendure.DeviceSerial;
+    battery_zendure["soc_min"] = config.Battery.Zendure.MinSoC;
+    battery_zendure["soc_max"] = config.Battery.Zendure.MaxSoC;
+    battery_zendure["bypass_mode"] = config.Battery.Zendure.BypassMode;
+    battery_zendure["max_output"] = config.Battery.Zendure.MaxOutput;
 #endif
 
     JsonObject mcp2515 = doc["mcp2515"].to<JsonObject>();
@@ -741,10 +748,6 @@ bool ConfigurationClass::read()
     config.Battery.UpdatesOnly = battery["updatesonly"] | BATTERY_UPDATESONLY;
     config.Battery.PollInterval = battery["pollinterval"] | BATTERY_POLLINTERVAL;
     config.Battery.Provider = battery["provider"] | BATTERY_PROVIDER;
-#ifdef USE_JKBMS_CONTROLLER
-    config.Battery.JkBms.Interface = battery["jkbms_interface"] | BATTERY_JKBMS_INTERFACE;
-    config.Battery.JkBms.PollingInterval = battery["jkbms_polling_interval"] | BATTERY_JKBMS_POLLING_INTERVAL;
-#endif
 #ifdef USE_MQTT_BATTERY
     strlcpy(config.Battery.Mqtt.SocTopic, battery["mqtt_soc_topic"] | "", sizeof(config.Battery.Mqtt.SocTopic));
     strlcpy(config.Battery.Mqtt.SocJsonPath, battery["mqtt_soc_json_path"] | "", sizeof(config.Battery.Mqtt.SocJsonPath));
@@ -761,6 +764,14 @@ bool ConfigurationClass::read()
 #if defined(USE_MQTT_BATTERY) || defined(USE_VICTRON_SMART_SHUNT)
     config.Battery.RecommendedChargeVoltage = battery["recommended_charge_voltage"] | 28.4;
     config.Battery.RecommendedDischargeVoltage = battery["recommended_discharge_voltage"] | 21.0;
+#endif
+#ifdef USE_MQTT_ZENDURE_BATTERY
+    config.Battery.Zendure.DeviceType = battery["zendure"]["device_type"] | BATTERY_ZENDURE_DEVICE;
+    strlcpy(config.Battery.Zendure.DeviceSerial, battery["zendure"]["device_serial"] | "", sizeof(config.Battery.Zendure.DeviceSerial));
+    config.Battery.Zendure.MinSoC = battery["zendure"]["soc_min"] | BATTERY_ZENDURE_MIN_SOC;
+    config.Battery.Zendure.MaxSoC = battery["zendure"]["soc_max"] | BATTERY_ZENDURE_MAX_SOC;
+    config.Battery.Zendure.BypassMode = battery["zendure"]["bypass_mode"] | BATTERY_ZENDURE_BYPASS_MODE;
+    config.Battery.Zendure.MaxOutput = battery["zendure"]["max_output"] | BATTERY_ZENDURE_MAX_OUTPUT;
 #endif
 
     JsonObject mcp2515 = doc["mcp2515"];

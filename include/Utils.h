@@ -20,4 +20,9 @@ public:
     template <typename T>
     static std::optional<T> getNumericValueFromMqttPayload(char const* client,
             std::string const& src, char const* topic, char const* jsonPath);
+
+#ifdef USE_MQTT_ZENDURE_BATTERY
+    template<typename T>
+    static std::optional<T> getJsonElement(JsonObjectConst root, char const* key, size_t nesting = 0);
+#endif
 };

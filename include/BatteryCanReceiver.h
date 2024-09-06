@@ -24,7 +24,7 @@ protected:
     int16_t readSignedInt16(uint8_t *data);
     int32_t readSignedInt24(uint8_t *data);
     uint32_t readUnsignedInt32(uint8_t *data);
-    float scaleValue(int16_t value, float factor);
+    float scaleValue(int32_t value, float factor);
     bool getBit(uint8_t value, uint8_t bit);
 
     char _providerName[32] = "Battery CAN";

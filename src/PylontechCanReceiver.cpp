@@ -21,10 +21,14 @@ void PylontechCanReceiver::onMessage(twai_message_t rx_message)
             _stats->chargeVoltage = this->scaleValue(this->readUnsignedInt16(rx_message.data), 0.1);
             _stats->chargeCurrentLimit = this->scaleValue(this->readSignedInt16(rx_message.data + 2), 0.1);
             _stats->dischargeCurrentLimit = this->scaleValue(this->readSignedInt16(rx_message.data + 4), 0.1);
+            _stats->dischargeVoltageLimit = this->scaleValue(this->readUnsignedInt16(rx_message.data + 6), 0.1);
 
             if (_verboseLogging) {
-                MessageOutput.printf("%s chargeVoltage: %f chargeCurrentLimitation: %f dischargeCurrentLimitation: %f\r\n", _providerName,
-                        _stats->chargeVoltage, _stats->chargeCurrentLimit, _stats->dischargeCurrentLimit);
+                MessageOutput.printf("%s chargeVoltage: %f chargeCurrentLimitation: %f dischargeCurrentLimitation: %f dischargeVoltageLimitation: %f\r\n", _providerName,
+                        _stats->chargeVoltage,
+                        _stats->chargeCurrentLimit,
+                        _stats->dischargeCurrentLimit,
+                        _stats->dischargeVoltageLimit);
             }
             break;
         }
@@ -95,6 +99,12 @@ void PylontechCanReceiver::onMessage(twai_message_t rx_message)
                         _stats->Warning.bmsInternal,
                         _stats->Warning.highCurrentCharge);
             }
+
+            _stats->moduleCount = rx_message.data[4];
+            if (_verboseLogging) {
+                MessageOutput.printf("%s Modules: %d\r\n", _providerName, _stats->moduleCount);
+            }
+
             break;
         }
 
@@ -130,7 +140,6 @@ void PylontechCanReceiver::onMessage(twai_message_t rx_message)
 
         default:
             return; // do not update last update timestamp
-            break;
     }
 
     _stats->setLastUpdate(millis());
@@ -156,6 +165,7 @@ void PylontechCanReceiver::dummyData()
     _stats->chargeVoltage = dummyFloat(50);
     _stats->chargeCurrentLimit = dummyFloat(33);
     _stats->dischargeCurrentLimit = dummyFloat(12);
+    _stats->dischargeVoltageLimit = dummyFloat(46);
     _stats->stateOfHealth = 99;
     _stats->setVoltage(48.67, millis());
     _stats->setCurrent(dummyFloat(-1), 1/*precision*/, millis());
@@ -164,6 +174,7 @@ void PylontechCanReceiver::dummyData()
     _stats->chargeEnabled = true;
     _stats->dischargeEnabled = true;
     _stats->chargeImmediately = false;
+    _stats->moduleCount = 1;
 
     _stats->Warning.highCurrentDischarge = false;
     _stats->Warning.highCurrentCharge = false;

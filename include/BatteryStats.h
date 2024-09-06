@@ -6,6 +6,7 @@
 #include "Arduino.h"
 #include "AsyncJson.h"
 #include "JkBmsDataPoints.h"
+#include "JbdBmsDataPoints.h"
 #include "VeDirectShuntController.h"
 #include "Configuration.h"
 #include "defaults.h"
@@ -297,10 +298,13 @@ private:
     bool chargeImmediately1;
     bool fullChargeRequest;
 
+    uint8_t moduleCount;
+
     struct {
         float chargeVoltage;
         float chargeCurrentLimit;
         float dischargeCurrentLimit;
+        float dischargeVoltageLimit;
         float dischargeVoltage;
 
         uint16_t stateOfHealth;
@@ -353,7 +357,7 @@ public:
     float getRecommendedChargeCurrentLimit() const final { return totals.ChargeDischargeManagementInfo.chargeCurrentLimit; };
     float getChargeCurrentLimitation() const { return totals.ChargeDischargeManagementInfo.chargeCurrentLimit; } ;
     float getRecommendedDischargeCurrentLimit() const final { return totals.ChargeDischargeManagementInfo.dischargeCurrentLimit; };
-    float getDischargeCurrentLimitation() const { return totals.ChargeDischargeManagementInfo.dischargeCurrentLimit; } ;
+    float getDischargeCurrentLimitation() const { return fabs(totals.ChargeDischargeManagementInfo.dischargeCurrentLimit); } ;
     float getMaximumChargeCurrentLimit() const final { return totals.SystemParameters.chargeCurrentLimit; };
     float getMaximumDischargeCurrentLimit() const final { return totals.SystemParameters.dischargeCurrentLimit; };
 
@@ -494,6 +498,24 @@ private:
 };
 #endif
 
+#ifdef USE_GOBEL_RS485_RECEIVER
+class GobelRS485BatteryStats : public BatteryStats {
+    friend class GobelRS485Receiver;
+
+public:
+    void getLiveViewData(JsonVariant& root) const final;
+    void generatePackCommonJsonResponse(JsonObject& packObject, const uint8_t m) const final;
+
+    const Alarm_t& getAlarm() const final { return totals.Alarm; };
+    const Warning_t& getWarning() const final { return totals.Warning; };
+    bool getChargeEnabled() const final { return totals.ChargeDischargeManagementInfo.chargeEnabled; };
+    bool getDischargeEnabled() const final { return totals.ChargeDischargeManagementInfo.dischargeEnabled; };
+    bool getImmediateChargingRequest() const final { return false; }
+
+private:
+}
+#endif
+
 #ifdef USE_PYTES_CAN_RECEIVER
 class PytesBatteryStats : public BatteryStats {
     friend class PytesCanReceiver;
@@ -502,6 +524,7 @@ class PytesBatteryStats : public BatteryStats {
         void getLiveViewData(JsonVariant& root) const final;
         void generatePackCommonJsonResponse(JsonObject& packObject, const uint8_t m) const final;
         void mqttPublish() /* const */ final;
+        bool getImmediateChargingRequest() const { return _chargeImmediately; } ;
         float getChargeCurrentLimitation() const { return _chargeCurrentLimit; } ;
         float getDischargeCurrentLimitation() const { return _dischargeCurrentLimit; } ;
 
@@ -524,8 +547,8 @@ class PytesBatteryStats : public BatteryStats {
         float _dischargeCurrentLimit;
 
         uint16_t _stateOfHealth;
-        uint16_t _chargeCycles;
-        uint16_t _balance;
+        int _chargeCycles = -1;
+        int _balance = -1;
 
         float _temperature;
 
@@ -547,12 +570,15 @@ class PytesBatteryStats : public BatteryStats {
 
         float _totalCapacity;
         float _availableCapacity;
+        uint8_t _capacityPrecision = 0; // decimal places
 
         float _chargedEnergy = -1;
         float _dischargedEnergy = -1;
 
         Alarm_t Alarm;
         Warning_t Warning;
+
+        bool _chargeImmediately;
 };
 #endif
 
@@ -870,6 +896,37 @@ class DalyBmsBatteryStats : public BatteryStats {
 };
 #endif
 
+#ifdef USE_JBDBMS_CONTROLLER
+class JbdBmsBatteryStats : public BatteryStats {
+    public:
+        void getLiveViewData(JsonVariant& root) const final {
+            getJsonData(root, false);
+        }
+
+        void getInfoViewData(JsonVariant& root) const {
+            getJsonData(root, true);
+        }
+
+        void mqttPublish() const final;
+
+        uint32_t getMqttFullPublishIntervalMs() const final { return 60 * 1000; }
+
+        void updateFrom(JbdBms::DataPointContainer const& dp);
+
+    private:
+        void getJsonData(JsonVariant& root, bool verbose) const;
+
+        JbdBms::DataPointContainer _dataPoints;
+        mutable uint32_t _lastMqttPublish = 0;
+        mutable uint32_t _lastFullMqttPublish = 0;
+
+        uint16_t _cellMinMilliVolt = 0;
+        uint16_t _cellAvgMilliVolt = 0;
+        uint16_t _cellMaxMilliVolt = 0;
+        uint32_t _cellVoltageTimestamp = 0;
+};
+#endif
+
 #ifdef USE_VICTRON_SMART_SHUNT
 class VictronSmartShuntStats : public BatteryStats {
     public:
@@ -942,5 +999,147 @@ class MqttBatteryStats : public BatteryStats {
         // if the voltage is subscribed to at all, it alone does not warrant a
         // card in the live view, since the SoC is already displayed at the top
         void getLiveViewData(JsonVariant& root) const final { }
+};
+#endif
+
+#ifdef USE_MQTT_ZENDURE_BATTERY
+class ZendureBatteryStats : public BatteryStats {
+    friend class ZendureBattery;
+
+    class ZendurePackStats {
+        friend class ZendureBatteryStats;
+
+        public:
+            explicit ZendurePackStats(String serial){ setSerial(serial); }
+            void update(JsonObjectConst packData, unsigned int ms);
+            bool isCharging() const { return  _state == 2; };
+            bool isDischarging() const { return  _state == 1; };
+            uint16_t getCapacity() const { return 1920; }
+            std::string getStateString() const { return ZendureBatteryStats::getStateString(_state); };
+
+        protected:
+            bool hasAlarmMaxTemp() const { return _cell_temperature_max >= 45; };
+            bool hasAlarmMinTemp() const { return _cell_temperature_max <= (isCharging() ? 0 : -20); };
+            bool hasAlarmLowSoC() const { return _soc_level < 5; }
+            bool hasAlarmLowVoltage() const { return _voltage_total <= 40.0; }
+            bool hasAlarmHighVoltage() const { return _voltage_total >= 58.4; }
+            void setSerial(String serial);
+
+            String _serial;
+            String _name = "unknown";
+            uint16_t _capacity = 0;
+            uint32_t _version;
+            uint16_t _cell_voltage_min;
+            uint16_t _cell_voltage_max;
+            uint16_t _cell_voltage_spread;
+            float _cell_temperature_max;
+            float _voltage_total;
+            float _current;
+            int16_t _power;
+            uint8_t _soc_level;
+            uint8_t _state;
+
+        private:
+            uint32_t _lastUpdateTimestamp = 0;
+            uint32_t _totalVoltageTimestamp = 0;
+            uint32_t _totalCurrentTimestamp = 0;
+
+    };
+
+    public:
+        virtual ~ZendureBatteryStats(){
+            for (const auto& [key, item] : _packData){
+                delete item;
+            }
+            _packData.clear();
+        }
+        void mqttPublish() const;
+        void getLiveViewData(JsonVariant& root) const;
+
+        bool isCharging() const { return  _state == 1; };
+        bool isDischarging() const { return  _state == 2; };
+
+        static std::string getStateString(uint8_t state);
+
+    protected:
+        std::optional<ZendureBatteryStats::ZendurePackStats*> getPackData(String serial) const;
+        void updatePackData(String serial, JsonObjectConst packData, unsigned int ms);
+        void update(JsonObjectConst props, unsigned int ms);
+        uint16_t getCapacity() const { return _capacity; };
+        uint16_t getAvailableCapacity() const { return getCapacity() * (static_cast<float>(_soc_max - _soc_min) / 100.0); };
+
+    private:
+        std::string getBypassModeString() const;
+        std::string getStateString() const { return ZendureBatteryStats::getStateString(_state); };
+        void calculateEfficiency();
+        void calculateAggregatedPackData();
+
+        void setManufacture(const char* manufacture) {
+            _manufacturer = String(manufacture);
+            if (_device){
+                _manufacturer += " " + _device;
+            }
+        }
+
+        void setSerial(const char* serial) {
+            _serial = String(serial);
+        }
+        void setSerial(String serial) {
+            _serial = serial;
+        }
+
+        void setDevice(const char* device) {
+            _device = String(device);
+        }
+        void setDevice(String device) {
+            _device = device;
+        }
+
+        String _device;
+
+        std::map<String, ZendurePackStats*> _packData = std::map<String, ZendurePackStats*>();
+
+        float _cellTemperature;
+        uint16_t _cellMinMilliVolt;
+        uint16_t _cellMaxMilliVolt;
+        uint16_t _cellDeltaMilliVolt;
+
+        float _soc_max;
+        float _soc_min;
+
+        uint16_t _inverse_max;
+        uint16_t _input_limit;
+        uint16_t _output_limit;
+
+        float _efficiency = 0.0;
+        uint16_t _capacity;
+        uint16_t _charge_power;
+        uint16_t _discharge_power;
+        uint16_t _output_power;
+        uint16_t _input_power;
+        uint16_t _solar_power_1;
+        uint16_t _solar_power_2;
+
+        uint16_t _remain_out_time;
+        uint16_t _remain_in_time;
+
+        uint32_t _swVersion;
+        uint32_t _hwVersion;
+
+        uint8_t _state;
+        uint8_t _num_batteries;
+        uint8_t _bypass_mode;
+        bool _bypass_state;
+        bool _auto_recover;
+        bool _heat_state;
+        bool _auto_shutdown;
+        bool _buzzer;
+
+        bool _alarmLowSoC = false;
+        bool _alarmLowVoltage = false;
+        bool _alarmHightVoltage = false;
+        bool _alarmLowTemperature = false;
+        bool _alarmHighTemperature = false;
+
 };
 #endif

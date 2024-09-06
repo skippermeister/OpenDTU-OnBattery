@@ -7,6 +7,14 @@
 #include <driver/twai.h>
 #include <ctime>
 
+static String pytesCellLabel(uint16_t value) {
+  char name[8];
+  snprintf(name, sizeof(name), "%02d%02d", value & 0xff, value >> 8);
+  return String(name);
+}
+
+};  // namespace
+
 bool PytesCanReceiver::init()
 {
     return _initialized = BatteryCanReceiver::init("Pytes");
@@ -145,6 +153,14 @@ void PytesCanReceiver::onMessage(twai_message_t rx_message)
             }
             break;
 
+        case 0x360: // Victron protocol: Charging request
+            _stats->_chargeImmediately = rx_message.data[0]; // 0xff requests charging.
+            if (_verboseLogging) {
+                MessageOutput.printf("[Pytes] chargeImmediately: %d\r\n",
+                        _stats->_chargeImmediately);
+            }
+            break;
+
         case 0x372:  // Victron protocol: BankInfo
             _stats->_moduleCountOnline = this->readUnsignedInt16(rx_message.data);
             _stats->_moduleCountBlockingCharge = this->readUnsignedInt16(rx_message.data + 2);
@@ -270,37 +286,29 @@ void PytesCanReceiver::onMessage(twai_message_t rx_message)
             }
             break;
 
-        case 0x401: { // Pytes protocol: Highest/Lowest Cell Voltage
+        case 0x401: // Pytes protocol: Highest/Lowest Cell Voltage
             _stats->_cellMaxMilliVolt = this->readUnsignedInt16(rx_message.data);
             _stats->_cellMinMilliVolt = this->readUnsignedInt16(rx_message.data + 2);
-            char maxName[8];
-            char minName[8];
-            snprintf(maxName, sizeof(maxName), "%04x", this->readUnsignedInt16(rx_message.data + 4));
-            snprintf(minName, sizeof(minName), "%04x", this->readUnsignedInt16(rx_message.data + 6));
-            _stats->_cellMaxVoltageName = String(maxName);
-            _stats->_cellMinVoltageName = String(minName);
+            _stats->_cellMaxVoltageName = pytesCellLabel(this->readUnsignedInt8(rx_message.data + 4));
+            _stats->_cellMinVoltageName = pytesCellLabel(this->readUnsignedInt8(rx_message.data + 6));
 
             if (_verboseLogging) {
                 MessageOutput.printf("[Pytes] lowestCellMilliVolt: %d highestCellMilliVolt: %d cellMinVoltageName: %s cellMaxVoltageName: %s\r\n",
-                        _stats->_cellMinMilliVolt, _stats->_cellMaxMilliVolt, minName, maxName);
-            }
+                        _stats->_cellMinMilliVolt, _stats->_cellMaxMilliVolt,
+                        _stats->_cellMinVoltageName.c_str(), _stats->_cellMaxVoltageName.c_str());
             }
             break;
 
-        case 0x402: { // Pytes protocol: Highest/Lowest Cell Temperature
+        case 0x402: // Pytes protocol: Highest/Lowest Cell Temperature
             _stats->_cellMaxTemperature = static_cast<float>(this->readUnsignedInt16(rx_message.data)) / 10.0;
             _stats->_cellMinTemperature = static_cast<float>(this->readUnsignedInt16(rx_message.data + 2)) / 10.0;
-            char maxName[8];
-            char minName[8];
-            snprintf(maxName, sizeof(maxName), "%04x", this->readUnsignedInt16(rx_message.data + 4));
-            snprintf(minName, sizeof(minName), "%04x", this->readUnsignedInt16(rx_message.data + 6));
-            _stats->_cellMaxTemperatureName = String(maxName);
-            _stats->_cellMinTemperatureName = String(minName);
+            _stats->_cellMaxTemperatureName = pytesCellLabel(this->readUnsignedInt8(rx_message.data + 4));
+            _stats->_cellMinTemperatureName = pytesCellLabel(this->readUnsignedInt8(rx_message.data + 6));
 
             if (_verboseLogging) {
                 MessageOutput.printf("[Pytes] minimumCellTemperature: %f maximumCellTemperature: %f cellMinTemperatureName: %s cellMaxTemperatureName: %s\r\n",
-                        _stats->_cellMinTemperature, _stats->_cellMaxTemperature, minName, maxName);
-            }
+                        _stats->_cellMinTemperature, _stats->_cellMaxTemperature,
+                        _stats->_cellMinTemperatureName.c_str(), _stats->_cellMaxTemperatureName.c_str());
             }
             break;
 
@@ -311,22 +319,16 @@ void PytesCanReceiver::onMessage(twai_message_t rx_message)
 
             bool overVoltage = this->getBit(mergedBits, 0);
             bool highVoltage = this->getBit(mergedBits, 1);
-            // bool normalVoltage = this->getBit(mergedBits, 2);
             bool lowVoltage = this->getBit(mergedBits, 3);
             bool underVoltage = this->getBit(mergedBits, 4);
-            // bool chargeHigh = this->getBit(mergedBits, 5);
-            // bool chargeMiddle = this->getBit(mergedBits, 6);
-            // bool chargeLow = this->getBit(mergedBits, 7);
             bool overTemp = this->getBit(mergedBits, 8);
             bool highTemp = this->getBit(mergedBits, 9);
-            // bool normalTemp = this->getBit(mergedBits, 10);
             bool lowTemp = this->getBit(mergedBits, 11);
             bool underTemp = this->getBit(mergedBits, 12);
             bool overCurrentDischarge = this->getBit(mergedBits, 17) || this->getBit(mergedBits, 18);
             bool overCurrentCharge = this->getBit(mergedBits, 19) || this->getBit(mergedBits, 20);
             bool highCurrentDischarge = this->getBit(mergedBits, 21);
             bool highCurrentCharge = this->getBit(mergedBits, 22);
-            // bool stateIdle = this->getBit(mergedBits, 25);
             bool stateCharging = this->getBit(mergedBits, 26);
             bool stateDischarging = this->getBit(mergedBits, 27);
 
@@ -357,17 +359,16 @@ void PytesCanReceiver::onMessage(twai_message_t rx_message)
             break;
             }
 
-        case 0x404: { // Pytes protocol: SOC/SOH
+        case 0x404: // Pytes protocol: SOC/SOH
             // soc isn't used here since it is generated with higher
             // precision in message 0x0409 below.
-            uint8_t soc = static_cast<uint8_t>(this->readUnsignedInt16(rx_message.data));
+            //uint8_t soc = static_cast<uint8_t>(this->readUnsignedInt16(rx_message.data));
             _stats->_stateOfHealth = this->readUnsignedInt16(rx_message.data + 2);
             _stats->_chargeCycles = this->readUnsignedInt16(rx_message.data + 6);
 
             if (_verboseLogging) {
-                MessageOutput.printf("[Pytes] soc: %d soh: %d cycles: %d\r\n",
-                        soc, _stats->_stateOfHealth, _stats->_chargeCycles);
-            }
+                MessageOutput.printf("[Pytes] soh: %d cycles: %d\r\n",
+                        _stats->_stateOfHealth, _stats->_chargeCycles);
             }
             break;
 
@@ -385,11 +386,11 @@ void PytesCanReceiver::onMessage(twai_message_t rx_message)
         case 0x408: { // Pytes protocol: charge status (similar to Pylontech msg 0x35e)
             bool chargeEnabled = rx_message.data[0];
             bool dischargeEnabled = rx_message.data[1];
-            bool chargeImmediately = rx_message.data[2];
+            _stats->_chargeImmediately = rx_message.data[2];
 
             if (_verboseLogging) {
                 MessageOutput.printf("[Pytes] chargeEnabled: %d dischargeEnabled: %d chargeImmediately: %d\r\n",
-                    chargeEnabled, dischargeEnabled, chargeImmediately);
+                    chargeEnabled, dischargeEnabled, _stats->_chargeImmediately);
             }
             break;
             }
@@ -397,6 +398,7 @@ void PytesCanReceiver::onMessage(twai_message_t rx_message)
         case 0x409: { // Pytes protocol: full mAh / remaining mAh
             _stats->_totalCapacity = static_cast<float>(this->readUnsignedInt32(rx_message.data)) / 1000.0;
             _stats->_availableCapacity = static_cast<float>(this->readUnsignedInt32(rx_message.data + 4)) / 1000.0;
+            _stats->_capacityPrecision = 2;
             float soc = 100.0 * static_cast<float>(_stats->_availableCapacity) / static_cast<float>(_stats->_totalCapacity);
             _stats->setSoC(soc, 2/*precision*/, millis());
 

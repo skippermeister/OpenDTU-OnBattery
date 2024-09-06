@@ -45,6 +45,8 @@
 #define POWERMETER_HTTP_JSON_MAX_PATH_STRLEN 256
 #define BATTERY_JSON_MAX_PATH_STRLEN 128
 
+#define ZENDURE_MAX_SERIAL_STRLEN 8
+
 #ifdef USE_LED_SINGLE
     #define LED_COUNT   PINMAPPING_LED_COUNT
 #endif
@@ -242,12 +244,6 @@ struct Battery_CONFIG_T {
     uint8_t numberOfBatteries;
     uint32_t PollInterval;
     uint8_t Provider;
-#ifdef USE_JKBMS_CONTROLLER
-    struct {
-        uint8_t Interface;
-        uint8_t PollingInterval;
-    } JkBms;
-#endif
 #ifdef USE_MQTT_BATTERY
     struct {
         char SocTopic[MQTT_MAX_TOPIC_STRLEN + 1];
@@ -260,6 +256,16 @@ struct Battery_CONFIG_T {
 #if defined(USE_MQTT_BATTERY) || defined(USE_VICTRON_SMART_SHUNT)
     float RecommendedChargeVoltage;
     float RecommendedDischargeVoltage;
+#endif
+#ifdef USE_MQTT_ZENDURE_BATTERY
+    struct {
+        uint8_t DeviceType;
+        char DeviceSerial[ZENDURE_MAX_SERIAL_STRLEN + 1];
+        uint8_t MinSoC;
+        uint8_t MaxSoC;
+        uint8_t BypassMode;
+        uint16_t MaxOutput;
+    } Zendure;
 #endif
 
     bool UpdatesOnly;

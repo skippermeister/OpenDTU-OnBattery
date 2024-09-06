@@ -22,7 +22,7 @@ bool DalyBmsController::init()
     const auto &pin = PinMapping.get();
 
     if (!PinMapping.isValidBatteryConfig()) {
-        MessageOutput.println("Invalid TX/RX pin config");
+        MessageOutput.println("Invalid TX/RX/RTS pin config");
         return false;
     }
 
