@@ -372,9 +372,9 @@ void PytesBatteryStats::getLiveViewData(JsonVariant& root) const
     }
 
     if (_balance != -1) {
-        addLiveViewTextValue(root, "balancingActive", (_balance?"yes":"no"));
+        addLiveViewText(root, "balancingActive", (_balance?"yes":"no"));
     }
-    addLiveViewTextValue(root, "chargeImmediately", (_chargeImmediately?"yes":"no"));
+    addLiveViewText(root, "chargeImmediately", (_chargeImmediately?"yes":"no"));
 
     addLiveViewValue(root, "online", _moduleCountOnline, "Module", 0);
     addLiveViewValue(root, "offline", _moduleCountOffline, "Module", 0);
