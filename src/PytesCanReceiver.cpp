@@ -7,6 +7,8 @@
 #include <driver/twai.h>
 #include <ctime>
 
+namespace {
+
 static String pytesCellLabel(uint16_t value) {
   char name[8];
   snprintf(name, sizeof(name), "%02d%02d", value & 0xff, value >> 8);
