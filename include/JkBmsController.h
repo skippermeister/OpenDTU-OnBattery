@@ -13,6 +13,9 @@
 
 //#define JKBMS_DUMMY_SERIAL
 
+// Timeout threshold for UART = number of symbols (~10 tics) with unchanged state on receive pin
+#define ECHO_READ_TOUT (3) // 3.5T * 8 = 28 ticks, TOUT=3 -> ~24..33 ticks
+
 class DataPointContainer;
 
 namespace JkBms {

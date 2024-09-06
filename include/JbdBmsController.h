@@ -9,6 +9,9 @@
 #include "JbdBmsSerialMessage.h"
 #include "JbdBmsController.h"
 
+// Timeout threshold for UART = number of symbols (~10 tics) with unchanged state on receive pin
+#define ECHO_READ_TOUT (3) // 3.5T * 8 = 28 ticks, TOUT=3 -> ~24..33 ticks
+
 class DataPointContainer;
 
 namespace JbdBms {
@@ -17,7 +20,7 @@ class Controller : public BatteryProvider {
     public:
         Controller() = default;
 
-        bool init(bool verboseLogging) final;
+        bool init() final;
         void deinit() final;
         void loop() final;
         std::shared_ptr<BatteryStats> getStats() const final { return _stats; }
