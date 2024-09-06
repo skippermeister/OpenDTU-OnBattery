@@ -296,7 +296,7 @@ bool ConfigurationClass::write()
     battery["pollinterval"] = config.Battery.PollInterval;
     battery["provider"] = config.Battery.Provider;
 #ifdef USE_MQTT_BATTERY
-    JsonObject battery_mqtt = root["mqtt"].to<JsonObject>();
+    JsonObject battery_mqtt = battery["mqtt"].to<JsonObject>();
     battery_mqtt["soc_topic"] = config.Battery.Mqtt.SocTopic;
     battery_mqtt["soc_json_path"] = config.Battery.Mqtt.SocJsonPath;
     battery_mqtt["voltage_topic"] = config.Battery.Mqtt.VoltageTopic;
@@ -314,7 +314,6 @@ bool ConfigurationClass::write()
 #endif
 #ifdef USE_MQTT_ZENDURE_BATTERY
     JsonObject battery_zendure = battery["zendure"].to<JsonObject>();
-
     battery_zendure["device_type"] = config.Battery.Zendure.DeviceType;
     battery_zendure["device_serial"] = config.Battery.Zendure.DeviceSerial;
     battery_zendure["soc_min"] = config.Battery.Zendure.MinSoC;
