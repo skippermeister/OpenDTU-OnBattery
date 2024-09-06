@@ -36,7 +36,7 @@ bool Controller::init()
     _upSerial = std::make_unique<HardwareSerial>(*oHwSerialPort);
 
     _upSerial->begin(115200, SERIAL_8N1, pin.rs485.rx, pin.rs485.tx);
-    if (pin.battery.provider == Battery_Provider_t::RS485) {
+    if (pin.provider == Battery_Provider_t::RS485) {
         /*
          * JK BMS is connected via a RS485 module. Two different types of modules are supported.
          * Type 1: If a GPIO pin greater 0 is given, we have a MAX3485 or SP3485 module with external driven DE/RE pins
@@ -44,18 +44,18 @@ bool Controller::init()
          * Type 2: If the GPIO is -1, we assume that we have a RS485 TTL module with a self controlled DE/RE circuit.
          *         In this case we only need a TX and RX pin.
          */
-        MessageOutput.printf("RS485 module (Type %d) rx = %d, tx = %d", pin.battery.rs485.rts >= 0 ? 1 : 2, pin.battery.rs485.rx, pin.battery.rs485.tx);
-        if (pin.battery.rs485.rts >= 0) {
-            MessageOutput.printf(", rts = %d", pin.battery.rs485.rts);
-            _upSerial->setPins(pin.battery.rs485.rx, pin.battery.rs485.tx, UART_PIN_NO_CHANGE, pin.battery.rs485.rts);
+        MessageOutput.printf("RS485 module (Type %d) rx = %d, tx = %d", pin.rs485.rts >= 0 ? 1 : 2, pin.rs485.rx, pin.rs485.tx);
+        if (pin.rs485.rts >= 0) {
+            MessageOutput.printf(", rts = %d", pin.rs485.rts);
+            _upSerial->setPins(pin.rs485.rx, pin.rs485.tx, UART_PIN_NO_CHANGE, pin.rs485.rts);
         }
 
         // RS485 protocol is half duplex
         ESP_ERROR_CHECK(uart_set_mode(*oHwSerialPort, UART_MODE_RS485_HALF_DUPLEX));
 
     } else {
-        // pin.battery_rts is negativ and less -1, JK BMS is connected via RS232
-        MessageOutput.printf("RS232 module rx = %d, tx = %d", pin.battery.rs232.rx, pin.battery.rs232.tx);
+        // pin.rs485.rts is negativ and less -1, JK BMS is connected via RS232
+        MessageOutput.printf("RS232 module rx = %d, tx = %d", pin.rs232.rx, pin.rs232.tx);
     }
     // Set read timeout of UART TOUT feature
     ESP_ERROR_CHECK(uart_set_rx_timeout(*oHwSerialPort, ECHO_READ_TOUT));
