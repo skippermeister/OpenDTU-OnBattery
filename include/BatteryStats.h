@@ -1071,9 +1071,9 @@ class ZendureBatteryStats : public BatteryStats {
         void calculateAggregatedPackData();
 
         void setManufacture(const char* manufacture) {
-            _manufacturer = String(manufacture);
+            setManufacturer(manufacture);
             if (_device){
-                _manufacturer += " " + _device;
+                setManufacturer(String(manufacture) + " " + _device);
             }
         }
 

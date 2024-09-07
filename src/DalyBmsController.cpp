@@ -447,7 +447,7 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer)
                     }
                     if (_verboseLogging)
                         MessageOutput.printf("%s %d bms HW version: %s\r\n", TAG, it[4], _stats->_bmsHWversion);
-                    _stats->_manufacturer = String("Daly ") + String(_stats->_bmsHWversion);
+                    _stats->setManufacturer(String("Daly ") + String(_stats->_bmsHWversion));
                     break;
 
                 case Command::REQUEST_BATTERY_LEVEL:
