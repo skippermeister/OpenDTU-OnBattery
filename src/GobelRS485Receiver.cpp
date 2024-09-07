@@ -451,7 +451,7 @@ void GobelRS485Receiver::get_manufacturer_info(const GobelRS485Receiver::Functio
         MessageOutput.printf("%s Device Name: '%s' size: %d\r\n", TAG, deviceName.c_str(), deviceName.length());
     }
 
-    _stats->setManufacturer(std::move(manufacturer));
+    _stats->setManufacturer(manufacturer);
     Pack.deviceName = deviceName;
 
     if (_verboseLogging)
@@ -595,6 +595,40 @@ void GobelRS485Receiver::get_analog_value(const GobelRS485Receiver::Function fun
         MessageOutput.printf("%s Power: %.3f kW\r\n", TAG, Pack.power);
         MessageOutput.printf("%s State of Charge: %.1f%%, Cycles: %d\r\n", TAG, _stats->getSoC(), Pack.cycles);
     }
+}
+
+void GobelRS485Receiver::get_pack_capacity(const GobelRS485Receiver::Function function)
+{
+    if (_verboseLogging)
+        MessageOutput.printf("%s::%s %s Module %d\r\n", TAG, __FUNCTION__, _Function_[function], module);
+
+    if (function != GobelRS485Receiver::Function::GET) {
+        send_cmd(module, Command::GetPackCapacity, 0);
+        yield();
+        if (function == GobelRS485Receiver::Function::REQUEST)
+            return;
+        else {
+            vTaskDelay(100);
+            // and fall through to get the data from the battery
+        }
+    }
+
+    format_t* f = read_frame();
+    if (f == NULL) {
+        errorBatteryNotResponding();
+        return;
+    }
+
+    module -= _masterBatteryID;
+
+    // INFO = INFOFLAG + DATAI
+    uint8_t InfoFlag = f->info[0];
+    uint8_t* info = &(f->info[1]);
+
+    _stats->Pack[module].remainingCapacity = to_AmpHour(info);
+    _stats->Pack[module].fullCapacity = to_AmpHour(info);
+    _stats->Pack[module].designCapacity = to_AmpHour(info);
+    _stats->Pack[module].SoH = _stats->Pack[module].fullCapacity/_stats->Pack[module].designCapacity * 100.0;
 }
 
 void GobelRS485Receiver::get_system_parameters(const GobelRS485Receiver::Function function, uint8_t module)

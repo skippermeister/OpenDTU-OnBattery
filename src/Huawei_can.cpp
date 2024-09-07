@@ -210,10 +210,10 @@ void HuaweiCanCommClass::loop()
                 rx_message.rtr = i2c_can->isRemoteRequest();
                 gotMessage = true;
             } else {
-                MessageOutput.printf("I2C CAN received %d bytes\r\n", rx_message.data_length_code);
+//                MessageOutput.printf("I2C CAN received %d bytes\r\n", rx_message.data_length_code);
             }
         } else {
-            MessageOutput.println("I2C CAN nothing received");
+//            MessageOutput.println("I2C CAN nothing received");
         }
         break;
 #endif
@@ -297,7 +297,7 @@ byte HuaweiCanCommClass::sendMsgBuf(uint32_t identifier, uint8_t extd, uint8_t l
                 return CAN_OK;
             }
             yield();
-            MessageOutput.printf("%s Failed to queue message for transmission\r\n", TAG);
+//            MessageOutput.printf("%s Failed to queue message for transmission\r\n", TAG);
             }
             break;
 #endif

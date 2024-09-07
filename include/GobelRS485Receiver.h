@@ -70,7 +70,9 @@ class GobelRS485Receiver : public BatteryProvider {
         TurnOffModule = 0x95,
         GetFirmwareInfo = 0x96,
         ControlCommand = 0x99, // INFO=0x0C Buzzer off, INFO=0x0D Buzzer on
-        GetRemainingCapacity = 0xA6,
+        ChargeMOSFETcontrol = 0x9A,
+        DischargeMOSFETcontrol = 0x9B,
+        GetPackCapacity = 0xA6,
         BMSTime = 0xB1,
         GetVersionInfo = 0xC1,
         GetBarCode = 0xC2,
@@ -87,6 +89,7 @@ class GobelRS485Receiver : public BatteryProvider {
         CID2_invalid = 0x04,
         Command_format_error = 0x05,
         Invalid_data = 0x06,
+        Operation_or_write_error = 0x09,
         ADR_error = 0x90,
         Communication_error = 0x91
     };
@@ -119,6 +122,7 @@ private:
     void get_module_serial_number(const GobelRS485Receiver::Function function, uint8_t module);
     void setting_charge_discharge_management_info(const GobelRS485Receiver::Function function, uint8_t module = 2, const char* info = NULL);
     void turn_off_module(const GobelRS485Receiver::Function function, uint8_t module);
+    void get_pack_capacity(const GobelRS485Receiver::Function function);
 
     uint16_t get_frame_checksum(char* frame);
     uint16_t get_info_length(const char* info);
@@ -162,6 +166,7 @@ private:
     float to_Volt(uint8_t*& c) { return static_cast<float>(ToUint16(c)) / 1000.0; }
     float to_CellVolt(uint8_t*& c) { return static_cast<float>(ToInt16(c)) / 1000.0; }
     float to_Amp(uint8_t*& c) { return static_cast<float>(ToInt16(c)) / 10.0; }
+    float to_AmpHour(uint8_t*& c) { return static_cast<float>(ToUint16(c)) / 10.0; }
     float DivideUint16By1000(uint8_t*& c) { return static_cast<float>(ToUint16(c)) / 1000.0; }
     float DivideUint24By1000(uint8_t*& c) { return static_cast<float>(ToUint24(c)) / 1000.0; }
 

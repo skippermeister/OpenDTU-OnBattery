@@ -451,7 +451,7 @@ void PylontechRS485Receiver::get_manufacturer_info(const PylontechRS485Receiver:
         MessageOutput.printf("%s Device Name: '%s' size: %d\r\n", TAG, deviceName.c_str(), deviceName.length());
     }
 
-    _stats->setManufacturer(std::move(manufacturer));
+    _stats->setManufacturer(manufacturer);
     Pack.deviceName = deviceName;
 
     if (_verboseLogging)

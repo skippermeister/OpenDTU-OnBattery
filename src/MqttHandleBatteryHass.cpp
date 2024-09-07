@@ -57,7 +57,7 @@ void MqttHandleBatteryHassClass::publishConfig()
     // the MQTT battery provider does not re-publish the SoC under a different
     // known topic. we don't know the manufacture either. HASS auto-discovery
     // for that provider makes no sense.
-    if (config.Battery.Provider != 6) {
+    if (config.Battery.Provider != 8) {
         publishSensor("Manufacturer",          "mdi:factory",        "manufacturer");
         publishSensor("Data Age",              "mdi:timer-sand",     "dataAge",       "duration", "measurement", "s");
         publishSensor("State of Charge (SoC)", "mdi:battery-medium", "stateOfCharge", "battery",  "measurement", "%");
@@ -84,6 +84,7 @@ void MqttHandleBatteryHassClass::publishConfig()
             publishSensor("Charge voltage (BMS)", NULL, "settings/chargeVoltage", "voltage", "measurement", "V");
             publishSensor("Charge current limit", NULL, "settings/chargeCurrentLimit", "current", "measurement", "A");
             publishSensor("Discharge current limit", NULL, "settings/dischargeCurrentLimit", "current", "measurement", "A");
+            publishSensor("Module Count", "midi:counter", "modulesTotal");
 
 #define PBSA(a, b, c) publishBinarySensor("Alarm: " a, "mdi:" b, "alarms/" c, "1", "0")
 #define PBSW(a, b, c) publishBinarySensor("Warning: " a, "mdi:" b, "warnings/" c, "1", "0")
@@ -110,12 +111,14 @@ void MqttHandleBatteryHassClass::publishConfig()
 #undef PBSW
 #undef PBSA
             break;
-#ifdef USE_MQTT_BATTERY
-        case 6: // SoC from MQTT
+
+#ifdef USE_GOBAL_RS485_RECEIVER
+        case 1: // GOBEL GP-RN150 via RS485
             break;
 #endif
+
 #ifdef USE_PYTES_CAN_RECEIVER
-        case 1: // Pytes Battery via CAN0, MCP2515, I2C0, I2C1
+        case 2: // Pytes Battery via CAN0, MCP2515, I2C0, I2C1
             publishSensor("Charge voltage (BMS)", NULL, "settings/chargeVoltage", "voltage", "measurement", "V");
             publishSensor("Charge current limit", NULL, "settings/chargeCurrentLimitation", "current", "measurement", "A");
             publishSensor("Discharge current limit", NULL, "settings/dischargeCurrentLimitation", "current", "measurement", "A");
@@ -171,14 +174,40 @@ void MqttHandleBatteryHassClass::publishConfig()
             publishBinarySensor("Warning Cell Imbalance", "mdi:alert-outline", "warning/cellImbalance", "1", "0");
             break;
 #endif
+#ifdef USE_SBS_CAN_RECEIVER
+        case 3: // SBS CAN RECEIVER
+            publishSensor("Battery voltage", NULL, "voltage", "voltage", "measurement", "V");
+            publishSensor("Battery current", NULL, "current", "current", "measurement", "A");
+            publishSensor("Temperature", NULL, "temperature", "temperature", "measurement", "°C");
+            publishSensor("State of Health (SOH)", "mdi:heart-plus", "stateOfHealth", NULL, "measurement", "%");
+            publishSensor("Charge voltage (BMS)", NULL, "settings/chargeVoltage", "voltage", "measurement", "V");
+            publishSensor("Charge current limit", NULL, "settings/chargeCurrentLimitation", "current", "measurement", "A");
+            publishSensor("Discharge current limit", NULL, "settings/dischargeCurrentLimitation", "current", "measurement", "A");
 
+            publishBinarySensor("Alarm Temperature low", "mdi:thermometer-low", "alarm/underTemperature", "1", "0");
+            publishBinarySensor("Alarm Temperature high", "mdi:thermometer-high", "alarm/overTemperature", "1", "0");
+            publishBinarySensor("Alarm Voltage low", "mdi:alert", "alarm/underVoltage", "1", "0");
+            publishBinarySensor("Alarm Voltage high", "mdi:alert", "alarm/overVoltage", "1", "0");
+            publishBinarySensor("Alarm BMS internal", "mdi:alert", "alarm/bmsInternal", "1", "0");
+
+            publishBinarySensor("Warning High charge current", "mdi:alert-outline", "warning/highCurrentCharge", "1", "0");
+            publishBinarySensor("Warning Discharge current", "mdi:alert-outline", "warning/highCurrentDischarge", "1", "0");
+
+
+            publishBinarySensor("Charge enabled", "mdi:battery-arrow-up", "charging/chargeEnabled", "1", "0");
+            publishBinarySensor("Discharge enabled", "mdi:battery-arrow-down", "charging/dischargeEnabled", "1", "0");
+
+            break;
+#endif
 #ifdef USE_JKBMS_CONTROLLER
-        case 3: // JK BMS
+        case 4: // JK BMS
             //            caption              icon                    topic                       dev. class     state class    unit
             publishSensor("Voltage",           "mdi:battery-charging", "BatteryVoltageMilliVolt",  "voltage",     "measurement", "mV");
             publishSensor("Current",           "mdi:current-dc",       "BatteryCurrentMilliAmps",  "current",     "measurement", "mA");
             publishSensor("BMS Temperature",   "mdi:thermometer",      "BmsTempCelsius",           "temperature", "measurement", "°C");
             publishSensor("Cell Voltage Diff", "mdi:battery-alert",    "CellDiffMilliVolt",        "voltage",     "measurement", "mV");
+            publishSensor("Battery Temperature 1", "mdi:thermometer",  "BatteryTempOneCelsius",    "temperature", "measurement", "°C");
+            publishSensor("Battery Temperature 2", "mdi:thermometer",  "BatteryTempTwoCelsius",    "temperature", "measurement", "°C");
             publishSensor("Charge Cycles",     "mdi:counter",          "BatteryCycles");
             publishSensor("Cycle Capacity",    "mdi:battery-sync",     "BatteryCycleCapacity");
 
@@ -201,12 +230,16 @@ void MqttHandleBatteryHassClass::publishConfig()
 #undef PBS
             break;
 #endif
+#ifdef USE_JBDBMS_CONTROLLER
+        case 5: // JBD BMS Controller
+            break;
+#endif
 #ifdef USE_DALYBMS_CONTROLLER
-        case 4: // DALY BMS
+        case 6: // DALY BMS
             break;
 #endif
 #ifdef USE_VICTRON_SMART_SHUNT
-        case 5: // Victron SmartShunt
+        case 7: // Victron SmartShunt
             publishSensor("Voltage", "mdi:battery-charging", "voltage", "voltage", "measurement", "V");
             publishSensor("Current", "mdi:current-dc", "current", "current", "measurement", "A");
             publishSensor("Instantaneous Power", NULL, "instantaneousPower", "power", "measurement", "W");
@@ -217,6 +250,10 @@ void MqttHandleBatteryHassClass::publishConfig()
             publishSensor("Last Full Charge", "mdi:timelapse", "lastFullCharge", NULL, NULL, "min");
             publishSensor("Midpoint Voltage", NULL, "midpointVoltage", "voltage", "measurement", "V");
             publishSensor("Midpoint Deviation", NULL, "midpointDeviation", "battery", "measurement", "%");
+            break;
+#endif
+#ifdef USE_MQTT_BATTERY
+        case 8: // SoC from MQTT
             break;
 #endif
     }

@@ -180,24 +180,17 @@
 
                                 <div class="col-sm-1">
                                     <div class="form-switch form-check-inline">
-                                        <input
-                                            class="form-check-input"
-                                            type="checkbox"
-                                            id="flexSwitchVoltage"
+                                        <input id="flexSwitchVoltage" class="form-check-input" type="checkbox"
                                             v-model="targetLimitList.voltage_valid"
                                         />
                                     </div>
                                 </div>
 
                                 <div class="col-sm-7">
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        name="inputVoltageTargetLimit"
-                                        class="form-control"
-                                        id="inputVoltageTargetLimit"
-                                        :min="targetVoltageLimitMin"
-                                        :max="targetVoltageLimitMax"
+                                    <input id="inputVoltageTargetLimit"
+                                        name="inputVoltageTargetLimit" class="form-control"
+                                        type="number" step="0.01" precision="2"
+                                        :min="targetVoltageLimitMin" :max="targetVoltageLimitMax"
                                         v-model="targetLimitList.voltage"
                                         :disabled="!targetLimitList.voltage_valid"
                                     />
@@ -222,24 +215,17 @@
 
                                 <div class="col-sm-1">
                                     <div class="form-switch form-check-inline">
-                                        <input
-                                            class="form-check-input"
-                                            type="checkbox"
-                                            id="flexSwitchCurrentt"
+                                        <input id="flexSwitchCurrent" class="form-check-input" type="checkbox"
                                             v-model="targetLimitList.current_valid"
                                         />
                                     </div>
                                 </div>
 
                                 <div class="col-sm-7">
-                                    <input
-                                        type="number"
-                                        step="0.1"
-                                        name="inputCurrentTargetLimit"
-                                        class="form-control"
-                                        id="inputCurrentTargetLimit"
-                                        :min="targetCurrentLimitMin"
-                                        :max="targetCurrentLimitMax"
+                                    <input id="inputCurrentTargetLimit"
+                                        name="inputCurrentTargetLimit" class="form-control"
+                                        type="number" step="0.1" precision="2"
+                                        :min="targetCurrentLimitMin" :max="targetCurrentLimitMax"
                                         v-model="targetLimitList.current"
                                         :disabled="!targetLimitList.current_valid"
                                     />

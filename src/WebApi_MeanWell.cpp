@@ -64,10 +64,10 @@ void WebApiMeanWellClass::onAdminGet(AsyncWebServerRequest* request)
 
     auto meanwell = root["meanwell"].to<JsonObject>();
     meanwell["pollinterval"] = config.MeanWell.PollInterval;
-    meanwell["min_voltage"]  = config.MeanWell.MinVoltage;
-    meanwell["max_voltage"]  = config.MeanWell.MaxVoltage;
-    meanwell["min_current"]  = config.MeanWell.MinCurrent;
-    meanwell["max_current"]  = config.MeanWell.MaxCurrent;
+    meanwell["min_voltage"]  = static_cast<int>(config.MeanWell.MinVoltage * 100.0 + 0.5) / 100.0;
+    meanwell["max_voltage"]  = static_cast<int>(config.MeanWell.MaxVoltage * 100.0 + 0.5) / 100.0;
+    meanwell["min_current"]  = static_cast<int>(config.MeanWell.MinCurrent * 100.0 + 0.5) / 100.0;
+    meanwell["max_current"]  = static_cast<int>(config.MeanWell.MaxCurrent * 100.0 + 0.5) / 100.0;
     meanwell["hysteresis"]   = config.MeanWell.Hysteresis;
     meanwell["EEPROMwrites"] = MeanWellCan.getEEPROMwrites();
     meanwell["mustInverterProduce"] = config.MeanWell.mustInverterProduce;
@@ -120,10 +120,10 @@ void WebApiMeanWellClass::onAdminPost(AsyncWebServerRequest* request)
     config.MeanWell.UpdatesOnly    = root["updatesonly"].as<bool>();
     if (MeanWellCan.isMCP2515Provider()) config.MCP2515.Controller_Frequency = root["can_controller_frequency"].as<uint32_t>();
     config.MeanWell.PollInterval   = root["meanwell"]["pollinterval"].as<uint32_t>();
-    config.MeanWell.MinVoltage     = root["meanwell"]["min_voltage"].as<float>();
-    config.MeanWell.MaxVoltage     = root["meanwell"]["max_voltage"].as<float>();
-    config.MeanWell.MinCurrent     = root["meanwell"]["min_current"].as<float>();
-    config.MeanWell.MaxCurrent     = root["meanwell"]["max_current"].as<float>();
+    config.MeanWell.MinVoltage     = static_cast<int>(root["meanwell"]["min_voltage"].as<float>() * 100) / 100.0;
+    config.MeanWell.MaxVoltage     = static_cast<int>(root["meanwell"]["max_voltage"].as<float>() * 100) / 100.0;
+    config.MeanWell.MinCurrent     = static_cast<int>(root["meanwell"]["min_current"].as<float>() * 100) / 100.0;
+    config.MeanWell.MaxCurrent     = static_cast<int>(root["meanwell"]["max_current"].as<float>() * 100) / 100.0;
     config.MeanWell.Hysteresis     = root["meanwell"]["hysteresis"].as<float>();
     config.MeanWell.mustInverterProduce = root["meanwell"]["mustInverterProduce"].as<bool>();
 
@@ -144,12 +144,12 @@ void WebApiMeanWellClass::onLimitGet(AsyncWebServerRequest* request)
     auto& root = response->getRoot();
     // MeanWellCan.generateJsonResponse(root);
 
-    root["voltage"] = MeanWellCan._rp.outputVoltageSet;
-    root["current"] = MeanWellCan._rp.outputCurrentSet;
-    root["curveCV"] = MeanWellCan._rp.curveCV;
-    root["curveCC"] = MeanWellCan._rp.curveCC;
-    root["curveFV"] = MeanWellCan._rp.curveFV;
-    root["curveTC"] = MeanWellCan._rp.curveTC;
+    root["voltage"] = static_cast<int>(MeanWellCan._rp.outputVoltageSet * 100 + 0.5) / 100.0;
+    root["current"] = static_cast<int>(MeanWellCan._rp.outputCurrentSet * 100 + 0.5) / 100.0;
+    root["curveCV"] = static_cast<int>(MeanWellCan._rp.curveCV * 100 + 0.5) / 100.0;
+    root["curveCC"] = static_cast<int>(MeanWellCan._rp.curveCC * 100 + 0.5) / 100.0;
+    root["curveFV"] = static_cast<int>(MeanWellCan._rp.curveFV * 100 + 0.5) / 100.0;
+    root["curveTC"] = static_cast<int>(MeanWellCan._rp.curveTC * 100 + 0.5) / 100.0;
 
     /*    if (Configuration.get().MeanWell.VerboseLogging) {
             String output;
@@ -187,7 +187,7 @@ void WebApiMeanWellClass::onLimitPost(AsyncWebServerRequest* request)
 
     if (root.containsKey("voltageValid")) {
         if (root["voltageValid"].as<bool>()) {
-            value = root["voltage"].as<float>();
+            value = static_cast<int>(root["voltage"].as<float>() * 100) / 100.0;
             if (value < cMeanWell.VoltageLimitMin || value > cMeanWell.VoltageLimitMax) {
                 retMsg["message"] = "voltage not in range between " + String(cMeanWell.VoltageLimitMin,0) + "V and " + String(cMeanWell.VoltageLimitMax,0) + "V !";
                 retMsg["code"] = WebApiError::LimitInvalidLimit;
@@ -203,7 +203,7 @@ void WebApiMeanWellClass::onLimitPost(AsyncWebServerRequest* request)
 
     if (root.containsKey("currentValid")) {
         if (root["currentValid"].as<bool>()) {
-            value = root["current"].as<float>();
+            value = static_cast<int>(root["current"].as<float>() * 100) / 100.0;
             if (value < cMeanWell.CurrentLimitMin || value > cMeanWell.CurrentLimitMax) {
                 retMsg["message"] = "current must be in range between " + String(cMeanWell.CurrentLimitMin,2) + "A and " + String(cMeanWell.CurrentLimitMax,2) + "A !";
                 retMsg["code"] = WebApiError::LimitInvalidLimit;
@@ -219,7 +219,7 @@ void WebApiMeanWellClass::onLimitPost(AsyncWebServerRequest* request)
 
     if (root.containsKey("curveCVvalid")) {
         if (root["curveCVvalid"].as<bool>()) {
-            value = root["curveCV"].as<float>();
+            value = static_cast<int>(root["curveCV"].as<float>() * 100) / 100.0;
             if (value < cMeanWell.VoltageLimitMin || value > cMeanWell.VoltageLimitMax) {
                 retMsg["message"] = "voltage not in range between " + String(cMeanWell.VoltageLimitMin,0) + "V and " + String(cMeanWell.VoltageLimitMax,0) +"V !";
                 retMsg["code"] = WebApiError::LimitInvalidLimit;
@@ -235,7 +235,7 @@ void WebApiMeanWellClass::onLimitPost(AsyncWebServerRequest* request)
 
     if (root.containsKey("curveCCvalid")) {
         if (root["curveCCvalid"].as<bool>()) {
-            value = root["curveCC"].as<float>();
+            value = static_cast<int>(root["curveCC"].as<float>() * 100) / 100.0;
             if (value < cMeanWell.CurrentLimitMin || value > cMeanWell.CurrentLimitMax) {
                 retMsg["message"] = "Curve constant current must be in range between " + String(cMeanWell.CurrentLimitMin,2) + "A and " + String(cMeanWell.CurrentLimitMax,2) + "A !";
                 retMsg["code"] = WebApiError::LimitInvalidLimit;
@@ -251,7 +251,7 @@ void WebApiMeanWellClass::onLimitPost(AsyncWebServerRequest* request)
 
     if (root.containsKey("curveFVvalid")) {
         if (root["curveFVvalid"].as<bool>()) {
-            value = root["curveFV"].as<float>();
+            value = static_cast<int>(root["curveFV"].as<float>() * 100) / 100.0;
             if (value < cMeanWell.VoltageLimitMin || value > cMeanWell.VoltageLimitMax) {
                 retMsg["message"] = "Curve float voltage not in range between " + String(cMeanWell.VoltageLimitMin,0) + "V and " + String(cMeanWell.VoltageLimitMax,0) + "V !";
                 retMsg["code"] = WebApiError::LimitInvalidLimit;
@@ -267,7 +267,7 @@ void WebApiMeanWellClass::onLimitPost(AsyncWebServerRequest* request)
 
     if (root.containsKey("curveTCvalid")) {
         if (root["curveTCvalid"].as<bool>()) {
-            value = root["curveTC"].as<float>();
+            value = static_cast<int>(root["curveTC"].as<float>() * 100) / 100.0;
             if (value < cMeanWell.CurrentLimitMin / 10.0 || value > cMeanWell.CurrentLimitMax / 3.33333333) {
                 retMsg["message"] = "Taper constant current must be in range between " + String(cMeanWell.CurrentLimitMin/10,2) + "A and " + String(cMeanWell.CurrentLimitMax/3.3333,2) + "A !";
                 retMsg["code"] = WebApiError::LimitInvalidLimit;

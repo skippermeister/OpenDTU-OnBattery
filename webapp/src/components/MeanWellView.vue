@@ -206,7 +206,8 @@
                                         <input type="number" step="0.01" name="inputVoltageTargetLimit"
                                             class="form-control" id="inputVoltageTargetLimit"
                                             :min="targetVoltageLimitMin" :max="targetVoltageLimitMax"
-                                            v-model="targetLimitList.voltage" :disabled=!targetLimitList.voltageValid>
+                                            v-model="targetLimitList.voltage"
+                                            :disabled=!targetLimitList.voltageValid>
                                     </div>
                                 </div>
 
@@ -222,10 +223,12 @@
                                     </div>
 
                                     <div class="col-sm-2">
-                                        <input type="number" step="0.01" name="inputCurrentTargetLimit"
-                                            class="form-control" id="inputCurrentTargetLimit"
+                                        <input id="inputCurrentTargetLimit"
+                                            name="inputCurrentTargetLimit" class="form-control"
+                                            type="number" step="0.01" precision="2"
                                             :min="targetCurrentLimitMin" :max="targetCurrentLimitMax"
-                                            v-model="targetLimitList.current" :disabled=!targetLimitList.currentValid>
+                                            v-model="targetLimitList.current"
+                                            :disabled=!targetLimitList.currentValid>
                                     </div>
                                 </div>
 
@@ -241,9 +244,11 @@
                                     </div>
 
                                     <div class="col-sm-2">
-                                        <input type="number" step="0.01" name="inputCurve_CVLimit" class="form-control"
-                                            id="inputCurve_CVLimit" :min="targetVoltageLimitMin"
-                                            :max="targetVoltageLimitMax" v-model="targetLimitList.curveCV"
+                                        <input id="inputCurve_CVLimit"
+                                            name="inputCurve_CVLimit" class="form-control"
+                                            type="number" step="0.01" precision="2"
+                                            :min="targetVoltageLimitMin" :max="targetVoltageLimitMax"
+                                            v-model="targetLimitList.curveCV"
                                             :disabled=!targetLimitList.curveCVvalid>
                                     </div>
                                 </div>
@@ -260,9 +265,11 @@
                                     </div>
 
                                     <div class="col-sm-2">
-                                        <input type="number" step="0.01" name="inputCurve_CCLimit" class="form-control"
-                                            id="inputCurve_CCLimit" :min="targetCurrentLimitMin"
-                                            :max="targetCurrentLimitMax" v-model="targetLimitList.curveCC"
+                                        <input id="inputCurve_CCLimit"
+                                            name="inputCurve_CCLimit" class="form-control"
+                                            type="number" step="0.01" precision="2"
+                                            :min="targetCurrentLimitMin" :max="targetCurrentLimitMax"
+                                            v-model="targetLimitList.curveCC"
                                             :disabled=!targetLimitList.curveCCvalid>
                                     </div>
                                 </div>
@@ -279,9 +286,11 @@
                                     </div>
 
                                     <div class="col-sm-2">
-                                        <input type="number" step="0.01" name="inputCurve_CCLimit" class="form-control"
-                                            id="inputCurve_FVLimit" :min="targetVoltageLimitMin"
-                                            :max="targetVoltageLimitMax" v-model="targetLimitList.curveFV"
+                                        <input id="inputCurve_FVLimit"
+                                            name="inputCurve_CCLimit" class="form-control"
+                                            type="number" step="0.01" precision="2"
+                                            :min="targetVoltageLimitMin" :max="targetVoltageLimitMax"
+                                            v-model="targetLimitList.curveFV"
                                             :disabled=!targetLimitList.curveFVvalid>
                                     </div>
                                 </div>
@@ -298,9 +307,11 @@
                                     </div>
 
                                     <div class="col-sm-2">
-                                        <input type="number" step="0.01" name="inputCurve_TCLimit" class="form-control"
-                                            id="inputCurve_TCLimit" :min="targetCurrentLimitMin"
-                                            :max="targetCurrentLimitMax" v-model="targetLimitList.curveTC"
+                                        <input id="inputCurve_TCLimit"
+                                            name="inputCurve_TCLimit" class="form-control"
+                                            type="number" step="0.01" precision="2"
+                                            :min="targetCurrentLimitMin" :max="targetCurrentLimitMax"
+                                            v-model="targetLimitList.curveTC"
                                             :disabled=!targetLimitList.curveTCvalid>
                                     </div>
                                 </div>

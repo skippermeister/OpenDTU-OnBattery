@@ -4,6 +4,7 @@
 #include "PylontechCanReceiver.h"
 #include "MessageOutput.h"
 #include "PinMapping.h"
+#include <algorithm>
 #include <driver/twai.h>
 #include <ctime>
 
@@ -110,7 +111,7 @@ void PylontechCanReceiver::onMessage(twai_message_t rx_message)
 
         case 0x35E: {
             String manufacturer(reinterpret_cast<char*>(rx_message.data),
-                    rx_message.data_length_code);
+                    std::min(5, static_cast<int>(rx_message.data_length_code)));
 
             if (manufacturer.isEmpty()) { break; }
 
@@ -118,7 +119,7 @@ void PylontechCanReceiver::onMessage(twai_message_t rx_message)
                 MessageOutput.printf("%s Manufacturer: %s\r\n", _providerName, manufacturer.c_str());
             }
 
-            _stats->setManufacturer(std::move(manufacturer));
+            _stats->setManufacturer(manufacturer);
             break;
         }
 

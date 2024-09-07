@@ -137,7 +137,7 @@ void PytesCanReceiver::onMessage(twai_message_t rx_message)
                 MessageOutput.printf("%s Manufacturer: %s\r\n", _providerName, manufacturer.c_str());
             }
 
-            _stats->setManufacturer(std::move(manufacturer));
+            _stats->setManufacturer(manufacturer);
             }
             break;
 

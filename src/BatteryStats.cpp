@@ -131,6 +131,18 @@ void BatteryStats::generatePackCommonJsonResponse(JsonObject& packObject, const 
 {
 }
 
+void BatteryStats::setManufacturer(const String& m)
+{
+    String sanitized(m);
+    for (int i = 0; i < sanitized.length(); i++) {
+      char c = sanitized[i];
+      if (c < 0x20 || c >= 0x80) {
+        sanitized[i] = '?';
+      }
+    }
+    _manufacturer = std::move(sanitized);
+}
+
 bool BatteryStats::updateAvailable(uint32_t since) const
 {
     if (_lastUpdate == 0) { return false; } // no data at all processed yet
@@ -1369,7 +1381,7 @@ void JbdBmsBatteryStats::updateFrom(JbdBms::DataPointContainer const& dp)
 {
     using Label = JbdBms::DataPointLabel;
 
-    _manufacturer = "JBDBMS";
+    setManufacturer("JBDBMS");
 
     auto oSoCValue = dp.get<Label::BatterySoCPercent>();
     if (oSoCValue.has_value()) {
@@ -1500,7 +1512,7 @@ void JkBmsBatteryStats::updateFrom(JkBms::DataPointContainer const& dp)
 {
     using Label = JkBms::DataPointLabel;
 
-    _manufacturer = "JKBMS";
+    setManufacturer("JKBMS");
     auto oProductId = dp.get<Label::ProductId>();
     if (oProductId.has_value()) {
         // the first twelve chars are expected to be the "User Private Data"
@@ -1508,10 +1520,10 @@ void JkBmsBatteryStats::updateFrom(JkBms::DataPointContainer const& dp)
         // name, which can be changed at will using the smartphone app. so
         // there is not always a "JK" in this string. if there is, we still cut
         // the string there to avoid possible regressions.
-        _manufacturer = oProductId->substr(12).c_str();
+        setManufacturer(oProductId->substr(12).c_str());
         auto pos = oProductId->rfind("JK");
         if (pos != std::string::npos) {
-            _manufacturer = oProductId->substr(pos).c_str();
+            setManufacturer(oProductId->substr(pos).c_str());
         }
     }
 
@@ -1623,7 +1635,7 @@ void VictronSmartShuntStats::updateFrom(VeDirectShuntController::data_t const& s
     _timeToGo = shuntData.TTG / 60;
     _chargedEnergy = shuntData.H18 / 100;
     _dischargedEnergy = shuntData.H17 / 100;
-    _manufacturer = String("Victron ") + shuntData.getPidAsString().data();
+    setManufacturer(String("Victron ") + shuntData.getPidAsString().data());
     _temperature = shuntData.T;
     _tempPresent = shuntData.tempPresent;
     _midpointVoltage = static_cast<float>(shuntData.VM) / 1000;

@@ -74,6 +74,7 @@ export interface Vedirect {
 
 export interface Charger {
     enabled: boolean;
+    type: string;
     Power: ValueObject;
 }
 

@@ -126,13 +126,15 @@ class BatteryStats {
             _lastUpdateCurrent = _lastUpdate = timestamp;
         }
 
-        String _manufacturer = "unknown";
+        void setManufacturer(const String& m);
+
         String _hwversion = "";
         String _fwversion = "";
         String _serial = "";
         uint32_t _lastUpdate = 0;
 
     private:
+        String _manufacturer = "unknown";
         uint32_t _lastMqttPublish = 0;
         float _SoC = 0;
         uint8_t _socPrecision = 0; // decimal places
@@ -272,7 +274,6 @@ public:
     uint32_t getMqttFullPublishIntervalMs() const final { return 60 * 1000; }
 
 private:
-    void setManufacturer(String&& m) { _manufacturer = std::move(m) + "tech"; }
     void setLastUpdate(uint32_t ts) { _lastUpdate = ts; }
 
     uint8_t _number_of_packs = 0;
@@ -379,7 +380,6 @@ public:
     uint32_t getMqttFullPublishIntervalMs() const final { return 60 * 1000; }
 
 private:
-    void setManufacturer(String&& m) { _manufacturer = std::move(m) + "tech"; }
     void setLastUpdate(uint32_t ts) { _lastUpdate = ts; }
 
     uint8_t _number_of_packs = 0;
@@ -529,7 +529,6 @@ class PytesBatteryStats : public BatteryStats {
         float getDischargeCurrentLimitation() const { return _dischargeCurrentLimit; } ;
 
     private:
-        void setManufacturer(String&& m) { _manufacturer = std::move(m); }
         void setLastUpdate(uint32_t ts) { _lastUpdate = ts; }
         void updateSerial() {
             if (!_serialPart1.isEmpty() && !_serialPart2.isEmpty()) {
@@ -614,7 +613,6 @@ class SBSBatteryStats : public BatteryStats {
         };
 
     private:
-        void setManufacturer(String&& m) { _manufacturer = std::move(m); }
         void setLastUpdate(uint32_t ts) { _lastUpdate = ts; }
 
         float _chargeVoltage;
@@ -629,8 +627,6 @@ class SBSBatteryStats : public BatteryStats {
 
         bool _chargeEnabled;
         bool _dischargeEnabled;
-
-        const char *_state = nullptr;
 };
 #endif
 

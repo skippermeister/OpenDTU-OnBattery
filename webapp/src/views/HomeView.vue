@@ -153,8 +153,8 @@
         <REFUsolView v-if="'refusol' in liveData && liveData.refusol.enabled" />
         <VedirectView v-if="liveData.vedirect.enabled" />
         <BatteryView v-if="liveData.battery.enabled" />
-        <MeanWellView v-if="'meanwell' in liveData && liveData.charger.enabled" />
-        <HuaweiView v-if="'huawei' in liveData && liveData.charger.enabled" />
+        <MeanWellView v-if="liveData.charger.type == 'meanwell' && liveData.charger.enabled" />
+        <HuaweiView v-if="liveData.charger.type == 'huawei' && liveData.charger.enabled" />
     </BasePage>
 
     <ModalDialog modalId="eventView" :title="$t('home.EventLog')" :loading="eventLogLoading">

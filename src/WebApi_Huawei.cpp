@@ -93,7 +93,8 @@ void WebApiHuaweiClass::onPost(AsyncWebServerRequest* request)
 
     if (root.containsKey("voltage_valid")) {
         if (root["voltage_valid"].as<bool>()) {
-            if (root["voltage"].as<float>() < minimal_voltage || root["voltage"].as<float>() > 58) {
+            value = static_cast<int>(root["voltage"].as<float>() * 100) / 100.0;
+            if (value < minimal_voltage || value > 58) {
                 retMsg["message"] = "voltage not in range between 42 (online)/48 (offline and 58V !";
                 retMsg["code"] = WebApiError::LimitInvalidLimit;
                 retMsg["param"]["max"] = 58;
@@ -101,7 +102,6 @@ void WebApiHuaweiClass::onPost(AsyncWebServerRequest* request)
                 WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
                 return;
             } else {
-                value = root["voltage"].as<float>();
                 HuaweiCan.setValue(value, online?HUAWEI_ONLINE_VOLTAGE:HUAWEI_OFFLINE_VOLTAGE);
             }
         }
@@ -109,7 +109,8 @@ void WebApiHuaweiClass::onPost(AsyncWebServerRequest* request)
 
     if (root.containsKey("current_valid")) {
         if (root["current_valid"].as<bool>()) {
-            if (root["current"].as<float>() < 0 || root["current"].as<float>() > 60) {
+            value = static_cast<int>(root["current"].as<float>() * 100) / 100.0;
+            if (value < 0 || value > 60) {
                 retMsg["message"] = "current must be in range between 0 and 60!";
                 retMsg["code"] = WebApiError::LimitInvalidLimit;
                 retMsg["param"]["max"] = 60;
@@ -117,7 +118,6 @@ void WebApiHuaweiClass::onPost(AsyncWebServerRequest* request)
                 WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
                 return;
             } else {
-                value = root["current"].as<float>();
                 HuaweiCan.setValue(value, online?HUAWEI_ONLINE_CURRENT:HUAWEI_OFFLINE_CURRENT);
             }
         }
@@ -148,8 +148,8 @@ void WebApiHuaweiClass::onAdminGet(AsyncWebServerRequest* request)
     huawei["auto_power_enabled"]                   = config.Huawei.Auto_Power_Enabled;
     huawei["auto_power_batterysoc_limits_enabled"] = config.Huawei.Auto_Power_BatterySoC_Limits_Enabled;
     huawei["emergency_charge_enabled"]             = config.Huawei.Emergency_Charge_Enabled;
-    huawei["voltage_limit"]                        = static_cast<int>(config.Huawei.Auto_Power_Voltage_Limit * 100) / 100.0;
-    huawei["enable_voltage_limit"]                 = static_cast<int>(config.Huawei.Auto_Power_Enable_Voltage_Limit * 100) / 100.0;
+    huawei["voltage_limit"]                        = static_cast<int>(config.Huawei.Auto_Power_Voltage_Limit * 100 + 0.5) / 100.0;
+    huawei["enable_voltage_limit"]                 = static_cast<int>(config.Huawei.Auto_Power_Enable_Voltage_Limit * 100 + 0.5) / 100.0;
     huawei["lower_power_limit"]                    = config.Huawei.Auto_Power_Lower_Power_Limit;
     huawei["upper_power_limit"]                    = config.Huawei.Auto_Power_Upper_Power_Limit;
     huawei["stop_batterysoc_threshold"]            = config.Huawei.Auto_Power_Stop_BatterySoC_Threshold;
@@ -193,8 +193,8 @@ void WebApiHuaweiClass::onAdminPost(AsyncWebServerRequest* request)
     config.Huawei.Auto_Power_Enabled                   = root["huawei"]["auto_power_enabled"].as<bool>();
     config.Huawei.Auto_Power_BatterySoC_Limits_Enabled = root["huawei"]["auto_power_batterysoc_limits_enabled"].as<bool>();
     config.Huawei.Emergency_Charge_Enabled             = root["huawei"]["emergency_charge_enabled"].as<bool>();
-    config.Huawei.Auto_Power_Voltage_Limit             = root["huawei"]["voltage_limit"].as<float>();
-    config.Huawei.Auto_Power_Enable_Voltage_Limit      = root["huawei"]["enable_voltage_limit"].as<float>();
+    config.Huawei.Auto_Power_Voltage_Limit             = static_cast<int>(root["huawei"]["voltage_limit"].as<float>() * 100) / 100.0;
+    config.Huawei.Auto_Power_Enable_Voltage_Limit      = static_cast<int>(root["huawei"]["enable_voltage_limit"].as<float>() * 100) / 100.0;
     config.Huawei.Auto_Power_Lower_Power_Limit         = root["huawei"]["lower_power_limit"].as<float>();
     config.Huawei.Auto_Power_Upper_Power_Limit         = root["huawei"]["upper_power_limit"].as<float>();
     config.Huawei.Auto_Power_Stop_BatterySoC_Threshold = root["huawei"]["stop_batterysoc_threshold"];

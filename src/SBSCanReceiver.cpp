@@ -28,38 +28,39 @@ void SBSCanReceiver::onMessage(twai_message_t rx_message)
         }
 
         case 0x630: {
-            _stats->_dischargeEnabled = false;
-            _stats->_chargeEnabled = false;
             int clusterstate = rx_message.data[0];
             switch (clusterstate) {
                 case 0:
-                    _stats->_state = "Inactive";
+                    _stats->_dischargeEnabled = false;
                     break;
 
                 case 1: {
-                    _stats->_state = "Discharge";
                     _stats->_chargeEnabled = true;
                     _stats->_dischargeEnabled = true;
                     break;
                 }
 
                 case 2: {
-                    _stats->_state = "Charge";
                     _stats->_chargeEnabled = true;
                     break;
                 }
 
                 case 4:
-                    _stats->_state = "Fault";
+                    _stats->_chargeEnabled = false;
+                    _stats->_dischargeEnabled = false;
                     break;
 
                 case 8:
-                    _stats->_state = "Deepsleep";
+                    _stats->_chargeEnabled = false;
+                    _stats->_dischargeEnabled = false;
                     break;
 
                 default:
+                    _stats->_chargeEnabled = false;
+                    _stats->_dischargeEnabled = false;
                     break;
             }
+            _stats->setManufacturer("SBS UniPower");
 
             if (_verboseLogging) {
                 MessageOutput.printf("[SBS Unipower] 1584 chargeStatusBits: %d %d\r\n", _stats->_chargeEnabled, _stats->_dischargeEnabled);

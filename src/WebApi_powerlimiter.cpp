@@ -50,14 +50,14 @@ void WebApiPowerLimiterClass::onStatus(AsyncWebServerRequest* request)
     root["ignore_soc"] = config.PowerLimiter.IgnoreSoc;
     root["battery_soc_start_threshold"] = config.PowerLimiter.BatterySocStartThreshold;
     root["battery_soc_stop_threshold"] = config.PowerLimiter.BatterySocStopThreshold;
-    root["voltage_start_threshold"] = static_cast<int>(config.PowerLimiter.VoltageStartThreshold * 100 + 0.5) / 100.0;
-    root["voltage_stop_threshold"] = static_cast<int>(config.PowerLimiter.VoltageStopThreshold * 100 + 0.5) / 100.0;
+    root["voltage_start_threshold"] = static_cast<int>(config.PowerLimiter.VoltageStartThreshold * 100.0 + 0.5) / 100.0;
+    root["voltage_stop_threshold"] = static_cast<int>(config.PowerLimiter.VoltageStopThreshold * 100.0 + 0.5) / 100.0;
     root["voltage_load_correction_factor"] = config.PowerLimiter.VoltageLoadCorrectionFactor;
 
     root["inverter_restart_hour"] = config.PowerLimiter.RestartHour;
     root["full_solar_passthrough_soc"] = config.PowerLimiter.FullSolarPassThroughSoc;
-    root["full_solar_passthrough_start_voltage"] = static_cast<int>(config.PowerLimiter.FullSolarPassThroughStartVoltage * 100 + 0.5) / 100.0;
-    root["full_solar_passthrough_stop_voltage"] = static_cast<int>(config.PowerLimiter.FullSolarPassThroughStopVoltage * 100 + 0.5) / 100.0;
+    root["full_solar_passthrough_start_voltage"] = static_cast<int>(config.PowerLimiter.FullSolarPassThroughStartVoltage * 100.0 + 0.5) / 100.0;
+    root["full_solar_passthrough_stop_voltage"] = static_cast<int>(config.PowerLimiter.FullSolarPassThroughStopVoltage * 100.0 + 0.5) / 100.0;
 #ifdef USE_SURPLUSPOWER
     root["surplus_power_enabled"] = config.PowerLimiter.SurplusPowerEnabled;
 #endif
