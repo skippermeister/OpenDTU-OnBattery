@@ -81,7 +81,7 @@ void WebApiHuaweiClass::onPost(AsyncWebServerRequest* request)
 
     auto& retMsg = response->getRoot();
 
-    if (root.containsKey("online")) {
+    if (root["online"].is<bool>()) {
         online = root["online"].as<bool>();
         minimal_voltage = online ? HUAWEI_MINIMAL_ONLINE_VOLTAGE : HUAWEI_MINIMAL_OFFLINE_VOLTAGE;
     } else {
@@ -91,7 +91,7 @@ void WebApiHuaweiClass::onPost(AsyncWebServerRequest* request)
         return;
     }
 
-    if (root.containsKey("voltage_valid")) {
+    if (root["voltage_valid"].is<bool>()) {
         if (root["voltage_valid"].as<bool>()) {
             value = static_cast<int>(root["voltage"].as<float>() * 100) / 100.0;
             if (value < minimal_voltage || value > 58) {
@@ -107,7 +107,7 @@ void WebApiHuaweiClass::onPost(AsyncWebServerRequest* request)
         }
     }
 
-    if (root.containsKey("current_valid")) {
+    if (root["current_valid"].is<bool>()) {
         if (root["current_valid"].as<bool>()) {
             value = static_cast<int>(root["current"].as<float>() * 100) / 100.0;
             if (value < 0 || value > 60) {
@@ -172,13 +172,13 @@ void WebApiHuaweiClass::onAdminPost(AsyncWebServerRequest* request)
 
     auto& retMsg = response->getRoot();
 
-    if (!root.containsKey("enabled") ||
-        !root.containsKey("verbose_logging") ||
-        !root["huawei"].containsKey("auto_power_enabled") ||
-        !root["huawei"].containsKey("emergency_charge_enabled") ||
-        !root["huawei"].containsKey("voltage_limit") ||
-        !root["huawei"].containsKey("lower_power_limit") ||
-        !root["huawei"].containsKey("upper_power_limit"))
+    if (!root["enabled"].is<bool>() ||
+        !root["verbose_logging"].is<bool>() ||
+        !root["huawei"]["auto_power_enabled"].is<bool>() ||
+        !root["huawei"]["emergency_charge_enabled"].is<bool>() ||
+        !root["huawei"]["voltage_limit"].is<float>() ||
+        !root["huawei"]["lower_power_limit"].is<float>() ||
+        !root["huawei"]["upper_power_limit"].is<float>())
     {
         retMsg["message"] = "Values are missing!";
         retMsg["code"] = WebApiError::GenericValueMissing;
@@ -187,12 +187,12 @@ void WebApiHuaweiClass::onAdminPost(AsyncWebServerRequest* request)
     }
 
     auto& config = Configuration.get();
-    config.Huawei.Enabled = root["enabled"].as<bool>();
+    config.Huawei.Enabled = root["enabled"];
     config.Huawei.VerboseLogging = root["verbose_logging"];
     if (HuaweiCanComm.isMCP2515Provider()) config.MCP2515.Controller_Frequency = root["can_controller_frequency"].as<uint32_t>();
-    config.Huawei.Auto_Power_Enabled                   = root["huawei"]["auto_power_enabled"].as<bool>();
-    config.Huawei.Auto_Power_BatterySoC_Limits_Enabled = root["huawei"]["auto_power_batterysoc_limits_enabled"].as<bool>();
-    config.Huawei.Emergency_Charge_Enabled             = root["huawei"]["emergency_charge_enabled"].as<bool>();
+    config.Huawei.Auto_Power_Enabled                   = root["huawei"]["auto_power_enabled"];
+    config.Huawei.Auto_Power_BatterySoC_Limits_Enabled = root["huawei"]["auto_power_batterysoc_limits_enabled"];
+    config.Huawei.Emergency_Charge_Enabled             = root["huawei"]["emergency_charge_enabled"];
     config.Huawei.Auto_Power_Voltage_Limit             = static_cast<int>(root["huawei"]["voltage_limit"].as<float>() * 100) / 100.0;
     config.Huawei.Auto_Power_Enable_Voltage_Limit      = static_cast<int>(root["huawei"]["enable_voltage_limit"].as<float>() * 100) / 100.0;
     config.Huawei.Auto_Power_Lower_Power_Limit         = root["huawei"]["lower_power_limit"].as<float>();

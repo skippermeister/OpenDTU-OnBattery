@@ -84,7 +84,7 @@ void MqttHandleBatteryHassClass::publishConfig()
             publishSensor("Charge voltage (BMS)", NULL, "settings/chargeVoltage", "voltage", "measurement", "V");
             publishSensor("Charge current limit", NULL, "settings/chargeCurrentLimit", "current", "measurement", "A");
             publishSensor("Discharge current limit", NULL, "settings/dischargeCurrentLimit", "current", "measurement", "A");
-            publishSensor("Module Count", "midi:counter", "modulesTotal");
+            publishSensor("Module Count", "midi:counter", "moduleCount");
 
 #define PBSA(a, b, c) publishBinarySensor("Alarm: " a, "mdi:" b, "alarms/" c, "1", "0")
 #define PBSW(a, b, c) publishBinarySensor("Warning: " a, "mdi:" b, "warnings/" c, "1", "0")
@@ -123,6 +123,7 @@ void MqttHandleBatteryHassClass::publishConfig()
             publishSensor("Charge current limit", NULL, "settings/chargeCurrentLimitation", "current", "measurement", "A");
             publishSensor("Discharge current limit", NULL, "settings/dischargeCurrentLimitation", "current", "measurement", "A");
             publishSensor("Discharge voltage limit", NULL, "settings/dischargeVoltageLimitation", "voltage", "measurement", "V");
+            publishSensor("Charge Cycles",     "mdi:counter",     "chargeCycles");
 
             publishSensor("Voltage", "mdi:battery-charging", "voltage", "voltage", "measurement", "V");
             publishSensor("Current", "mdi:current-dc", "current", "current", "measurement", "A");
@@ -172,6 +173,9 @@ void MqttHandleBatteryHassClass::publishConfig()
             publishBinarySensor("Warning Temperature high (charge)", "mdi:thermometer-high", "warning/highTemperatureCharge", "1", "0");
             publishBinarySensor("Warning BMS internal", "mdi:alert-outline", "warning/bmsInternal", "1", "0");
             publishBinarySensor("Warning Cell Imbalance", "mdi:alert-outline", "warning/cellImbalance", "1", "0");
+
+            publishBinarySensor("Balancing Active", "mdi:scale-balance", "balancingActive", "1", "0");
+            publishBinarySensor("Charge immediately", "mdi:alert", "charging/chargeImmediately", "1", "0");
             break;
 #endif
 #ifdef USE_SBS_CAN_RECEIVER
@@ -192,7 +196,6 @@ void MqttHandleBatteryHassClass::publishConfig()
 
             publishBinarySensor("Warning High charge current", "mdi:alert-outline", "warning/highCurrentCharge", "1", "0");
             publishBinarySensor("Warning Discharge current", "mdi:alert-outline", "warning/highCurrentDischarge", "1", "0");
-
 
             publishBinarySensor("Charge enabled", "mdi:battery-arrow-up", "charging/chargeEnabled", "1", "0");
             publishBinarySensor("Discharge enabled", "mdi:battery-arrow-down", "charging/dischargeEnabled", "1", "0");
@@ -252,9 +255,46 @@ void MqttHandleBatteryHassClass::publishConfig()
             publishSensor("Midpoint Deviation", NULL, "midpointDeviation", "battery", "measurement", "%");
             break;
 #endif
-#ifdef USE_MQTT_BATTERY
-        case 8: // SoC from MQTT
+#ifdef USE_VICTRON_SMART_BATTERY_SENSE
+        case 8:
             break;
+#endif
+#ifdef USE_MQTT_BATTERY
+        case 9: // SoC from MQTT
+            break;
+#ifdef USE_MQTT_ZENDURE_BATTERY
+        case 10: // Solarflow
+            publishSensor("Voltage", "mdi:battery-charging", "voltage", "voltage", "measurement", "V");
+            publishSensor("Current", "mdi:current-dc", "current", "current", "measurement", "A");
+
+            publishSensor("Cell Min Voltage", NULL, "CellMinMilliVolt", "voltage", "measurement", "mV");
+            publishSensor("Cell Average Voltage", NULL, "CellAvgMilliVolt", "voltage", "measurement", "mV");
+            publishSensor("Cell Max Voltage", NULL, "CellMaxMilliVolt", "voltage", "measurement", "mV");
+            publishSensor("Cell Voltage Diff", "mdi:battery-alert", "CellDiffMilliVolt", "voltage", "measurement", "mV");
+            publishSensor("Cell Max Temperature", NULL, "CellMaxTemperature", "temperature", "measurement", "°C");
+            publishSensor("Charge Power", "mdi:battery-charging", "chargePower", "power", "measurement", "W");
+            publishSensor("Discharge Power", "mdi:battery-discharging", "dischargePower", "power", "measurement", "W");
+            publishBinarySensor("Battery Heating", NULL, "heating", "1", "0");
+            publishSensor("State", NULL, "state");
+            publishSensor("Number of Batterie Packs", "mdi:counter", "numPacks");
+
+            // ToDo: Include data points for packs
+            // for (const auto& [sn, value] : _packData){
+            // }
+
+            publishSensor("Solar Power MPPT 1", "mdi:solar-power", "solarPowerMppt1", "power", "measurement", "W");
+            publishSensor("Solar Power MPPT 2", "mdi:solar-power", "solarPowerMppt2", "power", "measurement", "W");
+            publishSensor("Total Output Power", NULL, "outputPower", "power", "measurement", "W");
+            publishSensor("Total Input Power", NULL, "inputPower", "power", "measurement", "W");
+            publishBinarySensor("Bypass State", NULL, "bypass", "1", "0");
+
+            publishSensor("Output Power Limit", NULL, "settings/outputLimitPower", "power", "settings", "W");
+            publishSensor("Input Power Limit", NULL, "settings/inputLimitPower", "power", "settings", "W");
+            publishSensor("Minimum State of Charge", NULL, "settings/stateOfChargeMin", NULL, "settings", "%");
+            publishSensor("Maximum State of Charge", NULL, "settings/stateOfChargeMax", NULL, "settings", "%");
+            publishSensor("Bypass Mode", NULL, "settings/bypassMode", "settings");
+            break;
+#endif
 #endif
     }
 }

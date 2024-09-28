@@ -88,21 +88,20 @@ void MqttHandleZeroExportClass::loop()
     static int16_t _RequestedPowerLimit = -1;
     static int16_t _InverterId = -1;
 
-    const String topic = "zeroexport/";
     if (!config.ZeroExport.UpdatesOnly || config.ZeroExport.Enabled != _enabled)
-        MqttSettings.publish(topic + "enabled", String(_enabled = config.ZeroExport.Enabled ? 1 : 0));
+        MqttSettings.publish("zeroexport/enabled", String(_enabled = config.ZeroExport.Enabled ? 1 : 0));
     if (!config.ZeroExport.UpdatesOnly || config.ZeroExport.InverterId != _InverterId)
-        MqttSettings.publish(topic + "InverterId", String(_InverterId = config.ZeroExport.InverterId));
+        MqttSettings.publish("zeroexport/InverterId", String(_InverterId = config.ZeroExport.InverterId));
     if (!config.ZeroExport.UpdatesOnly || config.ZeroExport.MaxGrid != _MaxGrid)
-        MqttSettings.publish(topic + "MaxGrid", String(_MaxGrid = config.ZeroExport.MaxGrid));
+        MqttSettings.publish("zeroexport/MaxGrid", String(_MaxGrid = config.ZeroExport.MaxGrid));
     if (!config.ZeroExport.UpdatesOnly || config.ZeroExport.PowerHysteresis != _PowerHysteresis)
-        MqttSettings.publish(topic + "PowerHysteresis", String(_PowerHysteresis = config.ZeroExport.PowerHysteresis));
+        MqttSettings.publish("zeroexport/PowerHysteresis", String(_PowerHysteresis = config.ZeroExport.PowerHysteresis));
     if (!config.ZeroExport.UpdatesOnly || config.ZeroExport.MinimumLimit != _MinimumLimit)
-        MqttSettings.publish(topic + "MinimumLimit", String(_MinimumLimit = config.ZeroExport.MinimumLimit));
+        MqttSettings.publish("zeroexport/MinimumLimit", String(_MinimumLimit = config.ZeroExport.MinimumLimit));
     if (!config.ZeroExport.UpdatesOnly || config.ZeroExport.Tn != _Tn)
-        MqttSettings.publish(topic + "Tn", String(_Tn = config.ZeroExport.Tn));
+        MqttSettings.publish("zeroexport/Tn", String(_Tn = config.ZeroExport.Tn));
     if (!config.ZeroExport.UpdatesOnly || ZeroExport.getLastRequestedPowerLimit() != _RequestedPowerLimit)
-        MqttSettings.publish(topic + "RequestedPowerLimit", String(_RequestedPowerLimit = ZeroExport.getLastRequestedPowerLimit()));
+        MqttSettings.publish("zeroexport/RequestedPowerLimit", String(_RequestedPowerLimit = ZeroExport.getLastRequestedPowerLimit()));
 }
 
 void MqttHandleZeroExportClass::onMqttMessage(Topic t,

@@ -50,7 +50,7 @@ bool HuaweiCanCommClass::init() {
             auto tx = static_cast<gpio_num_t>(pin.can0.tx);
             auto rx = static_cast<gpio_num_t>(pin.can0.rx);
 
-            MessageOutput.printf("CAN0 port rx = %d, tx = %d\r\n", rx, tx);
+            MessageOutput.printf("CAN0 port rx = %d, tx = %d, power = %d.\r\n", rx, tx, pin.power);
 
             twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(tx, rx, TWAI_MODE_NORMAL);
             // g_config.bus_off_io = (gpio_num_t)can0_stb;
@@ -85,7 +85,8 @@ bool HuaweiCanCommClass::init() {
             auto scl = pin.i2c.scl;
             auto sda = pin.i2c.sda;
 
-            MessageOutput.printf("I2C CAN Bus @ I2C%d scl = %d, sda = %d\r\n", pin.provider==Charger_Provider_t::I2C0?0:1, scl, sda);
+            MessageOutput.printf("I2C CAN Bus @ I2C%d scl = %d, sda = %d, power = %d\r\n",
+                pin.provider==Charger_Provider_t::I2C0?0:1, scl, sda, pin.power);
 
             i2c_can = new I2C_CAN(pin.provider == Charger_Provider_t::I2C0?&Wire:&Wire1, 0x25, scl, sda, 400000UL);     // Set I2C Address
 
@@ -112,6 +113,9 @@ bool HuaweiCanCommClass::init() {
 #ifdef USE_CHARGER_MCP2515
         case Charger_Provider_t::MCP2515:
             {
+            MessageOutput.printf("MCP2515 CAN: miso = %d, mosi = %d, clk = %d, irq = %d, cs = %d, power = %d.\r\n",
+                pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.clk, pin.mcp2515.irq, pin.mcp2515.cs, pin.power);
+
             auto oSPInum = SPIPortManager.allocatePort("MCP2515");
             if (!oSPInum) { return false; }
 
@@ -161,7 +165,6 @@ void HuaweiCanCommClass::loop()
   std::lock_guard<std::mutex> lock(_mutex);
 
   twai_message_t rx_message;
-  uint8_t i;
   bool gotMessage = false;
   auto _provider = PinMapping.get().charger.provider;
 
@@ -260,22 +263,21 @@ void HuaweiCanCommClass::loop()
   }
 
   // Transmit values
-  for (i = 0; i < HUAWEI_OFFLINE_CURRENT; i++) {
-    if ( _hasNewTxValue[i] == true) {
+  for (uint8_t i = 0; i < HUAWEI_OFFLINE_CURRENT; i++) {
+    if ( _hasNewTxValue[i]) {
       uint8_t data[8] = {0x01, i, 0x00, 0x00, 0x00, 0x00, (uint8_t)((_txValues[i] & 0xFF00) >> 8), (uint8_t)(_txValues[i] & 0xFF)};
 
       // Send extended message
-      if (sendMsgBuf(0x108180FE, 1, 8, data) == CAN_OK) {
-        _hasNewTxValue[i] = false;
-      } else {
+      if (sendMsgBuf(0x108180FE, 1, 8, data) != CAN_OK) {
         _errorCode |= HUAWEI_ERROR_CODE_TX;
       }
+      _hasNewTxValue[i] = false;
     }
   }
 
-  if (_nextRequestMillis < millis()) {
+  if (millis() - _lastRequestMillis > HUAWEI_DATA_REQUEST_INTERVAL_MS) {
     sendRequest();
-    _nextRequestMillis = millis() + HUAWEI_DATA_REQUEST_INTERVAL_MS;
+    _lastRequestMillis = millis();
   }
 
 }
@@ -330,8 +332,7 @@ uint32_t HuaweiCanCommClass::getParameterValue(uint8_t parameter)
 bool HuaweiCanCommClass::gotNewRxDataFrame(bool clear)
 {
   std::lock_guard<std::mutex> lock(_mutex);
-  bool b = false;
-  b = _completeUpdateReceived;
+  bool b = _completeUpdateReceived;
   if (clear) {
     _completeUpdateReceived = false;
   }
@@ -341,8 +342,7 @@ bool HuaweiCanCommClass::gotNewRxDataFrame(bool clear)
 uint8_t HuaweiCanCommClass::getErrorCode(bool clear)
 {
   std::lock_guard<std::mutex> lock(_mutex);
-  uint8_t e = 0;
-  e = _errorCode;
+  uint8_t e = _errorCode;
   if (clear) {
     _errorCode = 0;
   }
@@ -478,7 +478,7 @@ void HuaweiCanClass::loop()
   if (_rp.output_current > HUAWEI_AUTO_MODE_SHUTDOWN_CURRENT) {
     _outputCurrentOnSinceMillis = millis();
   }
-  if (_outputCurrentOnSinceMillis + HUAWEI_AUTO_MODE_SHUTDOWN_DELAY < millis() &&
+  if (millis() - _outputCurrentOnSinceMillis > HUAWEI_AUTO_MODE_SHUTDOWN_DELAY &&
       (_mode == HUAWEI_MODE_AUTO_EXT || _mode == HUAWEI_MODE_AUTO_INT)) {
     if (_huaweiPower >= 0) digitalWrite(_huaweiPower, 1);
   }
@@ -490,11 +490,11 @@ void HuaweiCanClass::loop()
   if (_mode == HUAWEI_MODE_AUTO_INT || _batteryEmergencyCharging) {
 
     // Set voltage limit in periodic intervals
-    if ( _nextAutoModePeriodicIntMillis < millis()) {
-      MessageOutput.printf("%s::%s Periodically setting voltage limit: %f\r\n",
+    if (millis() - _lastAutoModePeriodicIntMillis > 60000 ) {
+      MessageOutput.printf("%s::%s Periodically setting voltage limit: %.2f\r\n",
         TAG, __FUNCTION__, config.Huawei.Auto_Power_Voltage_Limit);
       _setValue(config.Huawei.Auto_Power_Voltage_Limit, HUAWEI_ONLINE_VOLTAGE);
-      _nextAutoModePeriodicIntMillis = millis() + 60000;
+      _lastAutoModePeriodicIntMillis = millis();
     }
   }
   // ***********************
@@ -507,7 +507,7 @@ void HuaweiCanClass::loop()
     // Set output current
     float efficiency =  (_rp.efficiency > 0.5 ? _rp.efficiency : 1.0);
     float outputCurrent = efficiency * (config.Huawei.Auto_Power_Upper_Power_Limit / _rp.output_voltage);
-    MessageOutput.printf("%s::%s Emergency Charge Output current %f\r\n", TAG, __FUNCTION__, outputCurrent);
+    MessageOutput.printf("%s::%s Emergency Charge Output current %.2f\r\n", TAG, __FUNCTION__, outputCurrent);
     _setValue(outputCurrent, HUAWEI_ONLINE_CURRENT);
     return;
   }
@@ -529,7 +529,7 @@ void HuaweiCanClass::loop()
 
     // Check if we should run automatic power calculation at all.
     // We may have set a value recently and still wait for output stabilization
-    if (_autoModeBlockedTillMillis > millis()) {
+    if (millis() - _lastAutoModeBlockedTillMillis < _autoModeBlockedTillMillisPeriod) {
       return;
     }
 
@@ -553,7 +553,8 @@ void HuaweiCanClass::loop()
         if(inverter->isProducing()) {
           _setValue(0.0, HUAWEI_ONLINE_CURRENT);
           // Don't run auto mode for a second now. Otherwise we may send too much over the CAN bus
-          _autoModeBlockedTillMillis = millis() + 1000;
+          _lastAutoModeBlockedTillMillis = millis();
+          _autoModeBlockedTillMillisPeriod = 1000;
           MessageOutput.printf("%s::%s Inverter is active, disable\r\n", TAG, __FUNCTION__);
           return;
         }
@@ -574,7 +575,7 @@ void HuaweiCanClass::loop()
       newPowerLimit += _rp.output_power + config.Huawei.Auto_Power_Target_Power_Consumption / efficiency;
 
       if (_verboseLogging){
-        MessageOutput.printf("%s::%s newPowerLimit: %f, output_power: %f\r\n",
+        MessageOutput.printf("%s::%s newPowerLimit: %.2f, output_power: %.2f\r\n",
             TAG, __FUNCTION__, newPowerLimit, _rp.output_power);
       }
 
@@ -586,7 +587,7 @@ void HuaweiCanClass::loop()
           newPowerLimit = 0;
           if (_verboseLogging) {
             MessageOutput.printf("%s::%s Current battery SoC %i reached "
-                    "stop threshold %i, set newPowerLimit to %f\r\n", TAG, __FUNCTION__, _batterySoC,
+                    "stop threshold %i, set newPowerLimit to %.2f\r\n", TAG, __FUNCTION__, _batterySoC,
                     config.Huawei.Auto_Power_Stop_BatterySoC_Threshold, newPowerLimit);
           }
         }
@@ -630,7 +631,8 @@ void HuaweiCanClass::loop()
         _setValue(outputCurrent, HUAWEI_ONLINE_CURRENT);
 
         // Don't run auto mode some time to allow for output stabilization after issuing a new value
-        _autoModeBlockedTillMillis = millis() + 2 * HUAWEI_DATA_REQUEST_INTERVAL_MS;
+        _lastAutoModeBlockedTillMillis = millis();
+        _autoModeBlockedTillMillisPeriod = 2 * HUAWEI_DATA_REQUEST_INTERVAL_MS;
       } else {
         // requested PL is below minium. Set current to 0
         _autoPowerEnabled = false;
@@ -659,7 +661,7 @@ void HuaweiCanClass::_setValue(float in, uint8_t parameterType)
     uint16_t value;
 
     if (in < 0) {
-      MessageOutput.printf("%s::%s Error: Tried to set voltage/current to negative value %f\r\n", TAG, __FUNCTION__, in);
+      MessageOutput.printf("%s::%s Error: Tried to set voltage/current to negative value %.2f\r\n", TAG, __FUNCTION__, in);
     }
 
     // Start PSU if needed

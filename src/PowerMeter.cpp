@@ -93,5 +93,8 @@ void PowerMeterClass::loop()
     std::lock_guard<std::mutex> lock(_mutex);
     if (!_upProvider) { return; }
     _upProvider->loop();
+
+    auto const& pmcfg = Configuration.get().PowerMeter;
+    if (pmcfg.Source == static_cast<uint8_t>(PowerMeterProvider::Type::MQTT)) { return; }
     _upProvider->mqttLoop();
 }

@@ -1,4 +1,5 @@
 #ifdef USE_JBDBMS_CONTROLLER
+
 #pragma once
 
 #include <memory>
@@ -6,13 +7,11 @@
 #include <frozen/string.h>
 
 #include "Battery.h"
+#include "JbdBmsDataPoints.h"
 #include "JbdBmsSerialMessage.h"
-#include "JbdBmsController.h"
 
 // Timeout threshold for UART = number of symbols (~10 tics) with unchanged state on receive pin
 #define ECHO_READ_TOUT (3) // 3.5T * 8 = 28 ticks, TOUT=3 -> ~24..33 ticks
-
-class DataPointContainer;
 
 namespace JbdBms {
 
@@ -24,6 +23,8 @@ class Controller : public BatteryProvider {
         void deinit() final;
         void loop() final;
         std::shared_ptr<BatteryStats> getStats() const final { return _stats; }
+
+        bool initialized() const final { return _initialized; };
 
     private:
         static char constexpr _serialPortOwner[] = "JBD BMS";
@@ -52,12 +53,6 @@ class Controller : public BatteryProvider {
         void frameComplete();
         void processDataPoints(DataPointContainer const& dataPoints);
 
-        enum class Interface : unsigned {
-            Invalid,
-            Uart,
-            Transceiver
-        };
-
         enum class ReadState : unsigned {
             Idle,
             WaitingForFrameStart,
@@ -75,14 +70,12 @@ class Controller : public BatteryProvider {
             _readState = state;
         }
 
-//        bool _verboseLogging = true;
         Status _lastStatus = Status::Initializing;
         uint32_t _lastStatusPrinted = 0;
         uint32_t _lastRequest = 0;
         uint8_t _dataLength = 0;
         JbdBms::SerialResponse::tData _buffer = {};
-        std::shared_ptr<JbdBmsBatteryStats> _stats =
-            std::make_shared<JbdBmsBatteryStats>();
+        std::shared_ptr<JbdBmsBatteryStats> _stats = std::make_shared<JbdBmsBatteryStats>();
 
         bool _initialized = false;
 };

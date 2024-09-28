@@ -132,13 +132,13 @@ void WebApiZeroExportClass::onAdminPost(AsyncWebServerRequest* request)
 
     auto& retMsg = response->getRoot();
 
-    if (!(root.containsKey("enabled")
-            && root.containsKey("updatesonly")
-            && root.containsKey("verbose_logging")
-            && root.containsKey("MaxGrid")
-            && root.containsKey("PowerHysteresis")
-            && root.containsKey("MinimumLimit")
-            && root.containsKey("Tn"))) {
+    if (!(root["enabled"].is<bool>()
+            && root["updatesonly"].is<bool>()
+            && root["verbose_logging"].is<bool>()
+            && root["MaxGrid"].is<uint16_t>()
+            && root["PowerHysteresis"].is<uint16_t>()
+            && root["MinimumLimit"].is<uint16_t>()
+            && root["Tn"].is<uint16_t>())) {
         retMsg["message"] = "Values are missing!";
         retMsg["code"] = WebApiError::GenericValueMissing;
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
@@ -158,7 +158,7 @@ void WebApiZeroExportClass::onAdminPost(AsyncWebServerRequest* request)
     cZeroExport.MaxGrid = root["MaxGrid"].as<uint16_t>();
     cZeroExport.PowerHysteresis = root["PowerHysteresis"].as<uint16_t>();
 
-    if (root.containsKey("serials")) {
+    if (root["serials"].is<JsonArray>()) {
         JsonArray serials = root["serials"].as<JsonArray>();
         if (serials.size() > 0 && serials.size() <= INV_MAX_COUNT) {
             for (uint8_t i=0; i< INV_MAX_COUNT; i++) { cZeroExport.serials[i] = 0; }

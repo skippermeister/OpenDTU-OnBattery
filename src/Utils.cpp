@@ -3,9 +3,6 @@
  * Copyright (C) 2022 - 2024 Thomas Basler and others
  */
 #include "Utils.h"
-#include "Display_Graphic.h"
-#include "Led_Single.h"
-#include "Led_Strip.h"
 #include "MessageOutput.h"
 #include "PinMapping.h"
 #include <Esp.h>
@@ -58,23 +55,6 @@ int Utils::getTimezoneOffset()
     gmt = mktime(ptm);
 
     return static_cast<int>(difftime(rawtime, gmt));
-}
-
-void Utils::restartDtu()
-{
-#ifdef USE_LED_SINGLE
-    LedSingle.turnAllOff();
-#endif
-#ifdef USE_LED_STRIP
-    LedStrip.turnAllOff();
-#endif
-#ifdef USE_DISPLAY_GRAPHIC
-    Display.setStatus(false);
-    yield();
-#endif
-    delay(1000);
-    yield();
-    ESP.restart();
 }
 
 bool Utils::checkJsonAlloc(const JsonDocument& doc, const char* function, const uint16_t line)

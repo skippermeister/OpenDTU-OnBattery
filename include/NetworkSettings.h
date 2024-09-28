@@ -3,7 +3,6 @@
 
 #include <DNSServer.h>
 #include <TaskSchedulerDeclarations.h>
-#include <TimeoutHelper.h>
 #include <WiFi.h>
 #include <vector>
 
@@ -63,7 +62,7 @@ private:
     void setStaticIp();
     void handleMDNS();
     void setupMode();
-    void NetworkEvent(const WiFiEvent_t event);
+    void NetworkEvent(const WiFiEvent_t event, WiFiEventInfo_t info);
 
     Task _loopTask;
 
@@ -75,7 +74,7 @@ private:
     uint32_t _adminTimeoutCounterMax = 0;
     uint32_t _connectTimeoutTimer = 0;
     uint32_t _connectRedoTimer = 0;
-    TimeoutHelper _lastTimerCall;
+    uint32_t _lastTimerCall = 0;
     IPAddress _apIp;
     IPAddress _apNetmask;
     std::unique_ptr<DNSServer> _dnsServer;
@@ -84,6 +83,9 @@ private:
     bool _ethConnected = false;
     std::vector<NetworkEventCbList_t> _cbEventList;
     bool _lastMdnsEnabled = false;
+#ifdef USE_ETHSPI
+    bool _spiEth = false;
+#endif
 };
 
 extern NetworkSettingsClass NetworkSettings;

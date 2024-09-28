@@ -89,15 +89,15 @@ void WebApiMeanWellClass::onAdminPost(AsyncWebServerRequest* request)
 
     auto& retMsg = response->getRoot();
 
-    if (!root.containsKey("enabled") ||
-        !root.containsKey("updatesonly") ||
-        !root.containsKey("verbose_logging") ||
-        !root["meanwell"].containsKey("pollinterval") ||
-        !root["meanwell"].containsKey("min_voltage") ||
-        !root["meanwell"].containsKey("max_voltage") ||
-        !root["meanwell"].containsKey("min_current") ||
-        !root["meanwell"].containsKey("max_current") ||
-        !root["meanwell"].containsKey("hysteresis"))
+    if (!root["enabled"].is<bool>() ||
+        !root["updatesonly"].is<bool>() ||
+        !root["verbose_logging"].is<bool>() ||
+        !root["meanwell"]["pollinterval"].is<uint32_t>() ||
+        !root["meanwell"]["min_voltage"].is<float>() ||
+        !root["meanwell"]["max_voltage"].is<float>() ||
+        !root["meanwell"]["min_current"].is<float>() ||
+        !root["meanwell"]["max_current"].is<float>() ||
+        !root["meanwell"]["hysteresis"].is<float>())
     {
         retMsg["message"] = "Values are missing!";
         retMsg["code"] = WebApiError::GenericValueMissing;
@@ -115,9 +115,9 @@ void WebApiMeanWellClass::onAdminPost(AsyncWebServerRequest* request)
     }
 
     auto& config = Configuration.get();
-    config.MeanWell.Enabled        = root["enabled"].as<bool>();
-    config.MeanWell.VerboseLogging = root["verbose_logging"].as<bool>();
-    config.MeanWell.UpdatesOnly    = root["updatesonly"].as<bool>();
+    config.MeanWell.Enabled        = root["enabled"];
+    config.MeanWell.VerboseLogging = root["verbose_logging"];
+    config.MeanWell.UpdatesOnly    = root["updatesonly"];
     if (MeanWellCan.isMCP2515Provider()) config.MCP2515.Controller_Frequency = root["can_controller_frequency"].as<uint32_t>();
     config.MeanWell.PollInterval   = root["meanwell"]["pollinterval"].as<uint32_t>();
     config.MeanWell.MinVoltage     = static_cast<int>(root["meanwell"]["min_voltage"].as<float>() * 100) / 100.0;
@@ -125,7 +125,7 @@ void WebApiMeanWellClass::onAdminPost(AsyncWebServerRequest* request)
     config.MeanWell.MinCurrent     = static_cast<int>(root["meanwell"]["min_current"].as<float>() * 100) / 100.0;
     config.MeanWell.MaxCurrent     = static_cast<int>(root["meanwell"]["max_current"].as<float>() * 100) / 100.0;
     config.MeanWell.Hysteresis     = root["meanwell"]["hysteresis"].as<float>();
-    config.MeanWell.mustInverterProduce = root["meanwell"]["mustInverterProduce"].as<bool>();
+    config.MeanWell.mustInverterProduce = root["meanwell"]["mustInverterProduce"];
 
     WebApi.writeConfig(retMsg);
 
@@ -185,7 +185,7 @@ void WebApiMeanWellClass::onLimitPost(AsyncWebServerRequest* request)
 
     auto const& cMeanWell = Configuration.get().MeanWell;
 
-    if (root.containsKey("voltageValid")) {
+    if (root["voltageValid"].is<bool>()) {
         if (root["voltageValid"].as<bool>()) {
             value = static_cast<int>(root["voltage"].as<float>() * 100) / 100.0;
             if (value < cMeanWell.VoltageLimitMin || value > cMeanWell.VoltageLimitMax) {
@@ -201,7 +201,7 @@ void WebApiMeanWellClass::onLimitPost(AsyncWebServerRequest* request)
         }
     }
 
-    if (root.containsKey("currentValid")) {
+    if (root["currentValid"].is<bool>()) {
         if (root["currentValid"].as<bool>()) {
             value = static_cast<int>(root["current"].as<float>() * 100) / 100.0;
             if (value < cMeanWell.CurrentLimitMin || value > cMeanWell.CurrentLimitMax) {
@@ -217,7 +217,7 @@ void WebApiMeanWellClass::onLimitPost(AsyncWebServerRequest* request)
         }
     }
 
-    if (root.containsKey("curveCVvalid")) {
+    if (root["curveCVvalid"].is<bool>()) {
         if (root["curveCVvalid"].as<bool>()) {
             value = static_cast<int>(root["curveCV"].as<float>() * 100) / 100.0;
             if (value < cMeanWell.VoltageLimitMin || value > cMeanWell.VoltageLimitMax) {
@@ -233,7 +233,7 @@ void WebApiMeanWellClass::onLimitPost(AsyncWebServerRequest* request)
         }
     }
 
-    if (root.containsKey("curveCCvalid")) {
+    if (root["curveCCvalid"].is<bool>()) {
         if (root["curveCCvalid"].as<bool>()) {
             value = static_cast<int>(root["curveCC"].as<float>() * 100) / 100.0;
             if (value < cMeanWell.CurrentLimitMin || value > cMeanWell.CurrentLimitMax) {
@@ -249,7 +249,7 @@ void WebApiMeanWellClass::onLimitPost(AsyncWebServerRequest* request)
         }
     }
 
-    if (root.containsKey("curveFVvalid")) {
+    if (root["curveFVvalid"].is<bool>()) {
         if (root["curveFVvalid"].as<bool>()) {
             value = static_cast<int>(root["curveFV"].as<float>() * 100) / 100.0;
             if (value < cMeanWell.VoltageLimitMin || value > cMeanWell.VoltageLimitMax) {
@@ -265,7 +265,7 @@ void WebApiMeanWellClass::onLimitPost(AsyncWebServerRequest* request)
         }
     }
 
-    if (root.containsKey("curveTCvalid")) {
+    if (root["curveTCvalid"].is<bool>()) {
         if (root["curveTCvalid"].as<bool>()) {
             value = static_cast<int>(root["curveTC"].as<float>() * 100) / 100.0;
             if (value < cMeanWell.CurrentLimitMin / 10.0 || value > cMeanWell.CurrentLimitMax / 3.33333333) {
@@ -331,8 +331,8 @@ void WebApiMeanWellClass::onPowerPost(AsyncWebServerRequest* request)
         }
     */
 
-    if (root.containsKey("power")) {
-        uint16_t power = root["power"].as<int>();
+    if (root["power"].is<uint16_t>()) {
+        uint16_t power = root["power"].as<uint16_t>();
 
         if (Configuration.get().MeanWell.VerboseLogging)
             MessageOutput.printf("Power: %s\r\n",

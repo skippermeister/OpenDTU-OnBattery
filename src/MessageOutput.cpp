@@ -4,6 +4,7 @@
  */
 #include <HardwareSerial.h>
 #include "MessageOutput.h"
+#include "SyslogLogger.h"
 
 MessageOutputClass MessageOutput;
 
@@ -102,12 +103,18 @@ void MessageOutputClass::loop()
 
     if (!_ws) {
         while (!_lines.empty()) {
+#ifdef USE_SYSLOG
+            Syslog.write(_lines.front().data(), _lines.front().size());
+#endif
             _lines.pop(); // do not hog memory
         }
         return;
     }
 
     while (!_lines.empty() && _ws->availableForWriteAll()) {
+#ifdef USE_SYSLOG
+        Syslog.write(_lines.front().data(), _lines.front().size());
+#endif
         _ws->textAll(std::make_shared<message_t>(std::move(_lines.front())));
         _lines.pop();
     }

@@ -7,6 +7,7 @@
 #include "MqttSettings.h"
 #include "NetworkSettings.h"
 #include <Hoymiles.h>
+#include <CpuTemperature.h>
 
 MqttHandleDtuClass MqttHandleDtu;
 
@@ -34,8 +35,17 @@ void MqttHandleDtuClass::loop()
     MqttSettings.publish("dtu/uptime", String(millis() / 1000));
     MqttSettings.publish("dtu/ip", NetworkSettings.localIP().toString());
     MqttSettings.publish("dtu/hostname", NetworkSettings.getHostname());
+    MqttSettings.publish("dtu/heapSize", String(ESP.getHeapSize()));
+    MqttSettings.publish("dtu/heapFree", String(ESP.getFreeHeap()));
+    MqttSettings.publish("dtu/heapMinFree", String(ESP.getMinFreeHeap()));
+    MqttSettings.publish("dtu/heapMaxAlloc", String(ESP.getMaxAllocHeap()));
     if (NetworkSettings.NetworkMode() == network_mode::WiFi) {
         MqttSettings.publish("dtu/rssi", String(WiFi.RSSI()));
         MqttSettings.publish("dtu/bssid", WiFi.BSSIDstr());
+    }
+
+    float temperature = CpuTemperature.read();
+    if (!std::isnan(temperature)) {
+        MqttSettings.publish("dtu/temperature", String(temperature));
     }
 }

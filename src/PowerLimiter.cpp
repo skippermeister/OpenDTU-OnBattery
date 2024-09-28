@@ -3,7 +3,7 @@
  * Copyright (C) 2022 Thomas Basler and others
  */
 
-#include "Utils.h"
+#include "RestartHelper.h"
 #include "Battery.h"
 #include "PowerMeter.h"
 #include "PowerLimiter.h"
@@ -682,7 +682,7 @@ bool PowerLimiterClass::updateInverter()
 
         if (_inverterUpdateTimeouts >= 20) {
             MessageOutput.printf("%s%s: restarting system since inverter is unresponsive\r\n", TAG, __FUNCTION__);
-            Utils::restartDtu();
+            RestartHelper.triggerRestart();
         }
 
         return reset();
@@ -979,7 +979,7 @@ int32_t PowerLimiterClass::getSolarPower()
 
 int32_t PowerLimiterClass::getBatteryDischargeLimit()
 {
-    auto currentLimit = Battery.getStats()->getDischargeCurrentLimitation();
+    auto currentLimit = Battery.getDischargeCurrentLimit();
 
     if (currentLimit == FLT_MAX) {
         // the returned value is arbitrary, as long as it's

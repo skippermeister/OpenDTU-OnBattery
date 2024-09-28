@@ -10,6 +10,8 @@
 
 bool MqttBattery::init()
 {
+    _stats->setManufacturer("MQTT");
+
     auto const& config = Configuration.get();
 
     _socTopic = config.Battery.Mqtt.SocTopic;
@@ -44,6 +46,23 @@ bool MqttBattery::init()
         }
     }
 
+    if (config.Battery.EnableDischargeCurrentLimit && config.Battery.UseBatteryReportedDischargeLimit) {
+        if (!_dischargeCurrentLimitTopic.isEmpty()) {
+            MqttSettings.subscribe(_dischargeCurrentLimitTopic, 0/*QoS*/,
+                    std::bind(&MqttBattery::onMqttMessageDischargeCurrentLimit,
+                        this, std::placeholders::_1, std::placeholders::_2,
+                        std::placeholders::_3, std::placeholders::_4,
+                        std::placeholders::_5, std::placeholders::_6,
+                        config.Battery.Mqtt.DischargeCurrentJsonPath)
+                    );
+
+            if (_verboseLogging) {
+                MessageOutput.printf("MqttBattery: Subscribed to '%s' for discharge current limit readings\r\n",
+                    _dischargeCurrentLimitTopic.c_str());
+            }
+        }
+    }
+
     _initialized = true;
 
     return true;
@@ -57,6 +76,10 @@ void MqttBattery::deinit()
 
     if (!_socTopic.isEmpty()) {
         MqttSettings.unsubscribe(_socTopic);
+    }
+
+    if (!_dischargeCurrentLimitTopic.isEmpty()) {
+        MqttSettings.unsubscribe(_dischargeCurrentLimitTopic);
     }
 
     _initialized = false;
@@ -126,6 +149,40 @@ void MqttBattery::onMqttMessageVoltage(espMqttClientTypes::MessageProperties con
     if (_verboseLogging) {
         MessageOutput.printf("MqttBattery: Updated voltage to %.2f from '%s'\r\n",
                 *voltage, topic);
+    }
+}
+
+void MqttBattery::onMqttMessageDischargeCurrentLimit(espMqttClientTypes::MessageProperties const& properties,
+        char const* topic, uint8_t const* payload, size_t len, size_t index, size_t total,
+        char const* jsonPath)
+{
+    auto amperage = Utils::getNumericValueFromMqttPayload<float>("MqttBattery",
+            std::string(reinterpret_cast<const char*>(payload), len), topic,
+            jsonPath);
+
+    if (!amperage.has_value()) { return; }
+
+    auto const& config = Configuration.get();
+    using Unit_t = BatteryAmperageUnit;
+    switch (config.Battery.Mqtt.AmperageUnit) {
+        case Unit_t::MilliAmps:
+            *amperage /= 1000;
+            break;
+        default:
+            break;
+    }
+
+    if (*amperage < 0) {
+        MessageOutput.printf("MqttBattery: Implausible amperage '%.2f' in topic '%s'\r\n",
+                *amperage, topic);
+        return;
+    }
+
+    _stats->setDischargeCurrentLimit(*amperage, millis());
+
+    if (_verboseLogging) {
+        MessageOutput.printf("MqttBattery: Updated amperage to %.2f from '%s'\r\n",
+                *amperage, topic);
     }
 }
 #endif

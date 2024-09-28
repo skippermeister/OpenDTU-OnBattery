@@ -57,12 +57,14 @@ private:
     bool hexDataHandler(VeDirectHexData const &data) final;
     bool processTextDataDerived(std::string const& name, std::string const& value) final;
     void frameValidEvent() final;
+    void sendNextHexCommandFromQueue(void);
+    bool isHexCommandPossible(void);
     MovingAverage<float, 5> _efficiency;
 
-    int32_t _sendTimeStamp = 0;             // timestamp of last command
     int32_t _sendTimeout = 0;               // timeout until we send the next command from the queue
     int8_t _sendQueueNr = 0;                // actual queue position;
 
+  #define HIGH_PRIO_COMMAND 1
 #ifdef PROCESS_NETWORK_STATE
     std::array<VeDirectHexRegister, 17> _slotRegister {
 #else
@@ -71,9 +73,9 @@ private:
                                                         VeDirectHexRegister::Capabilities, 127, 30, 0,
                                                         VeDirectHexRegister::BatteryType, 127, 30, 0,
                                                         VeDirectHexRegister::ChargeControllerTemperature, 127, 4, 0,
-                                                        VeDirectHexRegister::NetworkTotalDcInputPower, 127, 1, 0,
-//                                                        VeDirectHexRegister::ChargerVoltage, 127, 1, 0,
-//                                                        VeDirectHexRegister::ChargerCurrent, 127, 1, 0,
+                                                        VeDirectHexRegister::NetworkTotalDcInputPower, 127, HIGH_PRIO_COMMAND, 0,
+//                                                        VeDirectHexRegister::ChargerVoltage, 127, HIGH_PRIO_COMMAND, 0,
+//                                                        VeDirectHexRegister::ChargerCurrent, 127, HIGH_PRIO_COMMAND, 0,
                                                         VeDirectHexRegister::ChargerMaximumCurrent, 127, 30, 0,
 //                                                        VeDirectHexRegister::LoadOutputVoltage, 0, 5, 0,
                                                         VeDirectHexRegister::LoadOutputState, 0, 5, 0,

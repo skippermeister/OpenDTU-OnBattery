@@ -1,3 +1,4 @@
+#ifdef JKBMS_DUMMY_SERIAL
 #pragma once
 
 #include <Arduino.h>
@@ -194,3 +195,4 @@ class DummySerial {
 };
 
 } /* namespace JkBms */
+#endif

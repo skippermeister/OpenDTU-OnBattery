@@ -873,6 +873,7 @@ void PylontechRS485Receiver::get_charge_discharge_management_info(const Pylontec
         _stats->totals.ChargeDischargeManagementInfo.dischargeVoltageLimit = max(_stats->totals.ChargeDischargeManagementInfo.dischargeVoltageLimit, ChargeDischargeManagementInfo.dischargeVoltageLimit);
         _stats->totals.ChargeDischargeManagementInfo.Status |= _stats->Pack[i].ChargeDischargeManagementInfo.Status;
     }
+    _stats->setDischargeCurrentLimit(_stats->totals.ChargeDischargeManagementInfo.dischargeCurrentLimit, millis());
 
     if (_verboseLogging) {
         MessageOutput.printf("%s CommandValue: %02X, CVL:%.3fV, DVL:%.3fV, CCL:%.1fA, DCL:%.1fA, CE:%d DE:%d CI1:%d CI2:%d FCR:%d\r\n", TAG,

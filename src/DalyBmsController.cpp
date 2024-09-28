@@ -398,6 +398,7 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer)
                     _stats->WarningValues.maxPackChargeCurrent = to_Amp_1(&it[6]); // in A
                     _stats->AlarmValues.maxPackDischargeCurrent = to_Amp_1(&it[8]); // in A
                     _stats->WarningValues.maxPackDischargeCurrent = to_Amp_1(&it[10]); // in A
+                    _stats->setDischargeCurrentLimit(_stats->WarningValues.maxPackDischargeCurrent * 0.9, millis());
                     if (_verboseLogging) {
                         MessageOutput.printf("%s Alarm max pack charge current: %.1fA, max pack discharge current: %.1fA\r\n", TAG,
                             _stats->AlarmValues.maxPackChargeCurrent, _stats->AlarmValues.maxPackDischargeCurrent);
@@ -454,14 +455,13 @@ void DalyBmsController::decodeData(std::vector<uint8_t> rxBuffer)
                     _stats->setVoltage(to_Volt_1(&it[4]), millis()); // in Volt 0.1
                     _stats->gatherVoltage = to_Volt_1(&it[6]); // in Volt 0.1
                     _stats->setCurrent(-to_Amp_1(&it[8]), 1/*precision*/, millis()); // in Amp 0.1
-                    _stats->power = _stats->current * _stats->getVoltage() / 1000.0; // in kW
-                    _stats->batteryLevel = ToFloat(&it[10]) / 10.0;
-                    _stats->setSoC((100.0 * _stats->remainingCapacity) / _stats->ratedCapacity, 1 /*precision*/, millis());
-                    _stats->chargeImmediately2 = _stats->batteryLevel < max(_stats->WarningValues.minSoc, static_cast<float>(9.0));
-                    _stats->chargeImmediately1 = _stats->batteryLevel < max(_stats->AlarmValues.minSoc, static_cast<float>(5.0));
+                    _stats->power = _stats->getChargeCurrent() * _stats->getVoltage() / 1000.0; // in kW
+                    _stats->setSoC(ToFloat(&it[10]) / 10.0, 1 /*precision*/, millis());
+                    _stats->chargeImmediately2 = _stats->getSoC() < max(_stats->WarningValues.minSoc, static_cast<float>(9.0));
+                    _stats->chargeImmediately1 = _stats->getSoC() < max(_stats->AlarmValues.minSoc, static_cast<float>(5.0));
                     if (_verboseLogging) {
-                        MessageOutput.printf("%s voltage: %.1fV, current: %.1fA\r\n", TAG, _stats->getVoltage(), _stats->current);
-                        MessageOutput.printf("%s battery level: %.1f%%\r\n", TAG, _stats->batteryLevel);
+                        MessageOutput.printf("%s voltage: %.1fV, current: %.1fA\r\n", TAG, _stats->getVoltage(), _stats->getChargeCurrent());
+                        MessageOutput.printf("%s battery level: %.1f%%\r\n", TAG, _stats->getSoC());
                     }
                     break;
 

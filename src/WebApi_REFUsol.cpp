@@ -67,10 +67,10 @@ void WebApiREFUsolClass::onREFUsolAdminPost(AsyncWebServerRequest* request)
 
     auto& retMsg = response->getRoot();
 
-    if (!(root.containsKey("enabled")
-            && root.containsKey("pollinterval")
-            && root.containsKey("updatesonly")
-            && root.containsKey("verbose_logging"))) {
+    if (!(root["enabled"].is<bool>()
+            && root["pollinterval"].is<uint32_t>()
+            && root["updatesonly"].is<bool>()
+            && root["verbose_logging"].is<bool>())) {
         retMsg["message"] = "Values are missing!";
         retMsg["code"] = WebApiError::GenericValueMissing;
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
@@ -96,13 +96,13 @@ void WebApiREFUsolClass::onREFUsolAdminPost(AsyncWebServerRequest* request)
     }
 
     auto& cREFUsol = Configuration.get().REFUsol;
-    cREFUsol.Enabled = root["enabled"].as<bool>();
-    cREFUsol.UpdatesOnly = root["updatesonly"].as<bool>();
+    cREFUsol.Enabled = root["enabled"];
+    cREFUsol.UpdatesOnly = root["updatesonly"];
     cREFUsol.PollInterval = root["pollinterval"].as<uint32_t>();
     cREFUsol.USSaddress = root["uss_address"].as<uint8_t>();
     cREFUsol.Baudrate = root["baudrate"].as<uint16_t>();
     cREFUsol.Parity = root["parity"].as<REFUsol_CONFIG_T::Parity_t>();
-    cREFUsol.VerboseLogging = root["verbose_logging"].as<bool>();
+    cREFUsol.VerboseLogging = root["verbose_logging"];
 
     WebApi.writeConfig(retMsg);
 

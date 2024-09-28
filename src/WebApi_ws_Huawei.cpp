@@ -75,10 +75,19 @@ void WebApiWsHuaweiLiveClass::sendDataTaskCb()
 }
 
 template <typename T>
-void addValue(const JsonObject& root, std::string const& name,
+void addInputValue(const JsonObject& root, std::string const& name,
     T&& value, std::string const& unit, uint8_t precision)
 {
-    auto jsonValue = root[name];
+    auto jsonValue = root["inputValues"][name];
+    jsonValue["v"] = value;
+    jsonValue["u"] = unit;
+    jsonValue["d"] = precision;
+}
+template <typename T>
+void addOutputValue(const JsonObject& root, std::string const& name,
+    T&& value, std::string const& unit, uint8_t precision)
+{
+    auto jsonValue = root["outputValues"][name];
     jsonValue["v"] = value;
     jsonValue["u"] = unit;
     jsonValue["d"] = precision;
@@ -89,16 +98,16 @@ void WebApiWsHuaweiLiveClass::generateCommonJsonResponse(JsonVariant& root)
     const RectifierParameters_t * rp = HuaweiCan.get();
 
     root["data_age"] = (millis() - HuaweiCan.getLastUpdate()) / 1000;
-    addValue(root, "input_voltage", rp->input_voltage, "V", 2);
-    addValue(root, "input_current", rp->input_current, "A", 1);
-    addValue(root, "input_power", rp->input_power, "W", 0);
-    addValue(root, "output_voltage", rp->output_voltage, "V", 2);
-    addValue(root, "output_current", rp->output_current, "A", 2);
-    addValue(root, "max_output_current", rp->max_output_current, "A", 2);
-    addValue(root, "output_power", rp->output_power, "W", 0);
-    addValue(root, "input_temp", rp->input_temp, "°C", 1);
-    addValue(root, "output_temp", rp->output_temp, "°C", 1);
-    addValue(root, "efficiency", rp->efficiency * 100, "%", 1);
+    addInputValue(root, "input_voltage", rp->input_voltage, "V", 2);
+    addInputValue(root, "input_current", rp->input_current, "A", 1);
+    addInputValue(root, "input_power", rp->input_power, "W", 0);
+    addInputValue(root, "input_temp", rp->input_temp, "°C", 1);
+    addInputValue(root, "efficiency", rp->efficiency * 100, "%", 1);
+    addOutputValue(root, "output_voltage", rp->output_voltage, "V", 2);
+    addOutputValue(root, "output_current", rp->output_current, "A", 2);
+    addOutputValue(root, "max_output_current", rp->max_output_current, "A", 2);
+    addOutputValue(root, "output_power", rp->output_power, "W", 0);
+    addOutputValue(root, "output_temp", rp->output_temp, "°C", 1);
 }
 
 void WebApiWsHuaweiLiveClass::onWebsocketEvent(AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType type, void* arg, uint8_t* data, size_t len)

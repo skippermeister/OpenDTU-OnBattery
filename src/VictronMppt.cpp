@@ -91,7 +91,7 @@ bool VictronMpptClass::isDataValid() const
         if (upController->isDataValid()) { return true; }
     }
 
-    return false;
+    return !_controllers.empty();
 }
 
 bool VictronMpptClass::isDataValid(size_t idx) const
@@ -239,8 +239,9 @@ float VictronMpptClass::getOutputVoltage() const
 int16_t VictronMpptClass::getStateOfOperation() const
 {
     for (const auto& upController : _controllers) {
-        if (upController->isDataValid())
+        if (upController->isDataValid()) {
             return static_cast<int16_t>(upController->getData().currentState_CS);
+        }
     }
 
     return -1;

@@ -107,6 +107,13 @@ bool ConfigurationClass::write()
     JsonObject mdns = doc["mdns"].to<JsonObject>();
     mdns["enabled"] = config.Mdns.Enabled;
 
+#ifdef USE_SYSLOG
+    JsonObject syslog = doc["syslog"].to<JsonObject>();
+    syslog["enabled"] = config.Syslog.Enabled;
+    syslog["hostname"] = config.Syslog.Hostname;
+    syslog["port"] = config.Syslog.Port;
+#endif
+
 #ifdef USE_ModbusDTU
     JsonObject modbus = doc["modbus"].to<JsonObject>();
     modbus["modbus_tcp_enabled"] = config.Modbus.modbus_tcp_enabled;
@@ -258,69 +265,10 @@ bool ConfigurationClass::write()
     serializePowerMeterHttpSmlConfig(config.PowerMeter.HttpSml, powermeter_http_sml);
 
     JsonObject powerlimiter = doc["powerlimiter"].to<JsonObject>();
-    powerlimiter["enabled"] = config.PowerLimiter.Enabled;
-    powerlimiter["verbose_logging"] = config.PowerLimiter.VerboseLogging;
-    powerlimiter["updatesonly"] = config.PowerLimiter.UpdatesOnly;
-    powerlimiter["solar_passthrough_enabled"] = config.PowerLimiter.SolarPassThroughEnabled;
-    powerlimiter["solar_passtrough_losses"] = config.PowerLimiter.SolarPassThroughLosses;
-    powerlimiter["battery_always_use_at_night"] = config.PowerLimiter.BatteryAlwaysUseAtNight;
-    powerlimiter["is_inverter_behind_powermeter"] = config.PowerLimiter.IsInverterBehindPowerMeter;
-    powerlimiter["is_inverter_solar_powered"] = config.PowerLimiter.IsInverterSolarPowered;
-    powerlimiter["use_overscaling_to_compensate_shading"] = config.PowerLimiter.UseOverscalingToCompensateShading;
-    powerlimiter["inverter_id"] = config.PowerLimiter.InverterId;
-    powerlimiter["inverter_channel_id"] = config.PowerLimiter.InverterChannelId;
-    powerlimiter["target_power_consumption"] = config.PowerLimiter.TargetPowerConsumption;
-    powerlimiter["target_power_consumption_hysteresis"] = config.PowerLimiter.TargetPowerConsumptionHysteresis;
-    powerlimiter["lower_power_limit"] = config.PowerLimiter.LowerPowerLimit;
-    powerlimiter["base_load_limit"] = config.PowerLimiter.BaseLoadLimit;
-    powerlimiter["upper_power_limit"] = config.PowerLimiter.UpperPowerLimit;
-    powerlimiter["ignore_soc"] = config.PowerLimiter.IgnoreSoc;
-    powerlimiter["battery_soc_start_threshold"] = config.PowerLimiter.BatterySocStartThreshold;
-    powerlimiter["battery_soc_stop_threshold"] = config.PowerLimiter.BatterySocStopThreshold;
-    powerlimiter["voltage_start_threshold"] = config.PowerLimiter.VoltageStartThreshold;
-    powerlimiter["voltage_stop_threshold"] = config.PowerLimiter.VoltageStopThreshold;
-    powerlimiter["voltage_load_correction_factor"] = config.PowerLimiter.VoltageLoadCorrectionFactor;
-    powerlimiter["inverter_restart_hour"] = config.PowerLimiter.RestartHour;
-    powerlimiter["full_solar_passthrough_soc"] = config.PowerLimiter.FullSolarPassThroughSoc;
-    powerlimiter["full_solar_passthrough_start_voltage"] = config.PowerLimiter.FullSolarPassThroughStartVoltage;
-    powerlimiter["full_solar_passthrough_stop_voltage"] = config.PowerLimiter.FullSolarPassThroughStopVoltage;
-#ifdef USE_SURPLUSPOWER
-    powerlimiter["surplus_power_enabled"] = config.PowerLimiter.SurplusPowerEnabled;
-#endif
+    serializePowerLimiterConfig(config.PowerLimiter, powerlimiter);
 
     JsonObject battery = doc["battery"].to<JsonObject>();
-    battery["enabled"] = config.Battery.Enabled;
-    battery["verbose_logging"] = config.Battery.VerboseLogging;
-    battery["updatesonly"] = config.Battery.UpdatesOnly;
-    battery["numberOfBatteries"] = config.Battery.numberOfBatteries;
-    battery["pollinterval"] = config.Battery.PollInterval;
-    battery["provider"] = config.Battery.Provider;
-#ifdef USE_MQTT_BATTERY
-    JsonObject battery_mqtt = battery["mqtt"].to<JsonObject>();
-    battery_mqtt["soc_topic"] = config.Battery.Mqtt.SocTopic;
-    battery_mqtt["soc_json_path"] = config.Battery.Mqtt.SocJsonPath;
-    battery_mqtt["voltage_topic"] = config.Battery.Mqtt.VoltageTopic;
-    battery_mqtt["voltage_json_path"] = config.Battery.Mqtt.VoltageJsonPath;
-    battery_mqtt["voltage_unit"] = config.Battery.Mqtt.VoltageUnit;
-#endif
-    battery["min_charge_temp"] = config.Battery.MinChargeTemperature;
-    battery["max_charge_temp"] = config.Battery.MaxChargeTemperature;
-    battery["min_discharge_temp"] = config.Battery.MinDischargeTemperature;
-    battery["max_discharge_temp"] = config.Battery.MaxDischargeTemperature;
-    battery["stop_charging_soc"] = config.Battery.Stop_Charging_BatterySoC_Threshold;
-#if defined(USE_MQTT_BATTERY) || defined(USE_VICTRON_SMART_SHUNT)
-    battery["recommended_charge_voltage"] = config.Battery.RecommendedChargeVoltage;
-    battery["recommended_discharge_voltage"] = config.Battery.RecommendedDischargeVoltage;
-#endif
-#ifdef USE_MQTT_ZENDURE_BATTERY
-    JsonObject battery_zendure = battery["zendure"].to<JsonObject>();
-    battery_zendure["device_type"] = config.Battery.Zendure.DeviceType;
-    battery_zendure["device_serial"] = config.Battery.Zendure.DeviceSerial;
-    battery_zendure["soc_min"] = config.Battery.Zendure.MinSoC;
-    battery_zendure["soc_max"] = config.Battery.Zendure.MaxSoC;
-    battery_zendure["bypass_mode"] = config.Battery.Zendure.BypassMode;
-    battery_zendure["max_output"] = config.Battery.Zendure.MaxOutput;
-#endif
+    serializeBatteryConfig(config.Battery, battery);
 
     JsonObject mcp2515 = doc["mcp2515"].to<JsonObject>();
     mcp2515["can_controller_frequency"] = config.MCP2515.Controller_Frequency;
@@ -390,10 +338,6 @@ void ConfigurationClass::deserializeHttpRequestConfig(JsonObject const& source, 
 {
     JsonObject source_http_config = source["http_request"];
 
-    // http request parameters of HTTP/JSON power meter were previously stored
-    // alongside other settings. TODO(schlimmchen): remove in early 2025.
-    if (source_http_config.isNull()) { source_http_config = source; }
-
     strlcpy(target.Url, source_http_config["url"] | "", sizeof(target.Url));
     target.AuthType = source_http_config["auth_type"] | HttpRequestConfig::Auth::None;
     strlcpy(target.Username, source_http_config["username"] | "", sizeof(target.Username));
@@ -448,6 +392,166 @@ void ConfigurationClass::deserializePowerMeterHttpSmlConfig(JsonObject const& so
 {
     target.PollingInterval = source["polling_interval"] | POWERMETER_POLLING_INTERVAL;
     deserializeHttpRequestConfig(source, target.HttpRequest);
+}
+
+void ConfigurationClass::serializeBatteryConfig(BatteryConfig const& source, JsonObject& target)
+{
+    target["enabled"] = source.Enabled;
+    target["verbose_logging"] = source.VerboseLogging;
+    target["updatesonly"] = source.UpdatesOnly;
+    target["numberOfBatteries"] = source.numberOfBatteries;
+    target["pollinterval"] = source.PollInterval;
+    target["provider"] = source.Provider;
+#ifdef USE_MQTT_BATTERY
+    JsonObject battery_mqtt = target["mqtt"].to<JsonObject>();
+    battery_mqtt["soc_topic"] = source.Mqtt.SocTopic;
+    battery_mqtt["soc_json_path"] = source.Mqtt.SocJsonPath;
+    battery_mqtt["voltage_topic"] = source.Mqtt.VoltageTopic;
+    battery_mqtt["voltage_json_path"] = source.Mqtt.VoltageJsonPath;
+    battery_mqtt["voltage_unit"] = source.Mqtt.VoltageUnit;
+    battery_mqtt["discharge_current_topic"] = source.Mqtt.DischargeCurrentTopic;
+    battery_mqtt["discharge_current_json_path"] = source.Mqtt.DischargeCurrentJsonPath;
+    battery_mqtt["amperage_unit"] = source.Mqtt.AmperageUnit;
+#endif
+    target["min_charge_temp"] = source.MinChargeTemperature;
+    target["max_charge_temp"] = source.MaxChargeTemperature;
+    target["min_discharge_temp"] = source.MinDischargeTemperature;
+    target["max_discharge_temp"] = source.MaxDischargeTemperature;
+    target["stop_charging_soc"] = source.Stop_Charging_BatterySoC_Threshold;
+    target["enableDischargeCurrentLimit"] = source.EnableDischargeCurrentLimit;
+    target["dischargeCurrentLimit"] = static_cast<int>(source.DischargeCurrentLimit*100.0+0.5) / 100.0;
+    target["useBatteryReportedDischargeCurrentLimit"] = source.UseBatteryReportedDischargeLimit;
+#if defined(USE_MQTT_BATTERY) || defined(USE_VICTRON_SMART_SHUNT)
+    target["recommended_charge_voltage"] = source.RecommendedChargeVoltage;
+    target["recommended_discharge_voltage"] = source.RecommendedDischargeVoltage;
+#endif
+#ifdef USE_MQTT_ZENDURE_BATTERY
+    JsonObject battery_zendure = target["zendure"].to<JsonObject>();
+    battery_zendure["device_type"] = source.Zendure.DeviceType;
+    battery_zendure["device_serial"] = source.Zendure.DeviceSerial;
+    battery_zendure["soc_min"] = source.Zendure.MinSoC;
+    battery_zendure["soc_max"] = source.Zendure.MaxSoC;
+    battery_zendure["bypass_mode"] = source.Zendure.BypassMode;
+    battery_zendure["max_output"] = source.Zendure.MaxOutput;
+#endif
+}
+
+void ConfigurationClass::deserializeBatteryConfig(JsonObject const& source, BatteryConfig& target)
+{
+    target.Enabled = source["enabled"] | BATTERY_ENABLED;
+    target.VerboseLogging = source["verbose_logging"] | false;
+    target.UpdatesOnly = source["updatesonly"] | BATTERY_UPDATESONLY;
+    target.numberOfBatteries = source["numberOfBatteries"] | 1; // at minimum 1 battery
+    if (target.numberOfBatteries > MAX_BATTERIES) target.numberOfBatteries = MAX_BATTERIES;
+    target.PollInterval = source["pollinterval"] | BATTERY_POLLINTERVAL;
+    target.Provider = source["provider"] | BATTERY_PROVIDER;
+#ifdef USE_MQTT_BATTERY
+    strlcpy(target.Mqtt.SocTopic, source["mqtt"]["soc_topic"] | "", sizeof(target.Mqtt.SocTopic));
+    strlcpy(target.Mqtt.SocJsonPath, source["mqtt"]["soc_json_path"] | "", sizeof(target.Mqtt.SocJsonPath));
+    strlcpy(target.Mqtt.VoltageTopic, source["mqtt"]["voltage_topic"] | "", sizeof(target.Mqtt.VoltageTopic));
+    strlcpy(target.Mqtt.VoltageJsonPath, source["mqtt"]["voltage_json_path"] | "", sizeof(target.Mqtt.VoltageJsonPath));
+    target.Mqtt.VoltageUnit = source["mqtt"]["voltage_unit"] | BatteryVoltageUnit::Volts;
+    strlcpy(target.Mqtt.DischargeCurrentTopic, source["mqtt"]["discharge_current_topic"] | "", sizeof(target.Mqtt.DischargeCurrentTopic));
+    strlcpy(target.Mqtt.DischargeCurrentJsonPath, source["mqtt"]["discharge_current_json_path"] | "", sizeof(target.Mqtt.DischargeCurrentJsonPath));
+    target.Mqtt.AmperageUnit = source["mqtt"]["voltage_unit"] | BatteryAmperageUnit::Amps;
+#endif
+    target.MinChargeTemperature = source["min_charge_temp"] | BATTERY_MIN_CHARGE_TEMPERATURE;
+    target.MaxChargeTemperature = source["max_charge_temp"] | BATTERY_MAX_CHARGE_TEMPERATURE;
+    target.MinDischargeTemperature = source["min_discharge_temp"] | BATTERY_MIN_DISCHARGE_TEMPERATURE;
+    target.MaxDischargeTemperature = source["max_discharge_temp"] | BATTERY_MAX_DISCHARGE_TEMPERATURE;
+    target.Stop_Charging_BatterySoC_Threshold = source["stop_charging_soc"] | 100;
+    target.EnableDischargeCurrentLimit = source["enableDischargeCurrentLimit"] | BATTERY_ENABLE_DISCHARGE_CURRENT_LIMIT;
+    target.UseBatteryReportedDischargeLimit = source["useBatteryReportedDischargeCurrentLimit"] | BATTERY_USE_BATTERY_REPORTED_DISCHARGE_CURRENT_LIMIT;
+    target.DischargeCurrentLimit = source["dischargeCurrentLimit"] | BATTERY_DISCHARGE_CURRENT_LIMIT;
+    target.DischargeCurrentLimit = static_cast<int>(target.DischargeCurrentLimit * 10) / 10.0;
+#if defined(USE_MQTT_BATTERY) || defined(USE_VICTRON_SMART_SHUNT)
+    target.RecommendedChargeVoltage = source["recommended_charge_voltage"] | 28.4;
+    target.RecommendedChargeVoltage = static_cast<int>(target.RecommendedChargeVoltage * 100) / 100.0;
+    target.RecommendedDischargeVoltage = source["recommended_discharge_voltage"] | 21.0;
+    target.RecommendedDischargeVoltage = static_cast<int>(target.RecommendedDischargeVoltage * 100) / 100.0;
+#endif
+#ifdef USE_MQTT_ZENDURE_BATTERY
+    target.Zendure.DeviceType = source["zendure"]["device_type"] | BATTERY_ZENDURE_DEVICE;
+    strlcpy(target.Zendure.DeviceSerial, source["zendure"]["device_serial"] | "", sizeof(target.Zendure.DeviceSerial));
+    target.Zendure.MinSoC = source["zendure"]["soc_min"] | BATTERY_ZENDURE_MIN_SOC;
+    target.Zendure.MaxSoC = source["zendure"]["soc_max"] | BATTERY_ZENDURE_MAX_SOC;
+    target.Zendure.BypassMode = source["zendure"]["bypass_mode"] | BATTERY_ZENDURE_BYPASS_MODE;
+    target.Zendure.MaxOutput = source["zendure"]["max_output"] | BATTERY_ZENDURE_MAX_OUTPUT;
+#endif
+}
+
+void ConfigurationClass::serializePowerLimiterConfig(PowerLimiterConfig const& source, JsonObject& target)
+{
+    target["enabled"] = source.Enabled;
+    target["updatesonly"] = source.UpdatesOnly;
+    target["verbose_logging"] = source.VerboseLogging;
+    target["solar_passthrough_enabled"] = source.SolarPassThroughEnabled;
+    target["solar_passthrough_losses"] = source.SolarPassThroughLosses;
+    target["battery_always_use_at_night"] = source.BatteryAlwaysUseAtNight;
+    target["is_inverter_behind_powermeter"] = source.IsInverterBehindPowerMeter;
+    target["is_inverter_solar_powered"] = source.IsInverterSolarPowered;
+    target["use_overscaling_to_compensate_shading"] = source.UseOverscalingToCompensateShading;
+    target["inverter_serial"] = String(source.InverterId); //config.Inverter[config.PowerLimiter.InverterId].Serial;
+    target["inverter_channel_id"] = source.InverterChannelId;
+    target["target_power_consumption"] = source.TargetPowerConsumption;
+    target["target_power_consumption_hysteresis"] = source.TargetPowerConsumptionHysteresis;
+    target["lower_power_limit"] = source.LowerPowerLimit;
+    target["base_load_limit"] = source.BaseLoadLimit;
+    target["upper_power_limit"] = source.UpperPowerLimit;
+    target["ignore_soc"] = source.IgnoreSoc;
+    target["battery_soc_start_threshold"] = source.BatterySocStartThreshold;
+    target["battery_soc_stop_threshold"] = source.BatterySocStopThreshold;
+    target["voltage_start_threshold"] = static_cast<int>(source.VoltageStartThreshold * 100.0 + 0.5) / 100.0;
+    target["voltage_stop_threshold"] = static_cast<int>(source.VoltageStopThreshold * 100.0 + 0.5) / 100.0;
+    target["voltage_load_correction_factor"] = source.VoltageLoadCorrectionFactor;
+    target["inverter_restart_hour"] = source.RestartHour;
+    target["full_solar_passthrough_soc"] = source.FullSolarPassThroughSoc;
+    target["full_solar_passthrough_start_voltage"] = static_cast<int>(source.FullSolarPassThroughStartVoltage * 100.0 + 0.5) / 100.0;
+    target["full_solar_passthrough_stop_voltage"] = static_cast<int>(source.FullSolarPassThroughStopVoltage * 100.0 + 0.5) / 100.0;
+#ifdef USE_SURPLUSPOWER
+    target["surplus_power_enabled"] = source.SurplusPowerEnabled;
+#endif
+
+}
+
+void ConfigurationClass::deserializePowerLimiterConfig(JsonObject const& source, PowerLimiterConfig& target)
+{
+    target.Enabled = source["enabled"] | POWERLIMITER_ENABLED;
+    target.VerboseLogging = source["verbose_logging"] | false;
+    target.UpdatesOnly = source["updatesonly"] | POWERLIMITER_UPDATESONLY;
+    target.SolarPassThroughEnabled = source["solar_passthrough_enabled"] | POWERLIMITER_SOLAR_PASSTHROUGH_ENABLED;
+    target.SolarPassThroughLosses = source["solar_passthrough_losses"] | POWERLIMITER_SOLAR_PASSTHROUGH_LOSSES;
+    target.BatteryAlwaysUseAtNight = source["battery_always_use_at_night"] | POWERLIMITER_BATTERY_ALWAYS_USE_AT_NIGHT;
+    if (source["battery_drain_strategy"].as<uint8_t>() == 1) { target.BatteryAlwaysUseAtNight = true; } // convert legacy setting
+    target.IsInverterBehindPowerMeter = source["is_inverter_behind_powermeter"] | POWERLIMITER_IS_INVERTER_BEHIND_POWER_METER;
+    target.IsInverterSolarPowered = source["is_inverter_solar_powered"] | POWERLIMITER_IS_INVERTER_SOLAR_POWERED;
+    target.UseOverscalingToCompensateShading = source["use_overscaling_to_compensate_shading"] | POWERLIMITER_USE_OVERSCALING_TO_COMPENSATE_SHADING;
+    target.InverterId = source["inverter_serial"].as<uint64_t>() | POWERLIMITER_INVERTER_ID;
+    if (target.InverterId == POWERLIMITER_INVERTER_ID) // legacy
+        target.InverterId = source["inverter_id"].as<uint64_t>() | POWERLIMITER_INVERTER_ID;
+    target.InverterChannelId = source["inverter_channel_id"].as<uint8_t>() | POWERLIMITER_INVERTER_CHANNEL_ID;
+    target.TargetPowerConsumption = source["target_power_consumption"] | POWERLIMITER_TARGET_POWER_CONSUMPTION;
+    target.TargetPowerConsumptionHysteresis = source["target_power_consumption_hysteresis"] | POWERLIMITER_TARGET_POWER_CONSUMPTION_HYSTERESIS;
+    target.LowerPowerLimit = source["lower_power_limit"] | POWERLIMITER_LOWER_POWER_LIMIT;
+    target.BaseLoadLimit = source["base_load_limit"] | POWERLIMITER_BASE_LOAD_LIMIT;
+    target.UpperPowerLimit = source["upper_power_limit"] | POWERLIMITER_UPPER_POWER_LIMIT;
+    target.VoltageStartThreshold = source["voltage_start_threshold"] | POWERLIMITER_VOLTAGE_START_THRESHOLD;
+    target.VoltageStartThreshold = static_cast<int>(target.VoltageStartThreshold * 100.0 + 0.5) / 100.0;
+    target.VoltageStopThreshold = source["voltage_stop_threshold"] | POWERLIMITER_VOLTAGE_STOP_THRESHOLD;
+    target.VoltageStopThreshold = static_cast<int>(target.VoltageStopThreshold * 100.0 + 0.5) / 100.0;
+    target.VoltageLoadCorrectionFactor = source["voltage_load_correction_factor"] | POWERLIMITER_VOLTAGE_LOAD_CORRECTION_FACTOR;
+    target.RestartHour = source["inverter_restart_hour"].as<int8_t>() | POWERLIMITER_RESTART_HOUR;
+
+    target.IgnoreSoc = source["ignore_soc"] | POWERLIMITER_IGNORE_SOC;
+    target.BatterySocStartThreshold = source["battery_soc_start_threshold"] | POWERLIMITER_BATTERY_SOC_START_THRESHOLD;
+    target.BatterySocStopThreshold = source["battery_soc_stop_threshold"] | POWERLIMITER_BATTERY_SOC_STOP_THRESHOLD;
+    target.FullSolarPassThroughSoc = source["full_solar_passthrough_soc"] | POWERLIMITER_FULL_SOLAR_PASSTHROUGH_SOC;
+    target.FullSolarPassThroughStartVoltage = source["full_solar_passthrough_start_voltage"] | POWERLIMITER_FULL_SOLAR_PASSTHROUGH_START_VOLTAGE;
+    target.FullSolarPassThroughStopVoltage = source["full_solar_passthrough_stop_voltage"] | POWERLIMITER_FULL_SOLAR_PASSTHROUGH_STOP_VOLTAGE;
+
+#ifdef USE_SURPLUSPOWER
+    target.SurplusPowerEnabled = source["surplus_power_enabled"] | false;
+#endif
 }
 
 bool ConfigurationClass::read()
@@ -515,6 +619,13 @@ bool ConfigurationClass::read()
 
     JsonObject mdns = doc["mdns"];
     config.Mdns.Enabled = mdns["enabled"] | MDNS_ENABLED;
+
+#ifdef USE_SYSLOG
+    JsonObject syslog = doc["syslog"];
+    config.Syslog.Enabled = syslog["enabled"] | SYSLOG_ENABLED;
+    strlcpy(config.Syslog.Hostname, syslog["hostname"] | "", sizeof(config.Syslog.Hostname));
+    config.Syslog.Port = syslog["port"] | SYSLOG_PORT;
+#endif
 
 #ifdef USE_ModbusDTU
     JsonObject modbus = doc["modbus"];
@@ -655,25 +766,7 @@ bool ConfigurationClass::read()
 
     deserializePowerMeterMqttConfig(powermeter["mqtt"], config.PowerMeter.Mqtt);
 
-    // process settings from legacy config if they are present
-    // TODO(skippermeister): remove in early 2025.
-    if (!powermeter["mqtt_topic_powermeter_1"].isNull()) {
-        auto& values = config.PowerMeter.Mqtt.Values;
-        strlcpy(values[0].Topic, powermeter["mqtt_topic_powermeter_1"], sizeof(values[0].Topic));
-        strlcpy(values[1].Topic, powermeter["mqtt_topic_powermeter_2"], sizeof(values[1].Topic));
-        strlcpy(values[2].Topic, powermeter["mqtt_topic_powermeter_3"], sizeof(values[2].Topic));
-    }
-
     deserializePowerMeterSerialSdmConfig(powermeter["serial_sdm"], config.PowerMeter.SerialSdm);
-
-    // process settings from legacy config if they are present
-    // TODO(skippermeister): remove in early 2025.
-    if (!powermeter["sdmaddress"].isNull()) {
-        config.PowerMeter.SerialSdm.Address = powermeter["sdmaddress"];
-    }
-    if (!powermeter["sdmbaudrate"].isNull()) {
-        config.PowerMeter.SerialSdm.Baudrate = powermeter["sdmbaudrate"];
-    }
 
     JsonObject powermeter_http_json = powermeter["http_json"];
     deserializePowerMeterHttpJsonConfig(powermeter_http_json, config.PowerMeter.HttpJson);
@@ -681,97 +774,9 @@ bool ConfigurationClass::read()
     JsonObject powermeter_sml = powermeter["http_sml"];
     deserializePowerMeterHttpSmlConfig(powermeter_sml, config.PowerMeter.HttpSml);
 
-    // process settings from legacy config if they are present
-    // TODO(skippermeister): remove in early 2025.
-    if (!powermeter["http_phases"].isNull()) {
-        auto& target = config.PowerMeter.HttpJson;
+    deserializePowerLimiterConfig(doc["powerlimiter"], config.PowerLimiter);
 
-        for (size_t i = 0; i < POWERMETER_HTTP_JSON_MAX_VALUES; ++i) {
-            PowerMeterHttpJsonValue& t = target.Values[i];
-            JsonObject s = powermeter["http_phases"][i];
-
-            deserializeHttpRequestConfig(s, t.HttpRequest);
-
-            t.Enabled = s["enabled"] | false;
-            strlcpy(t.JsonPath, s["json_path"] | "", sizeof(t.JsonPath));
-            t.PowerUnit = s["unit"] | PowerMeterHttpJsonValue::Unit::Watts;
-            t.SignInverted = s["sign_inverted"] | false;
-        }
-
-        target.IndividualRequests = powermeter["http_individual_requests"] | false;
-    }
-
-    JsonObject powerlimiter = doc["powerlimiter"];
-    config.PowerLimiter.Enabled = powerlimiter["enabled"] | POWERLIMITER_ENABLED;
-    config.PowerLimiter.VerboseLogging = powerlimiter["verbose_logging"] | false;
-    config.PowerLimiter.SolarPassThroughEnabled = powerlimiter["solar_passthrough_enabled"] | POWERLIMITER_SOLAR_PASSTHROUGH_ENABLED;
-    config.PowerLimiter.SolarPassThroughLosses = powerlimiter["solar_passthrough_losses"] | POWERLIMITER_SOLAR_PASSTHROUGH_LOSSES;
-    config.PowerLimiter.BatteryAlwaysUseAtNight = powerlimiter["battery_always_use_at_night"] | POWERLIMITER_BATTERY_ALWAYS_USE_AT_NIGHT;
-    if (powerlimiter["battery_drain_strategy"].as<uint8_t>() == 1) { config.PowerLimiter.BatteryAlwaysUseAtNight = true; } // convert legacy setting
-    config.PowerLimiter.UpdatesOnly = powerlimiter["updatesonly"] | POWERLIMITER_UPDATESONLY;
-    config.PowerLimiter.IsInverterBehindPowerMeter = powerlimiter["is_inverter_behind_powermeter"] | POWERLIMITER_IS_INVERTER_BEHIND_POWER_METER;
-    config.PowerLimiter.IsInverterSolarPowered = powerlimiter["is_inverter_solar_powered"] | POWERLIMITER_IS_INVERTER_SOLAR_POWERED;
-    config.PowerLimiter.UseOverscalingToCompensateShading = powerlimiter["use_overscaling_to_compensate_shading"] | POWERLIMITER_USE_OVERSCALING_TO_COMPENSATE_SHADING;
-    config.PowerLimiter.InverterId = powerlimiter["inverter_id"].as<uint64_t>() | POWERLIMITER_INVERTER_ID;
-    if (config.PowerLimiter.InverterId < INV_MAX_COUNT) {
-        uint8_t id;
-        config.PowerLimiter.InverterId = config.Inverter[id = config.PowerLimiter.InverterId].Serial;
-        MessageOutput.printf("%s%s migrate PowerLimiter Inverter ID:%02d to Serial No: %" PRIx64 "\r\n", TAG, __FUNCTION__, id, config.PowerLimiter.InverterId);
-    } else {
-        MessageOutput.printf("%s%s: PowerLimiter Inverter ID: %" PRIx64 "\r\n", TAG, __FUNCTION__, config.PowerLimiter.InverterId);
-    }
-    config.PowerLimiter.InverterChannelId = powerlimiter["inverter_channel_id"] | POWERLIMITER_INVERTER_CHANNEL_ID;
-    config.PowerLimiter.TargetPowerConsumption = powerlimiter["target_power_consumption"] | POWERLIMITER_TARGET_POWER_CONSUMPTION;
-    config.PowerLimiter.TargetPowerConsumptionHysteresis = powerlimiter["target_power_consumption_hysteresis"] | POWERLIMITER_TARGET_POWER_CONSUMPTION_HYSTERESIS;
-    config.PowerLimiter.LowerPowerLimit = powerlimiter["lower_power_limit"] | POWERLIMITER_LOWER_POWER_LIMIT;
-    config.PowerLimiter.BaseLoadLimit = powerlimiter["base_load_limit"] | POWERLIMITER_BASE_LOAD_LIMIT;
-    config.PowerLimiter.UpperPowerLimit = powerlimiter["upper_power_limit"] | POWERLIMITER_UPPER_POWER_LIMIT;
-    config.PowerLimiter.IgnoreSoc = powerlimiter["ignore_soc"] | POWERLIMITER_IGNORE_SOC;
-    config.PowerLimiter.BatterySocStartThreshold = powerlimiter["battery_soc_start_threshold"] | POWERLIMITER_BATTERY_SOC_START_THRESHOLD;
-    config.PowerLimiter.BatterySocStopThreshold = powerlimiter["battery_soc_stop_threshold"] | POWERLIMITER_BATTERY_SOC_STOP_THRESHOLD;
-    config.PowerLimiter.VoltageStartThreshold = powerlimiter["voltage_start_threshold"] | POWERLIMITER_VOLTAGE_START_THRESHOLD;
-    config.PowerLimiter.VoltageStopThreshold = powerlimiter["voltage_stop_threshold"] | POWERLIMITER_VOLTAGE_STOP_THRESHOLD;
-    config.PowerLimiter.VoltageLoadCorrectionFactor = powerlimiter["voltage_load_correction_factor"] | POWERLIMITER_VOLTAGE_LOAD_CORRECTION_FACTOR;
-    config.PowerLimiter.RestartHour = powerlimiter["inverter_restart_hour"] | POWERLIMITER_RESTART_HOUR;
-    config.PowerLimiter.FullSolarPassThroughSoc = powerlimiter["full_solar_passthrough_soc"] | POWERLIMITER_FULL_SOLAR_PASSTHROUGH_SOC;
-    config.PowerLimiter.FullSolarPassThroughStartVoltage = powerlimiter["full_solar_passthrough_start_voltage"] | POWERLIMITER_FULL_SOLAR_PASSTHROUGH_START_VOLTAGE;
-    config.PowerLimiter.FullSolarPassThroughStopVoltage = powerlimiter["full_solar_passthrough_stop_voltage"] | POWERLIMITER_FULL_SOLAR_PASSTHROUGH_STOP_VOLTAGE;
-#ifdef USE_SURPLUSPOWER
-    config.PowerLimiter.SurplusPowerEnabled = powerlimiter["surplus_power_enabled"] | false;
-#endif
-
-    JsonObject battery = doc["battery"];
-    config.Battery.Enabled = battery["enabled"] | BATTERY_ENABLED;
-    config.Battery.VerboseLogging = battery["verbose_logging"] | false;
-    config.Battery.numberOfBatteries = battery["numberOfBatteries"] | 1; // at minimum 1one battery
-    config.Battery.UpdatesOnly = battery["updatesonly"] | BATTERY_UPDATESONLY;
-    config.Battery.PollInterval = battery["pollinterval"] | BATTERY_POLLINTERVAL;
-    config.Battery.Provider = battery["provider"] | BATTERY_PROVIDER;
-#ifdef USE_MQTT_BATTERY
-    strlcpy(config.Battery.Mqtt.SocTopic, battery["mqtt_soc_topic"] | "", sizeof(config.Battery.Mqtt.SocTopic));
-    strlcpy(config.Battery.Mqtt.SocJsonPath, battery["mqtt_soc_json_path"] | "", sizeof(config.Battery.Mqtt.SocJsonPath));
-    strlcpy(config.Battery.Mqtt.VoltageTopic, battery["mqtt_voltage_topic"] | "", sizeof(config.Battery.Mqtt.VoltageTopic));
-    strlcpy(config.Battery.Mqtt.VoltageJsonPath, battery["mqtt_voltage_json_path"] | "", sizeof(config.Battery.Mqtt.VoltageJsonPath));
-    config.Battery.Mqtt.VoltageUnit = battery["mqtt_voltage_unit"] | BatteryVoltageUnit::Volts;
-#endif
-    config.Battery.MinChargeTemperature = battery["min_charge_temp"] | BATTERY_MIN_CHARGE_TEMPERATURE;
-    config.Battery.MaxChargeTemperature = battery["max_charge_temp"] | BATTERY_MAX_CHARGE_TEMPERATURE;
-    config.Battery.MinDischargeTemperature = battery["min_discharge_temp"] | BATTERY_MIN_DISCHARGE_TEMPERATURE;
-    config.Battery.MaxDischargeTemperature = battery["max_discharge_temp"] | BATTERY_MAX_DISCHARGE_TEMPERATURE;
-    config.Battery.Stop_Charging_BatterySoC_Threshold = battery["stop_charging_soc"] | 100;
-
-#if defined(USE_MQTT_BATTERY) || defined(USE_VICTRON_SMART_SHUNT)
-    config.Battery.RecommendedChargeVoltage = battery["recommended_charge_voltage"] | 28.4;
-    config.Battery.RecommendedDischargeVoltage = battery["recommended_discharge_voltage"] | 21.0;
-#endif
-#ifdef USE_MQTT_ZENDURE_BATTERY
-    config.Battery.Zendure.DeviceType = battery["zendure"]["device_type"] | BATTERY_ZENDURE_DEVICE;
-    strlcpy(config.Battery.Zendure.DeviceSerial, battery["zendure"]["device_serial"] | "", sizeof(config.Battery.Zendure.DeviceSerial));
-    config.Battery.Zendure.MinSoC = battery["zendure"]["soc_min"] | BATTERY_ZENDURE_MIN_SOC;
-    config.Battery.Zendure.MaxSoC = battery["zendure"]["soc_max"] | BATTERY_ZENDURE_MAX_SOC;
-    config.Battery.Zendure.BypassMode = battery["zendure"]["bypass_mode"] | BATTERY_ZENDURE_BYPASS_MODE;
-    config.Battery.Zendure.MaxOutput = battery["zendure"]["max_output"] | BATTERY_ZENDURE_MAX_OUTPUT;
-#endif
+    deserializeBatteryConfig(doc["battery"], config.Battery);
 
     JsonObject mcp2515 = doc["mcp2515"];
     config.MCP2515.Controller_Frequency = mcp2515["can_controller_frequency"] | MCP2515_CAN_CONTROLLER_FREQUENCY;
@@ -811,7 +816,7 @@ bool ConfigurationClass::read()
     config.ZeroExport.Enabled = zeroExport["enabled"] | ZERO_EXPORT_ENABLED;
     config.ZeroExport.UpdatesOnly = zeroExport["updatesonly"] | ZERO_EXPORT_UPDATESONLY;
     config.ZeroExport.InverterId = zeroExport["InverterId"] | ZERO_EXPORT_INVERTER_ID;
-    if (zeroExport.containsKey("serials")) {
+    if (zeroExport["serials"].is<JsonArray>()) {
         JsonArray serials = zeroExport["serials"].as<JsonArray>();
         if (serials.size() > 0 && serials.size() <= INV_MAX_COUNT) {
             for (uint8_t i=0; i< INV_MAX_COUNT; i++) { config.ZeroExport.serials[i] = 0; }

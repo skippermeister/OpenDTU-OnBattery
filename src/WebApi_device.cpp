@@ -7,7 +7,7 @@
 #include "Display_Graphic.h"
 #include "PowerMeter.h"
 #include "PinMapping.h"
-#include "Utils.h"
+#include "RestartHelper.h"
 #include "WebApi.h"
 #include "WebApi_errors.h"
 #include "helper.h"
@@ -69,15 +69,33 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
     }
 #endif
 
+#ifdef USE_W5500
+    auto w5500PinObj = curPin["w5500"].to<JsonObject>();
+    if (PinMapping.isValidW5500Config()) {
+        w5500PinObj["sclk"] = pin.w5500.sclk;
+        w5500PinObj["mosi"] = pin.w5500.mosi;
+        w5500PinObj["miso"] = pin.w5500.miso;
+        w5500PinObj["cs"] = pin.w5500.cs;
+        w5500PinObj["irq"] = pin.w5500.irq;
+        w5500PinObj["rst"] = pin.w5500.rst;
+    } else {
+        cmtPinObj["Pins"] = "invalid";
+    }
+#endif
+
 #if defined(OPENDTU_ETHERNET)
     auto ethPinObj = curPin["eth"].to<JsonObject>();
-    ethPinObj["enabled"] = pin.eth_enabled;
-    ethPinObj["phy_addr"] = pin.eth_phy_addr;
-    ethPinObj["power"] = pin.eth_power;
-    ethPinObj["mdc"] = pin.eth_mdc;
-    ethPinObj["mdio"] = pin.eth_mdio;
-    ethPinObj["type"] = pin.eth_type;
-    ethPinObj["clk_mode"] = pin.eth_clk_mode;
+    if (PinMapping.isValidEthConfig()) {
+        ethPinObj["enabled"] = pin.eth.enabled;
+        ethPinObj["phy_addr"] = pin.eth.phy_addr;
+        ethPinObj["power"] = pin.eth.power;
+        ethPinObj["mdc"] = pin.eth.mdc;
+        ethPinObj["mdio"] = pin.eth.mdio;
+        ethPinObj["type"] = pin.eth.type;
+        ethPinObj["clk_mode"] = pin.eth.clk_mode;
+    } else {
+        ethPinObj["Pins"] = "invalid";
+    }
 #endif
 
 #if defined(USE_DISPLAY_GRAPHIC)
@@ -159,43 +177,49 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
 #endif
 
     auto batteryPinObj = curPin["battery"].to<JsonObject>();
+    if (PinMapping.isValidBatteryConfig()) {
 #if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_GOBEL_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER) || defined(USE_JKBMS_CONTROLLER)  || defined(USE_JBDBMS_CONTROLLER)
-    if (pin.battery.provider == Battery_Provider_t::RS485) {
-        batteryPinObj["rs485_rx"] = pin.battery.rs485.rx;
-        batteryPinObj["rs485_tx"] = pin.battery.rs485.tx;
-        if (pin.battery.rs485.rts >= 0) {
-            batteryPinObj["rs485_rts"] = pin.battery.rs485.rts;
-        }
+        if (pin.battery.provider == Battery_Provider_t::RS485) {
+            batteryPinObj["rs485_rx"] = pin.battery.rs485.rx;
+            batteryPinObj["rs485_tx"] = pin.battery.rs485.tx;
+            if (pin.battery.rs485.rts >= 0) {
+                batteryPinObj["rs485_rts"] = pin.battery.rs485.rts;
+            }
 #if defined(USE_DALYBMS_CONTROLLER)
-        if (pin.battery.wakeup >= 0) batteryPinObj["wakeup"] = pin.battery.wakeup;
+            if (pin.battery.wakeup >= 0) batteryPinObj["wakeup"] = pin.battery.wakeup;
 #endif
-    } else if (pin.battery.provider == Battery_Provider_t::RS232) {
-        batteryPinObj["rs232_rx"] = pin.battery.rs232.rx;
-        batteryPinObj["rs232_tx"] = pin.battery.rs232.tx;
+        } else if (pin.battery.provider == Battery_Provider_t::RS232) {
+            batteryPinObj["rs232_rx"] = pin.battery.rs232.rx;
+            batteryPinObj["rs232_tx"] = pin.battery.rs232.tx;
 #if defined(USE_DALYBMS_CONTROLLER)
-        if (pin.battery.wakeup >= 0) batteryPinObj["wakeup"] = pin.battery.wakeup;
+            if (pin.battery.wakeup >= 0) batteryPinObj["wakeup"] = pin.battery.wakeup;
 #endif
-    } else
+        } else
 #endif
 #if defined(USE_PYLONTECH_CAN_RECEIVER) || defined(USE_PYTES_CAN_RECEIVER) || defined(USE_SBS_CAN_RECEIVER)
-    if (pin.battery.provider == Battery_Provider_t::CAN0) {
-        batteryPinObj["can0_rx"] = pin.battery.can0.rx;
-        batteryPinObj["can0_tx"] = pin.battery.can0.tx;
-    } else if (pin.battery.provider == Battery_Provider_t::I2C0) {
-        batteryPinObj["i2c0_scl"] = pin.battery.i2c.scl;
-        batteryPinObj["i2c0_sda"] = pin.battery.i2c.sda;
-    } else if (pin.battery.provider == Battery_Provider_t::I2C1) {
-        batteryPinObj["i2c1_scl"] = pin.battery.i2c.scl;
-        batteryPinObj["i2c1_sda"] = pin.battery.i2c.sda;
-    } else if (pin.battery.provider == Battery_Provider_t::MCP2515) {
-        batteryPinObj["mcp2515_miso"] = pin.battery.mcp2515.miso;
-        batteryPinObj["mcp2515_mosi"] = pin.battery.mcp2515.mosi;
-        batteryPinObj["mcp2515_clk"] = pin.battery.mcp2515.clk;
-        batteryPinObj["mcp2515_irq"] = pin.battery.mcp2515.irq;
-        batteryPinObj["mcp2515_cs"] = pin.battery.mcp2515.cs;
-    } else
+        if (pin.battery.provider == Battery_Provider_t::CAN0) {
+            batteryPinObj["can0_rx"] = pin.battery.can0.rx;
+            batteryPinObj["can0_tx"] = pin.battery.can0.tx;
+        } else if (pin.battery.provider == Battery_Provider_t::I2C0) {
+            batteryPinObj["i2c0_scl"] = pin.battery.i2c.scl;
+            batteryPinObj["i2c0_sda"] = pin.battery.i2c.sda;
+        } else if (pin.battery.provider == Battery_Provider_t::I2C1) {
+            batteryPinObj["i2c1_scl"] = pin.battery.i2c.scl;
+            batteryPinObj["i2c1_sda"] = pin.battery.i2c.sda;
+        } else if (pin.battery.provider == Battery_Provider_t::MCP2515) {
+            batteryPinObj["mcp2515_miso"] = pin.battery.mcp2515.miso;
+            batteryPinObj["mcp2515_mosi"] = pin.battery.mcp2515.mosi;
+            batteryPinObj["mcp2515_clk"] = pin.battery.mcp2515.clk;
+            batteryPinObj["mcp2515_irq"] = pin.battery.mcp2515.irq;
+            batteryPinObj["mcp2515_cs"] = pin.battery.mcp2515.cs;
+        } else
 #endif
-    {}
+        {
+            batteryPinObj["Provider"] = "invalid";
+        }
+    } else {
+        batteryPinObj["Pins"] = "invalid";
+    }
 
     auto chargerPinObj = curPin["charger"].to<JsonObject>();
 #if defined(USE_CHARGER_HUAWEI)
@@ -203,25 +227,27 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
 #endif
 
 #if defined(USE_CHARGER_MEANWELL) || defined(USE_CHARGER_HUAWEI)
-    if (pin.charger.provider == Charger_Provider_t::CAN0) {
-        chargerPinObj["can0_rx"] = pin.charger.can0.rx;
-        chargerPinObj["can0_tx"] = pin.charger.can0.tx;
-    //    chargerPinObj["can0_stb"] = pin.charger.can0.stb;
-    }
-    if (pin.charger.provider == Charger_Provider_t::I2C0) {
-        chargerPinObj["i2c0_scl"] = pin.charger.i2c.scl;
-        chargerPinObj["i2c0_sda"] = pin.charger.i2c.sda;
-    }
-    if (pin.charger.provider == Charger_Provider_t::I2C1) {
-        chargerPinObj["i2c1_scl"] = pin.charger.i2c.scl;
-        chargerPinObj["i2c1_sda"] = pin.charger.i2c.sda;
-    }
-    if (pin.charger.provider == Charger_Provider_t::MCP2515) {
-        chargerPinObj["mcp2515_miso"] = pin.charger.mcp2515.miso;
-        chargerPinObj["mcp2515_mosi"] = pin.charger.mcp2515.mosi;
-        chargerPinObj["mcp2515_clk"] = pin.charger.mcp2515.clk;
-        chargerPinObj["mcp2515_irq"] = pin.charger.mcp2515.irq;
-        chargerPinObj["mcp2515_cs"] = pin.charger.mcp2515.cs;
+    if (PinMapping.isValidChargerConfig()) {
+        if (pin.charger.provider == Charger_Provider_t::CAN0) {
+            chargerPinObj["can0_rx"] = pin.charger.can0.rx;
+            chargerPinObj["can0_tx"] = pin.charger.can0.tx;
+        } else if (pin.charger.provider == Charger_Provider_t::I2C0) {
+            chargerPinObj["i2c0_scl"] = pin.charger.i2c.scl;
+            chargerPinObj["i2c0_sda"] = pin.charger.i2c.sda;
+        } else if (pin.charger.provider == Charger_Provider_t::I2C1) {
+            chargerPinObj["i2c1_scl"] = pin.charger.i2c.scl;
+            chargerPinObj["i2c1_sda"] = pin.charger.i2c.sda;
+        } else if (pin.charger.provider == Charger_Provider_t::MCP2515) {
+            chargerPinObj["mcp2515_miso"] = pin.charger.mcp2515.miso;
+            chargerPinObj["mcp2515_mosi"] = pin.charger.mcp2515.mosi;
+            chargerPinObj["mcp2515_clk"] = pin.charger.mcp2515.clk;
+            chargerPinObj["mcp2515_irq"] = pin.charger.mcp2515.irq;
+            chargerPinObj["mcp2515_cs"] = pin.charger.mcp2515.cs;
+        } else {
+            chargerPinObj["Provider"] = "invalid";
+        }
+    } else {
+        chargerPinObj["Pins"] = "invalid";
     }
 #endif
 
@@ -262,9 +288,9 @@ void WebApiDeviceClass::onDeviceAdminPost(AsyncWebServerRequest* request)
 
     auto& retMsg = response->getRoot();
 
-    if (!(root.containsKey("curPin")
+    if (!(root["curPin"].is<JsonObject>()
 #if defined(USE_DISPLAY_GRAPHIC)
-    || root.containsKey("display")
+    || root["display"].is<JsonObject>()
 #endif
         )) {
         retMsg["message"] = "Values are missing!";
@@ -291,8 +317,8 @@ void WebApiDeviceClass::onDeviceAdminPost(AsyncWebServerRequest* request)
     strlcpy(config.Dev_PinMapping, root["curPin"]["name"].as<String>().c_str(), sizeof(config.Dev_PinMapping));
 #if defined(USE_DISPLAY_GRAPHIC)
     config.Display.Rotation = root["display"]["rotation"].as<uint8_t>();
-    config.Display.PowerSafe = root["display"]["power_safe"].as<bool>();
-    config.Display.ScreenSaver = root["display"]["screensaver"].as<bool>();
+    config.Display.PowerSafe = root["display"]["power_safe"];
+    config.Display.ScreenSaver = root["display"]["screensaver"];
     config.Display.Contrast = root["display"]["contrast"].as<uint8_t>();
     config.Display.Language = root["display"]["language"].as<uint8_t>();
     config.Display.Diagram.Duration = root["display"]["diagramduration"].as<uint32_t>();
@@ -321,6 +347,6 @@ void WebApiDeviceClass::onDeviceAdminPost(AsyncWebServerRequest* request)
     WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 
     if (performRestart) {
-        Utils::restartDtu();
+        RestartHelper.triggerRestart();
     }
 }

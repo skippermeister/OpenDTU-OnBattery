@@ -12,6 +12,7 @@
 #include "PytesCanReceiver.h"
 #include "SBSCanReceiver.h"
 #include "ZendureBattery.h"
+#include "VictronSmartBatterySense.h"
 
 BatteryClass Battery;
 
@@ -132,7 +133,7 @@ void BatteryClass::updateSettings()
 #ifdef USE_JBDBMS_CONTROLLER
         case 5:
             _upProvider = std::make_unique<JbdBms::Controller>();
-            break;        default:;
+            break;
 #endif
 #ifdef USE_DALYBMS_CONTROLLER
         case 6:
@@ -146,13 +147,18 @@ void BatteryClass::updateSettings()
                 _upProvider = std::make_unique<VictronSmartShunt>();
             break;
 #endif
-#ifdef USE_MQTT_BATTERY
+#ifdef USE_VICTRON_SMART_BATTERY_SENSE
         case 8:
+            _upProvider = std::make_unique<VictronSmartBatterySense>();
+            break;
+#endif
+#ifdef USE_MQTT_BATTERY
+        case 9:
             _upProvider = std::make_unique<MqttBattery>();
             break;
 #endif
 #ifdef USE_MQTT_ZENDURE_BATTERY
-        case 9:
+        case 10:
             _upProvider = std::make_unique<ZendureBattery>();
             break;
 #endif
@@ -181,4 +187,34 @@ void BatteryClass::loop()
     _upProvider->loop();
 
     _upProvider->getStats()->mqttLoop();
+}
+
+float BatteryClass::getDischargeCurrentLimit()
+{
+    const auto& cBattery = Configuration.get().Battery;
+
+    if(!cBattery.EnableDischargeCurrentLimit) { return FLT_MAX; }
+
+    auto dischargeCurrentLimit = cBattery.DischargeCurrentLimit;
+    auto dischargeCurrentValid = dischargeCurrentLimit > 0.0f;
+
+    auto statsCurrentLimit = getStats()->getDischargeCurrentLimit();
+    auto statsLimitValid = cBattery.UseBatteryReportedDischargeLimit
+        && statsCurrentLimit >= 0.0f
+        && getStats()->getDischargeCurrentLimitAgeSeconds() <= 60;
+
+    if(statsLimitValid && dischargeCurrentValid) {
+        // take the lower limit
+        return min(statsCurrentLimit, dischargeCurrentLimit);
+    }
+
+    if (statsLimitValid) {
+        return statsCurrentLimit;
+    }
+
+    if (dischargeCurrentValid) {
+        return dischargeCurrentLimit;
+    }
+
+    return FLT_MAX;
 }

@@ -26,6 +26,9 @@
 
 #define MDNS_ENABLED false
 
+#define SYSLOG_ENABLED false
+#define SYSLOG_PORT 514
+
 #define MODBUS_ENABLED false
 #define MODBUS_DELAY_START false
 #define MODBUS_MFRNAME "OpenDTU"
@@ -168,7 +171,9 @@
 #define MAX_BATTERIES   2   // currently only 2 Pylontech Batteries are supported (Master and one Slave)
 #define BATTERY_ENABLED false
 #define BATTERY_PROVIDER 0 // Pylontech RS485 receiver
-
+#define BATTERY_ENABLE_DISCHARGE_CURRENT_LIMIT false
+#define BATTERY_DISCHARGE_CURRENT_LIMIT 0
+#define BATTERY_USE_BATTERY_REPORTED_DISCHARGE_CURRENT_LIMIT false
 #define BATTERY_ZENDURE_DEVICE 0
 #define BATTERY_ZENDURE_MIN_SOC 0
 #define BATTERY_ZENDURE_MAX_SOC 100

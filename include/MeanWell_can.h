@@ -198,10 +198,14 @@ private:
     float calcEfficency(float x);
     void setupParameter(void);
 
-    I2C_CAN* i2c_can;
+#ifdef USE_CHARGER_MCP2515
     SPIClass* spi;
     MCP_CAN* CAN;
     uint8_t _mcp2515_irq;
+#endif
+#ifdef USE_CHARGER_I2C
+    I2C_CAN* i2c_can;
+#endif
 
     enum class NPB_Model_t {
         NPB_450_24,

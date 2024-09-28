@@ -16,8 +16,6 @@ namespace JkBms {
 
 bool Controller::init()
 {
-    _lastStatusPrinted.set(10 * 1000);
-
     MessageOutput.printf("%s Initialize JKBMS Controller... ", TAG);
 
 #ifdef JKBMS_DUMMY_SERIAL
@@ -110,12 +108,12 @@ frozen::string const& Controller::getStatusText(Controller::Status status)
 
 void Controller::announceStatus(Controller::Status status)
 {
-    if ((_lastStatus == status) && !_lastStatusPrinted.occured()) { return; }
+    if ((_lastStatus == status) && ((millis() - _lastStatusPrinted) < 10 * 1000)) { return; }
 
     MessageOutput.printf("%s %s\r\n", TAG, getStatusText(status).data());
 
     _lastStatus = status;
-    _lastStatusPrinted.reset();
+    _lastStatusPrinted  = millis();
 }
 
 void Controller::sendRequest(uint8_t pollInterval)
@@ -144,8 +142,7 @@ void Controller::sendRequest(uint8_t pollInterval)
 
 void Controller::loop()
 {
-    auto const& cBattery = Configuration.get().Battery;
-    uint8_t pollInterval = cBattery.PollInterval;
+    uint8_t pollInterval = Configuration.get().Battery.PollInterval;
 
     while (_upSerial->available()) {
         rxData(_upSerial->read());
@@ -178,20 +175,17 @@ void Controller::rxData(uint8_t inbyte)
         case ReadState::StartMarkerReceived:
             _frameLength = inbyte << 8 | 0x00;
             return setReadState(ReadState::FrameLengthMsbReceived);
-            break;
-        case ReadState::FrameLengthMsbReceived:
+         case ReadState::FrameLengthMsbReceived:
             _frameLength |= inbyte;
             _frameLength -= 2; // length field already read
             return setReadState(ReadState::ReadingFrame);
-            break;
-        case ReadState::ReadingFrame:
+         case ReadState::ReadingFrame:
             _frameLength--;
             if (_frameLength == 0) {
                 return frameComplete();
             }
             return setReadState(ReadState::ReadingFrame);
-            break;
-    }
+     }
 
     reset();
 }
@@ -248,5 +242,4 @@ void Controller::processDataPoints(DataPointContainer const& dataPoints)
 }
 
 } /* namespace JkBms */
-
 #endif

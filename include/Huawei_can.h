@@ -109,18 +109,22 @@ private:
     void sendRequest();
     byte sendMsgBuf(uint32_t identifier, uint8_t extd, uint8_t len, uint8_t *data);
 
+#ifdef USE_CHARGER_MCP2515
     SPIClass *SPI;
     MCP_CAN  *_CAN;
-    I2C_CAN  *i2c_can;
     uint8_t  _mcp2515Irq;                         // IRQ pin
+#endif
+#ifdef USE_CHARGER_I2C
+    I2C_CAN  *i2c_can;
+#endif
 
-    uint32_t _nextRequestMillis = 0;              // When to send next data request to PSU
+    uint32_t _lastRequestMillis = 0;              // When to send next data request to PSU
 
     std::mutex _mutex;
 
     uint32_t _recValues[12];
     uint16_t _txValues[5];
-    bool     _hasNewTxValue[5];
+    bool  _hasNewTxValue[5];
 
     uint8_t _errorCode;
     bool _completeUpdateReceived;
@@ -154,9 +158,10 @@ private:
 
     uint32_t _lastUpdateReceivedMillis;           // Timestamp for last data seen from the PSU
     uint32_t _outputCurrentOnSinceMillis;         // Timestamp since when the PSU was idle at zero amps
-    uint32_t _nextAutoModePeriodicIntMillis;      // When to set the next output voltage in automatic mode
+    uint32_t _lastAutoModePeriodicIntMillis;      // When to set the next output voltage in automatic mode
     uint32_t _lastPowerMeterUpdateReceivedMillis; // Timestamp of last seen power meter value
-    uint32_t _autoModeBlockedTillMillis = 0;      // Timestamp to block running auto mode for some time
+    uint32_t _lastAutoModeBlockedTillMillis = 0;      // Timestamp to block running auto mode for some time
+    uint16_t _autoModeBlockedTillMillisPeriod = 1000;
 
     uint8_t _autoPowerEnabledCounter = 0;
     bool _autoPowerEnabled = false;

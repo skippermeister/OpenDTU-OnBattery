@@ -28,11 +28,15 @@ void WebApiDtuClass::applyDataTaskCb()
 {
     // Execute stuff in main thread to avoid busy SPI bus
     auto const& config = Configuration.get();
+#ifdef USE_RADIO_NRF
     Hoymiles.getRadioNrf()->setPALevel((rf24_pa_dbm_e)config.Dtu.Nrf.PaLevel);
+#endif
 #ifdef USE_RADIO_CMT
     Hoymiles.getRadioCmt()->setPALevel(config.Dtu.Cmt.PaLevel);
 #endif
+#ifdef USE_RADIO_NRF
     Hoymiles.getRadioNrf()->setDtuSerial(config.Dtu.Serial);
+#endif
 #ifdef USE_RADIO_CMT
     Hoymiles.getRadioCmt()->setDtuSerial(config.Dtu.Serial);
     Hoymiles.getRadioCmt()->setCountryMode(static_cast<CountryModeId_t>(config.Dtu.Cmt.CountryMode));
@@ -59,8 +63,12 @@ void WebApiDtuClass::onDtuAdminGet(AsyncWebServerRequest* request)
     root["serial"] = buffer;
     root["pollinterval"] = cDtu.PollInterval;
     root["verbose_logging"] = Hoymiles.getVerboseLogging();
+#ifdef USE_RADIO_NRF
     root["nrf_enabled"] = Hoymiles.getRadioNrf()->isInitialized();
     root["nrf_palevel"] = cDtu.Nrf.PaLevel;
+#else
+    root["nrf_enabled"] = false;
+#endif
 #ifdef USE_RADIO_CMT
     root["cmt_enabled"] = Hoymiles.getRadioCmt()->isInitialized();
     root["cmt_palevel"] = cDtu.Cmt.PaLevel;
@@ -99,15 +107,18 @@ void WebApiDtuClass::onDtuAdminPost(AsyncWebServerRequest* request)
 
     auto& retMsg = response->getRoot();
 
-    if (!(root.containsKey("serial")
-            && root.containsKey("pollinterval")
-            && root.containsKey("verbose_logging")
-#ifdef USE_RADIO_CMT
-            && root.containsKey("cmt_palevel")
-            && root.containsKey("cmt_frequency")
-            && root.containsKey("cmt_country")
+    if (!(root["serial"].is<String>()
+            && root["pollinterval"].is<uint32_t>()
+            && root["verbose_logging"].is<bool>()
+#ifdef USE_RADIO_NRF
+            && root["nrf_palevel"].is<uint8_t>()
 #endif
-            && root.containsKey("nrf_palevel")))
+#ifdef USE_RADIO_CMT
+            && root["cmt_palevel"].is<int8_t>()
+            && root["cmt_frequency"].is<uint32_t>()
+            && root["cmt_country"].is<uint8_t>()
+#endif
+        ))
     {
         retMsg["message"] = "Values are missing!";
         retMsg["code"] = WebApiError::GenericValueMissing;
@@ -173,8 +184,10 @@ void WebApiDtuClass::onDtuAdminPost(AsyncWebServerRequest* request)
 
     cDtu.Serial = serial;
     cDtu.PollInterval = root["pollinterval"].as<uint32_t>();
-    Hoymiles.setVerboseLogging(root["verbose_logging"].as<bool>());
+    Hoymiles.setVerboseLogging(root["verbose_logging"]);
+#ifdef USE_RADIO_NRF
     cDtu.Nrf.PaLevel = root["nrf_palevel"].as<uint8_t>();
+#endif
 #ifdef USE_RADIO_CMT
     cDtu.Cmt.PaLevel = root["cmt_palevel"].as<int8_t>();
     cDtu.Cmt.Frequency = root["cmt_frequency"].as<uint32_t>();

@@ -9,10 +9,17 @@
 
 namespace {
 
-static String pytesCellLabel(uint16_t value) {
+static void pytesSetCellLabel(String& label, uint16_t value) {
   char name[8];
   snprintf(name, sizeof(name), "%02d%02d", value & 0xff, value >> 8);
-  return String(name);
+  label = name;  // updates existing string in-place
+}
+
+static uint32_t popCount(uint32_t val) {
+    uint32_t cnt = 0;
+    for (; val; ++cnt)
+        val &= val - 1;
+    return cnt;
 }
 
 };  // namespace
@@ -29,13 +36,13 @@ void PytesCanReceiver::onMessage(twai_message_t rx_message)
         case 0x400:
             _stats->_chargeVoltageLimit = this->scaleValue(this->readUnsignedInt16(rx_message.data), 0.1);
             _stats->_chargeCurrentLimit = this->scaleValue(this->readUnsignedInt16(rx_message.data + 2), 0.1);
-            _stats->_dischargeCurrentLimit = this->scaleValue(this->readUnsignedInt16(rx_message.data + 4), 0.1);
+            _stats->setDischargeCurrentLimit(this->scaleValue(this->readUnsignedInt16(rx_message.data + 4), 0.1), millis());
             _stats->_dischargeVoltageLimit = this->scaleValue(this->readSignedInt16(rx_message.data + 6), 0.1);
 
             if (_verboseLogging) {
                 MessageOutput.printf("%s chargeVoltageLimit: %f chargeCurrentLimit: %f dischargeCurrentLimit: %f dischargeVoltageLimit: %f\r\n", _providerName,
                         _stats->_chargeVoltageLimit, _stats->_chargeCurrentLimit,
-                        _stats->_dischargeCurrentLimit, _stats->_dischargeVoltageLimit);
+                        _stats->getDischargeCurrentLimit(), _stats->_dischargeVoltageLimit);
             }
             break;
 
@@ -60,7 +67,7 @@ void PytesCanReceiver::onMessage(twai_message_t rx_message)
             }
             break;
 
-        case 0x35A: { // Alarms and Warnings
+        case 0x35A: { // Victron protocol: Alarms and Warnings
             uint16_t alarmBits = rx_message.data[0];
             _stats->Alarm.overVoltage = this->getBit(alarmBits, 2);
             _stats->Alarm.underVoltage = this->getBit(alarmBits, 4);
@@ -291,9 +298,8 @@ void PytesCanReceiver::onMessage(twai_message_t rx_message)
         case 0x401: // Pytes protocol: Highest/Lowest Cell Voltage
             _stats->_cellMaxMilliVolt = this->readUnsignedInt16(rx_message.data);
             _stats->_cellMinMilliVolt = this->readUnsignedInt16(rx_message.data + 2);
-            _stats->_cellMaxVoltageName = pytesCellLabel(this->readUnsignedInt8(rx_message.data + 4));
-            _stats->_cellMinVoltageName = pytesCellLabel(this->readUnsignedInt8(rx_message.data + 6));
-
+            pytesSetCellLabel(_stats->_cellMaxVoltageName, this->readUnsignedInt8(rx_message.data + 4));
+            pytesSetCellLabel(_stats->_cellMinVoltageName, this->readUnsignedInt8(rx_message.data + 6));
             if (_verboseLogging) {
                 MessageOutput.printf("[Pytes] lowestCellMilliVolt: %d highestCellMilliVolt: %d cellMinVoltageName: %s cellMaxVoltageName: %s\r\n",
                         _stats->_cellMinMilliVolt, _stats->_cellMaxMilliVolt,
@@ -302,10 +308,11 @@ void PytesCanReceiver::onMessage(twai_message_t rx_message)
             break;
 
         case 0x402: // Pytes protocol: Highest/Lowest Cell Temperature
+            _stats->setVoltage(this->scaleValue(this->readSignedInt16(rx_message.data), 0.01), millis());
             _stats->_cellMaxTemperature = static_cast<float>(this->readUnsignedInt16(rx_message.data)) / 10.0;
             _stats->_cellMinTemperature = static_cast<float>(this->readUnsignedInt16(rx_message.data + 2)) / 10.0;
-            _stats->_cellMaxTemperatureName = pytesCellLabel(this->readUnsignedInt8(rx_message.data + 4));
-            _stats->_cellMinTemperatureName = pytesCellLabel(this->readUnsignedInt8(rx_message.data + 6));
+            pytesSetCellLabel(_stats->_cellMaxTemperatureName, this->readUnsignedInt8(rx_message.data + 4));
+            pytesSetCellLabel(_stats->_cellMinTemperatureName, this->readUnsignedInt8(rx_message.data + 6));
 
             if (_verboseLogging) {
                 MessageOutput.printf("[Pytes] minimumCellTemperature: %f maximumCellTemperature: %f cellMinTemperatureName: %s cellMaxTemperatureName: %s\r\n",
@@ -344,6 +351,18 @@ void PytesCanReceiver::onMessage(twai_message_t rx_message)
             _stats->Alarm.overCurrentDischarge = overCurrentDischarge;
             _stats->Alarm.overCurrentCharge = overCurrentCharge;
 
+            if (_verboseLogging) {
+                MessageOutput.printf("[Pytes] Alarms: %d %d %d %d %d %d %d %d\r\n",
+                        _stats->Alarm.overVoltage,
+                        _stats->Alarm.underVoltage,
+                        _stats->Alarm.overTemperature,
+                        _stats->Alarm.underTemperature,
+                        _stats->Alarm.overTemperatureCharge,
+                        _stats->Alarm.underTemperatureCharge,
+                        _stats->Alarm.overCurrentDischarge,
+                        _stats->Alarm.overCurrentCharge);
+            }
+
             _stats->Warning.highVoltage = highVoltage;
             _stats->Warning.lowVoltage = lowVoltage;
             _stats->Warning.highTemperature = stateDischarging && highTemp;
@@ -355,16 +374,22 @@ void PytesCanReceiver::onMessage(twai_message_t rx_message)
             _stats->Warning.highCurrentCharge = highCurrentCharge;
 
             if (_verboseLogging) {
-                MessageOutput.printf("[Pytes] Warnings: %08x %08x\r\n",
-                        alarmBits1, alarmBits2);
+                MessageOutput.printf("[Pytes] Warnings: %d %d %d %d %d %d %d %d\r\n",
+                        _stats->Warning.highVoltage,
+                        _stats->Warning.lowVoltage,
+                        _stats->Warning.highTemperature,
+                        _stats->Warning.lowTemperature,
+                        _stats->Warning.highTemperatureCharge,
+                        _stats->Warning.lowTemperatureCharge,
+                        _stats->Warning.highCurrentDischarge,
+                        _stats->Warning.highCurrentCharge);
             }
             break;
             }
 
         case 0x404: // Pytes protocol: SOC/SOH
-            // soc isn't used here since it is generated with higher
+            // soc (byte 0+1) isn't used here since it is generated with higher
             // precision in message 0x0409 below.
-            //uint8_t soc = static_cast<uint8_t>(this->readUnsignedInt16(rx_message.data));
             _stats->_stateOfHealth = this->readUnsignedInt16(rx_message.data + 2);
             _stats->_chargeCycles = this->readUnsignedInt16(rx_message.data + 6);
 
@@ -389,10 +414,14 @@ void PytesCanReceiver::onMessage(twai_message_t rx_message)
             bool chargeEnabled = rx_message.data[0];
             bool dischargeEnabled = rx_message.data[1];
             _stats->_chargeImmediately = rx_message.data[2];
+            // Note: Should use std::popcount once supported by the compiler.
+            _stats->_moduleCountBlockingCharge = popCount(rx_message.data[5]);
+            _stats->_moduleCountBlockingDischarge = popCount(rx_message.data[6]);
 
             if (_verboseLogging) {
-                MessageOutput.printf("[Pytes] chargeEnabled: %d dischargeEnabled: %d chargeImmediately: %d\r\n",
-                    chargeEnabled, dischargeEnabled, _stats->_chargeImmediately);
+                MessageOutput.printf("[Pytes] chargeEnabled: %d dischargeEnabled: %d chargeImmediately: %d moduleCountBlockingDischarge: %d moduleCountBlockingCharge: %d\r\n",
+                    chargeEnabled, dischargeEnabled, _stats->_chargeImmediately,
+                    _stats->_moduleCountBlockingCharge, _stats->_moduleCountBlockingDischarge);
             }
             break;
             }
@@ -405,7 +434,7 @@ void PytesCanReceiver::onMessage(twai_message_t rx_message)
             _stats->setSoC(soc, 2/*precision*/, millis());
 
             if (_verboseLogging) {
-                MessageOutput.printf("[Pytes] soc: %f totalCapacity: %f Ah availableCapacity: %f Ah \r\n",
+                MessageOutput.printf("[Pytes] soc: %.2f totalCapacity: %.3f Ah availableCapacity: %f Ah \r\n",
                         soc, _stats->_totalCapacity, _stats->_availableCapacity);
             }
             }
@@ -422,6 +451,10 @@ void PytesCanReceiver::onMessage(twai_message_t rx_message)
             break;
 
         case 0x40d: // Pytes protocol: balancing info
+            // We don't know the exact unit for this yet, so we only use
+            // it to publish active / not active.
+            // It is somewhat likely that this is a percentage value on
+            // the scale of 0-32768, but that is just a theory.
             _stats->_balance = this->readUnsignedInt16(rx_message.data + 4);
             if (_verboseLogging) {
                 MessageOutput.printf("[Pytes] balance: %d\r\n", _stats->_balance);

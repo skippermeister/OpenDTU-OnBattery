@@ -71,6 +71,12 @@ void WebApiNetworkClass::onNetworkAdminGet(AsyncWebServerRequest* request)
     root["aptimeout"] = config.WiFi.ApTimeout;
     root["mdnsenabled"] = config.Mdns.Enabled;
 
+#ifdef USE_SYSLOG
+    root["syslogenabled"] = config.Syslog.Enabled;
+    root["sysloghostname"] = config.Syslog.Hostname;
+    root["syslogport"] = config.Syslog.Port;
+#endif
+
 #ifdef USE_ModbusDTU
     root["modbus_tcp_enabled"] = config.Modbus.modbus_tcp_enabled;
     root["modbus_delaystart"] = config.Modbus.modbus_delaystart;
@@ -98,16 +104,16 @@ void WebApiNetworkClass::onNetworkAdminPost(AsyncWebServerRequest* request)
 
     auto& retMsg = response->getRoot();
 
-    if (!(root.containsKey("ssid")
-            && root.containsKey("password")
-            && root.containsKey("hostname")
-            && root.containsKey("dhcp")
-            && root.containsKey("ipaddress")
-            && root.containsKey("netmask")
-            && root.containsKey("gateway")
-            && root.containsKey("dns1")
-            && root.containsKey("dns2")
-            && root.containsKey("aptimeout"))) {
+    if (!(root["ssid"].is<String>()
+            && root["password"].is<String>()
+            && root["hostname"].is<String>()
+            && root["dhcp"].is<bool>()
+            && root["ipaddress"].is<String>()
+            && root["netmask"].is<String>()
+            && root["gateway"].is<String>()
+            && root["dns1"].is<String>()
+            && root["dns2"].is<String>()
+            && root["aptimeout"].is<uint>())) {
         retMsg["message"] = "Values are missing!";
         retMsg["code"] = WebApiError::GenericValueMissing;
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
@@ -173,6 +179,23 @@ void WebApiNetworkClass::onNetworkAdminPost(AsyncWebServerRequest* request)
         WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
         return;
     }
+#ifdef USE_SYSLOG
+    if (root["syslogenabled"].as<bool>()) {
+        if (root["sysloghostname"].as<String>().length() == 0 || root["sysloghostname"].as<String>().length() > SYSLOG_MAX_HOSTNAME_STRLEN) {
+            retMsg["message"] = "Syslog Server must between 1 and " STR(SYSLOG_MAX_HOSTNAME_STRLEN) " characters long!";
+            retMsg["code"] = WebApiError::NetworkSyslogHostnameLength;
+            retMsg["param"]["max"] = SYSLOG_MAX_HOSTNAME_STRLEN;
+            WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
+            return;
+        }
+        if (root["syslogport"].as<uint>() == 0 || root["syslogport"].as<uint>() > 65535) {
+            retMsg["message"] = "Port must be a number between 1 and 65535!";
+            retMsg["code"] = WebApiError::NetworkSyslogPort;
+            WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
+            return;
+        }
+    }
+#endif
 
     auto& config = Configuration.get();
     config.WiFi.Ip[0] = ipaddress[0];
@@ -198,18 +221,19 @@ void WebApiNetworkClass::onNetworkAdminPost(AsyncWebServerRequest* request)
     strlcpy(config.WiFi.Ssid, root["ssid"].as<String>().c_str(), sizeof(config.WiFi.Ssid));
     strlcpy(config.WiFi.Password, root["password"].as<String>().c_str(), sizeof(config.WiFi.Password));
     strlcpy(config.WiFi.Hostname, root["hostname"].as<String>().c_str(), sizeof(config.WiFi.Hostname));
-    if (root["dhcp"].as<bool>()) {
-        config.WiFi.Dhcp = true;
-    } else {
-        config.WiFi.Dhcp = false;
-    }
-    config.WiFi.ApTimeout = root["aptimeout"].as<uint>();
+    config.WiFi.Dhcp = root["dhcp"] | true;
+    config.WiFi.ApTimeout = root["aptimeout"].as<uint32_t>();
+    config.Mdns.Enabled = root["mdnsenabled"] | false;
 
-    config.Mdns.Enabled = root["mdnsenabled"].as<bool>();
+#ifdef USE_SYSLOG
+    config.Syslog.Enabled = root["syslogenabled"];
+    strlcpy(config.Syslog.Hostname, root["sysloghostname"].as<String>().c_str(), sizeof(config.Syslog.Hostname));
+    config.Syslog.Port = root["syslogport"].as<uint16_t>();
+#endif
 
 #ifdef USE_ModbusDTU
-    config.Modbus.modbus_tcp_enabled = root["modbus_tcp_enabled"].as<bool>();
-    config.Modbus.modbus_delaystart = root["modbus_delaystart"].as<bool>();
+    config.Modbus.modbus_tcp_enabled = root["modbus_tcp_enabled"];
+    config.Modbus.modbus_delaystart = root["modbus_delaystart"];
     strlcpy(config.Modbus.mfrname, root["mfrname"].as<String>().c_str(), sizeof(config.Modbus.mfrname));
     strlcpy(config.Modbus.modelname, root["modelname"].as<String>().c_str(), sizeof(config.Modbus.modelname));
     strlcpy(config.Modbus.options, root["options"].as<String>().c_str(), sizeof(config.Modbus.options));

@@ -85,31 +85,30 @@ void MqttHandlePowerLimiterClass::loop()
 
     auto val = static_cast<unsigned>(PowerLimiter.getMode());
 
-    const String subtopic = "powerlimiter/status/";
-    MqttSettings.publish(subtopic + "mode", String(val));
-    MqttSettings.publish(subtopic + "upper_power_limit", String(config.PowerLimiter.UpperPowerLimit));
-    MqttSettings.publish(subtopic + "target_power_consumption", String(config.PowerLimiter.TargetPowerConsumption));
-    MqttSettings.publish(subtopic + "inverter_update_timeouts", String(PowerLimiter.getInverterUpdateTimeouts()));
+    MqttSettings.publish("powerlimiter/status/mode", String(val));
+    MqttSettings.publish("powerlimiter/status/upper_power_limit", String(config.PowerLimiter.UpperPowerLimit));
+    MqttSettings.publish("powerlimiter/status/target_power_consumption", String(config.PowerLimiter.TargetPowerConsumption));
+    MqttSettings.publish("powerlimiter/status/inverter_update_timeouts", String(PowerLimiter.getInverterUpdateTimeouts()));
 
     // no thresholds are relevant for setups without a battery
     if (config.PowerLimiter.IsInverterSolarPowered) { return; }
 
-    MqttSettings.publish(subtopic + "threshold/voltage/start", String(config.PowerLimiter.VoltageStartThreshold));
-    MqttSettings.publish(subtopic + "threshold/voltage/stop", String(config.PowerLimiter.VoltageStopThreshold));
+    MqttSettings.publish("powerlimiter/status/threshold/voltage/start", String(config.PowerLimiter.VoltageStartThreshold));
+    MqttSettings.publish("powerlimiter/status/threshold/voltage/stop", String(config.PowerLimiter.VoltageStopThreshold));
 
     if (config.Vedirect.Enabled) {
-        MqttSettings.publish(subtopic + "full_solar_passthrough_active", String(PowerLimiter.getFullSolarPassThroughEnabled()));
-        MqttSettings.publish(subtopic + "threshold/voltage/full_solar_passthrough_start", String(config.PowerLimiter.FullSolarPassThroughStartVoltage));
-        MqttSettings.publish(subtopic + "threshold/voltage/full_solar_passthrough_stop", String(config.PowerLimiter.FullSolarPassThroughStopVoltage));
+        MqttSettings.publish("powerlimiter/status/full_solar_passthrough_active", String(PowerLimiter.getFullSolarPassThroughEnabled()));
+        MqttSettings.publish("powerlimiter/status/threshold/voltage/full_solar_passthrough_start", String(config.PowerLimiter.FullSolarPassThroughStartVoltage));
+        MqttSettings.publish("powerlimiter/status/threshold/voltage/full_solar_passthrough_stop", String(config.PowerLimiter.FullSolarPassThroughStopVoltage));
     }
 
     if (!config.Battery.Enabled || config.PowerLimiter.IgnoreSoc) { return; }
 
-    MqttSettings.publish(subtopic + "threshold/soc/start", String(config.PowerLimiter.BatterySocStartThreshold));
-    MqttSettings.publish(subtopic + "threshold/soc/stop", String(config.PowerLimiter.BatterySocStopThreshold));
+    MqttSettings.publish("powerlimiter/status/threshold/soc/start", String(config.PowerLimiter.BatterySocStartThreshold));
+    MqttSettings.publish("powerlimiter/status/threshold/soc/stop", String(config.PowerLimiter.BatterySocStopThreshold));
 
     if (config.Vedirect.Enabled) {
-        MqttSettings.publish(subtopic + "threshold/soc/full_solar_passthrough", String(config.PowerLimiter.FullSolarPassThroughSoc));
+        MqttSettings.publish("powerlimiter/status/threshold/soc/full_solar_passthrough", String(config.PowerLimiter.FullSolarPassThroughSoc));
     }
 }
 

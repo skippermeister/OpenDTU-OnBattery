@@ -10,6 +10,27 @@
 
 #define MAPPING_NAME_STRLEN 31
 
+#if defined(OPENDTU_ETHERNET)
+    bool enabled;
+    int8_t phy_addr;
+    int power;
+    int mdc;
+    int mdio;
+    eth_phy_type_t type;
+    eth_clock_mode_t clk_mode;
+#endif
+
+#ifdef USE_W5500
+struct W5500_t {
+    int8_t sclk;
+    int8_t mosi;
+    int8_t miso;
+    int8_t cs;
+    int8_t irq;
+    int8_t rst;
+};
+#endif
+
 struct RS485_t {
     int8_t rx;
     int8_t tx;
@@ -54,7 +75,7 @@ struct Battery_t {
     const char *providerName;
     Battery_Provider_t provider;
     union {
-#if defined(USE_PYLONTECH_CAN_RECEIVER) || defined(USE_PYTES_CAN_RECEIVER) || defined(USE_SBS_CAN_RECEIVER)
+//#if defined(USE_PYLONTECH_CAN_RECEIVER) || defined(USE_PYTES_CAN_RECEIVER) || defined(USE_SBS_CAN_RECEIVER)
         struct {
             int8_t rx;
             int8_t tx;
@@ -64,11 +85,11 @@ struct Battery_t {
             int8_t scl;
             int8_t sda;
         } i2c;
-#endif
-#if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_GOBEL_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER) || defined(USE_JKBMS_CONTROLLER)
+//#endif
+//#if defined(USE_PYLONTECH_RS485_RECEIVER) || defined(USE_GOBEL_RS485_RECEIVER) || defined(USE_DALYBMS_CONTROLLER) || defined(USE_JKBMS_CONTROLLER)
         RS232_t rs232;
         RS485_t rs485;
-#endif
+//#endif
     };
 #if defined(USE_DALYBMS_CONTROLLER)
     int8_t wakeup;
@@ -99,13 +120,11 @@ struct PinMapping_t {
 #endif
 
 #if defined(OPENDTU_ETHERNET)
-    bool eth_enabled;
-    int8_t eth_phy_addr;
-    int eth_power;
-    int eth_mdc;
-    int eth_mdio;
-    eth_phy_type_t eth_type;
-    eth_clock_mode_t eth_clk_mode;
+    ETH_t eth;
+#endif
+
+#ifdef USE_W5500
+    W5500_t w5500;
 #endif
 
 #if defined(USE_DISPLAY_GRAPHIC)
@@ -154,6 +173,9 @@ public:
 #endif
 #if defined(USE_RADIO_CMT)
     bool isValidCmt2300Config() const;
+#endif
+#ifdef USE_W5500
+bool isValidW5500Config() const;
 #endif
 #if defined(OPENDTU_ETHERNET)
     bool isValidEthConfig() const;

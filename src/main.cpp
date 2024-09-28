@@ -35,6 +35,7 @@
 #include "NetworkSettings.h"
 #include "NtpSettings.h"
 #include "PinMapping.h"
+#include "RestartHelper.h"
 #include "PowerLimiter.h"
 #include "PowerMeter.h"
 #include "Scheduler.h"
@@ -172,6 +173,7 @@ void setup()
     InverterSettings.init(scheduler);
 
     Datastore.init(scheduler);
+    RestartHelper.init(scheduler);
 
     VictronMppt.init(scheduler); // Initialize ve.direct communication
 #ifdef USE_REFUsol_INVERTER

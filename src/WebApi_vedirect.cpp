@@ -61,9 +61,9 @@ void WebApiVedirectClass::onVedirectAdminPost(AsyncWebServerRequest* request)
 
     auto& retMsg = response->getRoot();
 
-    if (!root.containsKey("enabled") ||
-        !root.containsKey("updatesonly") ||
-        !root.containsKey("verbose_logging"))
+    if (!root["enabled"].is<bool>() ||
+        !root["updatesonly"].is<bool>() ||
+        !root["verbose_logging"].is<bool>())
     {
         retMsg["message"] = "Values are missing!";
         retMsg["code"] = WebApiError::GenericValueMissing;
@@ -72,9 +72,9 @@ void WebApiVedirectClass::onVedirectAdminPost(AsyncWebServerRequest* request)
     }
 
     auto& config = Configuration.get();
-    config.Vedirect.Enabled = root["enabled"].as<bool>();
-    config.Vedirect.UpdatesOnly = root["updatesonly"].as<bool>();
-    VictronMppt.setVerboseLogging(root["verbose_logging"].as<bool>());
+    config.Vedirect.Enabled = root["enabled"];
+    config.Vedirect.UpdatesOnly = root["updatesonly"];
+    VictronMppt.setVerboseLogging(root["verbose_logging"]);
 
     WebApi.writeConfig(retMsg);
 

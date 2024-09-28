@@ -22,7 +22,7 @@ void SBSCanReceiver::onMessage(twai_message_t rx_message)
             _stats->setSoC(static_cast<float>(this->readUnsignedInt16(rx_message.data + 6)), 1/*precision*/, millis());
 
             if (_verboseLogging) {
-                MessageOutput.printf("[SBS Unipower] 1552 SoC: %.1f Voltage: %.2f Current: %.2f\r\n", _stats->getSoC(), _stats->getVoltage(), _stats->_current);
+                MessageOutput.printf("[SBS Unipower] 1552 SoC: %.1f Voltage: %.3f Current: %.3f\r\n", _stats->getSoC(), _stats->getVoltage(), _stats->getChargeCurrent());
             }
             break;
         }
@@ -31,26 +31,31 @@ void SBSCanReceiver::onMessage(twai_message_t rx_message)
             int clusterstate = rx_message.data[0];
             switch (clusterstate) {
                 case 0:
+                    // Battery inactive
                     _stats->_dischargeEnabled = false;
+                    _stats->_chargeEnabled = false;
                     break;
 
-                case 1: {
+                case 1:
+                    // Battery Discharge mode (recuperation enabled)
                     _stats->_chargeEnabled = true;
                     _stats->_dischargeEnabled = true;
                     break;
-                }
 
-                case 2: {
+                case 2:
+                    // Battery in charge Mode (discharge with half current possible (45A))
                     _stats->_chargeEnabled = true;
+                    _stats->_dischargeEnabled = true;
                     break;
-                }
 
                 case 4:
+                    // Battery Fault
                     _stats->_chargeEnabled = false;
                     _stats->_dischargeEnabled = false;
                     break;
 
                 case 8:
+                    // Battery Deepsleep
                     _stats->_chargeEnabled = false;
                     _stats->_dischargeEnabled = false;
                     break;
@@ -69,11 +74,11 @@ void SBSCanReceiver::onMessage(twai_message_t rx_message)
         }
 
         case 0x640: {
-            _stats->_dischargeCurrentLimit = (this->readSignedInt24(rx_message.data)) * 0.001;
+            _stats->setDischargeCurrentLimit((this->readSignedInt24(rx_message.data)) * 0.001, millis());
             _stats->_chargeCurrentLimit = (this->readSignedInt24(rx_message.data + 3) * 0.001);
 
             if (_verboseLogging) {
-                MessageOutput.printf("[SBS Unipower] 1600 Currents  %f, %f \r\n", _stats->_chargeCurrentLimit, _stats->_dischargeCurrentLimit);
+                MessageOutput.printf("[SBS Unipower] 1600 Currents  %.3f, %.3f\r\n", _stats->_chargeCurrentLimit, _stats->getDischargeCurrentLimit());
             }
             break;
         }
@@ -83,7 +88,7 @@ void SBSCanReceiver::onMessage(twai_message_t rx_message)
             _stats->_temperature = (static_cast<float>(temp)-32) /1.8;
 
             if (_verboseLogging) {
-                MessageOutput.printf("[SBS Unipower] 1616 Temp %f \r\n",_stats->_temperature);
+                MessageOutput.printf("[SBS Unipower] 1616 Temp %.1f°C\r\n",_stats->_temperature);
             }
             break;
         }
@@ -97,7 +102,7 @@ void SBSCanReceiver::onMessage(twai_message_t rx_message)
             _stats->Alarm.bmsInternal= this->getBit(rx_message.data[1], 2);
 
             if (_verboseLogging) {
-                MessageOutput.printf("[SBS Unipower] 1632 Alarms: %d %d %d %d \r\n ",
+                MessageOutput.printf("[SBS Unipower] 1632 Alarms: %d %d %d %d\r\n ",
                     _stats->Alarm.underTemperature, _stats->Alarm.overTemperature,
                     _stats->Alarm.underVoltage,  _stats->Alarm.overVoltage);
             }
@@ -110,7 +115,7 @@ void SBSCanReceiver::onMessage(twai_message_t rx_message)
             _stats->Warning.highCurrentCharge = this->getBit(warningBits, 0);
 
              if (_verboseLogging) {
-                MessageOutput.printf("[SBS Unipower] 1648 Warnings: %d %d \r\n",
+                MessageOutput.printf("[SBS Unipower] 1648 Warnings: %d %d\r\n",
                     _stats->Warning.highCurrentDischarge, _stats->Warning.highCurrentCharge);
             }
             break;
@@ -118,7 +123,6 @@ void SBSCanReceiver::onMessage(twai_message_t rx_message)
 
         default:
             return; // do not update last update timestamp
-            break;
     }
 
     _stats->setLastUpdate(millis());
@@ -143,10 +147,10 @@ void SBSCanReceiver::dummyData()
     _stats->setSoC(42, 0/*precision*/, millis());
     _stats->_chargeVoltage = dummyFloat(50);
     _stats->_chargeCurrentLimit = dummyFloat(33);
-    _stats->_dischargeCurrentLimit = dummyFloat(12);
+    _stats->setDischargeCurrentLimit(dummyFloat(12), millis());
     _stats->_stateOfHealth = 99;
     _stats->setVoltage(48.67, millis());
-    _stats->_current = dummyFloat(-1);
+    _stats->setCurrent(dummyFloat(-1), 1, millis());
     _stats->_temperature = dummyFloat(20);
 
     _stats->_chargeEnabled = true;

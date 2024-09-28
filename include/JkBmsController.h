@@ -2,21 +2,19 @@
 
 #pragma once
 
-#include <TimeoutHelper.h>
 #include <memory>
 #include <vector>
 #include <frozen/string.h>
 
 #include "Battery.h"
+#include "JkBmsDataPoints.h"
 #include "JkBmsSerialMessage.h"
-#include "JkBmsDummy.h"
 
 //#define JKBMS_DUMMY_SERIAL
+#include "JkBmsDummy.h"
 
 // Timeout threshold for UART = number of symbols (~10 tics) with unchanged state on receive pin
 #define ECHO_READ_TOUT (3) // 3.5T * 8 = 28 ticks, TOUT=3 -> ~24..33 ticks
-
-class DataPointContainer;
 
 namespace JkBms {
 
@@ -77,9 +75,8 @@ class Controller : public BatteryProvider {
             _readState = state;
         }
 
-//        bool _verboseLogging = true;
         Status _lastStatus = Status::Initializing;
-        TimeoutHelper _lastStatusPrinted;
+        uint32_t _lastStatusPrinted = 0;
         uint32_t _lastRequest = 0;
         uint16_t _frameLength = 0;
         uint8_t _protocolVersion = -1;
@@ -90,5 +87,4 @@ class Controller : public BatteryProvider {
 };
 
 } /* namespace JkBms */
-
 #endif

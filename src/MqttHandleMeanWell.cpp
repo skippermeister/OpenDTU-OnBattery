@@ -63,7 +63,7 @@ void MqttHandleMeanWellClass::unsubscribeTopics()
 
 #define MQTTpublish(value)                                              \
     if (!cMeanWell.UpdatesOnly || _last.value != MeanWellCan._rp.value) \
-        MqttSettings.publish(subtopic + #value, String(_last.value = MeanWellCan._rp.value));
+        MqttSettings.publish("meanwell/" #value, String(_last.value = MeanWellCan._rp.value));
 
 void MqttHandleMeanWellClass::loop()
 {
@@ -91,12 +91,11 @@ void MqttHandleMeanWellClass::loop()
 
     auto const& cMeanWell = Configuration.get().MeanWell;
 
-    const String subtopic = "meanwell/";
-    MqttSettings.publish(subtopic + "data_age", String((millis() - MeanWellCan.getLastUpdate()) / 1000));
+    MqttSettings.publish("meanwell/data_age", String((millis() - MeanWellCan.getLastUpdate()) / 1000));
     if (!cMeanWell.UpdatesOnly || MeanWellCan._rp.CURVE_CONFIG.CUVE != _last.CURVE_CONFIG.CUVE)
-        MqttSettings.publish(subtopic + "cuve", String(_last.CURVE_CONFIG.CUVE = MeanWellCan._rp.CURVE_CONFIG.CUVE));
+        MqttSettings.publish("meanwell/cuve", String(_last.CURVE_CONFIG.CUVE = MeanWellCan._rp.CURVE_CONFIG.CUVE));
     if (!cMeanWell.UpdatesOnly || MeanWellCan._rp.CURVE_CONFIG.STGS != _last.CURVE_CONFIG.STGS)
-        MqttSettings.publish(subtopic + "stgs", String(_last.CURVE_CONFIG.STGS = MeanWellCan._rp.CURVE_CONFIG.STGS));
+        MqttSettings.publish("meanwell/stgs", String(_last.CURVE_CONFIG.STGS = MeanWellCan._rp.CURVE_CONFIG.STGS));
     MQTTpublish(operation);
     MQTTpublish(inputVoltage);
     MQTTpublish(outputVoltage);

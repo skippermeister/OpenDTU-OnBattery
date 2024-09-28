@@ -85,18 +85,17 @@ void MqttHandleHuaweiClass::loop()
 
     const RectifierParameters_t* rp = HuaweiCan.get();
 
-    const String subtopic = "huawei/";
-    MqttSettings.publish(subtopic + "data_age", String((millis() - HuaweiCan.getLastUpdate()) / 1000));
-    MqttSettings.publish(subtopic + "input_voltage", String(rp->input_voltage));
-    MqttSettings.publish(subtopic + "input_current", String(rp->input_current));
-    MqttSettings.publish(subtopic + "input_power", String(rp->input_power));
-    MqttSettings.publish(subtopic + "output_voltage", String(rp->output_voltage));
-    MqttSettings.publish(subtopic + "output_current", String(rp->output_current));
-    MqttSettings.publish(subtopic + "max_output_current", String(rp->max_output_current));
-    MqttSettings.publish(subtopic + "output_power", String(rp->output_power));
-    MqttSettings.publish(subtopic + "input_temp", String(rp->input_temp));
-    MqttSettings.publish(subtopic + "output_temp", String(rp->output_temp));
-    MqttSettings.publish(subtopic + "efficiency", String(rp->efficiency));
+    MqttSettings.publish("huawei/data_age", String((millis() - HuaweiCan.getLastUpdate()) / 1000));
+    MqttSettings.publish("huawei/input_voltage", String(rp->input_voltage));
+    MqttSettings.publish("huawei/input_current", String(rp->input_current));
+    MqttSettings.publish("huawei/input_power", String(rp->input_power));
+    MqttSettings.publish("huawei/output_voltage", String(rp->output_voltage));
+    MqttSettings.publish("huawei/output_current", String(rp->output_current));
+    MqttSettings.publish("huawei/max_output_current", String(rp->max_output_current));
+    MqttSettings.publish("huawei/output_power", String(rp->output_power));
+    MqttSettings.publish("huawei/input_temp", String(rp->input_temp));
+    MqttSettings.publish("huawei/output_temp", String(rp->output_temp));
+    MqttSettings.publish("huawei/efficiency", String(rp->efficiency));
 }
 
 void MqttHandleHuaweiClass::onMqttMessage(Topic t,

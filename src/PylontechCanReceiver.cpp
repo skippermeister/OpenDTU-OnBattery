@@ -21,14 +21,14 @@ void PylontechCanReceiver::onMessage(twai_message_t rx_message)
         case 0x351: {
             _stats->chargeVoltage = this->scaleValue(this->readUnsignedInt16(rx_message.data), 0.1);
             _stats->chargeCurrentLimit = this->scaleValue(this->readSignedInt16(rx_message.data + 2), 0.1);
-            _stats->dischargeCurrentLimit = this->scaleValue(this->readSignedInt16(rx_message.data + 4), 0.1);
+            _stats->setDischargeCurrentLimit(this->scaleValue(this->readSignedInt16(rx_message.data + 4), 0.1), millis());
             _stats->dischargeVoltageLimit = this->scaleValue(this->readUnsignedInt16(rx_message.data + 6), 0.1);
 
             if (_verboseLogging) {
                 MessageOutput.printf("%s chargeVoltage: %f chargeCurrentLimitation: %f dischargeCurrentLimitation: %f dischargeVoltageLimitation: %f\r\n", _providerName,
                         _stats->chargeVoltage,
                         _stats->chargeCurrentLimit,
-                        _stats->dischargeCurrentLimit,
+                        _stats->getDischargeCurrentLimit(),
                         _stats->dischargeVoltageLimit);
             }
             break;
@@ -165,7 +165,7 @@ void PylontechCanReceiver::dummyData()
     _stats->setSoC(42, 0, millis());
     _stats->chargeVoltage = dummyFloat(50);
     _stats->chargeCurrentLimit = dummyFloat(33);
-    _stats->dischargeCurrentLimit = dummyFloat(12);
+    _stats->setDischargeCurrentLimit(dummyFloat(12), millis());
     _stats->dischargeVoltageLimit = dummyFloat(46);
     _stats->stateOfHealth = 99;
     _stats->setVoltage(48.67, millis());

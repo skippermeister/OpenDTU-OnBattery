@@ -86,25 +86,28 @@ class BatteryStats {
         float getChargeCurrent() const { return _current; };
         uint8_t getChargeCurrentPrecision() const { return _currentPrecision; }
 
+        float getDischargeCurrentLimit() const { return _dischargeCurrentLimit; };
+        uint32_t getDischargeCurrentLimitAgeSeconds() const { return (millis() - _lastUpdateDischargeCurrentLimit) / 1000; }
+
         virtual float getTemperature() const { return 0.0; };
 
-        virtual float getRecommendedChargeVoltageLimit() const { return 0.0; };
+        virtual float getRecommendedChargeVoltageLimit() const { return FLT_MAX; };
         virtual float getRecommendedDischargeVoltageLimit() const { return 0.0; };
-        virtual float getRecommendedChargeCurrentLimit() const { return 0.0; };
-        virtual float getRecommendedDischargeCurrentLimit() const { return 0.0; };
+        virtual float getRecommendedChargeCurrentLimit() const { return FLT_MAX; };
+        virtual float getRecommendedDischargeCurrentLimit() const { return FLT_MAX; };
 
-        virtual float getMaximumChargeCurrentLimit() const { return 0.0; };
-        virtual float getMaximumDischargeCurrentLimit() const { return 0.0; };
+        virtual float getMaximumChargeCurrentLimit() const { return FLT_MAX; };
+        virtual float getMaximumDischargeCurrentLimit() const { return FLT_MAX; };
 
-        virtual bool isChargeTemperatureValid() const { return false; };
-        virtual bool isDischargeTemperatureValid() const { return false; };
+        virtual bool isChargeTemperatureValid() const { return true; };
+        virtual bool isDischargeTemperatureValid() const { return true; };
 
         bool isSoCValid() const { return _lastUpdateSoC > 0; }
         bool isVoltageValid() const { return _lastUpdateVoltage > 0; }
         bool isCurrentValid() const { return _lastUpdateCurrent > 0; }
+        bool isDischargeCurrentLimitValid() const { return _lastUpdateDischargeCurrentLimit > 0; }
 
         virtual float getChargeCurrentLimitation() const { return FLT_MAX; };
-        virtual float getDischargeCurrentLimitation() const { return FLT_MAX; };
 
     protected:
         virtual void mqttPublish() /*const*/;
@@ -126,6 +129,11 @@ class BatteryStats {
             _lastUpdateCurrent = _lastUpdate = timestamp;
         }
 
+        void setDischargeCurrentLimit(float dischargeCurrentLimit, uint32_t timestamp) {
+            _dischargeCurrentLimit = dischargeCurrentLimit;
+            _lastUpdateDischargeCurrentLimit = _lastUpdate = timestamp;
+        }
+
         void setManufacturer(const String& m);
 
         String _hwversion = "";
@@ -136,9 +144,11 @@ class BatteryStats {
     private:
         String _manufacturer = "unknown";
         uint32_t _lastMqttPublish = 0;
+
         float _SoC = 0;
         uint8_t _socPrecision = 0; // decimal places
         uint32_t _lastUpdateSoC = 0;
+
         float _voltage = 0; // total battery pack voltage
         uint32_t _lastUpdateVoltage = 0;
 
@@ -147,6 +157,9 @@ class BatteryStats {
         float _current = 0;
         uint8_t _currentPrecision = 0; // decimal places
         uint32_t _lastUpdateCurrent = 0;
+
+        float _dischargeCurrentLimit = 0;
+        uint32_t _lastUpdateDischargeCurrentLimit = 0;
 };
 
 typedef struct {
@@ -269,7 +282,6 @@ public:
 
     void mqttPublish() /*const*/ final;
     float getChargeCurrentLimitation() const { return chargeCurrentLimit; } ;
-    float getDischargeCurrentLimitation() const { return dischargeCurrentLimit; } ;
 
     uint32_t getMqttFullPublishIntervalMs() const final { return 60 * 1000; }
 
@@ -280,7 +292,7 @@ private:
 
     float chargeVoltage;
     float chargeCurrentLimit;
-    float dischargeCurrentLimit;
+//    float dischargeCurrentLimit;
     float dischargeVoltage;
 
     uint16_t stateOfHealth;
@@ -304,7 +316,7 @@ private:
     struct {
         float chargeVoltage;
         float chargeCurrentLimit;
-        float dischargeCurrentLimit;
+//        float dischargeCurrentLimit;
         float dischargeVoltageLimit;
         float dischargeVoltage;
 
@@ -312,7 +324,7 @@ private:
 //        float voltage; // total voltage of the battery pack
         // total current into (positive) or from (negative)
         // the battery, i.e., the charging current
-        float current;
+//        float current;
         float temperature;
         float power;
 
@@ -358,19 +370,18 @@ public:
     float getRecommendedChargeCurrentLimit() const final { return totals.ChargeDischargeManagementInfo.chargeCurrentLimit; };
     float getChargeCurrentLimitation() const { return totals.ChargeDischargeManagementInfo.chargeCurrentLimit; } ;
     float getRecommendedDischargeCurrentLimit() const final { return totals.ChargeDischargeManagementInfo.dischargeCurrentLimit; };
-    float getDischargeCurrentLimitation() const { return fabs(totals.ChargeDischargeManagementInfo.dischargeCurrentLimit); } ;
     float getMaximumChargeCurrentLimit() const final { return totals.SystemParameters.chargeCurrentLimit; };
     float getMaximumDischargeCurrentLimit() const final { return totals.SystemParameters.dischargeCurrentLimit; };
 
     bool isChargeTemperatureValid() const final
     {
-        const Battery_CONFIG_T& cBattery = Configuration.get().Battery;
+        const auto& cBattery = Configuration.get().Battery;
         return (totals.minCellTemperature >= max(totals.SystemParameters.chargeLowTemperatureLimit, static_cast<float>(cBattery.MinChargeTemperature)))
             && (totals.maxCellTemperature <= min(totals.SystemParameters.chargeHighTemperatureLimit, static_cast<float>(cBattery.MaxChargeTemperature)));
     };
     bool isDischargeTemperatureValid() const final
     {
-        const Battery_CONFIG_T& cBattery = Configuration.get().Battery;
+        const auto& cBattery = Configuration.get().Battery;
         return (totals.minCellTemperature >= max(totals.SystemParameters.dischargeLowTemperatureLimit, static_cast<float>(cBattery.MinDischargeTemperature)))
             && (totals.maxCellTemperature <= min(totals.SystemParameters.dischargeHighTemperatureLimit, static_cast<float>(cBattery.MaxDischargeTemperature)));
     };
@@ -446,8 +457,8 @@ private:
     Pack_t Pack[MAX_BATTERIES];
 
     struct {
-        float voltage;
-        float current;
+//        float voltage;
+//        float current;
         float power;
         float capacity;
         float remainingCapacity;
@@ -526,7 +537,8 @@ class PytesBatteryStats : public BatteryStats {
         void mqttPublish() /* const */ final;
         bool getImmediateChargingRequest() const { return _chargeImmediately; } ;
         float getChargeCurrentLimitation() const { return _chargeCurrentLimit; } ;
-        float getDischargeCurrentLimitation() const { return _dischargeCurrentLimit; } ;
+
+        float getTemperature() const final { return _temperature; };
 
     private:
         void setLastUpdate(uint32_t ts) { _lastUpdate = ts; }
@@ -543,7 +555,6 @@ class PytesBatteryStats : public BatteryStats {
         float _chargeVoltageLimit;
         float _chargeCurrentLimit;
         float _dischargeVoltageLimit;
-        float _dischargeCurrentLimit;
 
         uint16_t _stateOfHealth;
         int _chargeCycles = -1;
@@ -589,9 +600,9 @@ class SBSBatteryStats : public BatteryStats {
         void getLiveViewData(JsonVariant& root) const final;
         void generatePackCommonJsonResponse(JsonObject& packObject, const uint8_t m) const final;
         void mqttPublish() /*const*/ final;
-        float getChargeCurrent() const { return _current; } ;
         float getChargeCurrentLimitation() const { return _chargeCurrentLimit; } ;
-        float getDischargeCurrentLimitation() const { return _dischargeCurrentLimit; } ;
+
+        float getTemperature() const final { return _temperature; };
 
         uint8_t get_number_of_packs() const final { return 1; };
 
@@ -603,12 +614,12 @@ class SBSBatteryStats : public BatteryStats {
 
         bool isChargeTemperatureValid() const final
         {
-            const Battery_CONFIG_T& cBattery = Configuration.get().Battery;
+            const auto& cBattery = Configuration.get().Battery;
             return (_temperature >= cBattery.MinChargeTemperature) && (_temperature <= cBattery.MaxChargeTemperature);
         };
         bool isDischargeTemperatureValid() const final
         {
-            const Battery_CONFIG_T& cBattery = Configuration.get().Battery;
+            const auto& cBattery = Configuration.get().Battery;
             return (_temperature >= cBattery.MinDischargeTemperature) && (_temperature <= cBattery.MaxDischargeTemperature);
         };
 
@@ -617,9 +628,7 @@ class SBSBatteryStats : public BatteryStats {
 
         float _chargeVoltage;
         float _chargeCurrentLimit;
-        float _dischargeCurrentLimit;
         uint16_t _stateOfHealth;
-        float _current;
         float _temperature;
 
         Alarm_t Alarm;
@@ -635,7 +644,13 @@ class JkBmsBatteryStats : public BatteryStats {
     friend class Controller;
 
 public:
-    void getLiveViewData(JsonVariant& root) const final;
+    void getLiveViewData(JsonVariant& root) const final {
+        getJsonData(root, false);
+    }
+
+    void getInfoViewData(JsonVariant& root) const {
+        getJsonData(root, true);
+    }
     void generatePackCommonJsonResponse(JsonObject& packObject, const uint8_t m) const final;
 
     uint8_t get_number_of_packs() const final { return 1; };
@@ -643,24 +658,23 @@ public:
     const Alarm_t& getAlarm() const final { return Alarm; };
     const Warning_t& getWarning() const final { return Warning; };
 
-    bool getChargeEnabled() const final { return ChargeDischargeManagementInfo.chargeEnabled; };
-    bool getDischargeEnabled() const final { return ChargeDischargeManagementInfo.dischargeEnabled; };
-    bool getImmediateChargingRequest() const final { return ChargeDischargeManagementInfo.chargeImmediately1; };
+    bool getChargeEnabled() const final { return chargeEnabled; };
+    bool getDischargeEnabled() const final { return dischargeEnabled; };
+    bool getImmediateChargingRequest() const final { return chargeImmediately1; };
 
-    float getRecommendedChargeVoltageLimit() const final { return ChargeDischargeManagementInfo.chargeVoltageLimit; };
-    float getRecommendedDischargeVoltageLimit() const final { return ChargeDischargeManagementInfo.dischargeVoltageLimit; };
-    float getRecommendedChargeCurrentLimit() const final { return ChargeDischargeManagementInfo.chargeCurrentLimit; };
-    float getChargeCurrentLimitation() const { return ChargeDischargeManagementInfo.chargeCurrentLimit; } ;
-    float getDischargeCurrentLimitation() const { return ChargeDischargeManagementInfo.dischargeCurrentLimit; } ;
+    float getRecommendedChargeVoltageLimit() const final { return Configuration.get().Battery.RecommendedChargeVoltage; };
+    float getRecommendedDischargeVoltageLimit() const final { return Configuration.get().Battery.RecommendedDischargeVoltage; };
+
+    float getTemperature() const final { return (_minTemperature + _maxTemperature) / 2.0; };
 
     bool isChargeTemperatureValid() const final
     {
-        const Battery_CONFIG_T& cBattery = Configuration.get().Battery;
+        const auto& cBattery = Configuration.get().Battery;
         return (_minTemperature >= cBattery.MinChargeTemperature) && (_maxTemperature <= cBattery.MaxChargeTemperature);
     };
     bool isDischargeTemperatureValid() const final
     {
-        const Battery_CONFIG_T& cBattery = Configuration.get().Battery;
+        const auto& cBattery = Configuration.get().Battery;
         return (_minTemperature >= cBattery.MinDischargeTemperature) && (_maxTemperature <= cBattery.MaxDischargeTemperature);
     };
 
@@ -669,15 +683,19 @@ public:
     void updateFrom(JkBms::DataPointContainer const& dp);
 
 private:
-    JkBms::DataPointContainer _dataPoints;
+    void getJsonData(JsonVariant& root, bool verbose) const;
 
-    float current;
     int16_t _minTemperature = 100;
     int16_t _maxTemperature = -100;
     Alarm_t Alarm;
     Warning_t Warning;
-    ChargeDischargeManagementInfo_t ChargeDischargeManagementInfo;
+    bool fullChargeRequest = false; // if SOC never higher than 97% in 30 days, will set this flag to 1. And when the SOC is ≥ 97%, the flag will be 0.
+    bool chargeImmediately2 = false; // 9-13%
+    bool chargeImmediately1 = false; // 5-9%    ChargeDischargeManagementInfo_t ChargeDischargeManagementInfo;
+    bool chargeEnabled = false;
+    bool dischargeEnabled = false;
 
+    JkBms::DataPointContainer _dataPoints;
     mutable uint32_t _lastMqttPublish = 0;
     mutable uint32_t _lastFullMqttPublish = 0;
 
@@ -686,7 +704,70 @@ private:
     uint16_t _cellMaxMilliVolt = 0;
     uint32_t _cellVoltageTimestamp = 0;
 };
+#endif
 
+#ifdef USE_JBDBMS_CONTROLLER
+class JbdBmsBatteryStats : public BatteryStats {
+    public:
+        void getLiveViewData(JsonVariant& root) const final {
+            getJsonData(root, false);
+        }
+
+        void getInfoViewData(JsonVariant& root) const {
+            getJsonData(root, true);
+        }
+
+        void generatePackCommonJsonResponse(JsonObject& packObject, const uint8_t m) const final;
+
+        uint8_t get_number_of_packs() const final { return 1; };
+
+        const Alarm_t& getAlarm() const final { return Alarm; };
+        const Warning_t& getWarning() const final { return Warning; };
+
+        float getRecommendedChargeVoltageLimit() const final { return Configuration.get().Battery.RecommendedChargeVoltage; };
+        float getRecommendedDischargeVoltageLimit() const final { return Configuration.get().Battery.RecommendedDischargeVoltage; };
+
+        float getTemperature() const final { return (_minTemperature + _maxTemperature) / 2.0; };
+
+        bool isChargeTemperatureValid() const final
+        {
+            const auto& cBattery = Configuration.get().Battery;
+            return (_minTemperature >= cBattery.MinChargeTemperature) && (_maxTemperature <= cBattery.MaxChargeTemperature);
+        };
+        bool isDischargeTemperatureValid() const final
+        {
+            const auto& cBattery = Configuration.get().Battery;
+            return (_minTemperature >= cBattery.MinDischargeTemperature) && (_maxTemperature <= cBattery.MaxDischargeTemperature);
+        };
+
+        void mqttPublish() /*const*/ final;
+
+        uint32_t getMqttFullPublishIntervalMs() const final { return 60 * 1000; }
+
+        void updateFrom(JbdBms::DataPointContainer const& dp);
+
+    private:
+        void getJsonData(JsonVariant& root, bool verbose) const;
+
+        int16_t _minTemperature = 100;
+        int16_t _maxTemperature = -100;
+        Alarm_t Alarm;
+        Warning_t Warning;
+        bool fullChargeRequest = false; // if SOC never higher than 97% in 30 days, will set this flag to 1. And when the SOC is ≥ 97%, the flag will be 0.
+        bool chargeImmediately2 = false; // 9-13%
+        bool chargeImmediately1 = false; // 5-9%    ChargeDischargeManagementInfo_t ChargeDischargeManagementInfo;
+        bool chargeEnabled = false;
+        bool dischargeEnabled = false;
+
+        JbdBms::DataPointContainer _dataPoints;
+        mutable uint32_t _lastMqttPublish = 0;
+        mutable uint32_t _lastFullMqttPublish = 0;
+
+        uint16_t _cellMinMilliVolt = 0;
+        uint16_t _cellAvgMilliVolt = 0;
+        uint16_t _cellMaxMilliVolt = 0;
+        uint32_t _cellVoltageTimestamp = 0;
+};
 #endif
 
 #ifdef USE_DALYBMS_CONTROLLER
@@ -709,18 +790,17 @@ class DalyBmsBatteryStats : public BatteryStats {
         float getRecommendedChargeCurrentLimit() const final { return WarningValues.maxPackChargeCurrent * 0.9; }; // 10% below warning level
         float getChargeCurrentLimitation() const final { return WarningValues.maxPackChargeCurrent * 0.9; };
         float getRecommendedDischargeCurrentLimit() const final { return WarningValues.maxPackDischargeCurrent * 0.9; }; // 10% below warning level
-        float getDischargeCurrentLimitation() const final { return WarningValues.maxPackDischargeCurrent * 0.9; }; // 10% below warning level
         float getMaximumChargeCurrentLimit() const final { return WarningValues.maxPackChargeCurrent; };
         float getMaximumDischargeCurrentLimit() const final { return WarningValues.maxPackDischargeCurrent; };
 
         bool isChargeTemperatureValid() const final
         {
-            const Battery_CONFIG_T& cBattery = Configuration.get().Battery;
+            const auto& cBattery = Configuration.get().Battery;
             return (_minTemperature >= cBattery.MinChargeTemperature) && (_maxTemperature <= cBattery.MaxChargeTemperature);
         };
         bool isDischargeTemperatureValid() const final
         {
-            const Battery_CONFIG_T& cBattery = Configuration.get().Battery;
+            const auto& cBattery = Configuration.get().Battery;
             return (_minTemperature >= cBattery.MinDischargeTemperature) && (_maxTemperature <= cBattery.MaxDischargeTemperature);
         };
 
@@ -816,8 +896,6 @@ class DalyBmsBatteryStats : public BatteryStats {
         #pragma pack(pop)
 
         struct {
-            // float voltage;
-            float current;
             float power;
             float ratedCapacity;
             float remainingCapacity;
@@ -855,11 +933,8 @@ class DalyBmsBatteryStats : public BatteryStats {
         float _balanceDifferenceVoltage;
         char _bmsSWversion[32];
         char _bmsHWversion[32];
-        // float voltage;
         float gatherVoltage;
-        float current;
         float power;
-        float batteryLevel;
         float maxCellVoltage;
         uint8_t _maxCellVoltageNumber;
         float minCellVoltage;
@@ -892,37 +967,6 @@ class DalyBmsBatteryStats : public BatteryStats {
 };
 #endif
 
-#ifdef USE_JBDBMS_CONTROLLER
-class JbdBmsBatteryStats : public BatteryStats {
-    public:
-        void getLiveViewData(JsonVariant& root) const final {
-            getJsonData(root, false);
-        }
-
-        void getInfoViewData(JsonVariant& root) const {
-            getJsonData(root, true);
-        }
-
-        void mqttPublish() const final;
-
-        uint32_t getMqttFullPublishIntervalMs() const final { return 60 * 1000; }
-
-        void updateFrom(JbdBms::DataPointContainer const& dp);
-
-    private:
-        void getJsonData(JsonVariant& root, bool verbose) const;
-
-        JbdBms::DataPointContainer _dataPoints;
-        mutable uint32_t _lastMqttPublish = 0;
-        mutable uint32_t _lastFullMqttPublish = 0;
-
-        uint16_t _cellMinMilliVolt = 0;
-        uint16_t _cellAvgMilliVolt = 0;
-        uint16_t _cellMaxMilliVolt = 0;
-        uint32_t _cellVoltageTimestamp = 0;
-};
-#endif
-
 #ifdef USE_VICTRON_SMART_SHUNT
 class VictronSmartShuntStats : public BatteryStats {
     public:
@@ -949,7 +993,7 @@ class VictronSmartShuntStats : public BatteryStats {
         {
             if (!_tempPresent) return true; // if temperature sensor not present always return true
 
-            const Battery_CONFIG_T& cBattery = Configuration.get().Battery;
+            const auto& cBattery = Configuration.get().Battery;
             return (_temperature >= static_cast<float>(cBattery.MinChargeTemperature))
                 && (_temperature <= static_cast<float>(cBattery.MaxChargeTemperature));
         };
@@ -957,7 +1001,7 @@ class VictronSmartShuntStats : public BatteryStats {
         {
             if (!_tempPresent) return true; // if temperature sensor not present always return true
 
-            const Battery_CONFIG_T& cBattery = Configuration.get().Battery;
+            const auto& cBattery = Configuration.get().Battery;
             return (_temperature >= static_cast<float>(cBattery.MinDischargeTemperature))
                 && (_temperature <= static_cast<float>(cBattery.MaxDischargeTemperature));
         };
@@ -983,6 +1027,20 @@ class VictronSmartShuntStats : public BatteryStats {
 };
 #endif
 
+#ifdef USE_VICTRON_SMART_BATTERY_SENSE
+class VictronSmartBatterySenseStats : public BatteryStats {
+    public:
+        VictronSmartBatterySenseStats() { _manufacturer = "Smart Battery Sense"; };
+        void getLiveViewData(JsonVariant& root) const final;
+        void mqttPublish() const final;
+
+        void updateFrom(uint32_t volt, int32_t temp, uint32_t timeStamp);
+
+    private:
+        float _temperature = 0.0f;
+};
+#endif
+
 #ifdef USE_MQTT_BATTERY
 class MqttBatteryStats : public BatteryStats {
     friend class MqttBattery;
@@ -994,7 +1052,7 @@ class MqttBatteryStats : public BatteryStats {
 
         // if the voltage is subscribed to at all, it alone does not warrant a
         // card in the live view, since the SoC is already displayed at the top
-        void getLiveViewData(JsonVariant& root) const final { }
+        void getLiveViewData(JsonVariant& root) const final;
 };
 #endif
 
@@ -1002,140 +1060,187 @@ class MqttBatteryStats : public BatteryStats {
 class ZendureBatteryStats : public BatteryStats {
     friend class ZendureBattery;
 
-    class ZendurePackStats {
+    enum class State : uint8_t {
+        Idle        = 0,
+        Charging    = 1,
+        Discharging = 2,
+        Invalid     = 255
+    };
+
+    enum class BypassMode : uint8_t {
+        Automatic   = 0,
+        AlwaysOff   = 1,
+        AlwaysOn    = 2,
+        Invalid     = 255
+    };
+
+    template <typename T>
+    static T stateToString(State state){
+        switch (state) {
+            case State::Idle:
+                return "idle";
+            case State::Charging:
+                return "charging";
+            case State::Discharging:
+                return "discharging";
+            default:
+                return "invalid";
+        }
+    }
+    template <typename T>
+    static T bypassModeToString(BypassMode state){
+        switch (state) {
+            case BypassMode::Automatic:
+                return "automatic";
+            case BypassMode::AlwaysOff:
+                return "alwaysoff";
+            case BypassMode::AlwaysOn:
+                return "alwayson";
+            default:
+                return "invalid";
+        }
+    }
+    inline static bool isDischarging(State state){
+        return state == State::Discharging;
+    }
+    inline static bool isCharging(State state){
+        return state == State::Charging;
+    }
+
+    class PackStats {
         friend class ZendureBatteryStats;
+        friend class ZendureBattery;
 
         public:
-            explicit ZendurePackStats(String serial){ setSerial(serial); }
-            void update(JsonObjectConst packData, unsigned int ms);
-            bool isCharging() const { return  _state == 2; };
-            bool isDischarging() const { return  _state == 1; };
-            uint16_t getCapacity() const { return 1920; }
-            std::string getStateString() const { return ZendureBatteryStats::getStateString(_state); };
+            PackStats() {}
+            explicit PackStats(String serial) : _serial(serial) {}
+            virtual ~PackStats(){ }
+
+            String getSerial() const { return _serial; }
+
+            inline uint8_t getCellCount() const { return _cellCount; }
+            inline uint16_t getCapacity() const { return _capacity; }
+            inline String getName() const { return _name; }
+
+            static std::shared_ptr<PackStats> fromSerial(String serial){
+                if (serial.length() == 15) {
+                    if (serial.startsWith("AO4H")){
+                        // return std::make_shared<PackStats>(AB1000(serial));
+                        return std::make_shared<PackStats>(PackStats(serial, "AB1000", 960));
+                    }
+                    if (serial.startsWith("CO4H")){
+                        // return std::make_shared<PackStats>(AB2000(serial));
+                        return std::make_shared<PackStats>(PackStats(serial, "AB2000", 1920));
+                    }
+                    return std::make_shared<PackStats>(PackStats(serial));
+                }
+                return nullptr;
+            };
 
         protected:
-            bool hasAlarmMaxTemp() const { return _cell_temperature_max >= 45; };
-            bool hasAlarmMinTemp() const { return _cell_temperature_max <= (isCharging() ? 0 : -20); };
-            bool hasAlarmLowSoC() const { return _soc_level < 5; }
-            bool hasAlarmLowVoltage() const { return _voltage_total <= 40.0; }
-            bool hasAlarmHighVoltage() const { return _voltage_total >= 58.4; }
-            void setSerial(String serial);
-
-            String _serial;
-            String _name = "unknown";
-            uint16_t _capacity = 0;
-            uint32_t _version;
-            uint16_t _cell_voltage_min;
-            uint16_t _cell_voltage_max;
-            uint16_t _cell_voltage_spread;
-            float _cell_temperature_max;
-            float _voltage_total;
-            float _current;
-            int16_t _power;
-            uint8_t _soc_level;
-            uint8_t _state;
+            explicit PackStats(String serial, String name, uint16_t capacity, uint8_t cellCount = 15) :
+                _serial(serial), _name(name), _capacity(capacity), _cellCount(cellCount){}
+            void setSerial(String serial) { _serial = serial; }
+            void setHwVersion(String&& version) { _hwversion = std::move(version); }
+            void setFwVersion(String&& version) { _fwversion = std::move(version); }
 
         private:
-            uint32_t _lastUpdateTimestamp = 0;
-            uint32_t _totalVoltageTimestamp = 0;
-            uint32_t _totalCurrentTimestamp = 0;
+            String _serial = "";
+            String _name = "UNKOWN";
+            uint16_t _capacity = 0;
+            uint8_t _cellCount = 15;
 
+            String _fwversion = "";
+            String _hwversion = "";
+
+            uint16_t _cell_voltage_min = 0;
+            uint16_t _cell_voltage_max = 0;
+            uint16_t _cell_voltage_spread = 0;
+            uint16_t _cell_voltage_avg = 0;
+            int16_t _cell_temperature_max = 0;
+
+            float _voltage_total = 0.0;
+            float _current = 0.0;
+            int16_t _power = 0;
+            float _soc_level = 0.0;
+            State _state = State::Invalid;
+
+            uint32_t _lastUpdate = 0;
     };
 
     public:
-        virtual ~ZendureBatteryStats(){
-            for (const auto& [key, item] : _packData){
-                delete item;
-            }
-            _packData.clear();
-        }
+        ZendureBatteryStats() { setManufacturer("Zendure"); }
+
         void mqttPublish() const;
         void getLiveViewData(JsonVariant& root) const;
 
-        bool isCharging() const { return  _state == 1; };
-        bool isDischarging() const { return  _state == 2; };
-
-        static std::string getStateString(uint8_t state);
+        bool supportsAlarmsAndWarnings() const final { return false; }
 
     protected:
-        std::optional<ZendureBatteryStats::ZendurePackStats*> getPackData(String serial) const;
-        void updatePackData(String serial, JsonObjectConst packData, unsigned int ms);
-        void update(JsonObjectConst props, unsigned int ms);
+        std::optional<std::shared_ptr<ZendureBatteryStats::PackStats> > getPackData(size_t index) const;
+        std::optional<std::shared_ptr<ZendureBatteryStats::PackStats> > addPackData(size_t index, String serial);
+
         uint16_t getCapacity() const { return _capacity; };
         uint16_t getAvailableCapacity() const { return getCapacity() * (static_cast<float>(_soc_max - _soc_min) / 100.0); };
 
     private:
-        std::string getBypassModeString() const;
-        std::string getStateString() const { return ZendureBatteryStats::getStateString(_state); };
-        void calculateEfficiency();
-        void calculateAggregatedPackData();
-
-        void setManufacture(const char* manufacture) {
-            setManufacturer(manufacture);
-            if (_device){
-                setManufacturer(String(manufacture) + " " + _device);
+        void setHwVersion(String&& version) {
+            if (!version.isEmpty()){
+                _hwversion = _device + " (" + std::move(version) + ")";
             }
         }
+        void setFwVersion(String&& version) { _fwversion = std::move(version); }
 
-        void setSerial(const char* serial) {
-            _serial = String(serial);
-        }
         void setSerial(String serial) {
             _serial = serial;
         }
-
-        void setDevice(const char* device) {
-            _device = String(device);
-        }
-        void setDevice(String device) {
-            _device = device;
+        void setSerial(std::optional<String> serial) {
+            if (serial.has_value()){
+                setSerial(*serial);
+            }
         }
 
-        String _device;
+        void setDevice(String&& device) {
+            _device = std::move(device);
+        }
 
-        std::map<String, ZendurePackStats*> _packData = std::map<String, ZendurePackStats*>();
+        String _device = "Unkown";
 
-        float _cellTemperature;
-        uint16_t _cellMinMilliVolt;
-        uint16_t _cellMaxMilliVolt;
-        uint16_t _cellDeltaMilliVolt;
+        std::map<size_t, std::shared_ptr<PackStats>> _packData = std::map<size_t, std::shared_ptr<PackStats> >();
 
-        float _soc_max;
-        float _soc_min;
+        int16_t _cellTemperature = 0;
+        uint16_t _cellMinMilliVolt = 0;
+        uint16_t _cellMaxMilliVolt = 0;
+        uint16_t _cellDeltaMilliVolt = 0;
+        uint16_t _cellAvgMilliVolt = 0;
 
-        uint16_t _inverse_max;
-        uint16_t _input_limit;
-        uint16_t _output_limit;
+        float _soc_max = 0.0;
+        float _soc_min = 0.0;
+
+        uint16_t _inverse_max = 0;
+        uint16_t _input_limit = 0;
+        uint16_t _output_limit = 0;
 
         float _efficiency = 0.0;
-        uint16_t _capacity;
-        uint16_t _charge_power;
-        uint16_t _discharge_power;
-        uint16_t _output_power;
-        uint16_t _input_power;
-        uint16_t _solar_power_1;
-        uint16_t _solar_power_2;
+        uint16_t _capacity = 0;
 
-        uint16_t _remain_out_time;
-        uint16_t _remain_in_time;
+        uint16_t _charge_power = 0;
+        uint16_t _discharge_power = 0;
+        uint16_t _output_power = 0;
+        uint16_t _input_power = 0;
+        uint16_t _solar_power_1 = 0;
+        uint16_t _solar_power_2 = 0;
 
-        uint32_t _swVersion;
-        uint32_t _hwVersion;
+        int16_t _remain_out_time = 0;
+        int16_t _remain_in_time = 0;
 
-        uint8_t _state;
-        uint8_t _num_batteries;
-        uint8_t _bypass_mode;
-        bool _bypass_state;
-        bool _auto_recover;
-        bool _heat_state;
-        bool _auto_shutdown;
-        bool _buzzer;
-
-        bool _alarmLowSoC = false;
-        bool _alarmLowVoltage = false;
-        bool _alarmHightVoltage = false;
-        bool _alarmLowTemperature = false;
-        bool _alarmHighTemperature = false;
-
+        State _state = State::Invalid;
+        uint8_t _num_batteries = 0;
+        BypassMode _bypass_mode = BypassMode::Invalid;
+        bool _bypass_state = false;
+        bool _auto_recover = false;
+        bool _heat_state = false;
+        bool _auto_shutdown = false;
+        bool _buzzer = false;
 };
 #endif

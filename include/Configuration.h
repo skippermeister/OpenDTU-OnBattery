@@ -12,6 +12,8 @@
 #define WIFI_MAX_PASSWORD_STRLEN 64
 #define WIFI_MAX_HOSTNAME_STRLEN 31
 
+#define SYSLOG_MAX_HOSTNAME_STRLEN 128
+
 #define NTP_MAX_SERVER_STRLEN 31
 #define NTP_MAX_TIMEZONE_STRLEN 50
 #define NTP_MAX_TIMEZONEDESCR_STRLEN 50
@@ -47,11 +49,8 @@
 
 #define ZENDURE_MAX_SERIAL_STRLEN 8
 
-#ifdef USE_LED_SINGLE
+#if defined(USE_LED_SINGLE) || defined(USE_LED_STRIP)
     #define LED_COUNT   PINMAPPING_LED_COUNT
-#endif
-#ifdef USE_LED_STRIP
-    #define LED_COUNT   2
 #endif
 
 struct CHANNEL_CONFIG_T {
@@ -172,6 +171,12 @@ struct Mdns_CONFIG_T {
     bool Enabled;
 };
 
+struct Syslog_CONFIG_T {
+    bool Enabled;
+    char Hostname[SYSLOG_MAX_HOSTNAME_STRLEN + 1];
+    uint16_t Port;
+};
+
 struct Modbus_CONFIG_T {
         bool modbus_tcp_enabled;
         bool modbus_delaystart;
@@ -235,10 +240,12 @@ struct PowerLimiter_CONFIG_T {
     bool SurplusPowerEnabled;
 #endif
 };
+using PowerLimiterConfig = struct PowerLimiter_CONFIG_T;
 
 enum BatteryVoltageUnit { Volts = 0, DeciVolts = 1, CentiVolts = 2, MilliVolts = 3 };
+enum BatteryAmperageUnit { Amps = 0, MilliAmps = 1 };
 
-struct Battery_CONFIG_T {
+struct BATTERY_CONFIG_T {
     bool Enabled;
     bool VerboseLogging;
     uint8_t numberOfBatteries;
@@ -251,12 +258,18 @@ struct Battery_CONFIG_T {
         char VoltageTopic[MQTT_MAX_TOPIC_STRLEN + 1];
         char VoltageJsonPath[BATTERY_JSON_MAX_PATH_STRLEN + 1];
         BatteryVoltageUnit VoltageUnit;
+        char DischargeCurrentTopic[MQTT_MAX_TOPIC_STRLEN + 1];
+        char DischargeCurrentJsonPath[BATTERY_JSON_MAX_PATH_STRLEN + 1];
+        BatteryAmperageUnit AmperageUnit;
     } Mqtt;
 #endif
 #if defined(USE_MQTT_BATTERY) || defined(USE_VICTRON_SMART_SHUNT)
     float RecommendedChargeVoltage;
     float RecommendedDischargeVoltage;
 #endif
+    bool EnableDischargeCurrentLimit;
+    float DischargeCurrentLimit;
+    bool UseBatteryReportedDischargeLimit;
 #ifdef USE_MQTT_ZENDURE_BATTERY
     struct {
         uint8_t DeviceType;
@@ -275,6 +288,7 @@ struct Battery_CONFIG_T {
     int8_t MaxDischargeTemperature;
     uint8_t Stop_Charging_BatterySoC_Threshold;
 };
+using BatteryConfig = struct BATTERY_CONFIG_T;
 
 struct Mqtt_CONFIG_T {
     bool Enabled;
@@ -404,6 +418,9 @@ struct CONFIG_T {
 
     WiFi_CONFIG_T WiFi;
     Mdns_CONFIG_T Mdns;
+#ifdef USE_SYSLOG
+    Syslog_CONFIG_T Syslog;
+#endif
 
 #ifdef USE_ModbusDTU
     Modbus_CONFIG_T Modbus;
@@ -423,13 +440,13 @@ struct CONFIG_T {
 #endif
 
 #if defined(USE_LED_SINGLE) || defined(USE_LED_STRIP)
-    Led_Config_T Led[PINMAPPING_LED_COUNT];
+    Led_Config_T Led[LED_COUNT];
 #endif
 
     Vedirect_CONFIG_T Vedirect;
     PowerMeter_CONFIG_T PowerMeter;
     PowerLimiter_CONFIG_T PowerLimiter;
-    Battery_CONFIG_T Battery;
+    BatteryConfig Battery;
 
     struct {
         uint32_t Controller_Frequency;
@@ -446,10 +463,10 @@ struct CONFIG_T {
     REFUsol_CONFIG_T REFUsol;
 #endif
 
+    ZeroExport_CONFIG_T ZeroExport;
+
     INVERTER_CONFIG_T Inverter[INV_MAX_COUNT];
     char Dev_PinMapping[DEV_MAX_MAPPING_NAME_STRLEN + 1];
-
-    ZeroExport_CONFIG_T ZeroExport;
 };
 
 class ConfigurationClass {
@@ -469,12 +486,16 @@ public:
     static void serializePowerMeterSerialSdmConfig(PowerMeterSerialSdmConfig const& source, JsonObject& target);
     static void serializePowerMeterHttpJsonConfig(PowerMeterHttpJsonConfig const& source, JsonObject& target);
     static void serializePowerMeterHttpSmlConfig(PowerMeterHttpSmlConfig const& source, JsonObject& target);
+    static void serializeBatteryConfig(BatteryConfig const& source, JsonObject& target);
+    static void serializePowerLimiterConfig(PowerLimiterConfig const& source, JsonObject& target);
 
     static void deserializeHttpRequestConfig(JsonObject const& source, HttpRequestConfig& target);
     static void deserializePowerMeterMqttConfig(JsonObject const& source, PowerMeterMqttConfig& target);
     static void deserializePowerMeterSerialSdmConfig(JsonObject const& source, PowerMeterSerialSdmConfig& target);
     static void deserializePowerMeterHttpJsonConfig(JsonObject const& source, PowerMeterHttpJsonConfig& target);
     static void deserializePowerMeterHttpSmlConfig(JsonObject const& source, PowerMeterHttpSmlConfig& target);
+    static void deserializeBatteryConfig(JsonObject const& source, BatteryConfig& target);
+    static void deserializePowerLimiterConfig(JsonObject const& source, PowerLimiterConfig& target);
 };
 
 extern ConfigurationClass Configuration;

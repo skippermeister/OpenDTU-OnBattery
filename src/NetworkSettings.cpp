@@ -5,10 +5,14 @@
 #include "NetworkSettings.h"
 #include "Configuration.h"
 #include "MessageOutput.h"
+#include "SyslogLogger.h"
 #include "PinMapping.h"
 #include "Utils.h"
 #include "defaults.h"
 #include <ESPmDNS.h>
+#ifdef USE_W5500
+#include <ETHSPI.h>
+#endif
 #ifdef OPENDTU_ETHERNET
 #include <ETH.h>
 #endif
@@ -27,24 +31,58 @@ void NetworkSettingsClass::init(Scheduler& scheduler)
     MessageOutput.print("Initialize Network... ");
 
     using std::placeholders::_1;
+    using std::placeholders::_2;
 
     WiFi.setScanMethod(WIFI_ALL_CHANNEL_SCAN);
     WiFi.setSortMethod(WIFI_CONNECT_AP_BY_SIGNAL);
 
     WiFi.disconnect(true, true);
 
-    WiFi.onEvent(std::bind(&NetworkSettingsClass::NetworkEvent, this, _1));
+    WiFi.onEvent(std::bind(&NetworkSettingsClass::NetworkEvent, this, _1, _2));
+
+#ifdef USE_W5500
+    if (PinMapping.isValidW5500Config()) {
+        _spiEth = true;
+
+        const auto& pin = PinMapping.get().w5500;
+        if (PinMapping.isValidCmt2300Config() && PinMapping.isValidNrf24Config()) {
+            MessageOutput.println("No ETH connection possible with CMT and NRF enabled.");
+        } else {
+            auto oSPInum = SPIPortManager.allocatePort("ETHSPI");
+            if (oSPInum) {
+                spi_host_device_t host_id = SPIPortManager.SPIhostNum(*oSPInum);
+                ETHSPI.begin(pin.sclk, pin.mosi, pin.miso, pin.w5500.cs, pin.irq, pin.rst, host_id);
+            }
+        }
+    }
+#endif
+#if defined(USE_W5500) && defined(OPENDTU_ETHERNET)
+    else
+#endif
+#ifdef OPENDTU_ETHERNET
+    // Phy LAN8720
+    if (PinMapping.isValidEthConfig()) {
+        const auto& eth = PinMapping.get().eth;
+#if ESP_ARDUINO_VERSION_MAJOR < 3
+        ETH.begin(eth.phy_addr, eth.power, eth.mdc, eth.mdio, eth.type, eth.clk_mode);
+#else
+        ETH.begin(eth.type, eth.phy_addr, eth.mdc, eth.mdio, eth.power, eth.clk_mode);
+#endif
+    }
+#endif
     setupMode();
 
     scheduler.addTask(_loopTask);
     _loopTask.enable();
 
-    _lastTimerCall.set(1000);
+#ifdef USE_SYSLOG
+    Syslog.init(scheduler);
+#endif
 
     MessageOutput.println("done");
 }
 
-void NetworkSettingsClass::NetworkEvent(const WiFiEvent_t event)
+void NetworkSettingsClass::NetworkEvent(const WiFiEvent_t event, WiFiEventInfo_t info)
 {
     switch (event) {
 #ifdef OPENDTU_ETHERNET
@@ -86,7 +124,8 @@ void NetworkSettingsClass::NetworkEvent(const WiFiEvent_t event)
         }
         break;
     case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
-        MessageOutput.println("WiFi disconnected");
+        // Reason codes can be found here: https://github.com/espressif/esp-idf/blob/5454d37d496a8c58542eb450467471404c606501/components/esp_wifi/include/esp_wifi_types_generic.h#L79-L141
+        MessageOutput.printf("WiFi disconnected: %d\r\n", info.wifi_sta_disconnected.reason);
         if (_networkMode == network_mode::WiFi) {
             MessageOutput.println("Try reconnecting");
             WiFi.disconnect(true, false);
@@ -119,8 +158,7 @@ bool NetworkSettingsClass::onEvent(NetworkEventCb cbEvent, const network_event e
 
 void NetworkSettingsClass::raiseEvent(const network_event event)
 {
-    for (uint32_t i = 0; i < _cbEventList.size(); i++) {
-        const NetworkEventCbList_t entry = _cbEventList[i];
+    for (auto& entry : _cbEventList) {
         if (entry.cb) {
             if (entry.event == event || entry.event == network_event::NETWORK_EVENT_MAX) {
                 entry.cb(event);
@@ -177,13 +215,6 @@ void NetworkSettingsClass::setupMode()
             WiFi.mode(WIFI_MODE_NULL);
         }
     }
-
-#ifdef OPENDTU_ETHERNET
-    if (PinMapping.isValidEthConfig()) {
-        PinMapping_t& pin = PinMapping.get();
-        ETH.begin(pin.eth_phy_addr, pin.eth_power, pin.eth_mdc, pin.eth_mdio, pin.eth_type, pin.eth_clk_mode);
-    }
-#endif
 }
 
 void NetworkSettingsClass::enableAdminMode()
@@ -221,7 +252,7 @@ void NetworkSettingsClass::loop()
         applyConfig();
     }
 
-    if (_lastTimerCall.occured()) {
+    if (millis() - _lastTimerCall > 1000) {
         if (_adminEnabled && _adminTimeoutCounterMax > 0) {
             _adminTimeoutCounter++;
             if (_adminTimeoutCounter % 10 == 0) {
@@ -230,7 +261,7 @@ void NetworkSettingsClass::loop()
         }
         _connectTimeoutTimer++;
         _connectRedoTimer++;
-        _lastTimerCall.reset();
+        _lastTimerCall = millis();
     }
     if (_adminEnabled) {
         // Don't disable the admin mode when network is not available
@@ -296,6 +327,10 @@ void NetworkSettingsClass::applyConfig()
     }
     MessageOutput.println("done");
     setStaticIp();
+
+#ifdef USE_SYSLOG
+    Syslog.updateSettings(getHostname());
+#endif
 }
 
 void NetworkSettingsClass::setHostname()
@@ -431,9 +466,15 @@ IPAddress NetworkSettingsClass::dnsIP(const uint8_t dns_no) const
 String NetworkSettingsClass::macAddress() const
 {
     switch (_networkMode) {
-#ifdef OPENDTU_ETHERNET
+#if defined(OPENDTU_ETHERNET) || defined(USE_W5500)
     case network_mode::Ethernet:
+#ifdef USE_W5500
+        if (_spiEth)
+            return ETHSPI.macAddress();
+#endif
+#ifdef OPENDTU_ETHERNET
         return ETH.macAddress();
+#endif
         break;
 #endif
     case network_mode::WiFi:

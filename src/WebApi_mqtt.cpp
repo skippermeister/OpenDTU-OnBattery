@@ -123,31 +123,31 @@ void WebApiMqttClass::onMqttAdminPost(AsyncWebServerRequest* request)
 
     auto& retMsg = response->getRoot();
 
-    if (!(root.containsKey("enabled")
-            && root.containsKey("verbose_logging")
-            && root.containsKey("hostname")
-            && root.containsKey("port")
-            && root.containsKey("clientid")
-            && root.containsKey("username")
-            && root.containsKey("password")
-            && root.containsKey("topic")
-            && root.containsKey("retain")
-            && root.containsKey("tls")
-            && root.containsKey("tls_cert_login")
-            && root.containsKey("client_cert")
-            && root.containsKey("client_key")
-            && root.containsKey("lwt_topic")
-            && root.containsKey("lwt_online")
-            && root.containsKey("lwt_offline")
-            && root.containsKey("lwt_qos")
-            && root.containsKey("publish_interval")
-            && root.containsKey("clean_session")
+    if (!(root["enabled"].is<bool>()
+            && root["verbose_logging"].is<bool>()
+            && root["hostname"].is<String>()
+            && root["port"].is<uint>()
+            && root["clientid"].is<String>()
+            && root["username"].is<String>()
+            && root["password"].is<String>()
+            && root["topic"].is<String>()
+            && root["retain"].is<bool>()
+            && root["tls"].is<bool>()
+            && root["tls_cert_login"].is<bool>()
+            && root["client_cert"].is<String>()
+            && root["client_key"].is<String>()
+            && root["lwt_topic"].is<String>()
+            && root["lwt_online"].is<String>()
+            && root["lwt_offline"].is<String>()
+            && root["lwt_qos"].is<uint8_t>()
+            && root["publish_interval"].is<uint32_t>()
+            && root["clean_session"].is<bool>()
 #ifdef USE_HASS
-            && root.containsKey("hass_enabled")
-            && root.containsKey("hass_expire")
-            && root.containsKey("hass_retain")
-            && root.containsKey("hass_topic")
-            && root.containsKey("hass_individualpanels")
+            && root["hass_enabled"].is<bool>()
+            && root["hass_expire"].is<bool>()
+            && root["hass_retain"].is<bool>()
+            && root["hass_topic"].is<String>()
+            && root["hass_individualpanels"].is<bool>()
 #endif
             ))
     {
@@ -295,15 +295,15 @@ void WebApiMqttClass::onMqttAdminPost(AsyncWebServerRequest* request)
     }
 
     auto& cMqtt = Configuration.get().Mqtt;
-    cMqtt.Enabled = root["enabled"].as<bool>();
-    MqttSettings.setVerboseLogging(root["verbose_logging"].as<bool>());
-    cMqtt.Retain = root["retain"].as<bool>();
-    cMqtt.Tls.Enabled = root["tls"].as<bool>();
+    cMqtt.Enabled = root["enabled"];
+    MqttSettings.setVerboseLogging(root["verbose_logging"]);
+    cMqtt.Retain = root["retain"];
+    cMqtt.Tls.Enabled = root["tls"];
     strlcpy(cMqtt.Tls.RootCaCert, root["root_ca_cert"].as<String>().c_str(), sizeof(cMqtt.Tls.RootCaCert));
-    cMqtt.Tls.CertLogin = root["tls_cert_login"].as<bool>();
+    cMqtt.Tls.CertLogin = root["tls_cert_login"];
     strlcpy(cMqtt.Tls.ClientCert, root["client_cert"].as<String>().c_str(), sizeof(cMqtt.Tls.ClientCert));
     strlcpy(cMqtt.Tls.ClientKey, root["client_key"].as<String>().c_str(), sizeof(cMqtt.Tls.ClientKey));
-    cMqtt.Port = root["port"].as<uint>();
+    cMqtt.Port = root["port"].as<uint32_t>();
     strlcpy(cMqtt.Hostname, root["hostname"].as<String>().c_str(), sizeof(cMqtt.Hostname));
     strlcpy(cMqtt.ClientId, root["clientid"].as<String>().c_str(), sizeof(cMqtt.ClientId));
     strlcpy(cMqtt.Username, root["username"].as<String>().c_str(), sizeof(cMqtt.Username));
@@ -313,12 +313,12 @@ void WebApiMqttClass::onMqttAdminPost(AsyncWebServerRequest* request)
     strlcpy(cMqtt.Lwt.Value_Offline, root["lwt_offline"].as<String>().c_str(), sizeof(cMqtt.Lwt.Value_Offline));
     cMqtt.Lwt.Qos = root["lwt_qos"].as<uint8_t>();
     cMqtt.PublishInterval = root["publish_interval"].as<uint32_t>();
-    cMqtt.CleanSession = root["clean_session"].as<bool>();
+    cMqtt.CleanSession = root["clean_session"];
 #ifdef USE_HASS
-    cMqtt.Hass.Enabled = root["hass_enabled"].as<bool>();
-    cMqtt.Hass.Expire = root["hass_expire"].as<bool>();
-    cMqtt.Hass.Retain = root["hass_retain"].as<bool>();
-    cMqtt.Hass.IndividualPanels = root["hass_individualpanels"].as<bool>();
+    cMqtt.Hass.Enabled = root["hass_enabled"];
+    cMqtt.Hass.Expire = root["hass_expire"];
+    cMqtt.Hass.Retain = root["hass_retain"];
+    cMqtt.Hass.IndividualPanels = root["hass_individualpanels"];
     strlcpy(cMqtt.Hass.Topic, root["hass_topic"].as<String>().c_str(), sizeof(cMqtt.Hass.Topic));
 #endif
 
