@@ -11,9 +11,9 @@
                         aria-expanded="true"
                         aria-controls="collapseOne"
                     >
-                        <span class="badge text-bg-secondary">
-                            <BIconInfoCircle class="fs-4" /> </span
-                        >&nbsp;{{ $t('about.Documentation') }}
+                        <span class="badge text-bg-secondary"> <BIconInfoCircle class="fs-4" /> </span>&nbsp;{{
+                            $t('about.Documentation')
+                        }}
                     </button>
                 </h2>
                 <div
@@ -37,9 +37,9 @@
                         aria-expanded="false"
                         aria-controls="collapseOne"
                     >
-                        <span class="badge text-bg-secondary">
-                            <BIconInfoCircle class="fs-4" /> </span
-                        >&nbsp;{{ $t('about.ProjectOrigin') }}
+                        <span class="badge text-bg-secondary"> <BIconInfoCircle class="fs-4" /> </span>&nbsp;{{
+                            $t('about.ProjectOrigin')
+                        }}
                     </button>
                 </h2>
                 <div
@@ -66,9 +66,9 @@
                         aria-expanded="false"
                         aria-controls="collapseTwo"
                     >
-                        <span class="badge text-bg-secondary">
-                            <BIconActivity class="fs-4" /> </span
-                        >&nbsp;{{ $t('about.NewsUpdates') }}
+                        <span class="badge text-bg-secondary"> <BIconActivity class="fs-4" /> </span>&nbsp;{{
+                            $t('about.NewsUpdates')
+                        }}
                     </button>
                 </h2>
                 <div
@@ -90,9 +90,9 @@
                         aria-expanded="false"
                         aria-controls="collapseThree"
                     >
-                        <span class="badge text-bg-secondary">
-                            <BIconBug class="fs-4" /> </span
-                        >&nbsp;{{ $t('about.ErrorReporting') }}
+                        <span class="badge text-bg-secondary"> <BIconBug class="fs-4" /> </span>&nbsp;{{
+                            $t('about.ErrorReporting')
+                        }}
                     </button>
                 </h2>
                 <div
@@ -114,9 +114,9 @@
                         aria-expanded="false"
                         aria-controls="collapseFour"
                     >
-                        <span class="badge text-bg-secondary">
-                            <BIconChat class="fs-4" /> </span
-                        >&nbsp;{{ $t('about.Discussion') }}
+                        <span class="badge text-bg-secondary"> <BIconChat class="fs-4" /> </span>&nbsp;{{
+                            $t('about.Discussion')
+                        }}
                     </button>
                 </h2>
                 <div
