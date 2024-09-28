@@ -52,9 +52,7 @@ export default defineComponent({
                 .then((data) => {
                     this.systemDataList = data;
                     this.dataLoading = false;
-                    if (this.allowVersionInfo) {
-                        this.getUpdateInfo();
-                    }
+                    this.getUpdateInfo();
                 })
         },
         getUpdateInfo() {
@@ -70,6 +68,10 @@ export default defineComponent({
             if (this.systemDataList.git_hash?.lastIndexOf('-') >= 0) {
                 this.systemDataList.git_hash = this.systemDataList.git_hash.substring(this.systemDataList.git_hash.lastIndexOf("-") + 2)
                 this.systemDataList.git_is_hash = true;
+            }
+
+            if (!this.allowVersionInfo) {
+                return;
             }
 
             const fetchUrl = 'https://api.github.com/repos/skippermeister/OpenDTU-OnBattery/compare/'

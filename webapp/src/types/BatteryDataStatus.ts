@@ -7,10 +7,10 @@ export interface StringValue {
 
 export interface Pack {
     moduleNumber: number;
+    moduleRole: string;
     moduleName: string;
-    device_name: string;
+    swversion: string;
     moduleSerialNumber: string;
-    software_version: string;
     values: (ValueObject | StringValue)[];
     parameters: (ValueObject | StringValue)[];
     cell: CellObject;
@@ -21,6 +21,8 @@ export interface BatteryData {
     manufacturer: string;
     fwversion: string;
     hwversion: string;
+    swversion: string;
+    moduleSerialNumber: string;
     data_age: number;
     values: (ValueObject | StringValue)[];
     issues: number[];

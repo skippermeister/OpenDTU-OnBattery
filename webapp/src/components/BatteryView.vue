@@ -15,10 +15,10 @@
                         aria-controls="'v-pills-' + pack.moduleNumber" aria-selected="true">
                         <div class="row">
                             <div class="col-auto col-sm-6">
-                                {{ pack.device_name }}
+                                {{ pack.moduleName }}
                             </div>
                             <div class="col-sm-5">
-                                {{ pack.moduleName }}
+                                {{ pack.moduleRole }}
                             </div>
                         </div>
                     </button>
@@ -44,20 +44,35 @@
                                     <div style="padding-right: 2em;">
                                         {{ $t('battery.battery') }}: {{ batteryData.manufacturer }}
                                     </div>
-
+                                    <div style="padding-right: 2em;" v-if="'numberOfPacks' in batteryData && batteryData.numberOfPacks <= 1">
+                                        {{ pack.moduleRole }} {{ pack.moduleName }}
+                                    </div>
                                     <div style="padding-right: 2em;" v-if="'fwversion' in batteryData">
                                       {{ $t('battery.FwVersion') }}: {{ batteryData.fwversion }}
                                     </div>
                                     <div style="padding-right: 2em;" v-if="'hwversion' in batteryData">
                                       {{ $t('battery.HwVersion') }}: {{ batteryData.hwversion }}
                                     </div>
-
-                                    <div style="padding-right: 2em;" v-if="'numberOfPacks' in batteryData && batteryData.numberOfPacks <= 1">
-                                        {{ pack.moduleName }} {{ pack.device_name }} (S/N: {{ pack.moduleSerialNumber }}) Software Version: {{ pack.software_version }}
+                                    <div style="padding-right: 2em;" v-if="'swversion' in batteryData">
+                                      {{ $t('battery.SwVersion') }}: {{ batteryData.swversion }}
+                                    </div>
+                                    <div style="padding-right: 2em;"
+                                        v-if="'numberOfPacks' in batteryData && 'swversion' in pack &&
+                                              batteryData.numberOfPacks <= 1">
+                                        {{ $t('battery.SwVersion') }}: {{ pack.swversion }}
+                                    </div>
+                                    <div style="padding-right: 2em;" v-if="'moduleSerialNumber' in batteryData">
+                                        S/N: {{ batteryData.moduleSerialNumber }}
+                                    </div>
+                                    <div style="padding-right: 2em;"
+                                        v-if="'numberOfPacks' in batteryData && 'moduleSerialNumber' in pack &&
+                                              batteryData.numberOfPacks <= 1">
+                                        S/N: {{ pack.moduleSerialNumber }}
                                     </div>
                                     <div style="padding-right: 2em;">
                                         {{ $t('battery.DataAge') }} {{ $t('battery.Seconds', { 'val': batteryData.data_age }) }}
                                     </div>
+
                                 </div>
                             </div>
                         </div>
@@ -136,10 +151,9 @@
                                 <div class="row flex-row flex-wrap align-items-start g-3">
 
                                 <div class="col order-0" v-if="'numberOfPacks' in batteryData && batteryData.numberOfPacks > 1">
-
                                     <div class="card" :class="{ 'border-info': true }" style="overflow: hidden">
                                         <div class="card-header bg-info">
-                                            {{ pack.moduleName }} {{ pack.device_name }} (S/N: {{ pack.moduleSerialNumber }}) Software Version: {{ pack.software_version }}
+                                            {{ pack.moduleRole }} {{ pack.moduleName }} (S/N: {{ pack.moduleSerialNumber }}) Software Version: {{ pack.swversion }}
                                         </div>
                                         <div class="table-responsive">
                                             <table class="table table-striped table-hover" style="margin: 0">
@@ -207,7 +221,8 @@
                                                         <td>{{ pack.cell.cellDiffVoltage.u }}</td>
                                                     </tr>
 
-                                                    <template v-for="i in Math.floor((pack.cell.voltage.length+2) / 3)" v-bind:key="i">
+                                                    <template v-if="pack.cell.voltage != null">
+                                                        <template v-for="i in Math.floor((pack.cell.voltage.length+2) / 3)" v-bind:key="i">
                                                         <tr>
                                                             <template v-for="(voltage, index) in pack.cell.voltage.slice((i-1)*3,(i-1)*3+3)" v-bind:key="index">
                                                                 <th scope="row">{{ $t('battery.cell') }} {{(i-1)*3+index+1}}</th>
@@ -220,11 +235,13 @@
                                                                 <td>{{ voltage.u }}</td>
                                                             </template>
                                                         </tr>
+                                                        </template>
                                                     </template>
                                                 </tbody>
                                             </table>
                                         </div>
 
+                                        <template v-if="pack.tempSensor != null" >
                                         <div class="card-header bg-info">{{ $t('battery.cell_temperatures') }}</div>
                                         <div class="table-responsive">
                                             <table class="table table-striped table-hover" style="margin: 0">
@@ -246,7 +263,9 @@
                                                 </tbody>
                                             </table>
                                         </div>
+                                        </template>
 
+                                        <template v-if="pack.parameters != null">
                                         <div class="card-header bg-info">{{ $t('battery.Parameters') }}</div>
                                         <div class="table-responsive">
                                             <table class="table table-striped table-hover" style="margin: 0">
@@ -276,6 +295,7 @@
                                                 </tbody>
                                             </table>
                                         </div>
+                                        </template>
 
                                     </div>
                                 </div>

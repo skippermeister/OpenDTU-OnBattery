@@ -13,6 +13,9 @@ export interface MqttParameter {
     voltage_topic: string;
     voltage_json_path: string;
     voltage_unit: number;
+    discharge_current_topic: string;
+    discharge_current_json_path: string;
+    amperage_unit: number;
 }
 
 export interface BatteryConfig {
@@ -32,6 +35,10 @@ export interface BatteryConfig {
     stop_charging_soc: number;
     recommended_charge_voltage: number;
     recommended_discharge_voltage: number;
+
+    enableDischargeCurrentLimit: boolean;
+    dischargeCurrentLimit: number;
+    useBatteryReportedDischargeCurrentLimit: boolean;
 
     mqtt: MqttParameter;
     zendure: ZendureParameter;

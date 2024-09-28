@@ -45,52 +45,25 @@
                             <div class="col order-0">
                                 <div class="card" :class="{ 'border-info': true }">
                                     <div class="card-header bg-info">{{ $t('huawei.Input') }}</div>
-                                    <div class="card-body">
-                                        <table class="table table-striped table-hover">
-                                            <thead>
-                                                <tr>
-                                                    <th scope="col">{{ $t('huawei.Property') }}</th>
-                                                    <th style="text-align: right" scope="col">
-                                                        {{ $t('huawei.Value') }}
-                                                    </th>
-                                                    <th scope="col">{{ $t('huawei.Unit') }}</th>
-                                                </tr>
-                                            </thead>
+                                    <div class="table-responsive">
+                                        <table class="table table-striped table-hover" style="margin: 0">
                                             <tbody>
-                                                <tr>
-                                                    <th scope="row">{{ $t('huawei.input_voltage') }}</th>
-                                                    <td style="text-align: right">
-                                                        {{ formatNumber(huaweiData.input_voltage.v) }}
+                                                <tr v-for="(prop, key) in huaweiData.inputValues" v-bind:key="key">
+                                                    <th scope="row">{{ $t('huawei.' + key) }}</th>
+                                                    <td style="text-align: right; padding-right: 0;">
+                                                        <template v-if="typeof prop === 'string'">
+                                                            {{ $t('huawei.' + prop) }}
+                                                        </template>
+                                                        <template v-else>
+                                                            {{ $n(prop.v, 'decimal', {
+                                                                minimumFractionDigits: prop.d,
+                                                                maximumFractionDigits: prop.d
+                                                            })
+                                                            }}
+                                                        </template>
                                                     </td>
-                                                    <td>{{ huaweiData.input_voltage.u }}</td>
-                                                </tr>
-                                                <tr>
-                                                    <th scope="row">{{ $t('huawei.input_current') }}</th>
-                                                    <td style="text-align: right">
-                                                        {{ formatNumber(huaweiData.input_current.v) }}
-                                                    </td>
-                                                    <td>{{ huaweiData.input_current.u }}</td>
-                                                </tr>
-                                                <tr>
-                                                    <th scope="row">{{ $t('huawei.input_power') }}</th>
-                                                    <td style="text-align: right">
-                                                        {{ formatNumber(huaweiData.input_power.v) }}
-                                                    </td>
-                                                    <td>{{ huaweiData.input_power.u }}</td>
-                                                </tr>
-                                                <tr>
-                                                    <th scope="row">{{ $t('huawei.input_temp') }}</th>
-                                                    <td style="text-align: right">
-                                                        {{ Math.round(huaweiData.input_temp.v) }}
-                                                    </td>
-                                                    <td>{{ huaweiData.input_temp.u }}</td>
-                                                </tr>
-                                                <tr>
-                                                    <th scope="row">{{ $t('huawei.efficiency') }}</th>
-                                                    <td style="text-align: right">
-                                                        {{ huaweiData.efficiency.v.toFixed(1) }}
-                                                    </td>
-                                                    <td>{{ huaweiData.efficiency.u }}</td>
+                                                    <td v-if="typeof prop === 'string'"></td>
+                                                    <td v-else>{{ prop.u }}</td>
                                                 </tr>
                                             </tbody>
                                         </table>
@@ -100,52 +73,26 @@
                             <div class="col order-1">
                                 <div class="card" :class="{ 'border-info': false }">
                                     <div class="card-header bg-info">{{ $t('huawei.Output') }}</div>
-                                    <div class="card-body">
-                                        <table class="table table-striped table-hover">
-                                            <thead>
-                                                <tr>
-                                                    <th scope="col">{{ $t('huawei.Property') }}</th>
-                                                    <th style="text-align: right" scope="col">
-                                                        {{ $t('huawei.Value') }}
-                                                    </th>
-                                                    <th scope="col">{{ $t('huawei.Unit') }}</th>
-                                                </tr>
-                                            </thead>
+
+                                    <div class="table-responsive">
+                                        <table class="table table-striped table-hover" style="margin: 0">
                                             <tbody>
-                                                <tr>
-                                                    <th scope="row">{{ $t('huawei.output_voltage') }}</th>
-                                                    <td style="text-align: right">
-                                                        {{ huaweiData.output_voltage.v.toFixed(1) }}
+                                                <tr v-for="(prop, key) in huaweiData.outputValues" v-bind:key="key">
+                                                    <th scope="row">{{ $t('huawei.' + key) }}</th>
+                                                    <td style="text-align: right; padding-right: 0;">
+                                                        <template v-if="typeof prop === 'string'">
+                                                            {{ $t('huawei.' + prop) }}
+                                                        </template>
+                                                        <template v-else>
+                                                            {{ $n(prop.v, 'decimal', {
+                                                                minimumFractionDigits: prop.d,
+                                                                maximumFractionDigits: prop.d
+                                                            })
+                                                            }}
+                                                        </template>
                                                     </td>
-                                                    <td>{{ huaweiData.output_voltage.u }}</td>
-                                                </tr>
-                                                <tr>
-                                                    <th scope="row">{{ $t('huawei.output_current') }}</th>
-                                                    <td style="text-align: right">
-                                                        {{ huaweiData.output_current.v.toFixed(2) }}
-                                                    </td>
-                                                    <td>{{ huaweiData.output_current.u }}</td>
-                                                </tr>
-                                                <tr>
-                                                    <th scope="row">{{ $t('huawei.max_output_current') }}</th>
-                                                    <td style="text-align: right">
-                                                        {{ huaweiData.max_output_current.v.toFixed(1) }}
-                                                    </td>
-                                                    <td>{{ huaweiData.max_output_current.u }}</td>
-                                                </tr>
-                                                <tr>
-                                                    <th scope="row">{{ $t('huawei.output_power') }}</th>
-                                                    <td style="text-align: right">
-                                                        {{ huaweiData.output_power.v.toFixed(1) }}
-                                                    </td>
-                                                    <td>{{ huaweiData.output_power.u }}</td>
-                                                </tr>
-                                                <tr>
-                                                    <th scope="row">{{ $t('huawei.output_temp') }}</th>
-                                                    <td style="text-align: right">
-                                                        {{ Math.round(huaweiData.output_temp.v) }}
-                                                    </td>
-                                                    <td>{{ huaweiData.output_temp.u }}</td>
+                                                    <td v-if="typeof prop === 'string'"></td>
+                                                    <td v-else>{{ prop.u }}</td>
                                                 </tr>
                                             </tbody>
                                         </table>

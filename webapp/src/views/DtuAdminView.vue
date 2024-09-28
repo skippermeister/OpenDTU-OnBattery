@@ -10,14 +10,17 @@
                     max="199999999999" wide3_3 :tooltip="$t('dtuadmin.SerialHint')" />
 
                 <InputElement :label="$t('dtuadmin.PollInterval')" v-model="dtuConfigList.pollinterval" type="number"
-                    min="1" max="300" wide3_3 :postfix="$t('dtuadmin.Seconds')" />
+                    min="1" max="300" wide3_3 :postfix="$t('dtuadmin.Seconds')" wide3_2/>
+
+                <InputElement :label="$t('dtuadmin.VerboseLogging')" v-model="dtuConfigList.verbose_logging"
+                    type="checkbox" wide3_2 />
 
                 <div class="row mb-3" v-if="dtuConfigList.nrf_enabled">
                     <label for="inputNrfPaLevel" class="col-sm-3 col-form-label">
                         {{ $t('dtuadmin.NrfPaLevel') }}
                         <BIconInfoCircle v-tooltip :title="$t('dtuadmin.NrfPaLevelHint')" />
                     </label>
-                    <div class="col-sm-4">
+                    <div class="col-sm-3">
                         <select id="inputNrfPaLevel" class="form-select" v-model="dtuConfigList.nrf_palevel">
                             <option v-for="palevel in nrfpalevelList" :key="palevel.key" :value="palevel.key">
                                 {{ $t(`dtuadmin.` + palevel.value, { db: palevel.db }) }}
@@ -31,9 +34,9 @@
                         {{ $t('dtuadmin.CmtPaLevel') }}
                         <BIconInfoCircle v-tooltip :title="$t('dtuadmin.CmtPaLevelHint')" />
                     </label>
-                    <div class="col-sm-3">
+                    <div class="col-sm-4">
                         <div class="input-group mb-3">
-                            <input type="range" class="form-control form-range" v-model="dtuConfigList.cmt_palevel"
+                            <input type="range" class="form-control form-range" v-model.number="dtuConfigList.cmt_palevel"
                                 min="-10" max="20" id="inputCmtPaLevel" aria-describedby="basic-addon1"
                                 style="height: unset;" />
                             <span class="input-group-text" id="basic-addon1">{{ cmtPaLevelText }}</span>
@@ -42,11 +45,11 @@
                 </div>
 
                 <div class="row mb-3" v-if="dtuConfigList.cmt_enabled">
-                    <label for="inputCmtCountry" class="col-sm-2 col-form-label">
+                    <label for="inputCmtCountry" class="col-sm-3 col-form-label">
                         {{ $t('dtuadmin.CmtCountry') }}
                         <BIconInfoCircle v-tooltip :title="$t('dtuadmin.CmtCountryHint')" />
                     </label>
-                    <div class="col-sm-10">
+                    <div class="col-sm-4">
                         <select id="inputCmtCountry" class="form-select" v-model="dtuConfigList.cmt_country">
                             <option v-for="(country, index) in dtuConfigList.country_def" :key="index" :value="index">
                                 {{ $t(`dtuadmin.country_` + index, {
@@ -62,9 +65,9 @@
                         {{ $t('dtuadmin.CmtFrequency') }}
                         <BIconInfoCircle v-tooltip :title="$t('dtuadmin.CmtFrequencyHint')" />
                     </label>
-                    <div class="col-sm-3">
+                    <div class="col-sm-4">
                         <div class="input-group mb-3">
-                            <input type="range" class="form-control form-range" v-model="dtuConfigList.cmt_frequency"
+                            <input type="range" class="form-control form-range" v-model.number="dtuConfigList.cmt_frequency"
                                 :min="cmtMinFrequency" :max="cmtMaxFrequency" :step="dtuConfigList.cmt_chan_width"
                                 id="cmtFrequency" aria-describedby="basic-addon2" style="height: unset;" />
                             <span class="input-group-text" id="basic-addon2">{{ cmtFrequencyText }}</span>
@@ -73,9 +76,6 @@
                             v-if="cmtIsOutOfLegalRange"></div>
                     </div>
                 </div>
-
-                <InputElement :label="$t('dtuadmin.VerboseLogging')" v-model="dtuConfigList.verbose_logging"
-                    type="checkbox" wide3_2 />
 
             </CardElement>
             <FormFooter @reload="getDtuConfig" />
