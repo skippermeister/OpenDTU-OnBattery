@@ -432,7 +432,7 @@
         "VerboseLogging": "@:base.VerboseLogging"
     },
     "refusolinfo": {
-        "REFUsolInformation" : "REFUsol Info",
+        "REFUsolInformation": "REFUsol Info",
         "ConfigurationSummary": "@:ntpinfo.ConfigurationSummary",
         "Status": "@:base.Status",
         "Enabled": "@:base.Enabled",
@@ -444,7 +444,7 @@
         "VerboseLogging": "@:base.VerboseLogging"
     },
     "vedirectinfo": {
-        "VedirectInformation" : "VE.Direct Info",
+        "VedirectInformation": "VE.Direct Info",
         "ConfigurationSummary": "@:ntpinfo.ConfigurationSummary",
         "Status": "@:base.Status",
         "Enabled": "@:base.Enabled",
@@ -689,7 +689,7 @@
         "VerboseLogging": "@:base.VerboseLogging",
         "UpdatesOnly": "@:base.UpdatesOnly"
     },
-    "powermeteradmin":{
+    "powermeteradmin": {
         "PowerMeterSettings": "Power Meter Settings",
         "PowerMeterConfiguration": "Power Meter Configuration",
         "PowerMeterEnable": "Enable Power Meter",
@@ -1149,7 +1149,7 @@
         "targetPowerConsumption": "Target power consumption",
         "targetPowerConsumptionHint": "Postitive values use grid power to charge the battery. Negative values result in early shutdown"
     },
-      "battery": {
+    "battery": {
         "battery": "Battery",
         "FwVersion": "Firmware Version",
         "HwVersion": "Hardware Version",

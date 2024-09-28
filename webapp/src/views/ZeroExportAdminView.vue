@@ -6,21 +6,36 @@
 
         <form @submit="saveZeroExportConfig">
             <CardElement :text="$t('zeroexportadmin.ZeroExportConfiguration')" textVariant="text-bg-primary">
-                <InputElement :label="$t('zeroexportadmin.EnableZeroExport')" v-model="zeroExportConfigList.enabled"
-                    type="checkbox" wide4_1 />
+                <InputElement
+                    :label="$t('zeroexportadmin.EnableZeroExport')"
+                    v-model="zeroExportConfigList.enabled"
+                    type="checkbox"
+                    wide4_1
+                />
 
                 <div v-show="zeroExportConfigList.enabled">
-                    <InputElement :label="$t('zeroexportadmin.UpdatesOnly')" v-model="zeroExportConfigList.updatesonly"
-                        type="checkbox" wide4_1 />
+                    <InputElement
+                        :label="$t('zeroexportadmin.UpdatesOnly')"
+                        v-model="zeroExportConfigList.updatesonly"
+                        type="checkbox"
+                        wide4_1
+                    />
 
-                    <InputElement :label="$t('zeroexportadmin.VerboseLogging')"
-                        v-model="zeroExportConfigList.verbose_logging" type="checkbox" wide4_1 />
+                    <InputElement
+                        :label="$t('zeroexportadmin.VerboseLogging')"
+                        v-model="zeroExportConfigList.verbose_logging"
+                        type="checkbox"
+                        wide4_1
+                    />
                 </div>
             </CardElement>
 
-            <CardElement :text="$t('zeroexportadmin.ZeroExportParameter')" textVariant="text-bg-primary" add-space
-                v-show="zeroExportConfigList.enabled">
-
+            <CardElement
+                :text="$t('zeroexportadmin.ZeroExportParameter')"
+                textVariant="text-bg-primary"
+                add-space
+                v-show="zeroExportConfigList.enabled"
+            >
                 <div class="row mb-3">
                     <label for="zeroexportInverterlist" class="col-sm-4 col-form-label">
                         {{ $t('zeroexportadmin.InverterId') }}:
@@ -41,8 +56,13 @@
                             <tbody ref="invList">
                                 <tr v-for="(inv, serial) in zeroExportMetaData.inverters" :key="serial" :value="serial">
                                     <td>
-                                        <input type="checkbox" id=serial :value="serial" name="serial"
-                                            v-model="inv.selected" />
+                                        <input
+                                            type="checkbox"
+                                            id="serial"
+                                            :value="serial"
+                                            name="serial"
+                                            v-model="inv.selected"
+                                        />
                                     </td>
                                     <td>
                                         <label :for="inv.name">{{ inv.pos }}</label>
@@ -56,19 +76,45 @@
                     </div>
                 </div>
 
-                <InputElement :label="$t('zeroexportadmin.MaxGrid')" v-model="zeroExportConfigList.MaxGrid"
-                    type="number" min="0" max="25000" wide4_2 :postfix="$t('zeroexportadmin.Watts')" />
+                <InputElement
+                    :label="$t('zeroexportadmin.MaxGrid')"
+                    v-model="zeroExportConfigList.MaxGrid"
+                    type="number"
+                    min="0"
+                    max="25000"
+                    wide4_2
+                    :postfix="$t('zeroexportadmin.Watts')"
+                />
 
-                <InputElement :label="$t('zeroexportadmin.PowerHysteresis')"
-                    v-model="zeroExportConfigList.PowerHysteresis" type="number" min="1" max="50" wide4_2
-                    :postfix="$t('zeroexportadmin.Percent')" />
+                <InputElement
+                    :label="$t('zeroexportadmin.PowerHysteresis')"
+                    v-model="zeroExportConfigList.PowerHysteresis"
+                    type="number"
+                    min="1"
+                    max="50"
+                    wide4_2
+                    :postfix="$t('zeroexportadmin.Percent')"
+                />
 
-                <InputElement :label="$t('zeroexportadmin.MinimumLimit')" v-model="zeroExportConfigList.MinimumLimit"
-                    type="number" min="2" max="50" wide4_2 :postfix="$t('zeroexportadmin.Percent')" />
+                <InputElement
+                    :label="$t('zeroexportadmin.MinimumLimit')"
+                    v-model="zeroExportConfigList.MinimumLimit"
+                    type="number"
+                    min="2"
+                    max="50"
+                    wide4_2
+                    :postfix="$t('zeroexportadmin.Percent')"
+                />
 
-                <InputElement :label="$t('zeroexportadmin.Tn')" v-model="zeroExportConfigList.Tn" type="number" min="1"
-                    max="300" wide4_2 :postfix="$t('zeroexportadmin.Seconds')" />
-
+                <InputElement
+                    :label="$t('zeroexportadmin.Tn')"
+                    v-model="zeroExportConfigList.Tn"
+                    type="number"
+                    min="1"
+                    max="300"
+                    wide4_2
+                    :postfix="$t('zeroexportadmin.Seconds')"
+                />
             </CardElement>
 
             <FormFooter @reload="getZeroExportConfig" />
@@ -145,13 +191,11 @@ export default defineComponent({
                 body: formData,
             })
                 .then((response) => handleResponse(response, this.$emitter, this.$router))
-                .then(
-                    (response) => {
-                        this.alertMessage = this.$t('apiresponse.' + response.code, response.param);
-                        this.alertType = response.type;
-                        this.showAlert = true;
-                    }
-                );
+                .then((response) => {
+                    this.alertMessage = this.$t('apiresponse.' + response.code, response.param);
+                    this.alertType = response.type;
+                    this.showAlert = true;
+                });
         },
     },
 });

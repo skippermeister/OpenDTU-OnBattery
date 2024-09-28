@@ -1,5 +1,5 @@
 <template>
-    <hr class="border border-3 opacity-75">
+    <hr class="border border-3 opacity-75" />
     <div class="d-grid gap-2 d-md-flex justify-content-md-end">
         <button type="button" class="btn btn-secondary" @click="$emit('reload')">
             {{ $t('base.Cancel') }}

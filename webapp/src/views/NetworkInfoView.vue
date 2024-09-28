@@ -1,6 +1,10 @@
 <template>
-    <BasePage :title="$t('networkinfo.NetworkInformation')" :isLoading="dataLoading" :show-reload="true"
-        @reload="getNetworkInfo">
+    <BasePage
+        :title="$t('networkinfo.NetworkInformation')"
+        :isLoading="dataLoading"
+        :show-reload="true"
+        @reload="getNetworkInfo"
+    >
         <WifiStationInfo :networkStatus="networkDataList" />
         <div class="mt-5"></div>
         <WifiApInfo :networkStatus="networkDataList" />
@@ -34,7 +38,7 @@ export default defineComponent({
         return {
             dataLoading: true,
             networkDataList: {} as NetworkStatus,
-        }
+        };
     },
     created() {
         this.getNetworkInfo();

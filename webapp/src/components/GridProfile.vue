@@ -1,8 +1,6 @@
 <template>
     <BootstrapAlert :show="!hasValidData">
-        <h4 class="alert-heading">
-            <BIconInfoSquare class="fs-2" />&nbsp;{{ $t('gridprofile.NoInfo') }}
-        </h4>
+        <h4 class="alert-heading"><BIconInfoSquare class="fs-2" />&nbsp;{{ $t('gridprofile.NoInfo') }}</h4>
         {{ $t('gridprofile.NoInfoLong') }}
     </BootstrapAlert>
 
@@ -23,8 +21,14 @@
         <div class="accordion" id="accordionProfile">
             <div class="accordion-item" v-for="(section, index) in gridProfileList.sections" :key="index">
                 <h2 class="accordion-header">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                        :data-bs-target="`#collapse${index}`" aria-expanded="true" :aria-controls="`collapse${index}`">
+                    <button
+                        class="accordion-button collapsed"
+                        type="button"
+                        data-bs-toggle="collapse"
+                        :data-bs-target="`#collapse${index}`"
+                        aria-expanded="true"
+                        :aria-controls="`collapse${index}`"
+                    >
                         {{ section.name }}
                     </button>
                 </h2>
@@ -39,8 +43,11 @@
                                             {{ $n(value.v, 'decimal') }} {{ value.u }}
                                         </template>
                                         <template v-else>
-                                            <StatusBadge :status="value.v == 1" true_text="gridprofile.Enabled"
-                                                false_text="gridprofile.Disabled" />
+                                            <StatusBadge
+                                                :status="value.v == 1"
+                                                true_text="gridprofile.Enabled"
+                                                false_text="gridprofile.Disabled"
+                                            />
                                         </template>
                                     </td>
                                 </tr>
@@ -56,8 +63,14 @@
         <div class="accordion" id="accordionDev">
             <div class="accordion-item">
                 <h2 class="accordion-header">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                        data-bs-target="#collapseDev" aria-expanded="true" aria-controls="collapseDev">
+                    <button
+                        class="accordion-button collapsed"
+                        type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#collapseDev"
+                        aria-expanded="true"
+                        aria-controls="collapseDev"
+                    >
                         {{ $t('gridprofile.GridprofileSupport') }}
                     </button>
                 </h2>
@@ -104,7 +117,7 @@ export default defineComponent({
                     .map(function (x) {
                         let y = x.toString(16); // to hex
                         y = ('00' + y).substr(-2); // zero-pad to 2-digits
-                        return y
+                        return y;
                     })
                     .join(' ');
             };

@@ -432,7 +432,7 @@
         "VerboseLogging": "@:base.VerboseLogging"
     },
     "refusolinfo": {
-        "REFUsolInformation" : "REFUsol Info",
+        "REFUsolInformation": "REFUsol Info",
         "ConfigurationSummary": "@:ntpinfo.ConfigurationSummary",
         "Status": "@:base.Status",
         "Enabled": "@:base.Enabled",
@@ -444,7 +444,7 @@
         "VerboseLogging": "@:base.VerboseLogging"
     },
     "vedirectinfo": {
-        "VedirectInformation" : "VE.Direct Info",
+        "VedirectInformation": "VE.Direct Info",
         "ConfigurationSummary": "@:ntpinfo.ConfigurationSummary",
         "Status": "@:base.Status",
         "Enabled": "@:base.Enabled",
@@ -689,7 +689,7 @@
         "VerboseLogging": "@:base.VerboseLogging",
         "UpdatesOnly": "@:base.UpdatesOnly"
     },
-    "powermeteradmin":{
+    "powermeteradmin": {
         "PowerMeterSettings": "Stromzähler Einstellungen",
         "PowerMeterConfiguration": "Stromzähler Konfiguration",
         "PowerMeterEnable": "Aktiviere Stromzähler",

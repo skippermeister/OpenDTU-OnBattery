@@ -1,8 +1,6 @@
 <template>
     <BootstrapAlert :show="!devInfoList.valid_data">
-        <h4 class="alert-heading">
-            <BIconInfoSquare class="fs-2" />&nbsp;{{ $t('devinfo.NoInfo') }}
-        </h4>
+        <h4 class="alert-heading"><BIconInfoSquare class="fs-2" />&nbsp;{{ $t('devinfo.NoInfo') }}</h4>
         {{ $t('devinfo.NoInfoLong') }}
     </BootstrapAlert>
     <table v-if="devInfoList.valid_data" class="table table-hover">
@@ -78,13 +76,13 @@ export default defineComponent({
         productionYear() {
             return () => {
                 return ((parseInt(this.devInfoList.serial, 16) >> (7 * 4)) & 0xf) + 2014;
-            }
+            };
         },
         productionWeek() {
             return () => {
                 return ((parseInt(this.devInfoList.serial, 16) >> (5 * 4)) & 0xff).toString(16);
-            }
-        }
-    }
+            };
+        },
+    },
 });
 </script>

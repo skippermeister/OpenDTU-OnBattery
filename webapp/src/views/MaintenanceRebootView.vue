@@ -5,15 +5,20 @@
         </BootstrapAlert>
 
         <CardElement :text="$t('maintenancereboot.PerformReboot')" textVariant="text-bg-primary" center-content>
-            <button class="btn btn-danger" @click="onOpenModal(performReboot)">{{ $t('maintenancereboot.Reboot') }}
+            <button class="btn btn-danger" @click="onOpenModal(performReboot)">
+                {{ $t('maintenancereboot.Reboot') }}
             </button>
 
             <div class="alert alert-danger mt-3" role="alert" v-html="$t('maintenancereboot.RebootHint')"></div>
         </CardElement>
     </BasePage>
 
-    <ModalDialog modalId="performReboot" small :title="$t('maintenancereboot.RebootOpenDTU')"
-        :closeText="$t('maintenancereboot.Cancel')">
+    <ModalDialog
+        modalId="performReboot"
+        small
+        :title="$t('maintenancereboot.RebootOpenDTU')"
+        :closeText="$t('maintenancereboot.Cancel')"
+    >
         {{ $t('maintenancereboot.RebootQuestion') }}
         <template #footer>
             <button type="button" class="btn btn-danger" @click="onReboot">
@@ -80,7 +85,7 @@ export default defineComponent({
         },
         onCloseModal(modal: bootstrap.Modal) {
             modal.hide();
-        }
+        },
     },
 });
 </script>

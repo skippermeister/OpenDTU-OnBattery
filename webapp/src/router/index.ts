@@ -3,18 +3,18 @@ import BatteryAdminView from '@/views/BatteryAdminView.vue';
 import AcChargerAdminView from '@/views/AcChargerAdminView.vue';
 import ConfigAdminView from '@/views/ConfigAdminView.vue';
 import ConsoleInfoView from '@/views/ConsoleInfoView.vue';
-import DeviceAdminView from '@/views/DeviceAdminView.vue'
+import DeviceAdminView from '@/views/DeviceAdminView.vue';
 import DtuAdminView from '@/views/DtuAdminView.vue';
 import ErrorView from '@/views/ErrorView.vue';
 import FirmwareUpgradeView from '@/views/FirmwareUpgradeView.vue';
 import HomeView from '@/views/HomeView.vue';
-import REFUsolAdminView from '@/views/REFUsolAdminView.vue'
-import VedirectAdminView from '@/views/VedirectAdminView.vue'
-import ZeroExportAdminView from '@/views/ZeroExportAdminView.vue'
-import PowerMeterAdminView from '@/views/PowerMeterAdminView.vue'
-import PowerLimiterAdminView from '@/views/PowerLimiterAdminView.vue'
-import REFUsolInfoView from '@/views/REFUsolInfoView.vue'
-import VedirectInfoView from '@/views/VedirectInfoView.vue'
+import REFUsolAdminView from '@/views/REFUsolAdminView.vue';
+import VedirectAdminView from '@/views/VedirectAdminView.vue';
+import ZeroExportAdminView from '@/views/ZeroExportAdminView.vue';
+import PowerMeterAdminView from '@/views/PowerMeterAdminView.vue';
+import PowerLimiterAdminView from '@/views/PowerLimiterAdminView.vue';
+import REFUsolInfoView from '@/views/REFUsolInfoView.vue';
+import VedirectInfoView from '@/views/VedirectInfoView.vue';
 import InverterAdminView from '@/views/InverterAdminView.vue';
 import LoginView from '@/views/LoginView.vue';
 import MaintenanceRebootView from '@/views/MaintenanceRebootView.vue';
@@ -35,144 +35,144 @@ const router = createRouter({
         {
             path: '/',
             name: 'Home',
-            component: HomeView
+            component: HomeView,
         },
         {
             path: '/login',
             name: 'Login',
-            component: LoginView
+            component: LoginView,
         },
         {
             path: '/error?status=:status&message=:message',
             name: 'Error',
-            component: ErrorView
+            component: ErrorView,
         },
         {
             path: '/about',
             name: 'About',
-            component: AboutView
+            component: AboutView,
         },
         {
             path: '/info/network',
             name: 'Network',
-            component: NetworkInfoView
+            component: NetworkInfoView,
         },
         {
             path: '/info/system',
             name: 'System',
-            component: SystemInfoView
+            component: SystemInfoView,
         },
         {
             path: '/info/ntp',
             name: 'NTP',
-            component: NtpInfoView
+            component: NtpInfoView,
         },
         {
             path: '/info/mqtt',
             name: 'MqTT',
-            component: MqttInfoView
+            component: MqttInfoView,
         },
         {
             path: '/info/console',
             name: 'Web Console',
-            component: ConsoleInfoView
+            component: ConsoleInfoView,
         },
         {
             path: '/info/refusol',
             name: 'REFUsol',
-            component: REFUsolInfoView
+            component: REFUsolInfoView,
         },
         {
             path: '/info/vedirect',
             name: 'VE.Direct',
-            component: VedirectInfoView
+            component: VedirectInfoView,
         },
         {
             path: '/settings/network',
             name: 'Network Settings',
-            component: NetworkAdminView
+            component: NetworkAdminView,
         },
         {
             path: '/settings/ntp',
             name: 'NTP Settings',
-            component: NtpAdminView
+            component: NtpAdminView,
         },
         {
             path: '/settings/refusol',
             name: 'REFUsol Settings',
-            component: REFUsolAdminView
+            component: REFUsolAdminView,
         },
         {
             path: '/settings/vedirect',
             name: 'VE.Direct Settings',
-            component: VedirectAdminView
+            component: VedirectAdminView,
         },
         {
             path: '/settings/powermeter',
             name: 'Power meter Settings',
-            component: PowerMeterAdminView
+            component: PowerMeterAdminView,
         },
         {
             path: '/settings/powerlimiter',
             name: 'Power limiter Settings',
-            component: PowerLimiterAdminView
+            component: PowerLimiterAdminView,
         },
         {
             path: '/settings/zeroexport',
             name: 'Zero Export PID Controller Settings',
-            component: ZeroExportAdminView
+            component: ZeroExportAdminView,
         },
         {
             path: '/settings/battery',
             name: 'Battery Settings',
-            component: BatteryAdminView
+            component: BatteryAdminView,
         },
         {
             path: '/settings/chargerac',
             name: 'Charger Settings',
-            component: AcChargerAdminView
+            component: AcChargerAdminView,
         },
         {
             path: '/settings/mqtt',
             name: 'MqTT Settings',
-            component: MqttAdminView
+            component: MqttAdminView,
         },
         {
             path: '/settings/inverter',
             name: 'Inverter Settings',
-            component: InverterAdminView
+            component: InverterAdminView,
         },
         {
             path: '/settings/dtu',
             name: 'DTU Settings',
-            component: DtuAdminView
+            component: DtuAdminView,
         },
         {
             path: '/settings/device',
             name: 'Device Manager',
-            component: DeviceAdminView
+            component: DeviceAdminView,
         },
         {
             path: '/firmware/upgrade',
             name: 'Firmware Upgrade',
-            component: FirmwareUpgradeView
+            component: FirmwareUpgradeView,
         },
         {
             path: '/settings/config',
             name: 'Config Management',
-            component: ConfigAdminView
+            component: ConfigAdminView,
         },
         {
             path: '/settings/security',
             name: 'Security',
-            component: SecurityAdminView
+            component: SecurityAdminView,
         },
         {
             path: '/maintenance/reboot',
             name: 'Device Reboot',
-            component: MaintenanceRebootView
-        }
-    ]
+            component: MaintenanceRebootView,
+        },
+    ],
 });
 
 export default router;

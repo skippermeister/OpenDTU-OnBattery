@@ -7,37 +7,76 @@
         <form @submit="savePinConfig">
             <nav>
                 <div class="nav nav-tabs" id="nav-tab" role="tablist">
-                    <button class="nav-link active" id="nav-pin-tab" data-bs-toggle="tab" data-bs-target="#nav-pin"
-                        type="button" role="tab" aria-controls="nav-pin" aria-selected="true">{{
-                            $t('deviceadmin.PinAssignment')
-                        }}</button>
+                    <button
+                        class="nav-link active"
+                        id="nav-pin-tab"
+                        data-bs-toggle="tab"
+                        data-bs-target="#nav-pin"
+                        type="button"
+                        role="tab"
+                        aria-controls="nav-pin"
+                        aria-selected="true"
+                    >
+                        {{ $t('deviceadmin.PinAssignment') }}
+                    </button>
                     <template v-if="deviceConfigList.display != undefined">
-                        <button class="nav-link" id="nav-display-tab" data-bs-toggle="tab" data-bs-target="#nav-display"
-                            type="button" role="tab" aria-controls="nav-display">{{ $t('deviceadmin.Display')
-                            }}</button>
+                        <button
+                            class="nav-link"
+                            id="nav-display-tab"
+                            data-bs-toggle="tab"
+                            data-bs-target="#nav-display"
+                            type="button"
+                            role="tab"
+                            aria-controls="nav-display"
+                        >
+                            {{ $t('deviceadmin.Display') }}
+                        </button>
                     </template>
                     <template v-if="deviceConfigList.led != undefined">
-                        <button class="nav-link" id="nav-leds-tab" data-bs-toggle="tab" data-bs-target="#nav-leds"
-                            type="button" role="tab" aria-controls="nav-leds">{{ $t('deviceadmin.Leds') }}</button>
+                        <button
+                            class="nav-link"
+                            id="nav-leds-tab"
+                            data-bs-toggle="tab"
+                            data-bs-target="#nav-leds"
+                            type="button"
+                            role="tab"
+                            aria-controls="nav-leds"
+                        >
+                            {{ $t('deviceadmin.Leds') }}
+                        </button>
                     </template>
                 </div>
             </nav>
             <div class="tab-content" id="nav-tabContent">
-                <div class="tab-pane fade show active" id="nav-pin" role="tabpanel" aria-labelledby="nav-pin-tab"
-                    tabindex="0">
+                <div
+                    class="tab-pane fade show active"
+                    id="nav-pin"
+                    role="tabpanel"
+                    aria-labelledby="nav-pin-tab"
+                    tabindex="0"
+                >
                     <div class="card">
                         <div class="card-body">
                             <div class="row mb-3">
                                 <label for="inputPinProfile" class="col-sm-2 col-form-label">{{
                                     $t('deviceadmin.SelectedProfile')
-                                    }}</label>
+                                }}</label>
                                 <div class="col-sm-10">
-                                    <select class="form-select" id="inputPinProfile"
-                                        v-model="deviceConfigList.curPin.name">
-                                        <option v-for="device in pinMappingList" :value="device.name"
-                                            :key="device.name">
-                                            {{ device.name === "Default" ? $t('deviceadmin.DefaultProfile') :
-                                            device.name }}
+                                    <select
+                                        class="form-select"
+                                        id="inputPinProfile"
+                                        v-model="deviceConfigList.curPin.name"
+                                    >
+                                        <option
+                                            v-for="device in pinMappingList"
+                                            :value="device.name"
+                                            :key="device.name"
+                                        >
+                                            {{
+                                                device.name === 'Default'
+                                                    ? $t('deviceadmin.DefaultProfile')
+                                                    : device.name
+                                            }}
                                         </option>
                                     </select>
                                 </div>
@@ -46,51 +85,74 @@
                             <div class="row mb-3">
                                 <div class="col-sm-2"></div>
                                 <div class="col-sm-10">
-                                    <div class="btn-group mb-2 me-2"
-                                        v-for="(doc, index) in pinMappingList.find(i => i.name === deviceConfigList.curPin.name)?.links"
-                                        :key="index">
+                                    <div
+                                        class="btn-group mb-2 me-2"
+                                        v-for="(doc, index) in pinMappingList.find(
+                                            (i) => i.name === deviceConfigList.curPin.name
+                                        )?.links"
+                                        :key="index"
+                                    >
                                         <a :href="doc.url" class="btn btn-primary" target="_blank">{{ doc.name }}</a>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="alert alert-danger mt-3" role="alert" v-html="$t('deviceadmin.ProfileHint')">
-                            </div>
+                            <div
+                                class="alert alert-danger mt-3"
+                                role="alert"
+                                v-html="$t('deviceadmin.ProfileHint')"
+                            ></div>
 
                             <PinInfo
-                                :selectedPinAssignment="pinMappingList.find(i => i.name === deviceConfigList.curPin.name)"
-                                :currentPinAssignment="deviceConfigList.curPin" />
+                                :selectedPinAssignment="
+                                    pinMappingList.find((i) => i.name === deviceConfigList.curPin.name)
+                                "
+                                :currentPinAssignment="deviceConfigList.curPin"
+                            />
                         </div>
                     </div>
                 </div>
 
                 <template v-if="deviceConfigList.display != undefined">
-                    <div class="tab-pane fade show" id="nav-display" role="tabpanel" aria-labelledby="nav-display-tab"
-                        tabindex="0">
+                    <div
+                        class="tab-pane fade show"
+                        id="nav-display"
+                        role="tabpanel"
+                        aria-labelledby="nav-display-tab"
+                        tabindex="0"
+                    >
                         <div class="card">
-                            <div class="card-header d-flex justify-content-between align-items-center" :class="{
-                                'text-bg-secondary': deviceConfigList.curPin.display.type == 0,
-                                'text-bg-primary': deviceConfigList.curPin.display.type > 0,
-                            }">
+                            <div
+                                class="card-header d-flex justify-content-between align-items-center"
+                                :class="{
+                                    'text-bg-secondary': deviceConfigList.curPin.display.type == 0,
+                                    'text-bg-primary': deviceConfigList.curPin.display.type > 0,
+                                }"
+                            >
                                 <div class="p-1 flex-grow-1">
                                     <div class="d-flex flex-wrap">
-                                        <div style="padding-right: 2em;">
-                                            {{ $t('deviceadmin.TypeDescription') }} {{
-                                            deviceConfigList.display.typedescription }}
+                                        <div style="padding-right: 2em">
+                                            {{ $t('deviceadmin.TypeDescription') }}
+                                            {{ deviceConfigList.display.typedescription }}
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
                             <div class="card-body">
+                                <InputElement
+                                    :label="$t('deviceadmin.PowerSafe')"
+                                    v-model="deviceConfigList.display.power_safe"
+                                    type="checkbox"
+                                    :tooltip="$t('deviceadmin.PowerSafeHint')"
+                                />
 
-                                <InputElement :label="$t('deviceadmin.PowerSafe')"
-                                    v-model="deviceConfigList.display.power_safe" type="checkbox"
-                                    :tooltip="$t('deviceadmin.PowerSafeHint')" />
-
-                                <InputElement :label="$t('deviceadmin.Screensaver')"
-                                    v-model="deviceConfigList.display.screensaver" type="checkbox"
-                                    :tooltip="$t('deviceadmin.ScreensaverHint')" />
+                                <InputElement
+                                    :label="$t('deviceadmin.Screensaver')"
+                                    v-model="deviceConfigList.display.screensaver"
+                                    type="checkbox"
+                                    :tooltip="$t('deviceadmin.ScreensaverHint')"
+                                />
 
                                 <div class="row mb-3">
                                     <label class="col-sm-2 col-form-label">
@@ -105,10 +167,15 @@
                                     </div>
                                 </div>
 
-                                <InputElement :label="$t('deviceadmin.DiagramDuration')"
-                                    v-model="deviceConfigList.display.diagramduration" type="number" min=600 max=86400
+                                <InputElement
+                                    :label="$t('deviceadmin.DiagramDuration')"
+                                    v-model="deviceConfigList.display.diagramduration"
+                                    type="number"
+                                    min="600"
+                                    max="86400"
                                     :tooltip="$t('deviceadmin.DiagramDurationHint')"
-                                    :postfix="$t('deviceadmin.Seconds')" />
+                                    :postfix="$t('deviceadmin.Seconds')"
+                                />
 
                                 <div class="row mb-3">
                                     <label class="col-sm-2 col-form-label">
@@ -116,8 +183,11 @@
                                     </label>
                                     <div class="col-sm-10">
                                         <select class="form-select" v-model="deviceConfigList.display.language">
-                                            <option v-for="language in displayLanguageList" :key="language.key"
-                                                :value="language.key">
+                                            <option
+                                                v-for="language in displayLanguageList"
+                                                :key="language.key"
+                                                :value="language.key"
+                                            >
                                                 {{ $t(`deviceadmin.` + language.value) }}
                                             </option>
                                         </select>
@@ -130,8 +200,11 @@
                                     </label>
                                     <div class="col-sm-10">
                                         <select class="form-select" v-model="deviceConfigList.display.rotation">
-                                            <option v-for="rotation in displayRotationList" :key="rotation.key"
-                                                :value="rotation.key">
+                                            <option
+                                                v-for="rotation in displayRotationList"
+                                                :key="rotation.key"
+                                                :value="rotation.key"
+                                            >
                                                 {{ $t(`deviceadmin.` + rotation.value) }}
                                             </option>
                                         </select>
@@ -141,41 +214,58 @@
                                 <div class="row mb-3">
                                     <label for="inputDisplayContrast" class="col-sm-2 col-form-label">{{
                                         $t('deviceadmin.Contrast', {
-                                            contrast: $n(deviceConfigList.display.contrast /
-                                                100,
-                                                'percent')
-                                        }) }}</label>
+                                            contrast: $n(deviceConfigList.display.contrast / 100, 'percent'),
+                                        })
+                                    }}</label>
                                     <div class="col-sm-10">
-                                        <input type="range" class="form-range" min="0" max="100"
-                                            id="inputDisplayContrast" v-model.number="deviceConfigList.display.contrast" />
+                                        <input
+                                            type="range"
+                                            class="form-range"
+                                            min="0"
+                                            max="100"
+                                            id="inputDisplayContrast"
+                                            v-model.number="deviceConfigList.display.contrast"
+                                        />
                                     </div>
                                 </div>
-
                             </div>
                         </div>
                     </div>
                 </template>
 
                 <template v-if="deviceConfigList.led != undefined">
-                    <div class="tab-pane fade show" id="nav-leds" role="tabpanel" aria-labelledby="nav-leds-tab"
-                        tabindex="0">
+                    <div
+                        class="tab-pane fade show"
+                        id="nav-leds"
+                        role="tabpanel"
+                        aria-labelledby="nav-leds-tab"
+                        tabindex="0"
+                    >
                         <div class="card">
                             <div class="card-body">
-                                <InputElement :label="$t('deviceadmin.EqualBrightness')"
-                                    v-model="equalBrightnessCheckVal" type="checkbox" />
+                                <InputElement
+                                    :label="$t('deviceadmin.EqualBrightness')"
+                                    v-model="equalBrightnessCheckVal"
+                                    type="checkbox"
+                                />
 
                                 <div class="row mb-3" v-for="(ledSetting, index) in deviceConfigList.led" :key="index">
                                     <label :for="getLedIdFromNumber(index)" class="col-sm-2 col-form-label">{{
                                         $t('deviceadmin.LedBrightness', {
                                             led: index,
-                                            brightness: $n(ledSetting.brightness / 100,
-                                                'percent')
+                                            brightness: $n(ledSetting.brightness / 100, 'percent'),
                                         })
-                                        }}</label>
+                                    }}</label>
                                     <div class="col-sm-10">
-                                        <input type="range" class="form-range" min="0" max="100"
-                                            :id="getLedIdFromNumber(index)" v-model.number="ledSetting.brightness"
-                                            @change="syncSliders" />
+                                        <input
+                                            type="range"
+                                            class="form-range"
+                                            min="0"
+                                            max="100"
+                                            :id="getLedIdFromNumber(index)"
+                                            v-model.number="ledSetting.brightness"
+                                            @change="syncSliders"
+                                        />
                                     </div>
                                 </div>
                             </div>
@@ -185,7 +275,6 @@
             </div>
 
             <FormFooter @reload="getDeviceConfig" />
-
         </form>
     </BasePage>
 </template>
@@ -234,8 +323,8 @@ export default defineComponent({
                 { key: 0, value: 'off' },
                 { key: 1, value: 'small' },
                 { key: 2, value: 'fullscreen' },
-            ]
-        }
+            ],
+        };
     },
     created() {
         this.getDeviceConfig();
@@ -246,19 +335,17 @@ export default defineComponent({
             if (!val) {
                 return;
             }
-            this.deviceConfigList.led.every(v => v.brightness = this.deviceConfigList.led[0].brightness);
-        }
+            this.deviceConfigList.led.every((v) => (v.brightness = this.deviceConfigList.led[0].brightness));
+        },
     },
     methods: {
         getPinMappingList() {
             this.pinMappingLoading = true;
             fetch('/api/config/get?file=pin_mapping.json', { headers: authHeader() })
                 .then((response) => handleResponse(response, this.$emitter, this.$router, true))
-                .then(
-                    (data) => {
-                        this.pinMappingList = data;
-                    }
-                )
+                .then((data) => {
+                    this.pinMappingList = data;
+                })
                 .catch((error) => {
                     if (error.status != 404) {
                         this.alertMessage = this.$t('deviceadmin.ParseError', { error: error.message });
@@ -268,8 +355,8 @@ export default defineComponent({
                     this.pinMappingList = Array<Device>();
                 })
                 .finally(() => {
-                    this.pinMappingList.sort((a, b) => (a.name < b.name) ? -1 : 1);
-                    this.pinMappingList.splice(0, 0, { "name": "Default" } as Device);
+                    this.pinMappingList.sort((a, b) => (a.name < b.name ? -1 : 1));
+                    this.pinMappingList.splice(0, 0, { name: 'Default' } as Device);
                     this.pinMappingLoading = false;
                 });
         },
@@ -277,15 +364,13 @@ export default defineComponent({
             this.dataLoading = true;
             fetch('/api/device/config', { headers: authHeader() })
                 .then((response) => handleResponse(response, this.$emitter, this.$router))
-                .then(
-                    (data) => {
-                        this.deviceConfigList = data;
-                        if (this.deviceConfigList.curPin.name === '') {
-                            this.deviceConfigList.curPin.name = 'Default';
-                        }
-                        this.dataLoading = false;
+                .then((data) => {
+                    this.deviceConfigList = data;
+                    if (this.deviceConfigList.curPin.name === '') {
+                        this.deviceConfigList.curPin.name = 'Default';
                     }
-                )
+                    this.dataLoading = false;
+                })
                 .then(() => {
                     if (this.deviceConfigList.led != null) {
                         this.equalBrightnessCheckVal = this.isEqualBrightness();
@@ -304,13 +389,11 @@ export default defineComponent({
                 body: formData,
             })
                 .then((response) => handleResponse(response, this.$emitter, this.$router))
-                .then(
-                    (response) => {
-                        this.alertMessage = this.$t('apiresponse.' + response.code, response.param);
-                        this.alertType = response.type;
-                        this.showAlert = true;
-                    }
-                );
+                .then((response) => {
+                    this.alertMessage = this.$t('apiresponse.' + response.code, response.param);
+                    this.alertType = response.type;
+                    this.showAlert = true;
+                });
         },
         getLedIdFromNumber(ledNo: number): string {
             return 'inputLED' + ledNo + 'Brightness';
@@ -319,7 +402,7 @@ export default defineComponent({
             return parseInt(id.replace('inputLED', '').replace('Brightness', ''));
         },
         isEqualBrightness(): boolean {
-            const allEqual = (arr: Led[]) => arr.every(v => v.brightness === arr[0].brightness);
+            const allEqual = (arr: Led[]) => arr.every((v) => v.brightness === arr[0].brightness);
             return allEqual(this.deviceConfigList.led);
         },
         syncSliders(event: Event) {
@@ -327,8 +410,8 @@ export default defineComponent({
                 return;
             }
             const srcId = this.getNumberFromLedId((event.target as Element).id);
-            this.deviceConfigList.led.every(v => v.brightness = this.deviceConfigList.led[srcId].brightness);
-        }
+            this.deviceConfigList.led.every((v) => (v.brightness = this.deviceConfigList.led[srcId].brightness));
+        },
     },
 });
 </script>

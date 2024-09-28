@@ -7,15 +7,21 @@
                         <tr>
                             <th>{{ $t('refusolinfo.Status') }}</th>
                             <td>
-                                <StatusBadge :status="refusolDataList.enabled" true_text="refusolinfo.Enabled"
-                                    false_text="refusolinfo.Disabled" />
+                                <StatusBadge
+                                    :status="refusolDataList.enabled"
+                                    true_text="refusolinfo.Enabled"
+                                    false_text="refusolinfo.Disabled"
+                                />
                             </td>
                         </tr>
                         <tr>
                             <th>{{ $t('refusolinfo.UpdatesOnly') }}</th>
                             <td>
-                                <StatusBadge :status="refusolDataList.updatesonly" true_text="refusolinfo.Enabled"
-                                    false_text="refusolinfo.Disabled" />
+                                <StatusBadge
+                                    :status="refusolDataList.updatesonly"
+                                    true_text="refusolinfo.Enabled"
+                                    false_text="refusolinfo.Disabled"
+                                />
                             </td>
                         </tr>
                         <tr>
@@ -33,8 +39,11 @@
                         <tr>
                             <th>{{ $t('refusolinfo.VerboseLogging') }}</th>
                             <td>
-                                <StatusBadge :status="refusolDataList.verbose_logging" true_text="refusolinfo.Enabled"
-                                    false_text="refusolinfo.Disabled" />
+                                <StatusBadge
+                                    :status="refusolDataList.verbose_logging"
+                                    true_text="refusolinfo.Enabled"
+                                    false_text="refusolinfo.Disabled"
+                                />
                             </td>
                         </tr>
                     </tbody>
@@ -56,7 +65,7 @@ export default defineComponent({
     components: {
         BasePage,
         CardElement,
-        StatusBadge
+        StatusBadge,
     },
     data() {
         return {
@@ -78,10 +87,10 @@ export default defineComponent({
                 });
         },
         getParity(value: number) {
-            if (value == 0) return "None";
-            else if (value == 1) return "Even";
-            else if (value == 2) return "Odd";
-            else return "undefined";
+            if (value == 0) return 'None';
+            else if (value == 1) return 'Even';
+            else if (value == 2) return 'Odd';
+            else return 'undefined';
         },
     },
 });

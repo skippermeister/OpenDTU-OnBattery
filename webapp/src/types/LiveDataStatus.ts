@@ -12,18 +12,18 @@ export interface ArrayValueObject {
 }
 
 export interface CellObject {
-    voltage: ValueObject[],
-    cellMinVoltage: ValueObject,
-    cellMaxVoltage: ValueObject,
-    cellDiffVoltage: ValueObject
+    voltage: ValueObject[];
+    cellMinVoltage: ValueObject;
+    cellMaxVoltage: ValueObject;
+    cellDiffVoltage: ValueObject;
 }
 
 export interface InverterStatistics {
-    name: ValueObject,
+    name: ValueObject;
     Power?: ValueObject;
     Voltage?: ValueObject;
     Current?: ValueObject;
-    "Power DC"?: ValueObject;
+    'Power DC'?: ValueObject;
     YieldDay?: ValueObject;
     YieldTotal?: ValueObject;
     Frequency?: ValueObject;
@@ -89,17 +89,17 @@ export interface Charger {
 }
 
 export interface Battery {
-  enabled: boolean;
-  soc?: ValueObject;
-  voltage?: ValueObject;
-  power?: ValueObject;
-  current?: ValueObject;
+    enabled: boolean;
+    soc?: ValueObject;
+    voltage?: ValueObject;
+    power?: ValueObject;
+    current?: ValueObject;
 }
 
 export interface PowerMeter {
-  enabled: boolean;
-  GridPower: ValueObject;
-  HousePower: ValueObject;
+    enabled: boolean;
+    GridPower: ValueObject;
+    HousePower: ValueObject;
 }
 
 export interface LiveData {

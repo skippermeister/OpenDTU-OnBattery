@@ -1,8 +1,14 @@
 <template>
     <div v-if="isAlertVisible" ref="element" class="alert" role="alert" :class="classes">
         <slot />
-        <button v-if="dismissible" type="button" class="btn-close" data-bs-dismiss="alert" :aria-label="dismissLabel"
-            @click="dismissClicked" />
+        <button
+            v-if="dismissible"
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="alert"
+            :aria-label="dismissLabel"
+            @click="dismissClicked"
+        />
     </div>
 </template>
 
@@ -24,7 +30,7 @@ export default defineComponent({
         show: { type: Boolean, default: false },
         variant: { type: String, default: 'info' },
     },
-    emits: ["dismissed", "dismiss-count-down", 'update:modelValue'],
+    emits: ['dismissed', 'dismiss-count-down', 'update:modelValue'],
     setup(props, { emit }) {
         const element = ref<HTMLElement>();
         const instance = ref<Alert>();

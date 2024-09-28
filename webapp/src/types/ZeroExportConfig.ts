@@ -1,10 +1,10 @@
 export interface ZeroExportInverterInfo {
     pos: number;
     name: string;
-//    poll_enable_day: boolean;
-//    poll_enable_night: boolean;
-//    command_enable_day: boolean;
-//    command_enable_night: boolean;
+    //    poll_enable_day: boolean;
+    //    poll_enable_night: boolean;
+    //    command_enable_day: boolean;
+    //    command_enable_night: boolean;
     type: string;
     selected: boolean;
 }

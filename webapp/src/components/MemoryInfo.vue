@@ -12,14 +12,26 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <FsInfo :name="$t('memoryinfo.Heap')" :total="systemStatus.heap_total"
-                        :used="systemStatus.heap_used" />
-                    <FsInfo :name="$t('memoryinfo.PsRam')" :total="systemStatus.psram_total"
-                        :used="systemStatus.psram_used" />
-                    <FsInfo :name="$t('memoryinfo.LittleFs')" :total="systemStatus.littlefs_total"
-                        :used="systemStatus.littlefs_used" />
-                    <FsInfo :name="$t('memoryinfo.Sketch')" :total="systemStatus.sketch_total"
-                        :used="systemStatus.sketch_used" />
+                    <FsInfo
+                        :name="$t('memoryinfo.Heap')"
+                        :total="systemStatus.heap_total"
+                        :used="systemStatus.heap_used"
+                    />
+                    <FsInfo
+                        :name="$t('memoryinfo.PsRam')"
+                        :total="systemStatus.psram_total"
+                        :used="systemStatus.psram_used"
+                    />
+                    <FsInfo
+                        :name="$t('memoryinfo.LittleFs')"
+                        :total="systemStatus.littlefs_total"
+                        :used="systemStatus.littlefs_used"
+                    />
+                    <FsInfo
+                        :name="$t('memoryinfo.Sketch')"
+                        :total="systemStatus.sketch_total"
+                        :used="systemStatus.sketch_used"
+                    />
                 </tbody>
             </table>
         </div>

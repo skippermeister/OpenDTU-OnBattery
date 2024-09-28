@@ -15,7 +15,7 @@ export interface PowerMeterSerialSdmConfig {
     polling_interval: number;
     baudrate: number;
     address: number;
-};
+}
 
 export interface PowerMeterHttpJsonValue {
     http_request: HttpRequestConfig;

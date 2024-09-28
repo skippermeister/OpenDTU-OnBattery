@@ -14,7 +14,8 @@
                     <template v-for="category in categories" :key="category">
                         <tr v-for="(prop, prop_idx) in properties(category)" :key="prop">
                             <td v-if="prop_idx == 0" :rowspan="properties(category).length">
-                                {{ capitalizeFirstLetter(category) }}</td>
+                                {{ capitalizeFirstLetter(category) }}
+                            </td>
                             <td :class="{ 'table-danger': !isEqual(category, prop) }">{{ prop }}</td>
                             <td>
                                 <template v-if="selectedPinAssignment && category in selectedPinAssignment">
@@ -61,7 +62,9 @@ export default defineComponent({
 
             let total: Array<string> = [];
             total = total.concat(curArray, selArray);
-            return Array.from(new Set(total)).filter(cat => cat != 'name' && cat != 'links').sort();
+            return Array.from(new Set(total))
+                .filter((cat) => cat != 'name' && cat != 'links')
+                .sort();
         },
     },
     methods: {

@@ -22,14 +22,14 @@ export interface MeanwellConfig {
 }
 
 export interface AcChargerConfig {
-  enabled: boolean;
-  verbose_logging: boolean;
-  updatesonly: boolean;
-  chargerType: string;
-  io_providername: string;
+    enabled: boolean;
+    verbose_logging: boolean;
+    updatesonly: boolean;
+    chargerType: string;
+    io_providername: string;
 
-  can_controller_frequency: number;
+    can_controller_frequency: number;
 
-  meanwell: MeanwellConfig;
-  huawei: HuaweiConfig;
+    meanwell: MeanwellConfig;
+    huawei: HuaweiConfig;
 }

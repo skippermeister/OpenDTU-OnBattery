@@ -2,16 +2,11 @@
     <div class="row">
         <div class="col">
             <div class="card">
-                <div class="card-header text-bg-success">{{ $t('ntpadmin.CurrentLocalTime') }} {{
-                    currentDateTime()
-                    }}
+                <div class="card-header text-bg-success">
+                    {{ $t('ntpadmin.CurrentLocalTime') }} {{ currentDateTime() }}
                 </div>
                 <div class="card-body">
-                    <GChart
-                            :type="chartType"
-                            :data="chartData"
-                            :options="chartOptions"
-                    ></GChart>
+                    <GChart :type="chartType" :data="chartData" :options="chartOptions"></GChart>
                 </div>
             </div>
         </div>
@@ -19,25 +14,25 @@
 </template>
 
 <script setup lang="ts">
-import {GChart} from 'vue-google-charts';
-import {type PropType, computed} from 'vue';
-import type {ArrayValueObject} from "@/types/LiveDataStatus";
-import type {GoogleChartWrapperChartType} from "vue-google-charts/dist/types";
-import {dateTimeFormats, Locales} from "@/locales";
+import { GChart } from 'vue-google-charts';
+import { type PropType, computed } from 'vue';
+import type { ArrayValueObject } from '@/types/LiveDataStatus';
+import type { GoogleChartWrapperChartType } from 'vue-google-charts/dist/types';
+import { dateTimeFormats, Locales } from '@/locales';
 
-import {useI18n} from "vue-i18n";
-const {t} = useI18n();
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 
 const translation = computed(() => {
     return {
-        YieldUnit: t("hourschart.YieldUnit"),
-    }
-})
+        YieldUnit: t('hourschart.YieldUnit'),
+    };
+});
 
 const theme = localStorage.getItem('theme');
 
 const props = defineProps({
-    data: {type: Object as PropType<ArrayValueObject>, required: true},
+    data: { type: Object as PropType<ArrayValueObject>, required: true },
 });
 
 const colorMappings: { [key: string]: { [key: string]: string } } = {
@@ -54,55 +49,54 @@ const colorMappings: { [key: string]: { [key: string]: string } } = {
 const chartType: GoogleChartWrapperChartType = 'ColumnChart';
 
 const chartData = computed(() => {
-    const data = [["Hour", "Power", {role: 'style'}]];
+    const data = [['Hour', 'Power', { role: 'style' }]];
     props.data?.values.forEach((value, index) => {
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
         data.push([index.toString(), value, '#75b798; opacity: 1']);
     });
 
-    return data
-})
+    return data;
+});
 
 const chartOptions = computed(() => {
     return {
         backgroundColor: backgroundColor(),
         fontColor: fontColor(),
-        legend: {position: 'none'},
+        legend: { position: 'none' },
         height: 300,
         titleTextStyle: {
-            color: backgroundColor()
+            color: backgroundColor(),
         },
         chartArea: {
-            backgroundColor: backgroundColor()
+            backgroundColor: backgroundColor(),
         },
         hAxis: {
             textStyle: {
-                color: fontColor()
+                color: fontColor(),
             },
             titleTextStyle: {
-                color: fontColor()
+                color: fontColor(),
             },
             viewWindow: {
-                min: 0
-            }
+                min: 0,
+            },
         },
         vAxis: {
             title: translation.value.YieldUnit,
             textStyle: {
-                color: fontColor()
+                color: fontColor(),
             },
             titleTextStyle: {
-                color: fontColor()
+                color: fontColor(),
             },
             viewWindow: {
-                min: 0
-            }
+                min: 0,
+            },
         },
-        showScale: false
+        showScale: false,
     };
 });
-
 
 function fontColor() {
     return getColor('font');
@@ -125,9 +119,6 @@ const dateTimeFormat = new Intl.DateTimeFormat(Locales.DE, dateTimeFormats![Loca
 function currentDateTime() {
     return dateTimeFormat.format(new Date());
 }
-
 </script>
 
-<style>
-
-</style>
+<style></style>

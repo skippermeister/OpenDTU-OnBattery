@@ -6,18 +6,32 @@
 
         <form @submit="savePasswordConfig">
             <CardElement :text="$t('securityadmin.AdminPassword')" textVariant="text-bg-primary">
-                <InputElement :label="$t('securityadmin.Password')" v-model="securityConfigList.password"
-                    type="password" maxlength="64" wide2_4 />
+                <InputElement
+                    :label="$t('securityadmin.Password')"
+                    v-model="securityConfigList.password"
+                    type="password"
+                    maxlength="64"
+                    wide2_4
+                />
 
-                <InputElement :label="$t('securityadmin.RepeatPassword')" v-model="passwordRepeat" type="password"
-                    maxlength="64" wide2_4 />
+                <InputElement
+                    :label="$t('securityadmin.RepeatPassword')"
+                    v-model="passwordRepeat"
+                    type="password"
+                    maxlength="64"
+                    wide2_4
+                />
 
                 <div class="alert alert-secondary" role="alert" v-html="$t('securityadmin.PasswordHint')"></div>
             </CardElement>
 
             <CardElement :text="$t('securityadmin.Permissions')" textVariant="text-bg-primary" add-space>
-                <InputElement :label="$t('securityadmin.ReadOnly')" v-model="securityConfigList.allow_readonly"
-                    type="checkbox" wide5_1 />
+                <InputElement
+                    :label="$t('securityadmin.ReadOnly')"
+                    v-model="securityConfigList.allow_readonly"
+                    type="checkbox"
+                    wide5_1
+                />
             </CardElement>
 
             <FormFooter @reload="getPasswordConfig" />
@@ -62,13 +76,11 @@ export default defineComponent({
             this.dataLoading = true;
             fetch('/api/security/config', { headers: authHeader() })
                 .then((response) => handleResponse(response, this.$emitter, this.$router))
-                .then(
-                    (data) => {
-                        this.securityConfigList = data;
-                        this.passwordRepeat = this.securityConfigList.password;
-                        this.dataLoading = false;
-                    }
-                );
+                .then((data) => {
+                    this.securityConfigList = data;
+                    this.passwordRepeat = this.securityConfigList.password;
+                    this.dataLoading = false;
+                });
         },
         savePasswordConfig(e: Event) {
             e.preventDefault();
@@ -89,13 +101,11 @@ export default defineComponent({
                 body: formData,
             })
                 .then((response) => handleResponse(response, this.$emitter, this.$router))
-                .then(
-                    (response) => {
-                        this.alertMessage = this.$t('apiresponse.' + response.code, response.param);
-                        this.alertType = response.type;
-                        this.showAlert = true;
-                    }
-                );
+                .then((response) => {
+                    this.alertMessage = this.$t('apiresponse.' + response.code, response.param);
+                    this.alertType = response.type;
+                    this.showAlert = true;
+                });
         },
     },
 });

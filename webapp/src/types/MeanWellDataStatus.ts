@@ -1,10 +1,10 @@
 import type { ValueObject } from '@/types/LiveDataStatus';
 
-// MeanWell 
+// MeanWell
 export interface MeanWell {
     data_age: 0;
     manufacturerModelName: string;
-    automatic: boolean,
+    automatic: boolean;
     inputValues: (ValueObject | string)[];
     operation: boolean;
     cuve: boolean;

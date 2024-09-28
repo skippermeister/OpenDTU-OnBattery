@@ -6,31 +6,60 @@
 
         <form @submit="saveNtpConfig">
             <CardElement :text="$t('ntpadmin.NtpConfiguration')" textVariant="text-bg-primary">
-                <InputElement :label="$t('ntpadmin.TimeServer')" v-model="ntpConfigList.ntp_server" type="text"
-                    maxlength="32" wide2_4 :tooltip="$t('ntpadmin.TimeServerHint')" />
+                <InputElement
+                    :label="$t('ntpadmin.TimeServer')"
+                    v-model="ntpConfigList.ntp_server"
+                    type="text"
+                    maxlength="32"
+                    wide2_4
+                    :tooltip="$t('ntpadmin.TimeServerHint')"
+                />
 
                 <div class="row mb-3">
                     <label for="inputTimezone" class="col-sm-2 col-form-label">{{ $t('ntpadmin.Timezone') }}</label>
                     <div class="col-sm-4">
                         <select class="form-select" v-model="timezoneSelect">
-                            <option v-for="(config, name) in timezoneList" :key="name + '---' + config"
-                                :value="name + '---' + config">
+                            <option
+                                v-for="(config, name) in timezoneList"
+                                :key="name + '---' + config"
+                                :value="name + '---' + config"
+                            >
                                 {{ name }}
                             </option>
                         </select>
                     </div>
                 </div>
 
-                <InputElement :label="$t('ntpadmin.TimezoneConfig')" v-model="ntpConfigList.ntp_timezone" type="text"
-                    maxlength="32" disabled wide2_4 />
+                <InputElement
+                    :label="$t('ntpadmin.TimezoneConfig')"
+                    v-model="ntpConfigList.ntp_timezone"
+                    type="text"
+                    maxlength="32"
+                    disabled
+                    wide2_4
+                />
             </CardElement>
 
             <CardElement :text="$t('ntpadmin.LocationConfiguration')" textVariant="text-bg-primary" add-space>
-                <InputElement :label="$t('ntpadmin.Latitude')" v-model="ntpConfigList.latitude" type="number" min="-90"
-                    max="90" step="any" wide2_3 />
+                <InputElement
+                    :label="$t('ntpadmin.Latitude')"
+                    v-model="ntpConfigList.latitude"
+                    type="number"
+                    min="-90"
+                    max="90"
+                    step="any"
+                    wide2_3
+                />
 
-                <InputElement :label="$t('ntpadmin.Longitude')" v-model="ntpConfigList.longitude" type="number"
-                    min="-180" max="180" step="any" wide2_3 />
+                <InputElement
+                    :label="$t('ntpadmin.Longitude')"
+                    v-model="ntpConfigList.longitude"
+                    type="number"
+                    min="-180"
+                    max="180"
+                    step="any"
+                    wide2_3
+                />
 
                 <div class="row mb-3">
                     <label class="col-sm-2 col-form-label">
@@ -45,12 +74,26 @@
                         </select>
                     </div>
                 </div>
-                <InputElement v-show="ntpConfigList.sunsettype == 4" :label="$t('ntpadmin.Sunrise')"
-                    v-model="ntpConfigList.sunrise" type="number" min="60" max="110" wide3_2
-                    :postfix="$t('ntpadmin.Angle')" />
-                <InputElement v-show="ntpConfigList.sunsettype == 4" :label="$t('ntpadmin.Sunset')"
-                    v-model="ntpConfigList.sunset" type="number" min="60" max="110" wide3_2
-                    :postfix="$t('ntpadmin.Angle')" />
+                <InputElement
+                    v-show="ntpConfigList.sunsettype == 4"
+                    :label="$t('ntpadmin.Sunrise')"
+                    v-model="ntpConfigList.sunrise"
+                    type="number"
+                    min="60"
+                    max="110"
+                    wide3_2
+                    :postfix="$t('ntpadmin.Angle')"
+                />
+                <InputElement
+                    v-show="ntpConfigList.sunsettype == 4"
+                    :label="$t('ntpadmin.Sunset')"
+                    v-model="ntpConfigList.sunset"
+                    type="number"
+                    min="60"
+                    max="110"
+                    wide3_2
+                    :postfix="$t('ntpadmin.Angle')"
+                />
             </CardElement>
 
             <FormFooter @reload="getNtpConfig" />
@@ -145,29 +188,21 @@ export default defineComponent({
             this.dataLoading = true;
             fetch('/api/ntp/config', { headers: authHeader() })
                 .then((response) => handleResponse(response, this.$emitter, this.$router))
-                .then(
-                    (data) => {
-                        this.ntpConfigList = data;
-                        this.timezoneSelect =
-                            this.ntpConfigList.ntp_timezone_descr +
-                            '---' +
-                            this.ntpConfigList.ntp_timezone;
-                        this.dataLoading = false;
-                    }
-                );
+                .then((data) => {
+                    this.ntpConfigList = data;
+                    this.timezoneSelect =
+                        this.ntpConfigList.ntp_timezone_descr + '---' + this.ntpConfigList.ntp_timezone;
+                    this.dataLoading = false;
+                });
         },
         getCurrentTime() {
             this.dataLoading = true;
             fetch('/api/ntp/time', { headers: authHeader() })
                 .then((response) => handleResponse(response, this.$emitter, this.$router))
-                .then(
-                    (data) => {
-                        this.mcuTime = new Date(
-                            data.year, data.month - 1, data.day,
-                            data.hour, data.minute, data.second);
-                        this.dataLoading = false;
-                    }
-                );
+                .then((data) => {
+                    this.mcuTime = new Date(data.year, data.month - 1, data.day, data.hour, data.minute, data.second);
+                    this.dataLoading = false;
+                });
         },
         setCurrentTime() {
             const formData = new FormData();
@@ -188,13 +223,11 @@ export default defineComponent({
                 body: formData,
             })
                 .then((response) => handleResponse(response, this.$emitter, this.$router))
-                .then(
-                    (response) => {
-                        this.alertMessage = this.$t('apiresponse.' + response.code, response.param);
-                        this.alertType = response.type;
-                        this.showAlert = true;
-                    }
-                )
+                .then((response) => {
+                    this.alertMessage = this.$t('apiresponse.' + response.code, response.param);
+                    this.alertType = response.type;
+                    this.showAlert = true;
+                })
                 .then(() => {
                     this.getCurrentTime();
                 });
@@ -211,13 +244,11 @@ export default defineComponent({
                 body: formData,
             })
                 .then((response) => handleResponse(response, this.$emitter, this.$router))
-                .then(
-                    (response) => {
-                        this.alertMessage = this.$t('apiresponse.' + response.code, response.param);
-                        this.alertType = response.type;
-                        this.showAlert = true;
-                    }
-                );
+                .then((response) => {
+                    this.alertMessage = this.$t('apiresponse.' + response.code, response.param);
+                    this.alertType = response.type;
+                    this.showAlert = true;
+                });
         },
     },
 });

@@ -74,7 +74,7 @@ export default defineComponent({
                 this.formatHint = this.$t('inputserial.format_unknown');
                 this.formatShow = 'danger';
             }
-        }
+        },
     },
     methods: {
         checkHerfChecksum(sn: string) {

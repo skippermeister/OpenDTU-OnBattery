@@ -5,16 +5,24 @@
                 <div class="col-sm-11">
                     <h1>
                         {{ title }}
-                        <span v-if="showWebSocket" :class="{
-                            'onlineMarker': isWebsocketConnected,
-                            'offlineMarker': !isWebsocketConnected,
-                        }">
+                        <span
+                            v-if="showWebSocket"
+                            :class="{
+                                onlineMarker: isWebsocketConnected,
+                                offlineMarker: !isWebsocketConnected,
+                            }"
+                        >
                         </span>
                     </h1>
                 </div>
                 <div class="col-sm-1" v-if="showReload">
-                    <button type="button" class="float-end btn btn-outline-primary" @click="$emit('reload')" v-tooltip
-                        :title="$t('base.Reload')">
+                    <button
+                        type="button"
+                        class="float-end btn btn-outline-primary"
+                        @click="$emit('reload')"
+                        v-tooltip
+                        :title="$t('base.Reload')"
+                    >
                         <BIconArrowClockwise />
                     </button>
                 </div>
@@ -59,7 +67,7 @@ export default defineComponent({
             instructionsRefreshing: this.$t('base.Refreshing'),
             onRefresh: () => {
                 this.$emit('reload');
-            }
+            },
         });
     },
     unmounted() {

@@ -28,8 +28,11 @@
                         <tr>
                             <th>{{ $t('ntpinfo.Status') }}</th>
                             <td>
-                                <StatusBadge :status="ntpDataList.ntp_status" true_text="ntpinfo.Synced"
-                                    false_text="ntpinfo.NotSynced" />
+                                <StatusBadge
+                                    :status="ntpDataList.ntp_status"
+                                    true_text="ntpinfo.Synced"
+                                    false_text="ntpinfo.NotSynced"
+                                />
                             </td>
                         </tr>
                         <tr>
@@ -50,9 +53,13 @@
                         <tr>
                             <th>{{ $t('ntpinfo.Mode') }}</th>
                             <td>
-                                <StatusBadge :status="ntpDataList.sun_isDayPeriod" true_text="ntpinfo.Day"
-                                    true_class="text-bg-warning" false_text="ntpinfo.Night"
-                                    false_class="text-bg-dark" />
+                                <StatusBadge
+                                    :status="ntpDataList.sun_isDayPeriod"
+                                    true_text="ntpinfo.Day"
+                                    true_class="text-bg-warning"
+                                    false_text="ntpinfo.Night"
+                                    false_class="text-bg-dark"
+                                />
                             </td>
                         </tr>
                     </tbody>

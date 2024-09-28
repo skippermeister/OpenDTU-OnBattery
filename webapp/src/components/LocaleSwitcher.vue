@@ -18,7 +18,7 @@ export default defineComponent({
         },
         getLocaleName(locale: string): string {
             return LOCALES.find((i) => i.value === locale)?.caption || '';
-        }
+        },
     },
     mounted() {
         if (localStorage.getItem('locale')) {

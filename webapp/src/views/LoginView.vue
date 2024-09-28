@@ -8,17 +8,30 @@
             <form @submit.prevent="handleSubmit">
                 <div class="form-group">
                     <label for="username">{{ $t('login.Username') }}</label>
-                    <input type="text" v-model="username" name="username" class="form-control"
-                        :class="{ 'is-invalid': submitted && !username }" @keydown.space.prevent />
-                    <div v-show="submitted && !username" class="invalid-feedback">{{ $t('login.UsernameRequired') }}
+                    <input
+                        type="text"
+                        v-model="username"
+                        name="username"
+                        class="form-control"
+                        :class="{ 'is-invalid': submitted && !username }"
+                        @keydown.space.prevent
+                    />
+                    <div v-show="submitted && !username" class="invalid-feedback">
+                        {{ $t('login.UsernameRequired') }}
                     </div>
                 </div>
                 <div class="form-group">
                     <label htmlFor="password">{{ $t('login.Password') }}</label>
-                    <input type="password" v-model="password" name="password" class="form-control"
-                        :class="{ 'is-invalid': submitted && !password }" />
+                    <input
+                        type="password"
+                        v-model="password"
+                        name="password"
+                        class="form-control"
+                        :class="{ 'is-invalid': submitted && !password }"
+                    />
                     <div v-show="submitted && !password" class="invalid-feedback">
-                        {{ $t('login.PasswordRequired') }}</div>
+                        {{ $t('login.PasswordRequired') }}
+                    </div>
                 </div>
                 <div class="form-group">
                     <button class="btn btn-primary" :disabled="dataLoading">{{ $t('login.LoginButton') }}</button>
@@ -69,21 +82,20 @@ export default defineComponent({
             }
 
             this.dataLoading = true;
-            login(username, password)
-                .then(
-                    () => {
-                        this.$emitter.emit('logged-in');
-                        router.push(this.returnUrl);
-                    },
-                    error => {
-                        this.$emitter.emit('logged-out');
-                        this.alertMessage = error;
-                        this.alertType = 'danger';
-                        this.showAlert = true;
-                        this.dataLoading = false;
-                    }
-                )
-        }
-    }
+            login(username, password).then(
+                () => {
+                    this.$emitter.emit('logged-in');
+                    router.push(this.returnUrl);
+                },
+                (error) => {
+                    this.$emitter.emit('logged-out');
+                    this.alertMessage = error;
+                    this.alertType = 'danger';
+                    this.showAlert = true;
+                    this.dataLoading = false;
+                }
+            );
+        },
+    },
 });
 </script>

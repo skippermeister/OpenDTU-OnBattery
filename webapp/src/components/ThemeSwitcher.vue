@@ -1,28 +1,46 @@
 <template>
     <li class="nav-item dropdown">
-        <button class="btn btn-link nav-link py-2 px-0 px-lg-2 dropdown-toggle d-flex align-items-center" id="bd-theme"
-            type="button" aria-expanded="false" data-bs-toggle="dropdown" data-bs-display="static"
-            aria-label="Toggle theme (auto)">
+        <button
+            class="btn btn-link nav-link py-2 px-0 px-lg-2 dropdown-toggle d-flex align-items-center"
+            id="bd-theme"
+            type="button"
+            aria-expanded="false"
+            data-bs-toggle="dropdown"
+            data-bs-display="static"
+            aria-label="Toggle theme (auto)"
+        >
             <BIconCircleHalf class="bi my-1 theme-icon-active" />
         </button>
         <ul class="dropdown-menu dropdown-menu-end">
             <li>
-                <button type="button" class="dropdown-item d-flex align-items-center" data-bs-theme-value="light"
-                    aria-pressed="false">
+                <button
+                    type="button"
+                    class="dropdown-item d-flex align-items-center"
+                    data-bs-theme-value="light"
+                    aria-pressed="false"
+                >
                     <BIconSunFill class="bi me-2 opacity-50 theme-icon" />
                     {{ $t('localeswitcher.Light') }}
                 </button>
             </li>
             <li>
-                <button type="button" class="dropdown-item d-flex align-items-center" data-bs-theme-value="dark"
-                    aria-pressed="false">
+                <button
+                    type="button"
+                    class="dropdown-item d-flex align-items-center"
+                    data-bs-theme-value="dark"
+                    aria-pressed="false"
+                >
                     <BIconMoonStarsFill class="bi me-2 opacity-50 theme-icon" />
                     {{ $t('localeswitcher.Dark') }}
                 </button>
             </li>
             <li>
-                <button type="button" class="dropdown-item d-flex align-items-center active" data-bs-theme-value="auto"
-                    aria-pressed="true">
+                <button
+                    type="button"
+                    class="dropdown-item d-flex align-items-center active"
+                    data-bs-theme-value="auto"
+                    aria-pressed="true"
+                >
                     <BIconCircleHalf class="bi me-2 opacity-50 theme-icon" />
                     {{ $t('localeswitcher.Auto') }}
                 </button>
@@ -66,9 +84,9 @@ export default defineComponent({
             const btnToActive = document.querySelector(`[data-bs-theme-value="${theme}"]`);
             const svgOfActiveBtn = btnToActive?.querySelector('.theme-icon');
 
-            document.querySelectorAll('[data-bs-theme-value]').forEach(element => {
+            document.querySelectorAll('[data-bs-theme-value]').forEach((element) => {
                 element.classList.remove('active');
-            })
+            });
 
             btnToActive?.classList.add('active');
 
@@ -88,7 +106,7 @@ export default defineComponent({
             }
         });
 
-        document.querySelectorAll('[data-bs-theme-value]').forEach(toggle => {
+        document.querySelectorAll('[data-bs-theme-value]').forEach((toggle) => {
             toggle.addEventListener('click', () => {
                 const theme = toggle.getAttribute('data-bs-theme-value') || 'auto';
                 localStorage.setItem('theme', theme);

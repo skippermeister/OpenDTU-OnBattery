@@ -6,18 +6,32 @@
 
         <form @submit="savePowerMeterConfig">
             <CardElement :text="$t('powermeteradmin.PowerMeterConfiguration')" textVariant="text-bg-primary">
-                <InputElement :label="$t('powermeteradmin.PowerMeterEnable')" v-model="powerMeterConfigList.enabled"
-                    type="checkbox" wide4_2 />
+                <InputElement
+                    :label="$t('powermeteradmin.PowerMeterEnable')"
+                    v-model="powerMeterConfigList.enabled"
+                    type="checkbox"
+                    wide4_2
+                />
 
-                <InputElement v-show="powerMeterConfigList.enabled" :label="$t('powermeteradmin.VerboseLogging')"
-                    v-model="powerMeterConfigList.verbose_logging" type="checkbox" wide4_2 />
+                <InputElement
+                    v-show="powerMeterConfigList.enabled"
+                    :label="$t('powermeteradmin.VerboseLogging')"
+                    v-model="powerMeterConfigList.verbose_logging"
+                    type="checkbox"
+                    wide4_2
+                />
 
-                <InputElement :label="$t('powermeteradmin.UpdatesOnly')" v-model="powerMeterConfigList.updatesonly"
-                    type="checkbox" wide4_2 />
+                <InputElement
+                    :label="$t('powermeteradmin.UpdatesOnly')"
+                    v-model="powerMeterConfigList.updatesonly"
+                    type="checkbox"
+                    wide4_2
+                />
 
                 <div class="row mb-3" v-show="powerMeterConfigList.enabled">
                     <label for="inputPowerMeterSource" class="col-sm-4 col-form-label">{{
-                        $t('powermeteradmin.PowerMeterSource') }}</label>
+                        $t('powermeteradmin.PowerMeterSource')
+                    }}</label>
                     <div class="col-sm-4">
                         <select id="inputPowerMeterSource" class="form-select" v-model="powerMeterConfigList.source">
                             <option v-for="source in powerMeterSourceList" :key="source.key" :value="source.key">
@@ -34,11 +48,19 @@
                         <h2>{{ $t('powermeteradmin.jsonPathExamplesHeading') }}:</h2>
                         {{ $t('powermeteradmin.jsonPathExamplesExplanation') }}
                         <ul>
-                            <li><code>power/total/watts</code> &mdash;
-                                <code>{ "power": { "phase1": { "factor": 0.98, "watts": 42 }, "total": { "watts": 123.4 } } }</code>
+                            <li>
+                                <code>power/total/watts</code> &mdash;
+                                <code
+                                    >{ "power": { "phase1": { "factor": 0.98, "watts": 42 }, "total": { "watts": 123.4 }
+                                    } }</code
+                                >
                             </li>
-                            <li><code>data/[1]/power</code> &mdash;
-                                <code>{ "data": [ { "factor": 0.98, "power": 42 }, { "factor": 1.0, "power": 123.4 } ] } }</code>
+                            <li>
+                                <code>data/[1]/power</code> &mdash;
+                                <code
+                                    >{ "data": [ { "factor": 0.98, "power": 42 }, { "factor": 1.0, "power": 123.4 } ] }
+                                    }</code
+                                >
                             </li>
                             <li><code>total</code> &mdash; <code>{ "othervalue": 66, "total": 123.4 }</code></li>
                         </ul>
@@ -47,15 +69,29 @@
 
                 <!-- yarn linter wants us to not combine v-if with v-for, so we need to wrap the CardElements //-->
                 <div v-if="powerMeterConfigList.source === 0">
-                    <CardElement v-for="(mqtt, index) in powerMeterConfigList.mqtt.values" v-bind:key="index"
-                        :text="$t('powermeteradmin.MqttValue', { valueNumber: index + 1 })" textVariant="text-bg-primary"
-                        add-space>
+                    <CardElement
+                        v-for="(mqtt, index) in powerMeterConfigList.mqtt.values"
+                        v-bind:key="index"
+                        :text="$t('powermeteradmin.MqttValue', { valueNumber: index + 1 })"
+                        textVariant="text-bg-primary"
+                        add-space
+                    >
+                        <InputElement
+                            :label="$t('powermeteradmin.MqttTopic')"
+                            v-model="mqtt.topic"
+                            type="text"
+                            maxlength="256"
+                            wide3_4
+                        />
 
-                        <InputElement :label="$t('powermeteradmin.MqttTopic')" v-model="mqtt.topic" type="text"
-                            maxlength="256" wide3_4 />
-
-                        <InputElement :label="$t('powermeteradmin.mqttJsonPath')" v-model="mqtt.json_path" type="text"
-                            maxlength="256" :tooltip="$t('powermeteradmin.valueJsonPathDescription')" wide3_4 />
+                        <InputElement
+                            :label="$t('powermeteradmin.mqttJsonPath')"
+                            v-model="mqtt.json_path"
+                            type="text"
+                            maxlength="256"
+                            :tooltip="$t('powermeteradmin.valueJsonPathDescription')"
+                            wide3_4
+                        />
 
                         <div class="row mb-3">
                             <label for="mqtt_power_unit" class="col-sm-3 col-form-label">
@@ -70,25 +106,42 @@
                             </div>
                         </div>
 
-                        <InputElement :label="$t('powermeteradmin.valueSignInverted')" v-model="mqtt.sign_inverted"
-                            :tooltip="$t('powermeteradmin.valueSignInvertedHint')" type="checkbox" wide3_1 />
+                        <InputElement
+                            :label="$t('powermeteradmin.valueSignInverted')"
+                            v-model="mqtt.sign_inverted"
+                            :tooltip="$t('powermeteradmin.valueSignInvertedHint')"
+                            type="checkbox"
+                            wide3_1
+                        />
                     </CardElement>
                 </div>
 
-                <CardElement v-if="(powerMeterConfigList.source === 1 || powerMeterConfigList.source === 2)"
-                    :text="$t('powermeteradmin.SDM')" textVariant="text-bg-primary" add-space>
-
-                    <InputElement :label="$t('powermeteradmin.PollInterval')"
-                        v-model="powerMeterConfigList.serial_sdm.polling_interval" type="number" min=1 max=15
-                        :postfix="$t('powermeteradmin.seconds')" wide3_2 />
+                <CardElement
+                    v-if="powerMeterConfigList.source === 1 || powerMeterConfigList.source === 2"
+                    :text="$t('powermeteradmin.SDM')"
+                    textVariant="text-bg-primary"
+                    add-space
+                >
+                    <InputElement
+                        :label="$t('powermeteradmin.PollInterval')"
+                        v-model="powerMeterConfigList.serial_sdm.polling_interval"
+                        type="number"
+                        min="1"
+                        max="15"
+                        :postfix="$t('powermeteradmin.seconds')"
+                        wide3_2
+                    />
 
                     <div class="row mb-3">
                         <label for="sdmbaudrate" class="col-sm-3 col-form-label">
                             {{ $t('powermeteradmin.sdmbaudrate') }}
                         </label>
                         <div class="col-sm-2">
-                            <select id="sdmbaudrate" class="form-select"
-                                v-model="powerMeterConfigList.serial_sdm.baudrate">
+                            <select
+                                id="sdmbaudrate"
+                                class="form-select"
+                                v-model="powerMeterConfigList.serial_sdm.baudrate"
+                            >
                                 <option v-for="u in baudrateList" :key="u.key" :value="u.key">
                                     {{ u.value }}
                                 </option>
@@ -96,8 +149,13 @@
                         </div>
                     </div>
 
-                    <InputElement :label="$t('powermeteradmin.sdmaddress')"
-                        v-model="powerMeterConfigList.serial_sdm.address" type="number" placeholder="1" wide3_1 />
+                    <InputElement
+                        :label="$t('powermeteradmin.sdmaddress')"
+                        v-model="powerMeterConfigList.serial_sdm.address"
+                        type="number"
+                        placeholder="1"
+                        wide3_1
+                    />
                 </CardElement>
 
                 <div v-if="powerMeterConfigList.source === 3">
@@ -112,28 +170,53 @@
                     </div>
 
                     <CardElement :text="$t('powermeteradmin.HTTP')" textVariant="text-bg-primary" add-space>
-                        <InputElement :label="$t('powermeteradmin.httpIndividualRequests')"
-                            v-model="powerMeterConfigList.http_json.individual_requests" type="checkbox" wide3_1 />
+                        <InputElement
+                            :label="$t('powermeteradmin.httpIndividualRequests')"
+                            v-model="powerMeterConfigList.http_json.individual_requests"
+                            type="checkbox"
+                            wide3_1
+                        />
 
-                        <InputElement :label="$t('powermeteradmin.PollInterval')"
-                            v-model="powerMeterConfigList.http_json.polling_interval" type="number" min=1 max=15
-                            :postfix="$t('powermeteradmin.seconds')" wide3_2 />
+                        <InputElement
+                            :label="$t('powermeteradmin.PollInterval')"
+                            v-model="powerMeterConfigList.http_json.polling_interval"
+                            type="number"
+                            min="1"
+                            max="15"
+                            :postfix="$t('powermeteradmin.seconds')"
+                            wide3_2
+                        />
                     </CardElement>
 
-                    <CardElement v-for="(httpJson, index) in powerMeterConfigList.http_json.values" :key="index"
+                    <CardElement
+                        v-for="(httpJson, index) in powerMeterConfigList.http_json.values"
+                        :key="index"
                         :text="$t('powermeteradmin.httpValue', { valueNumber: index + 1 })"
-                        textVariant="text-bg-primary" add-space>
-                        <InputElement v-if="index > 0" :label="$t('powermeteradmin.httpEnabled')"
-                            v-model="httpJson.enabled" type="checkbox" wide3_1 />
+                        textVariant="text-bg-primary"
+                        add-space
+                    >
+                        <InputElement
+                            v-if="index > 0"
+                            :label="$t('powermeteradmin.httpEnabled')"
+                            v-model="httpJson.enabled"
+                            type="checkbox"
+                            wide3_1
+                        />
 
                         <div v-if="httpJson.enabled || index == 0">
+                            <HttpRequestSettings
+                                v-model="httpJson.http_request"
+                                v-if="index == 0 || powerMeterConfigList.http_json.individual_requests"
+                            />
 
-                            <HttpRequestSettings v-model="httpJson.http_request"
-                                v-if="index == 0 || powerMeterConfigList.http_json.individual_requests" />
-
-                            <InputElement :label="$t('powermeteradmin.valueJsonPath')" v-model="httpJson.json_path"
-                                type="text" maxlength="256" :tooltip="$t('powermeteradmin.valueJsonPathDescription')"
-                                wide3_6 />
+                            <InputElement
+                                :label="$t('powermeteradmin.valueJsonPath')"
+                                v-model="httpJson.json_path"
+                                type="text"
+                                maxlength="256"
+                                :tooltip="$t('powermeteradmin.valueJsonPathDescription')"
+                                wide3_6
+                            />
 
                             <div class="row mb-3">
                                 <label for="power_unit" class="col-sm-3 col-form-label">
@@ -148,23 +231,32 @@
                                 </div>
                             </div>
 
-                            <InputElement :label="$t('powermeteradmin.valueSignInverted')"
-                                v-model="httpJson.sign_inverted" :tooltip="$t('powermeteradmin.valueSignInvertedHint')"
-                                type="checkbox" wide3_1 />
+                            <InputElement
+                                :label="$t('powermeteradmin.valueSignInverted')"
+                                v-model="httpJson.sign_inverted"
+                                :tooltip="$t('powermeteradmin.valueSignInvertedHint')"
+                                type="checkbox"
+                                wide3_1
+                            />
                         </div>
                     </CardElement>
 
-                    <CardElement :text="$t('powermeteradmin.testHttpJsonHeader')" textVariant="text-bg-primary"
-                        add-space>
-
+                    <CardElement
+                        :text="$t('powermeteradmin.testHttpJsonHeader')"
+                        textVariant="text-bg-primary"
+                        add-space
+                    >
                         <div class="text-center mt-3 mb-3">
                             <button type="button" class="btn btn-primary" @click="testHttpJsonRequest()">
                                 {{ $t('powermeteradmin.testHttpJsonRequest') }}
                             </button>
                         </div>
 
-                        <BootstrapAlert v-model="testHttpJsonRequestAlert.show" dismissible
-                            :variant="testHttpJsonRequestAlert.type">
+                        <BootstrapAlert
+                            v-model="testHttpJsonRequestAlert.show"
+                            dismissible
+                            :variant="testHttpJsonRequestAlert.type"
+                        >
                             {{ testHttpJsonRequestAlert.message }}
                         </BootstrapAlert>
                     </CardElement>
@@ -172,24 +264,35 @@
 
                 <div v-if="powerMeterConfigList.source === 6">
                     <CardElement :text="$t('powermeteradmin.HTTP_SML')" textVariant="text-bg-primary" add-space>
-                        <InputElement :label="$t('powermeteradmin.PollInterval')"
-                            v-model="powerMeterConfigList.http_sml.polling_interval" type="number" min=1 max=15
-                            :postfix="$t('powermeteradmin.seconds')" wide3_2 />
+                        <InputElement
+                            :label="$t('powermeteradmin.PollInterval')"
+                            v-model="powerMeterConfigList.http_sml.polling_interval"
+                            type="number"
+                            min="1"
+                            max="15"
+                            :postfix="$t('powermeteradmin.seconds')"
+                            wide3_2
+                        />
 
                         <HttpRequestSettings v-model="powerMeterConfigList.http_sml.http_request" />
                     </CardElement>
 
-                    <CardElement :text="$t('powermeteradmin.testHttpSmlHeader')" textVariant="text-bg-primary"
-                        add-space>
-
+                    <CardElement
+                        :text="$t('powermeteradmin.testHttpSmlHeader')"
+                        textVariant="text-bg-primary"
+                        add-space
+                    >
                         <div class="text-center mt-3 mb-3">
                             <button type="button" class="btn btn-primary" @click="testHttpSmlRequest()">
                                 {{ $t('powermeteradmin.testHttpSmlRequest') }}
                             </button>
                         </div>
 
-                        <BootstrapAlert v-model="testHttpSmlRequestAlert.show" dismissible
-                            :variant="testHttpSmlRequestAlert.type">
+                        <BootstrapAlert
+                            v-model="testHttpSmlRequestAlert.show"
+                            dismissible
+                            :variant="testHttpSmlRequestAlert.type"
+                        >
                             {{ testHttpSmlRequestAlert.message }}
                         </BootstrapAlert>
                     </CardElement>
@@ -197,7 +300,6 @@
             </div>
 
             <FormFooter @reload="getPowerMeterConfig" />
-
         </form>
     </BasePage>
 </template>
@@ -220,7 +322,7 @@ export default defineComponent({
         CardElement,
         FormFooter,
         HttpRequestSettings,
-        InputElement
+        InputElement,
     },
     data() {
         return {
@@ -238,7 +340,7 @@ export default defineComponent({
             unitTypeList: [
                 { key: 1, value: 'mW' },
                 { key: 0, value: 'W' },
-                { key: 2, value: 'kW' }
+                { key: 2, value: 'kW' },
             ],
             baudrateList: [
                 { key: 300, value: '300' },
@@ -248,13 +350,21 @@ export default defineComponent({
                 { key: 4800, value: '4800' },
                 { key: 9600, value: '9600' },
                 { key: 19200, value: '19200' },
-                { key: 38400, value: '38400' }
+                { key: 38400, value: '38400' },
             ],
             alertMessage: '',
             alertType: 'info',
             showAlert: false,
-            testHttpJsonRequestAlert: { message: '', type: '', show: false } as { message: string; type: string; show: boolean; },
-            testHttpSmlRequestAlert: { message: '', type: '', show: false } as { message: string; type: string; show: boolean; }
+            testHttpJsonRequestAlert: { message: '', type: '', show: false } as {
+                message: string;
+                type: string;
+                show: boolean;
+            },
+            testHttpSmlRequestAlert: { message: '', type: '', show: false } as {
+                message: string;
+                type: string;
+                show: boolean;
+            },
         };
     },
     created() {
@@ -283,14 +393,12 @@ export default defineComponent({
                 body: formData,
             })
                 .then((response) => handleResponse(response, this.$emitter, this.$router))
-                .then(
-                    (response) => {
-                        this.alertMessage = response.message;
-                        this.alertType = response.type;
-                        this.showAlert = true;
-                        window.scrollTo(0, 0);
-                    }
-                );
+                .then((response) => {
+                    this.alertMessage = response.message;
+                    this.alertType = response.type;
+                    this.showAlert = true;
+                    window.scrollTo(0, 0);
+                });
         },
         testHttpJsonRequest() {
             this.testHttpJsonRequestAlert = {
@@ -308,15 +416,13 @@ export default defineComponent({
                 body: formData,
             })
                 .then((response) => handleResponse(response, this.$emitter, this.$router))
-                .then(
-                    (response) => {
-                        this.testHttpJsonRequestAlert = {
-                            message: response.message,
-                            type: response.type,
-                            show: true,
-                        };
-                    }
-                )
+                .then((response) => {
+                    this.testHttpJsonRequestAlert = {
+                        message: response.message,
+                        type: response.type,
+                        show: true,
+                    };
+                });
         },
         testHttpSmlRequest() {
             this.testHttpSmlRequestAlert = {
@@ -334,15 +440,13 @@ export default defineComponent({
                 body: formData,
             })
                 .then((response) => handleResponse(response, this.$emitter, this.$router))
-                .then(
-                    (response) => {
-                        this.testHttpSmlRequestAlert = {
-                            message: response.message,
-                            type: response.type,
-                            show: true,
-                        };
-                    }
-                )
+                .then((response) => {
+                    this.testHttpSmlRequestAlert = {
+                        message: response.message,
+                        type: response.type,
+                        show: true,
+                    };
+                });
         },
     },
 });

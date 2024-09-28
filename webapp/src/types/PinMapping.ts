@@ -56,7 +56,7 @@ export interface Battery {
     rts: number;
 }
 
-export interface Device  {
+export interface Device {
     name: string;
     links: Array<Links>;
     nrf24: Nrf24;
@@ -68,4 +68,4 @@ export interface Device  {
     battery: Battery;
 }
 
-export interface PinMapping extends Array<Device>{}
+export interface PinMapping extends Array<Device> {}

@@ -11,14 +11,13 @@
                 </div>
                 <div class="col-sm">
                     <select class="form-select" v-model="backupFileSelect">
-                        <option v-for="(file) in fileList.configs" :key="file.name" :value="file.name">
+                        <option v-for="file in fileList.configs" :key="file.name" :value="file.name">
                             {{ file.name }}
                         </option>
                     </select>
                 </div>
                 <div class="col-sm">
-                    <button class="btn btn-primary" @click="downloadConfig">{{ $t('configadmin.Backup') }}
-                    </button>
+                    <button class="btn btn-primary" @click="downloadConfig">{{ $t('configadmin.Backup') }}</button>
                 </div>
             </div>
         </CardElement>
@@ -33,9 +32,7 @@
                 </span>
                 <br />
                 <br />
-                <button class="btn btn-light" @click="clear">
-                    <BIconArrowLeft /> {{ $t('configadmin.Back') }}
-                </button>
+                <button class="btn btn-light" @click="clear"><BIconArrowLeft /> {{ $t('configadmin.Back') }}</button>
             </div>
 
             <div v-else-if="!uploading && UploadSuccess">
@@ -45,9 +42,7 @@
                 <span> {{ $t('configadmin.UploadSuccess') }} </span>
                 <br />
                 <br />
-                <button class="btn btn-primary" @click="clear">
-                    <BIconArrowLeft /> {{ $t('configadmin.Back') }}
-                </button>
+                <button class="btn btn-primary" @click="clear"><BIconArrowLeft /> {{ $t('configadmin.Back') }}</button>
             </div>
 
             <div v-else-if="!uploading">
@@ -62,16 +57,21 @@
                         <input class="form-control" type="file" ref="file" accept=".json" />
                     </div>
                     <div class="col-sm">
-                        <button class="btn btn-primary" @click="uploadConfig">{{ $t('configadmin.Restore') }}
-                        </button>
+                        <button class="btn btn-primary" @click="uploadConfig">{{ $t('configadmin.Restore') }}</button>
                     </div>
                 </div>
             </div>
 
             <div v-else-if="uploading">
                 <div class="progress">
-                    <div class="progress-bar" role="progressbar" :style="{ width: progress + '%' }"
-                        v-bind:aria-valuenow="progress" aria-valuemin="0" aria-valuemax="100">
+                    <div
+                        class="progress-bar"
+                        role="progressbar"
+                        :style="{ width: progress + '%' }"
+                        v-bind:aria-valuenow="progress"
+                        aria-valuemin="0"
+                        aria-valuemax="100"
+                    >
                         {{ progress }}%
                     </div>
                 </div>
@@ -81,15 +81,20 @@
         </CardElement>
 
         <CardElement :text="$t('configadmin.ResetHeader')" textVariant="text-bg-primary" center-content add-space>
-            <button class="btn btn-danger" @click="onFactoryResetModal">{{ $t('configadmin.FactoryResetButton') }}
+            <button class="btn btn-danger" @click="onFactoryResetModal">
+                {{ $t('configadmin.FactoryResetButton') }}
             </button>
 
             <div class="alert alert-danger mt-3" role="alert" v-html="$t('configadmin.ResetHint')"></div>
         </CardElement>
     </BasePage>
 
-    <ModalDialog modalId="factoryReset" small :title="$t('configadmin.FactoryReset')"
-        :closeText="$t('configadmin.Cancel')">
+    <ModalDialog
+        modalId="factoryReset"
+        small
+        :title="$t('configadmin.FactoryReset')"
+        :closeText="$t('configadmin.Cancel')"
+    >
         {{ $t('configadmin.ResetMsg') }}
         <template #footer>
             <button type="button" class="btn btn-danger" @click="onFactoryResetPerform">
@@ -160,13 +165,11 @@ export default defineComponent({
                 body: formData,
             })
                 .then((response) => handleResponse(response, this.$emitter, this.$router))
-                .then(
-                    (response) => {
-                        this.alertMessage = this.$t('apiresponse.' + response.code, response.param);
-                        this.alertType = response.type;
-                        this.showAlert = true;
-                    }
-                )
+                .then((response) => {
+                    this.alertMessage = this.$t('apiresponse.' + response.code, response.param);
+                    this.alertType = response.type;
+                    this.showAlert = true;
+                });
             this.modalFactoryReset.hide();
         },
         getFileList() {
@@ -183,8 +186,8 @@ export default defineComponent({
         },
         downloadConfig() {
             fetch('/api/config/get?file=' + this.backupFileSelect, { headers: authHeader() })
-                .then(res => res.blob())
-                .then(blob => {
+                .then((res) => res.blob())
+                .then((blob) => {
                     const file = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = file;

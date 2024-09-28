@@ -8,15 +8,19 @@
             {{ $t('powerlimiteradmin.ConfigAlertMessage') }}
         </BootstrapAlert>
 
-        <CardElement :text="$t('powerlimiteradmin.ConfigHints')" textVariant="text-bg-primary"
-            v-if="getConfigHints().length">
+        <CardElement
+            :text="$t('powerlimiteradmin.ConfigHints')"
+            textVariant="text-bg-primary"
+            v-if="getConfigHints().length"
+        >
             <div class="row">
                 <div class="col-sm-12">
                     {{ $t('powerlimiteradmin.ConfigHintsIntro') }}
                     <ul>
                         <li v-for="(hint, idx) in getConfigHints()" :key="idx">
-                            <b v-if="hint.severity === 'requirement'">{{ $t('powerlimiteradmin.ConfigHintRequirement')
-                                }}:</b>
+                            <b v-if="hint.severity === 'requirement'"
+                                >{{ $t('powerlimiteradmin.ConfigHintRequirement') }}:</b
+                            >
                             <b v-if="hint.severity === 'optional'">{{ $t('powerlimiteradmin.ConfigHintOptional') }}:</b>
                             {{ $t('powerlimiteradmin.ConfigHint' + hint.subject) }}
                         </li>
@@ -31,21 +35,24 @@
                     :label="$t('powerlimiteradmin.Enable')"
                     v-model="powerLimiterConfigList.enabled"
                     type="checkbox"
-                    wide4_1 />
+                    wide4_1
+                />
 
                 <InputElement
                     v-show="isEnabled()"
                     :label="$t('powerlimiteradmin.UpdatesOnly')"
                     v-model="powerLimiterConfigList.updatesonly"
                     type="checkbox"
-                    wide4_1 />
+                    wide4_1
+                />
 
                 <InputElement
                     v-show="isEnabled()"
                     :label="$t('powerlimiteradmin.VerboseLogging')"
                     v-model="powerLimiterConfigList.verbose_logging"
                     type="checkbox"
-                    wide4_1 />
+                    wide4_1
+                />
 
                 <InputElement
                     v-show="isEnabled() && hasPowerMeter()"
@@ -54,7 +61,8 @@
                     v-model="powerLimiterConfigList.target_power_consumption"
                     postfix="W"
                     type="number"
-                    wide4_2 />
+                    wide4_2
+                />
 
                 <InputElement
                     v-show="isEnabled()"
@@ -63,23 +71,36 @@
                     v-model="powerLimiterConfigList.target_power_consumption_hysteresis"
                     postfix="W"
                     type="number"
-                    wide4_2 />
+                    wide4_2
+                />
             </CardElement>
 
-            <CardElement :text="$t('powerlimiteradmin.InverterSettings')" textVariant="text-bg-primary" add-space
-                v-show="isEnabled()">
+            <CardElement
+                :text="$t('powerlimiteradmin.InverterSettings')"
+                textVariant="text-bg-primary"
+                add-space
+                v-show="isEnabled()"
+            >
                 <div class="row mb-3">
                     <label for="inverter_serial" class="col-sm-4 col-form-label">
                         {{ $t('powerlimiteradmin.Inverter') }}
                     </label>
 
                     <div class="col-sm-8">
-                        <select id="inverter_serial" class="form-select"
-                            v-model="powerLimiterConfigList.inverter_serial" required>
-                            <option value="" disabled hidden selected>{{ $t('powerlimiteradmin.SelectInverter') }}
+                        <select
+                            id="inverter_serial"
+                            class="form-select"
+                            v-model="powerLimiterConfigList.inverter_serial"
+                            required
+                        >
+                            <option value="" disabled hidden selected>
+                                {{ $t('powerlimiteradmin.SelectInverter') }}
                             </option>
-                            <option v-for="(inv, serial) in powerLimiterMetaData.inverters" :key="serial"
-                                :value="serial">
+                            <option
+                                v-for="(inv, serial) in powerLimiterMetaData.inverters"
+                                :key="serial"
+                                :value="serial"
+                            >
                                 ID: {{ inv.pos }} {{ inv.name }} ({{ inv.type }}) S/N: {{ Number(serial).toString(16) }}
                             </option>
                         </select>
@@ -90,14 +111,16 @@
                     :label="$t('powerlimiteradmin.InverterIsSolarPowered')"
                     v-model="powerLimiterConfigList.is_inverter_solar_powered"
                     type="checkbox"
-                    wide4_1 />
+                    wide4_1
+                />
 
                 <InputElement
                     v-show="canUseBatteryDischargeAtNight()"
                     :label="$t('powerlimiteradmin.BatteryDischargeAtNight')"
                     v-model="powerLimiterConfigList.battery_always_use_at_night"
                     type="checkbox"
-                    wide4_1 />
+                    wide4_1
+                />
 
                 <InputElement
                     v-show="canUseOverscaling()"
@@ -105,18 +128,26 @@
                     :tooltip="$t('powerlimiteradmin.UseOverscalingToCompensateShadingHint')"
                     v-model="powerLimiterConfigList.use_overscaling_to_compensate_shading"
                     type="checkbox"
-                    wide4_1 />
+                    wide4_1
+                />
 
                 <div class="row mb-3" v-if="needsChannelSelection()">
                     <label for="inverter_channel" class="col-sm-4 col-form-label">
                         {{ $t('powerlimiteradmin.InverterChannelId') }}
                     </label>
                     <div class="col-sm-1">
-                        <select id="inverter_channel" class="form-select"
-                            v-model="powerLimiterConfigList.inverter_channel_id">
+                        <select
+                            id="inverter_channel"
+                            class="form-select"
+                            v-model="powerLimiterConfigList.inverter_channel_id"
+                        >
                             <option
-                                v-for="channel in range(powerLimiterMetaData.inverters[powerLimiterConfigList.inverter_serial].channels)"
-                                :key="channel" :value="channel">
+                                v-for="channel in range(
+                                    powerLimiterMetaData.inverters[powerLimiterConfigList.inverter_serial].channels
+                                )"
+                                :key="channel"
+                                :value="channel"
+                            >
                                 {{ channel + 1 }}
                             </option>
                         </select>
@@ -127,10 +158,12 @@
                     :label="$t('powerlimiteradmin.LowerPowerLimit')"
                     :tooltip="$t('powerlimiteradmin.LowerPowerLimitHint')"
                     v-model="powerLimiterConfigList.lower_power_limit"
-                    placeholder="50" min="10"
+                    placeholder="50"
+                    min="10"
                     postfix="W"
                     type="number"
-                    wide4_2 />
+                    wide4_2
+                />
 
                 <InputElement
                     :label="$t('powerlimiteradmin.BaseLoadLimit')"
@@ -140,7 +173,8 @@
                     :min="(powerLimiterConfigList.lower_power_limit + 1).toString()"
                     postfix="W"
                     type="number"
-                    wide4_2 />
+                    wide4_2
+                />
 
                 <InputElement
                     :label="$t('powerlimiteradmin.UpperPowerLimit')"
@@ -150,7 +184,8 @@
                     min="(powerLimiterConfigList.base_load_limit + 1).toString()"
                     postfix="W"
                     type="number"
-                    wide4_2 />
+                    wide4_2
+                />
 
                 <InputElement
                     v-show="hasPowerMeter()"
@@ -158,7 +193,8 @@
                     v-model="powerLimiterConfigList.is_inverter_behind_powermeter"
                     :tooltip="$t('powerlimiteradmin.InverterIsBehindPowerMeterHint')"
                     type="checkbox"
-                    wide4_1 />
+                    wide4_1
+                />
 
                 <div class="row mb-3" v-if="!powerLimiterConfigList.is_inverter_solar_powered">
                     <label for="inverter_restart" class="col-sm-4 col-form-label">
@@ -166,147 +202,206 @@
                         <BIconInfoCircle v-tooltip :title="$t('powerlimiteradmin.InverterRestartHint')" />
                     </label>
                     <div class="col-sm-8">
-                        <select id="inverter_restart" class="form-select"
-                            v-model="powerLimiterConfigList.inverter_restart_hour">
+                        <select
+                            id="inverter_restart"
+                            class="form-select"
+                            v-model="powerLimiterConfigList.inverter_restart_hour"
+                        >
                             <option value="-1">
                                 {{ $t('powerlimiteradmin.InverterRestartDisabled') }}
                             </option>
                             <option v-for="hour in range(24)" :key="hour" :value="hour">
-                                {{ (hour > 9) ? hour : "0" + hour }}:00
+                                {{ hour > 9 ? hour : '0' + hour }}:00
                             </option>
                         </select>
                     </div>
                 </div>
             </CardElement>
 
-            <CardElement :text="$t('powerlimiteradmin.SurplusPower')" textVariant="text-bg-primary" add-space
-                v-if="'surplus_power_enabled' in powerLimiterConfigList && canUseSurplusPower()">
-                <div class="alert alert-secondary" role="alert" v-html="$t('powerlimiteradmin.SurplusPowerInfo')">
-                </div>
+            <CardElement
+                :text="$t('powerlimiteradmin.SurplusPower')"
+                textVariant="text-bg-primary"
+                add-space
+                v-if="'surplus_power_enabled' in powerLimiterConfigList && canUseSurplusPower()"
+            >
+                <div class="alert alert-secondary" role="alert" v-html="$t('powerlimiteradmin.SurplusPowerInfo')"></div>
 
                 <InputElement
                     :label="$t('powerlimiteradmin.EnableSurplusPower')"
                     v-model="powerLimiterConfigList.surplus_power_enabled"
                     type="checkbox"
-                    wide4_1 />
-
+                    wide4_1
+                />
             </CardElement>
 
-            <CardElement :text="$t('powerlimiteradmin.SolarPassthrough')" textVariant="text-bg-primary" add-space
-                v-if="canUseSolarPassthrough()">
-                <div class="alert alert-secondary" role="alert" v-html="$t('powerlimiteradmin.SolarpassthroughInfo')">
-                </div>
+            <CardElement
+                :text="$t('powerlimiteradmin.SolarPassthrough')"
+                textVariant="text-bg-primary"
+                add-space
+                v-if="canUseSolarPassthrough()"
+            >
+                <div
+                    class="alert alert-secondary"
+                    role="alert"
+                    v-html="$t('powerlimiteradmin.SolarpassthroughInfo')"
+                ></div>
 
                 <InputElement
                     :label="$t('powerlimiteradmin.EnableSolarPassthrough')"
-                    v-model="powerLimiterConfigList.solar_passthrough_enabled" type="checkbox" wide4_1 />
+                    v-model="powerLimiterConfigList.solar_passthrough_enabled"
+                    type="checkbox"
+                    wide4_1
+                />
 
                 <div v-if="powerLimiterConfigList.solar_passthrough_enabled">
                     <InputElement
                         :label="$t('powerlimiteradmin.SolarPassthroughLosses')"
                         v-model="powerLimiterConfigList.solar_passthrough_losses"
-                        placeholder="3" min="0" max="10"
+                        placeholder="3"
+                        min="0"
+                        max="10"
                         postfix="%"
                         type="number"
-                        wide4_2 />
+                        wide4_2
+                    />
 
-                    <div class="alert alert-secondary" role="alert"
-                        v-html="$t('powerlimiteradmin.SolarPassthroughLossesInfo')"></div>
+                    <div
+                        class="alert alert-secondary"
+                        role="alert"
+                        v-html="$t('powerlimiteradmin.SolarPassthroughLossesInfo')"
+                    ></div>
                 </div>
             </CardElement>
 
-            <CardElement :text="$t('powerlimiteradmin.SocThresholds')" textVariant="text-bg-primary" add-space
-                v-if="canUseSoCThresholds()">
+            <CardElement
+                :text="$t('powerlimiteradmin.SocThresholds')"
+                textVariant="text-bg-primary"
+                add-space
+                v-if="canUseSoCThresholds()"
+            >
                 <InputElement
                     :label="$t('powerlimiteradmin.IgnoreSoc')"
                     v-model="powerLimiterConfigList.ignore_soc"
                     type="checkbox"
-                    wide4_1 />
+                    wide4_1
+                />
 
                 <div v-if="!powerLimiterConfigList.ignore_soc">
-                    <div class="alert alert-secondary" role="alert" v-html="$t('powerlimiteradmin.BatterySocInfo')">
-                    </div>
+                    <div
+                        class="alert alert-secondary"
+                        role="alert"
+                        v-html="$t('powerlimiteradmin.BatterySocInfo')"
+                    ></div>
 
                     <InputElement
                         :label="$t('powerlimiteradmin.StartThreshold')"
                         v-model="powerLimiterConfigList.battery_soc_start_threshold"
-                        placeholder="80" min="0" max="100"
+                        placeholder="80"
+                        min="0"
+                        max="100"
                         postfix="%"
                         type="number"
-                        wide4_2 />
+                        wide4_2
+                    />
 
                     <InputElement
                         :label="$t('powerlimiteradmin.StopThreshold')"
                         v-model="powerLimiterConfigList.battery_soc_stop_threshold"
-                        placeholder="20" min="0" max="100"
+                        placeholder="20"
+                        min="0"
+                        max="100"
                         postfix="%"
                         type="number"
-                        wide4_2 />
+                        wide4_2
+                    />
 
                     <InputElement
                         :label="$t('powerlimiteradmin.FullSolarPassthroughStartThreshold')"
                         :tooltip="$t('powerlimiteradmin.FullSolarPassthroughStartThresholdHint')"
                         v-model="powerLimiterConfigList.full_solar_passthrough_soc"
                         v-if="isSolarPassthroughEnabled()"
-                        placeholder="80" min="0" max="100"
+                        placeholder="80"
+                        min="0"
+                        max="100"
                         postfix="%"
                         type="number"
-                        wide4_2 />
+                        wide4_2
+                    />
                 </div>
             </CardElement>
 
-            <CardElement :text="$t('powerlimiteradmin.VoltageThresholds')" textVariant="text-bg-primary" add-space
-                v-if="canUseVoltageThresholds()">
+            <CardElement
+                :text="$t('powerlimiteradmin.VoltageThresholds')"
+                textVariant="text-bg-primary"
+                add-space
+                v-if="canUseVoltageThresholds()"
+            >
                 <InputElement
                     :label="$t('powerlimiteradmin.StartThreshold')"
                     v-model="powerLimiterConfigList.voltage_start_threshold"
-                    placeholder="50" min="16" max="66"
+                    placeholder="50"
+                    min="16"
+                    max="66"
                     postfix="V"
                     type="number"
                     step="0.01"
-                    wide4_2 />
+                    wide4_2
+                />
 
                 <InputElement
                     :label="$t('powerlimiteradmin.StopThreshold')"
                     v-model="powerLimiterConfigList.voltage_stop_threshold"
-                    placeholder="49" min="16" max="66"
+                    placeholder="49"
+                    min="16"
+                    max="66"
                     postfix="V"
                     type="number"
                     step="0.01"
-                    wide4_2 />
+                    wide4_2
+                />
 
                 <div v-if="isSolarPassthroughEnabled()">
                     <InputElement
                         :label="$t('powerlimiteradmin.FullSolarPassthroughStartThreshold')"
                         :tooltip="$t('powerlimiteradmin.FullSolarPassthroughStartThresholdHint')"
                         v-model="powerLimiterConfigList.full_solar_passthrough_start_voltage"
-                        placeholder="49" min="16"
+                        placeholder="49"
+                        min="16"
                         max="66"
                         postfix="V"
                         type="number"
                         step="0.01"
-                        wide4_2 />
+                        wide4_2
+                    />
 
                     <InputElement
                         :label="$t('powerlimiteradmin.VoltageSolarPassthroughStopThreshold')"
                         v-model="powerLimiterConfigList.full_solar_passthrough_stop_voltage"
-                        placeholder="49" min="16" max="66"
+                        placeholder="49"
+                        min="16"
+                        max="66"
                         postfix="V"
                         type="number"
                         step="0.01"
-                        wide4_2 />
+                        wide4_2
+                    />
                 </div>
 
                 <InputElement
                     :label="$t('powerlimiteradmin.VoltageLoadCorrectionFactor')"
                     v-model="powerLimiterConfigList.voltage_load_correction_factor"
-                    placeholder="0.0001" postfix="1/A"
+                    placeholder="0.0001"
+                    postfix="1/A"
                     type="number"
                     step="0.0001"
-                    wide4_2 />
+                    wide4_2
+                />
 
-                <div class="alert alert-secondary" role="alert"
-                    v-html="$t('powerlimiteradmin.VoltageLoadCorrectionInfo')"></div>
+                <div
+                    class="alert alert-secondary"
+                    role="alert"
+                    v-html="$t('powerlimiteradmin.VoltageLoadCorrectionInfo')"
+                ></div>
             </CardElement>
 
             <FormFooter @reload="getAllData()" />
@@ -353,9 +448,13 @@ export default defineComponent({
             const cfg = this.powerLimiterConfigList;
             const meta = this.powerLimiterMetaData;
 
-            if (newVal === '') { return; } // do not try to convert the placeholder value
+            if (newVal === '') {
+                return;
+            } // do not try to convert the placeholder value
 
-            if (meta.inverters[newVal] !== undefined) { return; }
+            if (meta.inverters[newVal] !== undefined) {
+                return;
+            }
 
             for (const [serial, inverter] of Object.entries(meta.inverters)) {
                 // cfg.inverter_serial might be too large to parse as a 32 bit
@@ -373,7 +472,7 @@ export default defineComponent({
             // previously selected inverter was deleted. marks serial as
             // invalid, selects placeholder option.
             cfg.inverter_serial = '';
-        }
+        },
     },
     methods: {
         getConfigHints() {
@@ -382,17 +481,24 @@ export default defineComponent({
             const hints = [];
 
             if (meta.power_meter_enabled !== true) {
-                hints.push({ severity: 'requirement', subject: "PowerMeterDisabled" });
+                hints.push({ severity: 'requirement', subject: 'PowerMeterDisabled' });
                 this.configAlert = true;
             }
 
             if (typeof meta.inverters === 'undefined' || Object.keys(meta.inverters).length == 0) {
                 hints.push({ severity: 'requirement', subject: 'NoInverter' });
                 this.configAlert = true;
-            }
-            else {
+            } else {
                 const inv = meta.inverters[cfg.inverter_serial];
-                if (inv !== undefined && !(inv.poll_enable_day && inv.command_enable_day && inv.poll_enable_night && inv.command_enable_night)) {
+                if (
+                    inv !== undefined &&
+                    !(
+                        inv.poll_enable_day &&
+                        inv.command_enable_day &&
+                        inv.poll_enable_night &&
+                        inv.command_enable_night
+                    )
+                ) {
                     hints.push({ severity: 'requirement', subject: 'InverterCommunication' });
                 }
             }
@@ -437,7 +543,9 @@ export default defineComponent({
             const cfg = this.powerLimiterConfigList;
             const meta = this.powerLimiterMetaData;
             const canUse = this.isEnabled() && meta.charge_controller_enabled && !cfg.is_inverter_solar_powered;
-            if (!canUse) { cfg.solar_passthrough_enabled = false; }
+            if (!canUse) {
+                cfg.solar_passthrough_enabled = false;
+            }
             return canUse;
         },
         canUseSoCThresholds() {
@@ -464,12 +572,18 @@ export default defineComponent({
                 return false;
             };
 
-            if (cfg.inverter_serial === '') { return reset(); }
+            if (cfg.inverter_serial === '') {
+                return reset();
+            }
 
-            if (cfg.is_inverter_solar_powered) { return reset(); }
+            if (cfg.is_inverter_solar_powered) {
+                return reset();
+            }
 
             const inverter = meta.inverters[cfg.inverter_serial];
-            if (inverter === undefined) { return reset(); }
+            if (inverter === undefined) {
+                return reset();
+            }
 
             if (cfg.inverter_channel_id >= inverter.channels) {
                 reset();
@@ -503,13 +617,11 @@ export default defineComponent({
                 body: formData,
             })
                 .then((response) => handleResponse(response, this.$emitter, this.$router))
-                .then(
-                    (response) => {
-                        this.alertMessage = response.message;
-                        this.alertType = response.type;
-                        this.showAlert = true;
-                    }
-                );
+                .then((response) => {
+                    this.alertMessage = response.message;
+                    this.alertType = response.type;
+                    this.showAlert = true;
+                });
         },
     },
 });

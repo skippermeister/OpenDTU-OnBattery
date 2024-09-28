@@ -23,7 +23,8 @@
                         <th>{{ $t('heapdetails.MaxUsage') }}</th>
                         <td>
                             {{ $n(Math.round(getMaxUsageAbs() / 1024), 'kilobyte') }} ({{
-                                $n(getMaxUsageRel(), 'percent') }})
+                                $n(getMaxUsageRel(), 'percent')
+                            }})
                         </td>
                     </tr>
                 </tbody>
