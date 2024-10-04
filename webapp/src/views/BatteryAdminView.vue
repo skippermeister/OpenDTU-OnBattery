@@ -262,6 +262,28 @@
                             />
 
                             <InputElement
+                                :label="$t('batteryadmin.DischargeCurrentLimitBelowSoc')"
+                                v-model="batteryConfigList.discharge_current_limit_below_soc"
+                                type="number"
+                                min="0"
+                                max="100"
+                                step="0.1"
+                                postfix="%"
+                                :tooltip="$t('batteryadmin.DischargeCurrentLimitBelowSocInfo')"
+                                wide3_2
+                            />
+                            <InputElement
+                                :label="$t('batteryadmin.DischargeCurrentLimitBelowVoltage')"
+                                v-model="batteryConfigList.discharge_current_limit_below_voltage"
+                                type="number"
+                                min="0"
+                                max="60"
+                                step="0.01"
+                                postfix="V"
+                                :tooltip="$t('batteryadmin.DischargeCurrentLimitBelowVoltageInfo')"
+                                wide3_2
+                            />
+                            <InputElement
                                 :label="$t('batteryadmin.UseBatteryReportedDischargeCurrentLimit')"
                                 v-model="batteryConfigList.useBatteryReportedDischargeCurrentLimit"
                                 type="checkbox"

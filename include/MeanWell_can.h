@@ -6,8 +6,9 @@
 #include <TaskSchedulerDeclarations.h>
 #include <cstdint>
 #include <driver/twai.h>
-#include "SPI.h"
-#include <mcp_can.h>
+//#include "SPI.h"
+//#include <mcp_can.h>
+#include <mcp2515_can.h>
 #include <Longan_I2C_CAN_Arduino.h>
 #include <AsyncJson.h>
 #include "PinMapping.h"
@@ -199,8 +200,9 @@ private:
     void setupParameter(void);
 
 #ifdef USE_CHARGER_MCP2515
-    SPIClass* spi;
-    MCP_CAN* CAN;
+//    SPIClass* spi;
+//    MCP_CAN* CAN;
+    MCP2515Class *CAN;
     uint8_t _mcp2515_irq;
 #endif
 #ifdef USE_CHARGER_I2C

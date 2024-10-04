@@ -12,6 +12,7 @@ class WebApiWsHuaweiLiveClass {
 public:
     WebApiWsHuaweiLiveClass();
     void init(AsyncWebServer& server, Scheduler& scheduler);
+    void reload();
 
 private:
     static constexpr char const HttpLink[] = "/api/huaweilivedata/status";
@@ -21,6 +22,7 @@ private:
     void onWebsocketEvent(AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType type, void* arg, uint8_t* data, size_t len);
 
     AsyncWebSocket _ws;
+    AuthenticationMiddleware _simpleDigestAuth;
 
     std::mutex _mutex;
 

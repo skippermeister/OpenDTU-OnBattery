@@ -8,21 +8,7 @@
 #include "PinMapping.h"
 #include "SunPosition.h"
 #include <Hoymiles.h>
-#include "SPIPortManager.h"
-
-// the NRF shall use the second externally usable HW SPI controller
-// for ESP32 that is the so-called VSPI, for ESP32-S2/S3 it is now called implicitly
-// HSPI, as it has shifted places for these chip generations
-// for all generations, this is equivalent to SPI3_HOST in the lower level driver
-// For ESP32-C2, the only externally usable HW SPI controller is SPI2, its signal names
-// being prefixed with FSPI.
-#if CONFIG_IDF_TARGET_ESP32S2 || CONFIG_IDF_TARGET_ESP32S3
-#define SPI_NRF HSPI
-#elif CONFIG_IDF_TARGET_ESP32C3
-#define SPI_NRF FSPI
-#else
-#define SPI_NRF VSPI
-#endif
+#include <SpiManager.h>
 
 InverterSettingsClass InverterSettings;
 
@@ -57,34 +43,30 @@ void InverterSettingsClass::init(Scheduler& scheduler)
     {
 #ifdef USE_RADIO_NRF
         if (PinMapping.isValidNrf24Config()) {
-            auto oSPInum = SPIPortManager.allocatePort("NRF24");
-            if (oSPInum) {
-                MessageOutput.printf("Init NRF24 chip: CLK: %d, MISO: %d, MOSI: %d, CS: %d, EN: %d, IRQ: %d\r\n",
-                    pin.nrf24_clk, pin.nrf24_miso, pin.nrf24_mosi, pin.nrf24_cs, pin.nrf24_en, pin.nrf24_irq);
+            auto spi_bus = SpiManagerInst.claim_bus_arduino();
+            ESP_ERROR_CHECK(spi_bus ? ESP_OK : ESP_FAIL);
 
-                SPIClass* spiClass = new SPIClass(*oSPInum);
-                spiClass->begin(pin.nrf24_clk, pin.nrf24_miso, pin.nrf24_mosi, pin.nrf24_cs);
-                Hoymiles.initNRF(spiClass, pin.nrf24_en, pin.nrf24_irq);
-            }
+            MessageOutput.printf("Init NRF24 chip: CLK: %d, MISO: %d, MOSI: %d, CS: %d, EN: %d, IRQ: %d\r\n",
+                pin.nrf24_clk, pin.nrf24_miso, pin.nrf24_mosi, pin.nrf24_cs, pin.nrf24_en, pin.nrf24_irq);
+
+            SPIClass* spiClass = new SPIClass(*spi_bus);
+            spiClass->begin(pin.nrf24_clk, pin.nrf24_miso, pin.nrf24_mosi, pin.nrf24_cs);
+            Hoymiles.initNRF(spiClass, pin.nrf24_en, pin.nrf24_irq);
         }
 #endif
 #ifdef USE_RADIO_CMT
         if (PinMapping.isValidCmt2300Config()) {
-            auto oSPInum = SPIPortManager.allocatePort("CMT2300A");
-            if (oSPInum) {
-                MessageOutput.printf("Init CMT2300A chip: SPI Host %d, SDIO: %d, CLK: %d, CS: %d, FCS: %d, GPIO2: %d, GPIO3: %d, Chip Int1@GPIO: %d, Int2@GPIO: %d\r\n",
-                    SPIPortManager.SPIhostNum(*oSPInum),
-                    pin.cmt_sdio, pin.cmt_clk, pin.cmt_cs, pin.cmt_fcs,
-                    pin.cmt_gpio2, pin.cmt_gpio3,
-                    pin.cmt_chip_int1gpio, pin.cmt_chip_int2gpio);
+            MessageOutput.printf("Init CMT2300A chip: SDIO: %d, CLK: %d, CS: %d, FCS: %d, GPIO2: %d, GPIO3: %d, Chip Int1@GPIO: %d, Int2@GPIO: %d\r\n",
+                pin.cmt_sdio, pin.cmt_clk, pin.cmt_cs, pin.cmt_fcs,
+                pin.cmt_gpio2, pin.cmt_gpio3,
+                pin.cmt_chip_int1gpio, pin.cmt_chip_int2gpio);
 
-                Hoymiles.initCMT(SPIPortManager.SPIhostNum(*oSPInum), pin.cmt_sdio, pin.cmt_clk, pin.cmt_cs, pin.cmt_fcs, pin.cmt_gpio2, pin.cmt_gpio3,
-                            pin.cmt_chip_int1gpio, pin.cmt_chip_int2gpio);
-                MessageOutput.println("  Setting country mode... ");
-                Hoymiles.getRadioCmt()->setCountryMode(static_cast<CountryModeId_t>(config.Dtu.Cmt.CountryMode));
-                MessageOutput.println("  Setting CMT target frequency... ");
-                Hoymiles.getRadioCmt()->setInverterTargetFrequency(config.Dtu.Cmt.Frequency);
-            }
+            Hoymiles.initCMT(pin.cmt_sdio, pin.cmt_clk, pin.cmt_cs, pin.cmt_fcs, pin.cmt_gpio2, pin.cmt_gpio3,
+                pin.cmt_chip_int1gpio, pin.cmt_chip_int2gpio);
+            MessageOutput.println("  Setting country mode... ");
+            Hoymiles.getRadioCmt()->setCountryMode(static_cast<CountryModeId_t>(config.Dtu.Cmt.CountryMode));
+            MessageOutput.println("  Setting CMT target frequency... ");
+            Hoymiles.getRadioCmt()->setInverterTargetFrequency(config.Dtu.Cmt.Frequency);
         }
 #endif
         MessageOutput.println("  Setting radio PA level... ");

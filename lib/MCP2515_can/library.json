@@ -1,0 +1,13 @@
+{
+    "name": "MCP2515_can",
+    "keywords": "mcp2515",
+    "description": "Library for MCP2515 supporting of dedicated or shared SPI buses on the ESP32.",
+    "authors": {
+        "name": "Andreas Högner"
+    },
+    "version": "0.0.1",
+    "frameworks": "arduino",
+    "platforms": [
+        "espressif32"
+    ]
+}

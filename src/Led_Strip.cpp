@@ -99,7 +99,7 @@ void LedStripClass::init(Scheduler& scheduler)
         xSemaphoreGive(access_semaphore);
 
         BaseType_t task_created = xTaskCreate(led_strip_task,
-            "led_strip_task",
+            "Led_Strip",
             LED_STRIP_TASK_SIZE,
             this,
             tskIDLE_PRIORITY,

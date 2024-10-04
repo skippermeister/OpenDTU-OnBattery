@@ -8,15 +8,12 @@
 #include "SyslogLogger.h"
 #include "PinMapping.h"
 #include "Utils.h"
+#include "__compiled_constants.h"
 #include "defaults.h"
 #include <ESPmDNS.h>
-#ifdef USE_W5500
-#include <ETHSPI.h>
-#endif
 #ifdef OPENDTU_ETHERNET
 #include <ETH.h>
 #endif
-#include "__compiled_constants.h"
 
 NetworkSettingsClass::NetworkSettingsClass()
     : _loopTask(TASK_IMMEDIATE, TASK_FOREVER, std::bind(&NetworkSettingsClass::loop, this))
@@ -42,18 +39,8 @@ void NetworkSettingsClass::init(Scheduler& scheduler)
 
 #ifdef USE_W5500
     if (PinMapping.isValidW5500Config()) {
-        _spiEth = true;
-
-        const auto& pin = PinMapping.get().w5500;
-        if (PinMapping.isValidCmt2300Config() && PinMapping.isValidNrf24Config()) {
-            MessageOutput.println("No ETH connection possible with CMT and NRF enabled.");
-        } else {
-            auto oSPInum = SPIPortManager.allocatePort("ETHSPI");
-            if (oSPInum) {
-                spi_host_device_t host_id = SPIPortManager.SPIhostNum(*oSPInum);
-                ETHSPI.begin(pin.sclk, pin.mosi, pin.miso, pin.w5500.cs, pin.irq, pin.rst, host_id);
-            }
-        }
+        _w5500 = W5500::setup(pin.mosi, pin.miso, pin.sclk, pin.w5500.cs, pin.irq, pin.rst);
+        MessageOutput.printf("W5500: Connection %s\r\n", _w5500?"successful":"error!!");
     }
 #endif
 #if defined(USE_W5500) && defined(OPENDTU_ETHERNET)
@@ -144,7 +131,7 @@ void NetworkSettingsClass::NetworkEvent(const WiFiEvent_t event, WiFiEventInfo_t
     }
 }
 
-bool NetworkSettingsClass::onEvent(NetworkEventCb cbEvent, const network_event event)
+bool NetworkSettingsClass::onEvent(DtuNetworkEventCb cbEvent, const network_event event)
 {
     if (!cbEvent) {
         return pdFALSE;
@@ -469,8 +456,8 @@ String NetworkSettingsClass::macAddress() const
 #if defined(OPENDTU_ETHERNET) || defined(USE_W5500)
     case network_mode::Ethernet:
 #ifdef USE_W5500
-        if (_spiEth)
-            return ETHSPI.macAddress();
+        if (_w5500)
+            return _w5500.macAddress();
 #endif
 #ifdef OPENDTU_ETHERNET
         return ETH.macAddress();

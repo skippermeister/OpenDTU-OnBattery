@@ -5,8 +5,9 @@
 
 #include "Battery.h"
 #include <driver/twai.h>
-#include <SPI.h>
-#include <mcp_can.h>
+//#include <SPI.h>
+//#include <mcp_can.h>
+#include <mcp2515_can.h>
 #include <Longan_I2C_CAN_Arduino.h>
 #include <Arduino.h>
 
@@ -33,8 +34,9 @@ protected:
 
 private:
 #ifdef USE_BATTERY_MCP2515
-    SPIClass *SPI = nullptr;
-    MCP_CAN  *_CAN = nullptr;
+//    SPIClass *SPI = nullptr;
+//    MCP_CAN  *_CAN = nullptr;
+    MCP2515Class  *_CAN = nullptr;
     int _mcp2515_irq;
 #endif
 #ifdef USE_BATTERY_I2C

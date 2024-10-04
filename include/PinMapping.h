@@ -11,6 +11,7 @@
 #define MAPPING_NAME_STRLEN 31
 
 #if defined(OPENDTU_ETHERNET)
+struct ETH_t {
     bool enabled;
     int8_t phy_addr;
     int power;
@@ -18,6 +19,7 @@
     int mdio;
     eth_phy_type_t type;
     eth_clock_mode_t clk_mode;
+};
 #endif
 
 #ifdef USE_W5500

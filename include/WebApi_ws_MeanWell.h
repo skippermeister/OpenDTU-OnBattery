@@ -13,6 +13,7 @@ class WebApiWsMeanWellLiveClass {
 public:
     WebApiWsMeanWellLiveClass();
     void init(AsyncWebServer& server, Scheduler& scheduler);
+    void reload();
 
 private:
     static constexpr char const HttpLink[] = "/api/meanwelllivedata/status";
@@ -21,6 +22,7 @@ private:
     void onWebsocketEvent(AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType type, void* arg, uint8_t* data, size_t len);
 
     AsyncWebSocket _ws;
+    AuthenticationMiddleware _simpleDigestAuth;
 
     uint32_t _lastUpdateCheck = 0;
 

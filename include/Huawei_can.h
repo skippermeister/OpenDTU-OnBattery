@@ -5,8 +5,9 @@
 
 #include <cstdint>
 #include <driver/twai.h>
-#include "SPI.h"
-#include <mcp_can.h>
+//#include "SPI.h"
+//#include <mcp_can.h>
+#include <mcp2515_can.h>
 #include <Longan_I2C_CAN_Arduino.h>
 #include <mutex>
 #include <TaskSchedulerDeclarations.h>
@@ -110,8 +111,9 @@ private:
     byte sendMsgBuf(uint32_t identifier, uint8_t extd, uint8_t len, uint8_t *data);
 
 #ifdef USE_CHARGER_MCP2515
-    SPIClass *SPI;
-    MCP_CAN  *_CAN;
+//    SPIClass *SPI;
+//    MCP_CAN  *_CAN;
+    MCP2515Class *_CAN;
     uint8_t  _mcp2515Irq;                         // IRQ pin
 #endif
 #ifdef USE_CHARGER_I2C

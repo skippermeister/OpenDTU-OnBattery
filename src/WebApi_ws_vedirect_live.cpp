@@ -38,6 +38,24 @@ void WebApiWsVedirectLiveClass::init(AsyncWebServer& server, Scheduler& schedule
 
     scheduler.addTask(_sendDataTask);
     _sendDataTask.enable();
+
+    _simpleDigestAuth.setUsername(AUTH_USERNAME);
+    _simpleDigestAuth.setRealm("vedirect websocket");
+    reload();
+}
+void WebApiWsVedirectLiveClass::reload()
+{
+    _ws.removeMiddleware(&_simpleDigestAuth);
+
+    auto const& config = Configuration.get();
+
+    if (config.Security.AllowReadonly) { return; }
+
+    _ws.enable(false);
+    _simpleDigestAuth.setPassword(config.Security.Password);
+    _ws.addMiddleware(&_simpleDigestAuth);
+    _ws.closeAll();
+    _ws.enable(true);
 }
 
 void WebApiWsVedirectLiveClass::wsCleanupTaskCb()

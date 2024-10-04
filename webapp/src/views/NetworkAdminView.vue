@@ -108,14 +108,14 @@
                     wide2_1
                 />
                 <InputElement
-                    :label="$t('networkadmin.Hostname', { num: 1 })"
+                    :label="$t('networkadmin.SyslogHostname')"
                     v-model="networkConfigList.sysloghostname"
                     type="text"
                     maxlength="128"
                     wide2_6
                 />
                 <InputElement
-                    :label="$t('networkadmin.Port')"
+                    :label="$t('networkadmin.SyslogPort')"
                     v-model="networkConfigList.syslogport"
                     type="number"
                     min="1"

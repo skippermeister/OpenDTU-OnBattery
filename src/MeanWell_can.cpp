@@ -17,7 +17,7 @@
 #include <Hoymiles.h>
 #include <math.h>
 #include <AsyncJson.h>
-#include "SPIPortManager.h"
+#include "SpiManager.h"
 
 #include <Preferences.h>
 Preferences preferences;
@@ -150,7 +150,7 @@ void MeanWellCanClass::updateSettings()
             i2c_can = new I2C_CAN(pin.provider == Charger_Provider_t::I2C0?&Wire:&Wire1, 0x25, pin.i2c.scl, pin.i2c.sda, 400000UL);     // Set I2C Address
 
             int i = 10;
-            while (CAN_OK != i2c_can->begin(I2C_CAN_125KBPS))    // init can bus : baudrate = 125k
+            while (CAN_OK != i2c_can->begin(I2C_CAN_250KBPS))    // init can bus : baudrate = 250k
             {
                 delay(200);
                 if (--i) continue;
@@ -166,35 +166,33 @@ void MeanWellCanClass::updateSettings()
 #ifdef USE_CHARGER_MCP2515
         case Charger_Provider_t::MCP2515:
             {
+            int rc;
             MessageOutput.printf("MCP2515 CAN: miso = %d, mosi = %d, clk = %d, irq = %d, cs = %d.\r\n",
                                 pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.clk, pin.mcp2515.irq, pin.mcp2515.cs);
-            auto oSPInum = SPIPortManager.allocatePort("MCP2515");
-            if (!oSPInum) { return; }
 
-	        spi = new SPIClass(*oSPInum);
-            spi->begin(pin.mcp2515.clk, pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.cs);
-    	    pinMode(pin.mcp2515.cs, OUTPUT);
-        	digitalWrite(pin.mcp2515.cs, HIGH);
-
-        	_mcp2515_irq = pin.mcp2515.irq;
-	        pinMode(_mcp2515_irq, INPUT_PULLUP);
+            CAN = new MCP2515Class(pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.clk, pin.mcp2515.cs);
 
             auto frequency = config.MCP2515.Controller_Frequency;
 	        auto mcp_frequency = MCP_8MHZ;
 	        if (20000000UL == frequency) { mcp_frequency = MCP_20MHZ; }
     	    else if (16000000UL == frequency) { mcp_frequency = MCP_16MHZ; }
             else if (8000000UL != frequency) {
-                MessageOutput.printf("Unknown frequency %d Hz, using 8 MHz\r\n", mcp_frequency);
+                MessageOutput.printf("MCP2515 CAN: Unknown frequency %d Hz, using 8 MHz\r\n", mcp_frequency);
     	    }
-            MessageOutput.printf("MCP2515 Quarz = %u Mhz\r\n", (unsigned int)(frequency/1000000UL));
-        	CAN = new MCP_CAN(spi, pin.mcp2515.cs);
-    	    if (!CAN->begin(MCP_ANY, CAN_125KBPS, mcp_frequency) == CAN_OK) {
-                MessageOutput.println("Error Initializing MCP2515...");
+            MessageOutput.printf("MCP2515 CAN: Quarz = %u Mhz\r\n", (unsigned int)(frequency/1000000UL));
+
+            if ((rc = CAN->initMCP2515(MCP_ANY, CAN_250KBPS, mcp_frequency)) != CAN_OK) {
+                MessageOutput.printf("%s MCP2515 failed to initialize. Error code: %d\r\n", _providerName, rc);
                 return;
-        	}
+            };
+        	_mcp2515_irq = pin.mcp2515.irq;
+	        pinMode(_mcp2515_irq, INPUT_PULLUP);
 
 	        // Change to normal mode to allow messages to be transmitted
-	        CAN->setMode(MCP_NORMAL);
+	        if ((rc = CAN->setMode(MCP_NORMAL)) != CAN_OK) {
+                MessageOutput.printf("%s MCP2515 failed to set mode to NORMAL. Error code: %d\r\n", _providerName, rc);
+                return;
+            }
             }
             break;
 #endif
@@ -236,7 +234,7 @@ bool MeanWellCanClass::parseCanPackets(void)
     /* See if we can obtain the semaphore.  If the semaphore is not
        available wait 1000 ticks to see if it becomes free. */
     if (xSemaphoreTake(xSemaphore, (TickType_t)1000) == pdTRUE) {
-        twai_message_t rx_message;
+        twai_message_t rx_message = {};
 
         switch (_provider) {
 #ifdef USE_CHARGER_CAN0
@@ -245,19 +243,19 @@ bool MeanWellCanClass::parseCanPackets(void)
                 // Check for messages. twai_recive is blocking when there is no data so we return if there are no frames in the buffer
                 twai_status_info_t status_info;
                 if (twai_get_status_info(&status_info) != ESP_OK) {
-                    MessageOutput.printf("%s Failed to get Twai status info\r\n", _providerName);
+                    MessageOutput.printf("%s CAN Failed to get Twai status info\r\n", _providerName);
                     xSemaphoreGive(xSemaphore);
                     return false;
                 }
                 if (status_info.msgs_to_rx == 0) {
-                    //  MessageOutput.printf("%s no message received\r\n", _providerName);
+                    //  MessageOutput.printf("%s CAN no message received\r\n", _providerName);
                     xSemaphoreGive(xSemaphore);
                     return false;
                 }
 
                 // Wait for message to be received, function is blocking
                 if (twai_receive(&rx_message, pdMS_TO_TICKS(100)) != ESP_OK) {
-                    MessageOutput.printf("%s Failed to receive message\r\n", _providerName);
+                    MessageOutput.printf("%s CAN Failed to receive message\r\n", _providerName);
                     xSemaphoreGive(xSemaphore);
                     return false;
                 }
@@ -273,13 +271,13 @@ bool MeanWellCanClass::parseCanPackets(void)
                 }
 
                 if (CAN_OK != i2c_can->readMsgBuf(&rx_message.data_length_code, rx_message.data)) {    // read data,  len: data length, buf: data buf
-                    MessageOutput.println("I2C CAN nothing received");
+                    MessageOutput.printf("%s CAN nothing received\r\n", _providerName);
                     xSemaphoreGive(xSemaphore);
                     return false;
                 }
 
                 if (rx_message.data_length_code > 8) {
-                    MessageOutput.printf("I2C CAN received %d bytes\r\n", rx_message.data_length_code);
+                    MessageOutput.printf("%s CAN received %d bytes\r\n", _providerName, rx_message.data_length_code);
                     xSemaphoreGive(xSemaphore);
                     return false;
                 }
@@ -296,24 +294,37 @@ bool MeanWellCanClass::parseCanPackets(void)
 #endif
 #ifdef USE_CHARGER_MCP2515
             case Charger_Provider_t::MCP2515:
+                {
                 if (digitalRead(_mcp2515_irq)) {
-                    //  MessageOutput.printf("%s no message received\r\n", _providerName);
+                    //  MessageOutput.printf("%s CAN no message received\r\n", _providerName);
+                    xSemaphoreGive(xSemaphore);
+                    return false;
+                }
+                // If CAN_INT pin is low, read receive buffer
+
+                int rc;
+                if ((rc = CAN->readMsgBuf((can_message_t*)&rx_message)) != CAN_OK) { // Read data: len = data length, buf = data byte(s)
+                    MessageOutput.printf("%s failed to read CAN message: Error code %d\r\n", _providerName, rc);
                     xSemaphoreGive(xSemaphore);
                     return false;
                 }
 
-                // If CAN_INT pin is low, read receive buffer
-                CAN->readMsgBuf(&rx_message.identifier, &rx_message.data_length_code, rx_message.data); // Read data: len = data length, buf = data byte(s)
-
                 if (_verboseLogging) {
-                    if((rx_message.identifier & 0x80000000) == 0x80000000)     // Determine if ID is standard (11 bits) or extended (29 bits)
+                    if(rx_message.extd)     // Determine if ID is standard (11 bits) or extended (29 bits)
                         MessageOutput.printf("Extended ID: 0x%.8" PRIx32 " DLC: %1d  Data:", rx_message.identifier & 0x1FFFFFFF, rx_message.data_length_code);
                     else
                     MessageOutput.printf("Standard ID: 0x%.3" PRIx32 " DLC: %1d  Data:", rx_message.identifier, rx_message.data_length_code);
                 }
-                if ((rx_message.identifier & 0x40000000) == 0x40000000){    // Determine if message is a remote request frame.
-                    MessageOutput.printf(" REMOTE REQUEST FRAME %s\r\n", rx_message.data);
+                if (rx_message.rtr){    // Determine if message is a remote request frame.
+                    int len = rx_message.data_length_code>32?32:rx_message.data_length_code;
+                    char data[len*3+1] = "";
+                    for (uint8_t i=0; i<len; i++)
+                        snprintf(&data[i*3], 4, "%02X ", rx_message.data[i]);
+                    data[strlen(data)] = 0;
+                    MessageOutput.printf(" REMOTE REQUEST FRAME %s\r\n", data);
+                    xSemaphoreGive(xSemaphore);
                     return false;
+                }
                 }
                 break;
 #endif
@@ -1385,14 +1396,12 @@ bool MeanWellCanClass::sendCmd(uint8_t id, uint16_t cmd, uint8_t* data, int len)
 
 bool MeanWellCanClass::_sendCmd(uint8_t id, uint16_t cmd, uint8_t* data, int len)
 {
-    twai_message_t tx_message;
+    twai_message_t tx_message = {};
     memset(tx_message.data, 0, sizeof(tx_message.data));
     tx_message.data[0] = (uint8_t)cmd;
     tx_message.data[1] = (uint8_t)(cmd >> 8);
     if (len > 0 && data != reinterpret_cast<uint8_t*>(NULL)) {
-        for (int i = 0; i < len; i++) {
-            tx_message.data[2 + i] = data[i];
-        }
+        memcpy(&tx_message.data[2], data, len);
     }
     tx_message.extd = 1;
     tx_message.data_length_code = len + 2;
@@ -1451,11 +1460,11 @@ bool MeanWellCanClass::_sendCmd(uint8_t id, uint16_t cmd, uint8_t* data, int len
 #ifdef USE_CHARGER_MCP2515
         case Charger_Provider_t::MCP2515:
             {
-            uint8_t sndStat = CAN->sendMsgBuf(tx_message.identifier, (uint8_t)tx_message.extd, tx_message.data_length_code, tx_message.data);
-            if (sndStat == CAN_OK) {
-                //        MessageOutput.printf("%s Message Sent Successfully!\r\n", _providerName);
-            } else {
+            uint8_t sndStat;
+            if ((sndStat = CAN->sendMsgBuf((can_message_t*)&tx_message)) != CAN_OK) {
                 MessageOutput.printf("%s Error Sending Message... Status: %d\r\n", _providerName, sndStat);
+            // } else {
+                // MessageOutput.printf("%s Message Sent Successfully!\r\n", _providerName);
             }
             }
             break;

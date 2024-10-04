@@ -5,7 +5,7 @@
 #include "MessageOutput.h"
 #include "PinMapping.h"
 #include <driver/twai.h>
-#include "SPIPortManager.h"
+#include "SpiManager.h"
 
 bool BatteryCanReceiver::init(char const* providerName)
 {
@@ -24,21 +24,12 @@ bool BatteryCanReceiver::init(char const* providerName)
 #ifdef USE_BATTERY_MCP2515
         case Battery_Provider_t::MCP2515:
             {
+            int rc;
+
             MessageOutput.printf(" clk = %d, miso = %d, mosi = %d, cs = %d, irq = %d\r\n",
                 pin.mcp2515.clk, pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.cs, pin.mcp2515.irq);
 
-            auto oSPInum = SPIPortManager.allocatePort("MCP2515");
-            if (!oSPInum) { return false; }
-            MessageOutput.printf("Init SPI... ");
-            SPI = new SPIClass(*oSPInum);
-            SPI->begin(pin.mcp2515.clk, pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.cs);
-            MessageOutput.println("done.");
-
-            pinMode(pin.mcp2515.cs, OUTPUT);
-            digitalWrite(pin.mcp2515.cs, HIGH);
-
-            _mcp2515_irq = pin.mcp2515.irq;
-            pinMode(_mcp2515_irq, INPUT_PULLUP);
+            _CAN = new MCP2515Class(pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.clk, pin.mcp2515.cs);
 
             auto frequency = Configuration.get().MCP2515.Controller_Frequency;
             auto mcp_frequency = MCP_8MHZ;
@@ -48,7 +39,28 @@ bool BatteryCanReceiver::init(char const* providerName)
                 MessageOutput.printf("Unknown frequency %u Hz, using 8 MHz\r\n", frequency);
             }
             MessageOutput.printf("MCP2515 Quarz = %u Mhz\r\n", (unsigned int)(frequency/1000000UL));
+            if ((rc = _CAN->initMCP2515(MCP_ANY, CAN_500KBPS, mcp_frequency)) != CAN_OK) {
+                MessageOutput.printf("%s MCP2515 failed to initialize. Error code: %d\r\n", _providerName, rc);
+                return false;
+            }
+/*
+            auto spi_bus = SpiManagerInst.claim_bus_arduino();
+            ESP_ERROR_CHECK(spi_bus ? ESP_OK : ESP_FAIL);
 
+            MessageOutput.printf("Init SPI... ");
+            SPI = new SPIClass(*spi_bus);
+            SPI->begin(pin.mcp2515.clk, pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.cs);
+            MessageOutput.println("done.");
+
+            pinMode(pin.mcp2515.cs, OUTPUT);
+            digitalWrite(pin.mcp2515.cs, HIGH);
+*/
+            _mcp2515_irq = pin.mcp2515.irq;
+            pinMode(_mcp2515_irq, INPUT_PULLUP);
+
+//            _CAN->setBitrate(CAN_500KBPS, mcp_frequency);
+
+/*
             if (!_CAN) {
                 MessageOutput.printf(", init MCP_CAN... ");
                 _CAN = new MCP_CAN(SPI, pin.mcp2515.cs);
@@ -59,15 +71,12 @@ bool BatteryCanReceiver::init(char const* providerName)
                 //SPI->end();
                 return false;
             }
-
-/*
             const uint32_t myMask = 0xFFFFFFFF;         // Look at all incoming bits and...
             const uint32_t myFilter = 0x1081407F;       // filter for this message only
             _CAN->init_Mask(0, 1, myMask);
             _CAN->init_Filt(0, 1, myFilter);
             _CAN->init_Mask(1, 1, myMask);
 */
-
             // Change to normal mode to allow messages to be transmitted
             _CAN->setMode(MCP_NORMAL);
             }
@@ -179,7 +188,8 @@ void BatteryCanReceiver::deinit()
         case Battery_Provider_t::MCP2515:
             MessageOutput.printf("%s driver stopped", _providerName);
 
-            if (SPI) SPI->end();
+//            if (SPI) SPI->end();
+            if (_CAN) delete _CAN;
 /*
             pinMode(pin.mcp2515_cs, INPUT);
             pinMode(pin.mcp2515_mosi, INPUT);
@@ -238,7 +248,8 @@ void BatteryCanReceiver::loop()
         case Battery_Provider_t::MCP2515:
             if(digitalRead(_mcp2515_irq)) return;  // If CAN0_INT pin is low, read receive buffer
 
-            _CAN->readMsgBuf(&rx_message.identifier, &rx_message.data_length_code, rx_message.data);      // Read data: len = data length, buf = data byte(s)
+//            _CAN->readMsgBuf(&rx_message.identifier, &rx_message.data_length_code, rx_message.data);      // Read data: len = data length, buf = data byte(s)
+            _CAN->readMsgBuf((can_message_t*)&rx_message);      // Read data: len = data length, buf = data byte(s)
 
             if (_verboseLogging) {
                 if((rx_message.identifier & 0x80000000) == 0x80000000)     // Determine if ID is standard (11 bits) or extended (29 bits)

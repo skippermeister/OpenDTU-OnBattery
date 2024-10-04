@@ -191,19 +191,29 @@ void BatteryClass::loop()
 
 float BatteryClass::getDischargeCurrentLimit()
 {
-    const auto& cBattery = Configuration.get().Battery;
+    const auto& config = Configuration.get();
 
-    if(!cBattery.EnableDischargeCurrentLimit) { return FLT_MAX; }
+    if(!config.Battery.EnableDischargeCurrentLimit) { return FLT_MAX; }
 
-    auto dischargeCurrentLimit = cBattery.DischargeCurrentLimit;
-    auto dischargeCurrentValid = dischargeCurrentLimit > 0.0f;
-
+    auto dischargeCurrentLimit = config.Battery.DischargeCurrentLimit;
+    auto dischargeCurrentLimitValid = dischargeCurrentLimit > 0.0f;
+    auto dischargeCurrentLimitBelowSoc = config.Battery.DischargeCurrentLimitBelowSoc;
+    auto dischargeCurrentLimitBelowVoltage = config.Battery.DischargeCurrentLimitBelowVoltage;
+    auto statsSoCValid = getStats()->getSoCAgeSeconds() <= 60 && !config.PowerLimiter.IgnoreSoc;
+    auto statsSoC = statsSoCValid ? getStats()->getSoC() : 100.0; // fail open so we use voltage instead
+    auto statsVoltageValid = getStats()->getVoltageAgeSeconds() <= 60;
+    auto statsVoltage = statsVoltageValid ? getStats()->getVoltage() : 0.0; // fail closed
     auto statsCurrentLimit = getStats()->getDischargeCurrentLimit();
-    auto statsLimitValid = cBattery.UseBatteryReportedDischargeLimit
+    auto statsLimitValid = config.Battery.UseBatteryReportedDischargeLimit
         && statsCurrentLimit >= 0.0f
         && getStats()->getDischargeCurrentLimitAgeSeconds() <= 60;
 
-    if(statsLimitValid && dischargeCurrentValid) {
+    if (statsSoC > dischargeCurrentLimitBelowSoc && statsVoltage > dischargeCurrentLimitBelowVoltage) {
+        // Above SoC and Voltage thresholds, ignore custom limit.
+        // Battery-provided limit will still be applied.
+        dischargeCurrentLimitValid = false;
+    }
+    if (statsLimitValid && dischargeCurrentLimitValid) {
         // take the lower limit
         return min(statsCurrentLimit, dischargeCurrentLimit);
     }
@@ -212,7 +222,7 @@ float BatteryClass::getDischargeCurrentLimit()
         return statsCurrentLimit;
     }
 
-    if (dischargeCurrentValid) {
+    if (dischargeCurrentLimitValid) {
         return dischargeCurrentLimit;
     }
 

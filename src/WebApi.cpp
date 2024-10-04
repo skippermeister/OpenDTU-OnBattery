@@ -64,6 +64,20 @@ void WebApiClass::init(Scheduler& scheduler)
     MessageOutput.println("done");
 }
 
+void WebApiClass::reload()
+{
+    _webApiWsConsole.reload();
+    _webApiWsLive.reload();
+    _webApiWsBatteryLive.reload();
+    _webApiWsVedirectLive.reload();
+#ifdef USE_CHARGER_HUAWEI
+    _webApiWsHuaweiLive.reload();
+#endif
+#ifdef USE_CHARGER_MEANWELL
+    _webApiWsMeanWellLive.reload();
+#endif
+}
+
 bool WebApiClass::checkCredentials(AsyncWebServerRequest* request)
 {
     if (request->authenticate(AUTH_USERNAME, Configuration.get().Security.Password)) {

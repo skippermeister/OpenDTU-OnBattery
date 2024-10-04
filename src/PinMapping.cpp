@@ -384,13 +384,13 @@ void PinMappingClass::init(const String& deviceMapping)
 #endif
 
 #if  defined(OPENDTU_ETHERNET)
-                _pinMapping.eth_enabled = doc[i]["eth"]["enabled"] | true;
-                _pinMapping.eth_phy_addr = doc[i]["eth"]["phy_addr"] | ETH_PHY_ADDR;
-                _pinMapping.eth_power = doc[i]["eth"]["power"] | ETH_PHY_POWER;
-                _pinMapping.eth_mdc = doc[i]["eth"]["mdc"] | ETH_PHY_MDC;
-                _pinMapping.eth_mdio = doc[i]["eth"]["mdio"] | ETH_PHY_MDIO;
-                _pinMapping.eth_type = doc[i]["eth"]["type"] | ETH_PHY_TYPE;
-                _pinMapping.eth_clk_mode = doc[i]["eth"]["clk_mode"] | ETH_CLK_MODE;
+                _pinMapping.eth.enabled = doc[i]["eth"]["enabled"] | true;
+                _pinMapping.eth.phy_addr = doc[i]["eth"]["phy_addr"] | ETH_PHY_ADDR;
+                _pinMapping.eth.power = doc[i]["eth"]["power"] | ETH_PHY_POWER;
+                _pinMapping.eth.mdc = doc[i]["eth"]["mdc"] | ETH_PHY_MDC;
+                _pinMapping.eth.mdio = doc[i]["eth"]["mdio"] | ETH_PHY_MDIO;
+                _pinMapping.eth.type = doc[i]["eth"]["type"] | ETH_PHY_TYPE;
+                _pinMapping.eth.clk_mode = doc[i]["eth"]["clk_mode"] | ETH_CLK_MODE;
 #endif
 
 #if defined(USE_DISPLAY_GRAPHIC)
@@ -609,7 +609,9 @@ bool PinMappingClass::isValidW5500Config() const
 #if defined(OPENDTU_ETHERNET)
 bool PinMappingClass::isValidEthConfig() const
 {
-    return _pinMapping.eth.enabled;
+    return _pinMapping.eth.enabled
+        && _pinMapping.eth.mdc >= 0
+        && _pinMapping.eth.mdio >= 0;
 }
 #endif
 
@@ -749,13 +751,13 @@ void PinMappingClass::createPinMappingJson() const
 
 #if defined(OPENDTU_ETHERNET)
     JsonObject eth = doc["eth"].to<JsonObject>();
-    eth["enabled"]  = _pinMapping.eth_enabled;
-    eth["phy_addr"] = _pinMapping.eth_phy_addr;
-    eth["power"]    = _pinMapping.eth_power;
-    eth["mdc"]      = _pinMapping.eth_mdc;
-    eth["mdio"]     = _pinMapping.eth_mdio;
-    eth["type"]     = _pinMapping.eth_type;
-    eth["clk_mode"] = _pinMapping.eth_clk_mode;
+    eth["enabled"]  = _pinMapping.eth.enabled;
+    eth["phy_addr"] = _pinMapping.eth.phy_addr;
+    eth["power"]    = _pinMapping.eth.power;
+    eth["mdc"]      = _pinMapping.ethmdc;
+    eth["mdio"]     = _pinMapping.eth.mdio;
+    eth["type"]     = _pinMapping.eth.type;
+    eth["clk_mode"] = _pinMapping.eth.clk_mode;
 #endif
 
 #if defined(USE_DISPLAY_GRAPHIC)

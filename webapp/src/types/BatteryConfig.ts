@@ -38,6 +38,8 @@ export interface BatteryConfig {
 
     enableDischargeCurrentLimit: boolean;
     dischargeCurrentLimit: number;
+    discharge_current_limit_below_soc: number;
+    discharge_current_limit_below_voltage: number;
     useBatteryReportedDischargeCurrentLimit: boolean;
 
     mqtt: MqttParameter;

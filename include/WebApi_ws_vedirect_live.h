@@ -12,6 +12,7 @@ class WebApiWsVedirectLiveClass {
 public:
     WebApiWsVedirectLiveClass();
     void init(AsyncWebServer& server, Scheduler& scheduler);
+    void reload();
 
 private:
     static constexpr char const HttpLink[] = "/api/vedirectlivedata/status";
@@ -23,6 +24,7 @@ private:
     bool hasUpdate(size_t idx);
 
     AsyncWebSocket _ws;
+    AuthenticationMiddleware _simpleDigestAuth;
 
     uint32_t _lastFullPublish = 0;
     uint32_t _lastPublish = 0;

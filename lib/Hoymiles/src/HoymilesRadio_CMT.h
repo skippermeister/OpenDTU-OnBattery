@@ -5,7 +5,6 @@
 #include "commands/CommandAbstract.h"
 #include "types.h"
 #include <Arduino.h>
-#include <driver/spi_master.h>
 #include <cmt2300wrapper.h>
 #include <memory>
 #include <queue>
@@ -42,8 +41,7 @@ struct CountryFrequencyList_t {
 
 class HoymilesRadio_CMT : public HoymilesRadio {
 public:
-    void init(const spi_host_device_t spi_host,
-              const int8_t pin_sdio, const int8_t pin_clk, const int8_t pin_cs, const int8_t pin_fcs,
+    void init(const int8_t pin_sdio, const int8_t pin_clk, const int8_t pin_cs, const int8_t pin_fcs,
               const int8_t pin_gpio2, const int8_t pin_gpio3,
               const int8_t chip_int1gpio, const int8_t chip_int2gpio);
     void loop();

@@ -420,6 +420,8 @@ void ConfigurationClass::serializeBatteryConfig(BatteryConfig const& source, Jso
     target["stop_charging_soc"] = source.Stop_Charging_BatterySoC_Threshold;
     target["enableDischargeCurrentLimit"] = source.EnableDischargeCurrentLimit;
     target["dischargeCurrentLimit"] = static_cast<int>(source.DischargeCurrentLimit*100.0+0.5) / 100.0;
+    target["discharge_current_limit_below_soc"] = source.DischargeCurrentLimitBelowSoc;
+    target["discharge_current_limit_below_voltage"] = static_cast<int>(source.DischargeCurrentLimitBelowVoltage*100.0+0.5) / 100.0;
     target["useBatteryReportedDischargeCurrentLimit"] = source.UseBatteryReportedDischargeLimit;
 #if defined(USE_MQTT_BATTERY) || defined(USE_VICTRON_SMART_SHUNT)
     target["recommended_charge_voltage"] = source.RecommendedChargeVoltage;
@@ -461,6 +463,8 @@ void ConfigurationClass::deserializeBatteryConfig(JsonObject const& source, Batt
     target.MaxDischargeTemperature = source["max_discharge_temp"] | BATTERY_MAX_DISCHARGE_TEMPERATURE;
     target.Stop_Charging_BatterySoC_Threshold = source["stop_charging_soc"] | 100;
     target.EnableDischargeCurrentLimit = source["enableDischargeCurrentLimit"] | BATTERY_ENABLE_DISCHARGE_CURRENT_LIMIT;
+    target.DischargeCurrentLimitBelowSoc = source["discharge_current_limit_below_soc"] | BATTERY_DISCHARGE_CURRENT_LIMIT_BELOW_SOC;
+    target.DischargeCurrentLimitBelowVoltage = source["discharge_current_limit_below_voltage"] | BATTERY_DISCHARGE_CURRENT_LIMIT_BELOW_VOLTAGE;
     target.UseBatteryReportedDischargeLimit = source["useBatteryReportedDischargeCurrentLimit"] | BATTERY_USE_BATTERY_REPORTED_DISCHARGE_CURRENT_LIMIT;
     target.DischargeCurrentLimit = source["dischargeCurrentLimit"] | BATTERY_DISCHARGE_CURRENT_LIMIT;
     target.DischargeCurrentLimit = static_cast<int>(target.DischargeCurrentLimit * 10) / 10.0;

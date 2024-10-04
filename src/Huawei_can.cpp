@@ -11,8 +11,9 @@
 #include "PowerLimiter.h"
 #include "Configuration.h"
 #include <SPI.h>
-#include <mcp_can.h>
-#include "SPIPortManager.h"
+//#include <mcp_can.h>
+#include <mcp2515_can.h>
+#include "SpiManager.h"
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
@@ -57,8 +58,10 @@ bool HuaweiCanCommClass::init() {
 #if defined(BOARD_HAS_PSRAM)
             g_config.intr_flags = ESP_INTR_FLAG_LEVEL2;
 #endif
-            twai_timing_config_t t_config = TWAI_TIMING_CONFIG_250KBITS();
-            twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
+            twai_timing_config_t t_config = TWAI_TIMING_CONFIG_125KBITS();
+            twai_filter_config_t f_config = {.acceptance_code = 0x1081407F,
+                                             .acceptance_mask = TWAI_EXTD_ID_MASK,
+                                             .single_filter = true};
 
             // Install TWAI driver
             if (twai_driver_install(&g_config, &t_config, &f_config) == ESP_OK) {
@@ -113,40 +116,37 @@ bool HuaweiCanCommClass::init() {
 #ifdef USE_CHARGER_MCP2515
         case Charger_Provider_t::MCP2515:
             {
+            int rc;
             MessageOutput.printf("MCP2515 CAN: miso = %d, mosi = %d, clk = %d, irq = %d, cs = %d, power = %d.\r\n",
                 pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.clk, pin.mcp2515.irq, pin.mcp2515.cs, pin.power);
 
-            auto oSPInum = SPIPortManager.allocatePort("MCP2515");
-            if (!oSPInum) { return false; }
+            _CAN = new MCP2515Class(pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.clk, pin.mcp2515.cs);
 
-            SPI = new SPIClass(*oSPInum); // old value HSPI
-            SPI->begin(pin.mcp2515.clk, pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.cs);
-            pinMode(pin.mcp2515.cs, OUTPUT);
-            digitalWrite(pin.mcp2515.cs, HIGH);
+            auto frequency = Configuration.get().MCP2515.Controller_Frequency;
+            auto mcp_frequency = MCP_8MHZ;
+            if (20000000UL == frequency) { mcp_frequency = MCP_20MHZ; }
+            else if (16000000UL == frequency) { mcp_frequency = MCP_16MHZ; }
+            else if (8000000UL != frequency) {
+                MessageOutput.printf("MCP2515 CAN: unknown frequency %d Hz, using 8 MHz\r\n", mcp_frequency);
+            }
+            MessageOutput.printf("MCP2515 CAN: Quarz = %u Mhz\r\n", (unsigned int)(frequency/1000000UL));
+            if ((rc = _CAN->initMCP2515(MCP_ANY, CAN_125KBPS, mcp_frequency)) != CAN_OK) {
+                MessageOutput.printf("MCP2515 failed to initialize. Error code: %d\r\n", rc);
+                return false;
+            };
 
             _mcp2515Irq = pin.mcp2515.irq;
             pinMode(_mcp2515Irq, INPUT_PULLUP);
 
-            auto frequency = Configuration.get().MCP2515.Controller_Frequency;
-            auto mcp_frequency = MCP_8MHZ;
-            if (16000000UL == frequency) { mcp_frequency = MCP_16MHZ; }
-            else if (8000000UL != frequency) {
-                MessageOutput.printf("Huawei CAN: unknown frequency %d Hz, using 8 MHz\r\n", mcp_frequency);
-            }
+            _CAN->setFilterMask(0, 1, 0xFFFFFFFF);  // Look at all incoming bits and...
+            _CAN->setFilter(0, 1, 0x1081407F);  // filter for this message only
+            _CAN->setFilterMask(1, 1, myMask);
 
-            _CAN = new MCP_CAN(SPI, pin.mcp2515.cs);
-            if (!_CAN->begin(MCP_STDEXT, CAN_125KBPS, mcp_frequency) == CAN_OK) {
+	        // Change to normal mode to allow messages to be transmitted
+	        if ((rc = _CAN->setMode(MCP_NORMAL)) != CAN_OK) {
+                MessageOutput.printf("%s MCP2515 failed to set mode to NORMAL. Error code: %d\r\n", TAG, rc);
                 return false;
             }
-
-            const uint32_t myMask = 0xFFFFFFFF;         // Look at all incoming bits and...
-            const uint32_t myFilter = 0x1081407F;       // filter for this message only
-            _CAN->init_Mask(0, 1, myMask);
-            _CAN->init_Filt(0, 1, myFilter);
-            _CAN->init_Mask(1, 1, myMask);
-
-            // Change to normal mode to allow messages to be transmitted
-            _CAN->setMode(MCP_NORMAL);
             }
             break;
 #endif
@@ -164,18 +164,24 @@ void HuaweiCanCommClass::loop()
 {
   std::lock_guard<std::mutex> lock(_mutex);
 
-  twai_message_t rx_message;
+  twai_message_t rx_message = {};
   bool gotMessage = false;
   auto _provider = PinMapping.get().charger.provider;
 
   switch (_provider) {
 #ifdef USE_CHARGER_MCP2515
     case Charger_Provider_t::MCP2515:
+        {
         if (digitalRead(_mcp2515Irq)) break;
 
         // If CAN_INT pin is low, read receive buffer
-        _CAN->readMsgBuf(&rx_message.identifier, &rx_message.data_length_code, rx_message.data); // Read data: len = data length, buf = data byte(s)
+        uint8_t rc;
+        if ((rc = _CAN->readMsgBuf((can_message_t*)&rx_message)) != CAN_OK) {
+            MessageOutput.printf("%s MCP2515 failed to read CAN message: Error code %d\r\n", TAG, rc);
+            break;
+        }
         gotMessage = true;
+        }
         break;
 #endif
 #ifdef USE_CHARGER_CAN0
@@ -282,18 +288,19 @@ void HuaweiCanCommClass::loop()
 
 }
 
-byte HuaweiCanCommClass::sendMsgBuf(uint32_t identifier, uint8_t extd, uint8_t len, uint8_t *data) {
+byte HuaweiCanCommClass::sendMsgBuf(uint32_t identifier, uint8_t extd, uint8_t len, uint8_t *data)
+{
+    twai_message_t tx_message = {};
+    memcpy(tx_message.data, data, len);
+    tx_message.extd = extd;
+    tx_message.data_length_code = len;
+    tx_message.identifier = identifier;
+
     auto _provider = PinMapping.get().charger.provider;
     switch (_provider) {
 #ifdef USE_CHARGER_CAN0
         case Charger_Provider_t::CAN0:
             {
-            twai_message_t tx_message;
-            memcpy(tx_message.data, data, len);
-            tx_message.extd = extd;
-            tx_message.data_length_code = len;
-            tx_message.identifier = identifier;
-
             if (twai_transmit(&tx_message, pdMS_TO_TICKS(1000)) == ESP_OK) {
                 yield();
                 return CAN_OK;
@@ -305,12 +312,19 @@ byte HuaweiCanCommClass::sendMsgBuf(uint32_t identifier, uint8_t extd, uint8_t l
 #endif
 #ifdef USE_CHARGER_MCP2515
         case Charger_Provider_t::MCP2515:
-            return _CAN->sendMsgBuf(identifier, extd, len, data);
+            {
+            int rc;
+            if ((rc = _CAN->sendMsgBuf((can_message_t*)&tx_message)) == CAN_OK)
+            {
+                return CAN_OK;
+            }
+            MessageOutput.printf("%s Failed to queue message for transmission\r\n", TAG);
+            break;
 #endif
 #ifdef USE_CHARGER_I2C
         case Charger_Provider_t::I2C0:
         case Charger_Provider_t::I2C1:
-            i2c_can->sendMsgBuf(identifier, extd, len, data);
+            i2c_can->sendMsgBuf(tx_message.identifier, (uint8_t)tx_message.extd, tx_message.data_length_code, tx_message.data);
             return CAN_OK;
 #endif
         default:;

@@ -11,7 +11,6 @@
 #include "Led_Strip.h"
 #include "MessageOutput.h"
 #include "SerialPortManager.h"
-#include "SPIPortManager.h"
 #include "REFUsolRS485Receiver.h"
 #include "VictronMppt.h"
 #include "Huawei_can.h"
@@ -48,11 +47,18 @@
 #include <LittleFS.h>
 #include <TaskScheduler.h>
 #include <esp_heap_caps.h>
+#include <SpiManager.h>
 
 void setup()
 {
     // Move all dynamic allocations >512byte to psram (if available)
     heap_caps_malloc_extmem_enable(512);
+
+    // Initialize SpiManager
+    SpiManagerInst.register_bus(SPI2_HOST);
+#if SOC_SPI_PERIPH_NUM > 2
+    SpiManagerInst.register_bus(SPI3_HOST);
+#endif
 
     // Initialize serial output
     Serial.begin(SERIAL_BAUDRATE);
@@ -101,7 +107,6 @@ void setup()
     PinMapping.init(String(config.Dev_PinMapping)); // Load PinMapping
 
     SerialPortManager.init();
-    SPIPortManager.init();
 
     // Initialize WiFi
     NetworkSettings.init(scheduler);

@@ -24,7 +24,7 @@
 
         <InputElement
             v-if="cfg.auth_type != 0"
-            :label="$t('httprequestsettings.username')"
+            :label="$t('httprequestsettings.Username')"
             v-model="cfg.username"
             type="text"
             maxlength="64"
@@ -33,7 +33,7 @@
 
         <InputElement
             v-if="cfg.auth_type != 0"
-            :label="$t('httprequestsettings.password')"
+            :label="$t('httprequestsettings.Password')"
             v-model="cfg.password"
             type="password"
             maxlength="64"

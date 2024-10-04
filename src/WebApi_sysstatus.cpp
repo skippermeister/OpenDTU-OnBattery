@@ -52,6 +52,25 @@ void WebApiSysstatusClass::onSystemStatus(AsyncWebServerRequest* request)
     root["chipcores"] = ESP.getChipCores();
     root["flashsize"] = ESP.getFlashChipSize();
 
+    JsonObject taskDetails = root["task_details"].to<JsonObject>();
+    taskDetails["numberOfTasks"] = uxTaskGetNumberOfTasks();
+    JsonArray tasks = taskDetails["tasks"].to<JsonArray>();
+    static std::array<char const*, 13> constexpr task_names = {
+        "IDLE0", "IDLE1", "wifi", "tiT", "loopTask", "async_tcp", "mqttclient",
+        "HUAWEI_CAN_0",
+        "PM:SDM", "PM:HTTP+JSON", "PM:SML", "PM:HTTP+SML",
+        "Led_Strip"
+    };
+
+    for (char const* task_name : task_names) {
+        TaskHandle_t const handle = xTaskGetHandle(task_name);
+        if (!handle) { continue; }
+        JsonObject task = tasks.add<JsonObject>();
+        task["name"] = task_name;
+        task["stack_watermark"] = uxTaskGetStackHighWaterMark(handle);
+        task["priority"] = uxTaskPriorityGet(handle);
+    }
+
     String reason;
     reason = ResetReason::get_reset_reason_verbose(0);
     root["resetreason_0"] = reason;

@@ -269,6 +269,8 @@ struct BATTERY_CONFIG_T {
 #endif
     bool EnableDischargeCurrentLimit;
     float DischargeCurrentLimit;
+    float DischargeCurrentLimitBelowSoc;
+    float DischargeCurrentLimitBelowVoltage;
     bool UseBatteryReportedDischargeLimit;
 #ifdef USE_MQTT_ZENDURE_BATTERY
     struct {

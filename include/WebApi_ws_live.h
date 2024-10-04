@@ -11,6 +11,7 @@ class WebApiWsLiveClass {
 public:
     WebApiWsLiveClass();
     void init(AsyncWebServer& server, Scheduler& scheduler);
+    void reload();
 
 private:
     static constexpr char const HttpLink[] = "/api/livedata/status";
@@ -32,6 +33,7 @@ private:
     void onWebsocketEvent(AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType type, void* arg, uint8_t* data, size_t len);
 
     AsyncWebSocket _ws;
+    AuthenticationMiddleware _simpleDigestAuth;
 
     uint32_t _lastPublishOnBatteryFull = 0;
     uint32_t _lastPublishVictron = 0;
