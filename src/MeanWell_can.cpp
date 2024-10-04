@@ -303,7 +303,7 @@ bool MeanWellCanClass::parseCanPackets(void)
                 // If CAN_INT pin is low, read receive buffer
 
                 int rc;
-                if ((rc = CAN->readMsgBuf((can_message_t*)&rx_message)) != CAN_OK) { // Read data: len = data length, buf = data byte(s)
+                if ((rc = CAN->readMsgBuf(reinterpret_cast<can_message_t*>(&rx_message))) != CAN_OK) { // Read data: len = data length, buf = data byte(s)
                     MessageOutput.printf("%s failed to read CAN message: Error code %d\r\n", _providerName, rc);
                     xSemaphoreGive(xSemaphore);
                     return false;
@@ -319,7 +319,7 @@ bool MeanWellCanClass::parseCanPackets(void)
                     int len = rx_message.data_length_code>32?32:rx_message.data_length_code;
                     char data[len*3+1] = "";
                     for (uint8_t i=0; i<len; i++)
-                        snprintf(&data[i*3], 4, "%02X ", rx_message.data[i]);
+                        snprintf(&data[i*3], sizeof(data)-i*3, "%02X ", rx_message.data[i]);
                     data[strlen(data)] = 0;
                     MessageOutput.printf(" REMOTE REQUEST FRAME %s\r\n", data);
                     xSemaphoreGive(xSemaphore);
@@ -1461,7 +1461,7 @@ bool MeanWellCanClass::_sendCmd(uint8_t id, uint16_t cmd, uint8_t* data, int len
         case Charger_Provider_t::MCP2515:
             {
             uint8_t sndStat;
-            if ((sndStat = CAN->sendMsgBuf((can_message_t*)&tx_message)) != CAN_OK) {
+            if ((sndStat = CAN->sendMsgBuf(reinterpret_cast<can_message_t*>(&tx_message))) != CAN_OK) {
                 MessageOutput.printf("%s Error Sending Message... Status: %d\r\n", _providerName, sndStat);
             // } else {
                 // MessageOutput.printf("%s Message Sent Successfully!\r\n", _providerName);

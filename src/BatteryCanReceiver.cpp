@@ -249,7 +249,7 @@ void BatteryCanReceiver::loop()
             if(digitalRead(_mcp2515_irq)) return;  // If CAN0_INT pin is low, read receive buffer
 
 //            _CAN->readMsgBuf(&rx_message.identifier, &rx_message.data_length_code, rx_message.data);      // Read data: len = data length, buf = data byte(s)
-            _CAN->readMsgBuf((can_message_t*)&rx_message);      // Read data: len = data length, buf = data byte(s)
+            _CAN->readMsgBuf(reinterpret_cast<can_message_t*>(&rx_message));      // Read data: len = data length, buf = data byte(s)
 
             if (_verboseLogging) {
                 if((rx_message.identifier & 0x80000000) == 0x80000000)     // Determine if ID is standard (11 bits) or extended (29 bits)

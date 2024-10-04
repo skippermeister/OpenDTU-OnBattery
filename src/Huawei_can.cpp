@@ -138,9 +138,9 @@ bool HuaweiCanCommClass::init() {
             _mcp2515Irq = pin.mcp2515.irq;
             pinMode(_mcp2515Irq, INPUT_PULLUP);
 
-            _CAN->setFilterMask(0, 1, 0xFFFFFFFF);  // Look at all incoming bits and...
-            _CAN->setFilter(0, 1, 0x1081407F);  // filter for this message only
-            _CAN->setFilterMask(1, 1, myMask);
+            _CAN->setFilterMask(reinterpret_cast<MASK_t>(0), 1, 0xFFFFFFFF);  // Look at all incoming bits and...
+            _CAN->setFilter(reinterpret_cast<RXF_t>(0), 1, 0x1081407F);  // filter for this message only
+            _CAN->setFilterMask(reinterpret_cast<MASK_t>(1), 1, 0xFFFFFFFF);
 
 	        // Change to normal mode to allow messages to be transmitted
 	        if ((rc = _CAN->setMode(MCP_NORMAL)) != CAN_OK) {
@@ -176,7 +176,7 @@ void HuaweiCanCommClass::loop()
 
         // If CAN_INT pin is low, read receive buffer
         uint8_t rc;
-        if ((rc = _CAN->readMsgBuf((can_message_t*)&rx_message)) != CAN_OK) {
+        if ((rc = _CAN->readMsgBuf(reinterpret_cast<can_message_t*>(&rx_message))) != CAN_OK) {
             MessageOutput.printf("%s MCP2515 failed to read CAN message: Error code %d\r\n", TAG, rc);
             break;
         }
@@ -314,11 +314,12 @@ byte HuaweiCanCommClass::sendMsgBuf(uint32_t identifier, uint8_t extd, uint8_t l
         case Charger_Provider_t::MCP2515:
             {
             int rc;
-            if ((rc = _CAN->sendMsgBuf((can_message_t*)&tx_message)) == CAN_OK)
+            if ((rc = _CAN->sendMsgBuf(reinterpret_cast<can_message_t*>(&tx_message))) == CAN_OK)
             {
                 return CAN_OK;
             }
-            MessageOutput.printf("%s Failed to queue message for transmission\r\n", TAG);
+            MessageOutput.printf("%s Failed to queue message for transmission. Error code %d\r\n", TAG, rc);
+            }
             break;
 #endif
 #ifdef USE_CHARGER_I2C

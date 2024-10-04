@@ -16,7 +16,7 @@
                 </tbody>
                 <tfoot>
                     <tr>
-                        <th>Total Tasks:  {{ taskDetails.numberOfTasks }}</th>
+                        <th>Total Tasks: {{ taskDetails.numberOfTasks }}</th>
                         <th></th>
                         <th></th>
                     </tr>
