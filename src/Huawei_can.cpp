@@ -138,9 +138,9 @@ bool HuaweiCanCommClass::init() {
             _mcp2515Irq = pin.mcp2515.irq;
             pinMode(_mcp2515Irq, INPUT_PULLUP);
 
-            _CAN->setFilterMask(reinterpret_cast<MASK_t>(0), 1, 0xFFFFFFFF);  // Look at all incoming bits and...
-            _CAN->setFilter(reinterpret_cast<RXF_t>(0), 1, 0x1081407F);  // filter for this message only
-            _CAN->setFilterMask(reinterpret_cast<MASK_t>(1), 1, 0xFFFFFFFF);
+            _CAN->setFilterMask(MASK0, 1, 0xFFFFFFFF);  // Look at all incoming bits and...
+            _CAN->setFilter(RXF0, 1, 0x1081407F);  // filter for this message only
+            _CAN->setFilterMask(MASK1, 1, 0xFFFFFFFF);
 
 	        // Change to normal mode to allow messages to be transmitted
 	        if ((rc = _CAN->setMode(MCP_NORMAL)) != CAN_OK) {

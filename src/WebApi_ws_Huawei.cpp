@@ -45,7 +45,7 @@ void WebApiWsHuaweiLiveClass::init(AsyncWebServer& server, Scheduler& scheduler)
     reload();
 }
 
-void WebApiWsLiveClass::reload()
+void WebApiWsHuaweiLiveClass::reload()
 {
     _ws.removeMiddleware(&_simpleDigestAuth);
 

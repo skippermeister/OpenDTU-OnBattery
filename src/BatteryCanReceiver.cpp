@@ -246,21 +246,25 @@ void BatteryCanReceiver::loop()
     switch (_provider) {
 #ifdef USE_BATTERY_MCP2515
         case Battery_Provider_t::MCP2515:
+            {
             if(digitalRead(_mcp2515_irq)) return;  // If CAN0_INT pin is low, read receive buffer
 
-//            _CAN->readMsgBuf(&rx_message.identifier, &rx_message.data_length_code, rx_message.data);      // Read data: len = data length, buf = data byte(s)
-            _CAN->readMsgBuf(reinterpret_cast<can_message_t*>(&rx_message));      // Read data: len = data length, buf = data byte(s)
-
+            int rc;
+            if ((rc = _CAN->readMsgBuf(reinterpret_cast<can_message_t*>(&rx_message)))  != CAN_OK) {      // Read data: len = data length, buf = data byte(s)
+                MessageOutput.printf("%s failed to read CAN message: Error code %d\r\n", _providerName, rc);
+                return;
+            }
             if (_verboseLogging) {
-                if((rx_message.identifier & 0x80000000) == 0x80000000)     // Determine if ID is standard (11 bits) or extended (29 bits)
+                if(rx_message.extd)     // Determine if ID is standard (11 bits) or extended (29 bits)
                     MessageOutput.printf("Extended ID: 0x%.8" PRIx32 " DLC: %1d  Data:", rx_message.identifier & 0x1FFFFFFF, rx_message.data_length_code);
                 else
                     MessageOutput.printf("Standard ID: 0x%.3" PRIx32 " DLC: %1d  Data:", rx_message.identifier, rx_message.data_length_code);
             }
 
-            if ((rx_message.identifier & 0x40000000) == 0x40000000){    // Determine if message is a remote request frame.
+            if (rx_message.rtr){    // Determine if message is a remote request frame.
                 MessageOutput.printf(" REMOTE REQUEST FRAME %s\r\n", rx_message.data);
                 return;
+            }
             }
             break;
 #endif
