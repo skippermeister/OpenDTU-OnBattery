@@ -2,27 +2,18 @@
 
 #include "mcp2515_spi.h"
 
-extern SemaphoreHandle_t paramLock;
 #define SPI_PARAM_LOCK() \
     do {                 \
     } while (xSemaphoreTake(paramLock, portMAX_DELAY) != pdPASS)
 #define SPI_PARAM_UNLOCK() xSemaphoreGive(paramLock)
 
-static void IRAM_ATTR pre_cb(spi_transaction_t *trans) {
-    gpio_set_level(*reinterpret_cast<gpio_num_t*>(trans->user), 0);
-}
-
-static void IRAM_ATTR post_cb(spi_transaction_t *trans) {
-    gpio_set_level(*reinterpret_cast<gpio_num_t*>(trans->user), 1);
-}
-
-void MCP2515SPIClass::spi_init(const int8_t pin_miso, const int8_t pin_mosi, const int8_t pin_clk, const int8_t pin_cs, const int32_t spi_speed)
+void MCP2515SPIClass::spi_init(const int8_t pin_miso, const int8_t pin_mosi, const int8_t pin_clk, const int8_t pin_cs, int8_t pin_irq, const int32_t spi_speed)
 {
-    if (paramLock == NULL) paramLock = xSemaphoreCreateMutex();
+/*    if (paramLock == NULL) paramLock = xSemaphoreCreateMutex();
     if (paramLock == NULL) {
         ESP_ERROR_CHECK(ESP_FAIL);
     }
-
+*/
     auto bus_config = std::make_shared<SpiBusConfig>(
         static_cast<gpio_num_t>(pin_mosi),
         static_cast<gpio_num_t>(pin_miso),
@@ -39,21 +30,35 @@ void MCP2515SPIClass::spi_init(const int8_t pin_miso, const int8_t pin_mosi, con
         .cs_ena_posttrans = static_cast<uint8_t>(2 * spi_speed / 1000000), // >2 us
         .clock_speed_hz = spi_speed, // 10000000, // 10mhz
         .input_delay_ns = 0,
-        .spics_io_num = -1, // CS handled by callbacks
+        .spics_io_num = pin_cs,
         .flags = 0,
         .queue_size = 1,
-        .pre_cb = pre_cb,
-        .post_cb = post_cb,
+        .pre_cb = nullptr,
+        .post_cb = nullptr,
     };
 
     spi = SpiManagerInst.alloc_device("SPI", bus_config, device_config);
     if (!spi)
         ESP_ERROR_CHECK(ESP_FAIL);
 
-    cs_reg = static_cast<gpio_num_t>(pin_cs);
-    ESP_ERROR_CHECK(gpio_reset_pin(cs_reg));
-    ESP_ERROR_CHECK(gpio_set_level(cs_reg, 1));
-    ESP_ERROR_CHECK(gpio_set_direction(cs_reg, GPIO_MODE_OUTPUT));
+    if (!connection_check_interrupt(static_cast<gpio_num_t>(pin_irq)))
+        ESP_ERROR_CHECK(ESP_FAIL);
+
+    if (paramLock == NULL) paramLock = SpiManagerInst.getParamLock("SPI");
+
+    // Return to default state once again after connection check
+    irq_reg = static_cast<gpio_num_t>(pin_irq);
+    ESP_ERROR_CHECK(gpio_reset_pin(irq_reg));
+}
+
+bool MCP2515SPIClass::connection_check_interrupt(gpio_num_t pin_irq)
+{
+    gpio_set_direction(pin_irq, GPIO_MODE_INPUT);
+    gpio_set_pull_mode(pin_irq, GPIO_PULLDOWN_ONLY);
+    int level = gpio_get_level(pin_irq);
+
+    // Interrupt line must be high
+    return level == 1;
 }
 
 void MCP2515SPIClass::spi_deinit(void)
@@ -69,7 +74,7 @@ void MCP2515SPIClass::spi_reset(void)
         .addr = 0,
         .length = 8, // 1 bits = 1 bytes
         .rxlength = 0,
-        .user = &cs_reg,
+        .user = 0,
         .tx_data = {INSTRUCTION_RESET,0,0,0},
         .rx_data = {0,0,0,0}
     };
@@ -87,7 +92,7 @@ uint8_t MCP2515SPIClass::spi_readRegister(const REGISTER_t reg)
         .addr = 0,
         .length = (3 * 8), // 24 bits = 3 bytes
         .rxlength = 0, // default to length 24 bits = 3 bytes
-        .user = &cs_reg,
+        .user = 0,
         .tx_data = {INSTRUCTION_READ, reg, 0x00},
         .rx_data = {0,0,0,0}
     };
@@ -110,7 +115,7 @@ void MCP2515SPIClass::spi_readRegisters(const REGISTER_t reg, uint8_t values[], 
         .addr = 0,
         .length = ((2 + ((size_t)n)) * 8),
         .rxlength = 0,
-        .user = &cs_reg,
+        .user = 0,
         .tx_buffer = tx_data,
         .rx_buffer = rx_data
     };
@@ -131,7 +136,7 @@ void MCP2515SPIClass::spi_setRegister(const REGISTER_t reg, const uint8_t value)
         .addr = 0,
         .length = (3 * 8),
         .rxlength = 0,
-        .user = &cs_reg,
+        .user = 0,
         .tx_data = { INSTRUCTION_WRITE, reg, value },
         .rx_data = {0,0,0,0}
     };
@@ -158,7 +163,7 @@ void MCP2515SPIClass::spi_setRegisters(const REGISTER_t reg, const uint8_t value
         .addr = 0,
         .length = ((2 + ((size_t)n)) * 8),
         .rxlength = 0,
-        .user = &cs_reg,
+        .user = 0,
         .tx_buffer = data,
         .rx_buffer = nullptr
     };
@@ -176,7 +181,7 @@ void MCP2515SPIClass::spi_modifyRegister(const REGISTER_t reg, const uint8_t mas
         .addr = 0,
         .length = (4 * 8),
         .rxlength = 0,
-        .user = &cs_reg,
+        .user = 0,
         .tx_data = { INSTRUCTION_BITMOD, reg, mask, data },
         .rx_data = {0,0,0,0}
     };
@@ -194,7 +199,7 @@ uint8_t MCP2515SPIClass::spi_getStatus(void)
         .addr = 0,
         .length = (2 * 8),
         .rxlength = 0,
-        .user = &cs_reg,
+        .user = 0,
         .tx_data = { INSTRUCTION_READ_STATUS, 0x00 },
         .rx_data = {0,0,0,0}
     };

@@ -120,7 +120,7 @@ enum INSTRUCTION_t {
 class MCP2515SPIClass
 {
 public:
-    void spi_init(int8_t pin_miso, int8_t pin_mosi, int8_t pin_clk, int8_t pin_cs, const int32_t spi_speed);
+    void spi_init(const int8_t pin_miso, const int8_t pin_mosi, const int8_t pin_clk, const int8_t pin_cs, const int8_t pin_irq, const int32_t spi_speed);
     void spi_deinit(void);
     void spi_reset(void);
 
@@ -133,8 +133,13 @@ protected:
     uint8_t spi_getStatus(void);
 
 private:
+    static bool connection_check_interrupt(gpio_num_t pin_irq);
+
     spi_device_handle_t spi;
     gpio_num_t cs_reg;
+    gpio_num_t irq_reg;
+
+    SemaphoreHandle_t paramLock = NULL;
 };
 
 #endif

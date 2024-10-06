@@ -7,12 +7,13 @@
 #include "esp_log.h"
 #include "mcp2515_can.h"
 
-MCP2515Class::MCP2515Class(const uint8_t pin_miso, const uint8_t pin_mosi, const uint8_t pin_clk, const uint8_t pin_cs, const uint32_t spi_speed)
+MCP2515Class::MCP2515Class(const uint8_t pin_miso, const uint8_t pin_mosi, const uint8_t pin_clk, const uint8_t pin_cs, const uint8_t pin_irq, const uint32_t spi_speed)
 {
     _pin_miso = pin_miso;
     _pin_mosi = pin_mosi;
     _pin_clk = pin_clk;
     _pin_cs = pin_cs;
+    _pin_irq = pin_irq;
     _spi_speed = spi_speed;
 }
 
@@ -28,7 +29,7 @@ MCP2515Class::~MCP2515Class()
 
 uint8_t MCP2515Class::initMCP2515(const int8_t canIDMode, const CAN_SPEED_t canSpeed, const MCP2515_CLOCK_t canClock)
 {
-    spi_init(_pin_miso, _pin_mosi, _pin_clk, _pin_cs, _spi_speed);
+    spi_init(_pin_miso, _pin_mosi, _pin_clk, _pin_cs, _pin_irq, _spi_speed);
 
 	TXB_ptr = (TXBn_REGS_t*)malloc(sizeof(TXBn_REGS_t[N_TXBUFFERS]));
 	RXB_ptr = (RXBn_REGS_t*)malloc(sizeof(RXBn_REGS_t[N_RXBUFFERS]));
@@ -167,6 +168,11 @@ uint8_t MCP2515Class::reset(const int8_t canIDMode, const CAN_SPEED_t canSpeed, 
     }
 
     return CAN_OK;
+}
+
+bool MCP2515Class::isInterrupt(void)
+{
+    return !digitalRead(_pin_irq);
 }
 
 uint8_t MCP2515Class::setOneShotMode(bool set)

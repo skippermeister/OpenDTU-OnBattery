@@ -167,10 +167,10 @@ void MeanWellCanClass::updateSettings()
         case Charger_Provider_t::MCP2515:
             {
             int rc;
-            MessageOutput.printf("MCP2515 CAN: miso = %d, mosi = %d, clk = %d, irq = %d, cs = %d.\r\n",
-                                pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.clk, pin.mcp2515.irq, pin.mcp2515.cs);
+            MessageOutput.printf("MCP2515 CAN: miso = %d, mosi = %d, clk = %d, cs = %d, irq = %d.\r\n",
+                                pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.clk, pin.mcp2515.cs, pin.mcp2515.irq);
 
-            CAN = new MCP2515Class(pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.clk, pin.mcp2515.cs);
+            CAN = new MCP2515Class(pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.clk, pin.mcp2515.cs, pin.mcp2515.irq);
 
             auto frequency = config.MCP2515.Controller_Frequency;
 	        auto mcp_frequency = MCP_8MHZ;
@@ -185,8 +185,6 @@ void MeanWellCanClass::updateSettings()
                 MessageOutput.printf("%s MCP2515 failed to initialize. Error code: %d\r\n", _providerName, rc);
                 return;
             };
-        	_mcp2515_irq = pin.mcp2515.irq;
-	        pinMode(_mcp2515_irq, INPUT_PULLUP);
 
 	        // Change to normal mode to allow messages to be transmitted
 	        if ((rc = CAN->setMode(MCP_NORMAL)) != CAN_OK) {
@@ -295,7 +293,7 @@ bool MeanWellCanClass::parseCanPackets(void)
 #ifdef USE_CHARGER_MCP2515
             case Charger_Provider_t::MCP2515:
                 {
-                if (digitalRead(_mcp2515_irq)) {
+                if (!CAN->isInterrupt()) {
                     //  MessageOutput.printf("%s CAN no message received\r\n", _providerName);
                     xSemaphoreGive(xSemaphore);
                     return false;

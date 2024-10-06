@@ -86,6 +86,18 @@ std::optional<uint8_t> SpiManager::claim_bus_arduino()
 
 #endif
 
+SemaphoreHandle_t SpiManager::getParamLock(const std::string& bus_id)
+{
+    std::shared_ptr<SpiBus> shared_bus = get_shared_bus(bus_id);
+    if (shared_bus->paramLock == NULL) {
+        printf("create new semaphore\r\n");
+        shared_bus->paramLock = xSemaphoreCreateMutex();
+    }
+    if (!shared_bus->paramLock)
+        ESP_ERROR_CHECK(ESP_FAIL);
+    return shared_bus->paramLock;
+}
+
 spi_device_handle_t SpiManager::alloc_device(const std::string& bus_id, const std::shared_ptr<SpiBusConfig>& bus_config, spi_device_interface_config_t& device_config)
 {
     std::shared_ptr<SpiBus> shared_bus = get_shared_bus(bus_id);

@@ -29,7 +29,7 @@ bool BatteryCanReceiver::init(char const* providerName)
             MessageOutput.printf(" clk = %d, miso = %d, mosi = %d, cs = %d, irq = %d\r\n",
                 pin.mcp2515.clk, pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.cs, pin.mcp2515.irq);
 
-            _CAN = new MCP2515Class(pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.clk, pin.mcp2515.cs);
+            _CAN = new MCP2515Class(pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.clk, pin.mcp2515.cs, pin.mcp2515.irq);
 
             auto frequency = Configuration.get().MCP2515.Controller_Frequency;
             auto mcp_frequency = MCP_8MHZ;
@@ -43,40 +43,7 @@ bool BatteryCanReceiver::init(char const* providerName)
                 MessageOutput.printf("%s MCP2515 failed to initialize. Error code: %d\r\n", _providerName, rc);
                 return false;
             }
-/*
-            auto spi_bus = SpiManagerInst.claim_bus_arduino();
-            ESP_ERROR_CHECK(spi_bus ? ESP_OK : ESP_FAIL);
 
-            MessageOutput.printf("Init SPI... ");
-            SPI = new SPIClass(*spi_bus);
-            SPI->begin(pin.mcp2515.clk, pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.cs);
-            MessageOutput.println("done.");
-
-            pinMode(pin.mcp2515.cs, OUTPUT);
-            digitalWrite(pin.mcp2515.cs, HIGH);
-*/
-            _mcp2515_irq = pin.mcp2515.irq;
-            pinMode(_mcp2515_irq, INPUT_PULLUP);
-
-//            _CAN->setBitrate(CAN_500KBPS, mcp_frequency);
-
-/*
-            if (!_CAN) {
-                MessageOutput.printf(", init MCP_CAN... ");
-                _CAN = new MCP_CAN(SPI, pin.mcp2515.cs);
-                MessageOutput.println("done.");
-            }
-            if (!_CAN->begin(MCP_STDEXT, CAN_500KBPS, mcp_frequency) == CAN_OK) {
-                MessageOutput.println("MCP2515 chip not initialized");
-                //SPI->end();
-                return false;
-            }
-            const uint32_t myMask = 0xFFFFFFFF;         // Look at all incoming bits and...
-            const uint32_t myFilter = 0x1081407F;       // filter for this message only
-            _CAN->init_Mask(0, 1, myMask);
-            _CAN->init_Filt(0, 1, myFilter);
-            _CAN->init_Mask(1, 1, myMask);
-*/
             // Change to normal mode to allow messages to be transmitted
             _CAN->setMode(MCP_NORMAL);
             }
@@ -247,7 +214,7 @@ void BatteryCanReceiver::loop()
 #ifdef USE_BATTERY_MCP2515
         case Battery_Provider_t::MCP2515:
             {
-            if(digitalRead(_mcp2515_irq)) return;  // If CAN0_INT pin is low, read receive buffer
+            if(!_CAN->isInterrupt()) return;  // If CAN0_INT pin is low, read receive buffer
 
             int rc;
             if ((rc = _CAN->readMsgBuf(reinterpret_cast<can_message_t*>(&rx_message)))  != CAN_OK) {      // Read data: len = data length, buf = data byte(s)

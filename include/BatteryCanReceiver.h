@@ -37,7 +37,6 @@ private:
 //    SPIClass *SPI = nullptr;
 //    MCP_CAN  *_CAN = nullptr;
     MCP2515Class  *_CAN = nullptr;
-    int _mcp2515_irq;
 #endif
 #ifdef USE_BATTERY_I2C
     I2C_CAN *i2c_can = nullptr;

@@ -203,7 +203,6 @@ private:
 //    SPIClass* spi;
 //    MCP_CAN* CAN;
     MCP2515Class *CAN;
-    uint8_t _mcp2515_irq;
 #endif
 #ifdef USE_CHARGER_I2C
     I2C_CAN* i2c_can;

@@ -114,7 +114,6 @@ private:
 //    SPIClass *SPI;
 //    MCP_CAN  *_CAN;
     MCP2515Class *_CAN;
-    uint8_t  _mcp2515Irq;                         // IRQ pin
 #endif
 #ifdef USE_CHARGER_I2C
     I2C_CAN  *i2c_can;

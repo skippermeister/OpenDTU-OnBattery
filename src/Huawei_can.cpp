@@ -117,10 +117,10 @@ bool HuaweiCanCommClass::init() {
         case Charger_Provider_t::MCP2515:
             {
             int rc;
-            MessageOutput.printf("MCP2515 CAN: miso = %d, mosi = %d, clk = %d, irq = %d, cs = %d, power = %d.\r\n",
-                pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.clk, pin.mcp2515.irq, pin.mcp2515.cs, pin.power);
+            MessageOutput.printf("MCP2515 CAN: miso = %d, mosi = %d, clk = %d, cs = %d, irq = %d, power = %d.\r\n",
+                pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.clk, pin.mcp2515.cs, pin.mcp2515.irq, pin.power);
 
-            _CAN = new MCP2515Class(pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.clk, pin.mcp2515.cs);
+            _CAN = new MCP2515Class(pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.clk, pin.mcp2515.cs, pin.mcp2515.irq);
 
             auto frequency = Configuration.get().MCP2515.Controller_Frequency;
             auto mcp_frequency = MCP_8MHZ;
@@ -134,9 +134,6 @@ bool HuaweiCanCommClass::init() {
                 MessageOutput.printf("MCP2515 failed to initialize. Error code: %d\r\n", rc);
                 return false;
             };
-
-            _mcp2515Irq = pin.mcp2515.irq;
-            pinMode(_mcp2515Irq, INPUT_PULLUP);
 
             _CAN->setFilterMask(MASK0, 1, 0xFFFFFFFF);  // Look at all incoming bits and...
             _CAN->setFilter(RXF0, 1, 0x1081407F);  // filter for this message only
@@ -172,7 +169,7 @@ void HuaweiCanCommClass::loop()
 #ifdef USE_CHARGER_MCP2515
     case Charger_Provider_t::MCP2515:
         {
-        if (digitalRead(_mcp2515Irq)) break;
+        if (!_CAN->isInterrupt()) break;
 
         // If CAN_INT pin is low, read receive buffer
         uint8_t rc;
@@ -427,7 +424,7 @@ void HuaweiCanClass::updateSettings()
       _mode = HUAWEI_MODE_AUTO_INT;
     }
 
-    xTaskCreate(HuaweiCanCommunicationTask, "HUAWEI_CAN_0", 2048/*stack size*/,
+    xTaskCreate(HuaweiCanCommunicationTask, "HUAWEI_CAN_0", 3072/*stack size*/,
         NULL/*params*/, 0/*prio*/, &_HuaweiCanCommunicationTaskHdl);
 
     MessageOutput.printf("%s::%s CAN Bus Controller initialized Successfully!\r\n", TAG, __FUNCTION__);

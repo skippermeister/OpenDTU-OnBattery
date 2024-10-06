@@ -340,12 +340,13 @@ static const uint32_t MCP2515_SPI_SPEED = 10000000; // 10MHz
 class MCP2515Class : public MCP2515SPIClass
 {
 public:
-    MCP2515Class(const uint8_t pin_miso, const uint8_t pin_mosi, const uint8_t pin_clk, const uint8_t pin_cs, const uint32_t _spi_speed = MCP2515_SPI_SPEED);
+    MCP2515Class(const uint8_t pin_miso, const uint8_t pin_mosi, const uint8_t pin_clk, const uint8_t pin_cs, const uint8_t pin_irq, const uint32_t _spi_speed = MCP2515_SPI_SPEED);
     MCP2515Class& operator=(const MCP2515Class&) = delete;
     ~MCP2515Class();
 
     uint8_t initMCP2515(const int8_t canIDMode, const CAN_SPEED_t canSpeed = CAN_500KBPS, const MCP2515_CLOCK_t canClock = MCP_16MHZ);
     uint8_t reset(const int8_t canIDMode, const CAN_SPEED_t canSpeed, const MCP2515_CLOCK_t canClock);
+    bool isInterrupt(void);
 
     void setSleepWakeup(const bool enable);
     uint8_t setMode(const CANCTRL_REQOP_MODE_t mode);
@@ -406,6 +407,7 @@ private:
     int8_t _pin_mosi;
     int8_t _pin_clk;
     int8_t _pin_cs;
+    int8_t _pin_irq;
     uint32_t _spi_speed;
 };
 

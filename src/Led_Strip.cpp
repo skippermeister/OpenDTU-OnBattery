@@ -29,7 +29,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define LED_STRIP_TASK_SIZE (2048)
+#define LED_STRIP_TASK_SIZE (1280)
 
 #define LED_STRIP_REFRESH_PERIOD_MS (1000U) // TODO(skippermeister): add as parameter to led_strip_task
 
