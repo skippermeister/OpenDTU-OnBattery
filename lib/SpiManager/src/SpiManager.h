@@ -30,7 +30,6 @@ public:
 #endif
 
     spi_device_handle_t alloc_device(const std::string& bus_id, const std::shared_ptr<SpiBusConfig>& bus_config, spi_device_interface_config_t& device_config);
-    SemaphoreHandle_t getParamLock(const std::string& bus_id);
 
 private:
     std::shared_ptr<SpiBus> get_shared_bus(const std::string& bus_id);

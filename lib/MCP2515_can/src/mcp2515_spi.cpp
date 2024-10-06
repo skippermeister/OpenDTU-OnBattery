@@ -9,11 +9,10 @@
 
 void MCP2515SPIClass::spi_init(const int8_t pin_miso, const int8_t pin_mosi, const int8_t pin_clk, const int8_t pin_cs, int8_t pin_irq, const int32_t spi_speed)
 {
-/*    if (paramLock == NULL) paramLock = xSemaphoreCreateMutex();
+    if (paramLock == NULL) paramLock = xSemaphoreCreateMutex();
     if (paramLock == NULL) {
         ESP_ERROR_CHECK(ESP_FAIL);
     }
-*/
     auto bus_config = std::make_shared<SpiBusConfig>(
         static_cast<gpio_num_t>(pin_mosi),
         static_cast<gpio_num_t>(pin_miso),
@@ -44,11 +43,10 @@ void MCP2515SPIClass::spi_init(const int8_t pin_miso, const int8_t pin_mosi, con
     if (!connection_check_interrupt(static_cast<gpio_num_t>(pin_irq)))
         ESP_ERROR_CHECK(ESP_FAIL);
 
-    if (paramLock == NULL) paramLock = SpiManagerInst.getParamLock("SPI");
-
     // Return to default state once again after connection check
     irq_reg = static_cast<gpio_num_t>(pin_irq);
     ESP_ERROR_CHECK(gpio_reset_pin(irq_reg));
+    ESP_ERROR_CHECK(gpio_set_direction(irq_reg, GPIO_MODE_INPUT));
 }
 
 bool MCP2515SPIClass::connection_check_interrupt(gpio_num_t pin_irq)

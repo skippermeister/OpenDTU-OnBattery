@@ -302,7 +302,7 @@ bool MeanWellCanClass::parseCanPackets(void)
 
                 int rc;
                 if ((rc = CAN->readMsgBuf(reinterpret_cast<can_message_t*>(&rx_message))) != CAN_OK) { // Read data: len = data length, buf = data byte(s)
-                    MessageOutput.printf("%s failed to read CAN message: Error code %d\r\n", _providerName, rc);
+                        MessageOutput.printf("%s failed to read CAN message: Error code %d\r\n", _providerName, rc);
                     xSemaphoreGive(xSemaphore);
                     return false;
                 }

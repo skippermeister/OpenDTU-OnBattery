@@ -3,7 +3,7 @@
 #include <driver/spi_master.h>
 #include <SpiManager.h>
 
-static SemaphoreHandle_t paramLock;
+static SemaphoreHandle_t paramLock = NULL;
 #define SPI_PARAM_LOCK() \
     do {                 \
     } while (xSemaphoreTake(paramLock, portMAX_DELAY) != pdPASS)
@@ -22,6 +22,11 @@ static gpio_num_t cs_reg, cs_fifo;
 
 void cmt_spi3_init(const int8_t pin_sdio, const int8_t pin_clk, const int8_t pin_cs, const int8_t pin_fcs, const int32_t spi_speed)
 {
+    if (paramLock == NULL) paramLock = xSemaphoreCreateMutex();
+    if (paramLock == NULL) {
+        ESP_ERROR_CHECK(ESP_FAIL);
+    }
+
     auto bus_config = std::make_shared<SpiBusConfig>(
         static_cast<gpio_num_t>(pin_sdio),
         GPIO_NUM_NC,
@@ -48,8 +53,6 @@ void cmt_spi3_init(const int8_t pin_sdio, const int8_t pin_clk, const int8_t pin
     spi = SpiManagerInst.alloc_device("SPI", bus_config, device_config);
     if (!spi)
         ESP_ERROR_CHECK(ESP_FAIL);
-
-    if (paramLock == NULL) paramLock = SpiManagerInst.getParamLock("SPI");
 
     cs_reg = static_cast<gpio_num_t>(pin_cs);
     ESP_ERROR_CHECK(gpio_reset_pin(cs_reg));

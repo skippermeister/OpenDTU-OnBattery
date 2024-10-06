@@ -41,8 +41,6 @@ public:
 
     spi_device_handle_t add_device(const std::shared_ptr<SpiBusConfig>& bus_config, spi_device_interface_config_t& device_config);
 
-    SemaphoreHandle_t paramLock = NULL;
-
 private:
     void apply_config(SpiBusConfig* config);
 
