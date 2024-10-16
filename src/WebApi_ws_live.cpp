@@ -377,7 +377,7 @@ void WebApiWsLiveClass::addHourPower(JsonVariant& root, std::array<float, 24> va
     for (float value : values) {
         if (value < 0.0)
             value = 0.0;
-        valuesArray.add((uint16_t)value);
+        valuesArray.add(static_cast<uint16_t>(value));
     }
 
     hours["u"] = unit;

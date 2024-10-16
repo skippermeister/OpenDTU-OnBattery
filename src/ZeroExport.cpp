@@ -310,7 +310,7 @@ int16_t ZeroExportClass::pid_Regler(void)
     _last_I = _actual_I;
     _actual_I = p * (_timeStamp - _last_timeStamp) / (1000 * cZeroExport.Tn);
     _last_timeStamp = _timeStamp;
-    payload = (int16_t)round(_last_payload + p + _actual_I);
+    payload = static_cast<int16_t>(round(_last_payload + p + _actual_I));
 
     // between 10 and 100%
     if (payload > 100) {

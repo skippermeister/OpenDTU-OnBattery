@@ -146,15 +146,15 @@ typedef union {
 } TELEGRAM_t;
 #pragma pack(pop)
 
-#define RequestPWE ((uint16_t)0b0001)
-#define ChangePWEword ((uint16_t)0b0010)
-#define ChangePWEdword ((uint16_t)0b0011)
-#define RequestPWEarray ((uint16_t)0b0110)
-#define ChangePWEarray ((uint16_t)0b0111)
-#define ChangePWEdarray ((uint16_t)0b1000)
-#define RequestNumArrayElements ((uint16_t)0b1001)
-#define RequestText ((uint16_t)0b000001111)
-#define ChangeText ((uint16_t)0b100001111)
+#define RequestPWE static_cast<uint16_t>(0b0001)
+#define ChangePWEword static_cast<uint16_t>(0b0010)
+#define ChangePWEdword static_cast<uint16_t>(0b0011)
+#define RequestPWEarray static_cast<uint16_t>(0b0110)
+#define ChangePWEarray static_cast<uint16_t>(0b0111)
+#define ChangePWEdarray static_cast<uint16_t>(0b1000)
+#define RequestNumArrayElements static_cast<uint16_t>(0b1001)
+#define RequestText static_cast<uint16_t>(0b000001111)
+#define ChangeText static_cast<uint16_t>(0b100001111)
 
 #define NaN -9999999999.0
 

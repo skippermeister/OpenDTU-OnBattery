@@ -1128,17 +1128,17 @@ format_t* PylontechRS485Receiver::_decode_frame(char* frame)
 {
     format_t* f = reinterpret_cast<format_t*>(frame);
     size_t length = strlen(frame);
-    f->ver = (uint8_t)hex2binary(&frame[0], 2);
-    f->adr = (uint8_t)hex2binary(&frame[2], 2);
-    f->cid1 = (uint8_t)hex2binary(&frame[4], 2);
-    f->cid2 = (uint8_t)hex2binary(&frame[6], 2);
-    f->infolength = (uint16_t)hex2binary(&frame[8], 4);
+    f->ver = static_cast<uint8_t>(hex2binary(&frame[0], 2));
+    f->adr = static_cast<uint8_t>(hex2binary(&frame[2], 2));
+    f->cid1 = static_cast<uint8_t>(hex2binary(&frame[4], 2));
+    f->cid2 = static_cast<uint8_t>(hex2binary(&frame[6], 2));
+    f->infolength = static_cast<uint16_t>(hex2binary(&frame[8], 4));
 
     if (_verboseLogging)
         MessageOutput.printf("%s ver: %02X, adr: %02X, cid1: %02X, cid2: %02X, infolength: %d info:\r\n", TAG, f->ver, f->adr, f->cid1, f->cid2, (f->infolength) & 0xFFF);
 
     for (int idx = 12, pos = 0; idx < length; idx += 2, pos++) {
-        f->info[pos] = (uint8_t)hex2binary(&frame[idx], 2);
+        f->info[pos] = static_cast<uint8_t>(hex2binary(&frame[idx], 2));
         if (_verboseLogging) {
             MessageOutput.printf(" %02X", f->info[pos]);
             if (((pos + 1) % 16) == 0) MessageOutput.println();

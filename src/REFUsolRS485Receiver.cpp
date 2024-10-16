@@ -692,7 +692,7 @@ uint8_t REFUsolRS485ReceiverClass::receiveTelegram(void)
     idx++;
     rTelegram.ADR = _upSerial->read();
 
-    TimeOut = (uint32_t)((1 + 8 + 1 + 1) * 1000.0 / RS485BaudRate * rTelegram.LGE) + 20;
+    TimeOut = static_cast<uint32_t>((1 + 8 + 1 + 1) * 1000.0 / RS485BaudRate * rTelegram.LGE) + 20;
     t1 = millis(); // 0.625ms * LGE timeout for remaining character
     while (1) {
         if (_upSerial->available())

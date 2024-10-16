@@ -58,8 +58,8 @@ void WebApiDtuClass::onDtuAdminGet(AsyncWebServerRequest* request)
     // DTU Serial is read as HEX
     char buffer[sizeof(uint64_t) * 8 + 1];
     snprintf(buffer, sizeof(buffer), "%0" PRIx32 "%08" PRIx32,
-        ((uint32_t)((cDtu.Serial >> 32) & 0xFFFFFFFF)),
-        ((uint32_t)(cDtu.Serial & 0xFFFFFFFF)));
+        static_cast<uint32_t>((cDtu.Serial >> 32) & 0xFFFFFFFF),
+        static_cast<uint32_t>(cDtu.Serial & 0xFFFFFFFF));
     root["serial"] = buffer;
     root["pollinterval"] = cDtu.PollInterval;
     root["verbose_logging"] = Hoymiles.getVerboseLogging();

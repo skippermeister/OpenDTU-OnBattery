@@ -39,7 +39,7 @@ bool HM_1CH::isValidSerial(const uint64_t serial)
     preId[0] = (uint8_t)(serial >> 40);
     preId[1] = (uint8_t)(serial >> 32);
 
-    if ((uint8_t)(((((uint16_t)preId[0] << 8) | preId[1]) >> 4) & 0xff) == 0x12) {
+    if (static_cast<uint8_t>((((static_cast<uint16_t>(preId[0]) << 8) | preId[1]) >> 4) & 0xff) == 0x12) {
         return true;
     }
 

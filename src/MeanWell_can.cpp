@@ -1361,7 +1361,7 @@ const char* MeanWellCanClass::Word2BinaryString(uint16_t w)
 uint8_t* MeanWellCanClass::Float2Uint(float value)
 {
     static uint8_t rc[2];
-    uint16_t t = (uint16_t)value;
+    uint16_t t = static_cast<uint16_t>(value);
     rc[0] = t & 0xFF;
     rc[1] = (t >> 8);
     return rc;
@@ -1399,8 +1399,8 @@ bool MeanWellCanClass::_sendCmd(uint8_t id, uint16_t cmd, uint8_t* data, int len
 {
     twai_message_t tx_message = {};
     memset(tx_message.data, 0, sizeof(tx_message.data));
-    tx_message.data[0] = (uint8_t)cmd;
-    tx_message.data[1] = (uint8_t)(cmd >> 8);
+    tx_message.data[0] = static_cast<uint8_t>(cmd);
+    tx_message.data[1] = static_cast<uint8_t>(cmd >> 8);
     if (len > 0 && data != reinterpret_cast<uint8_t*>(NULL)) {
         memcpy(&tx_message.data[2], data, len);
     }
@@ -1455,7 +1455,7 @@ bool MeanWellCanClass::_sendCmd(uint8_t id, uint16_t cmd, uint8_t* data, int len
 #ifdef USE_CHARGER_I2C
         case Charger_Provider_t::I2C0:
         case Charger_Provider_t::I2C1:
-            i2c_can->sendMsgBuf(tx_message.identifier, (uint8_t)tx_message.extd, tx_message.data_length_code, tx_message.data);
+            i2c_can->sendMsgBuf(tx_message.identifier, static_cast<uint8_t>(tx_message.extd), tx_message.data_length_code, tx_message.data);
             break;
 #endif
 #ifdef USE_CHARGER_MCP2515

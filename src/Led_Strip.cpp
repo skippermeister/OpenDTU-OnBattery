@@ -40,7 +40,7 @@
 
 Color::Color(uint8_t red, uint8_t green, uint8_t blue, uint8_t white, uint8_t brightness)
 {
-    _val = (((((uint32_t)white)*brightness)/100) << 24) | (((((uint32_t)red)*brightness)/100) << 16) | (((((uint32_t)green)*brightness)/100) << 8) | ((((uint32_t)blue)*brightness)/100);
+    _val = (((static_cast<uint32_t>(white)*brightness)/100) << 24) | (((static_cast<uint32_t>(red)*brightness)/100) << 16) | (((static_cast<uint32_t>(green)*brightness)/100) << 8) | ((static_cast<uint32_t>(blue)*brightness)/100);
 }
 Color::Color(uint32_t c) { }
 
@@ -509,7 +509,7 @@ void LedStripClass::whiteOverRainbow(int whiteSpeed, int whiteLength)
         // counter combination below runs out.
 
         firstPixelHue += 40; // Advance just a little along the color wheel
-        if (((uint32_t)time(NULL) - lastTime) > whiteSpeed) { // Time to update head/tail?
+        if ((static_cast<uint32_t>(time(NULL)) - lastTime) > whiteSpeed) { // Time to update head/tail?
             if (++head >= numPixels()) { // Advance head, wrap around
                 head = 0;
                 if (++loopNum >= loops)
