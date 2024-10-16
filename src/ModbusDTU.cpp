@@ -165,21 +165,21 @@ void ModbusDtuClass::loop()
                     mb.Hreg(chan * 20 + 0x1002, (serialInv >> 8) & 0xFFFF);
                     mb.Hreg(chan * 20 + 0x1003, (serialInv << 8) + c + 1);
                     if (inv->Statistics()->getStringMaxPower(c) > 0 && inv->Statistics()->getChannelFieldValue(t, c, FLD_IRR) < 500) {
-                        mb.Hreg(chan * 20 + 0x1004, static_cast<uint16_t>(inv->Statistics()->getChannelFieldValue(t, c, FLD_UDC) * 10));
-                        mb.Hreg(chan * 20 + 0x1005, static_cast<uint16_t>(inv->Statistics()->getChannelFieldValue(t, c, FLD_IDC) * 100));
-                        mb.Hreg(chan * 20 + 0x1008, static_cast<uint16_t>(inv->Statistics()->getChannelFieldValue(t, c, FLD_PDC) * 10));
+                        mb.Hreg(chan * 20 + 0x1004, static_cast<uint16_t>(inv->Statistics()->getChannelFieldValue(t, c, FLD_UDC)) * 10);
+                        mb.Hreg(chan * 20 + 0x1005, static_cast<uint16_t>(inv->Statistics()->getChannelFieldValue(t, c, FLD_IDC)) * 100);
+                        mb.Hreg(chan * 20 + 0x1008, static_cast<uint16_t>(inv->Statistics()->getChannelFieldValue(t, c, FLD_PDC)) * 10);
                     } else if (inv->Statistics()->getStringMaxPower(c) == 0) {
-                        mb.Hreg(chan * 20 + 0x1004, static_cast<uint16_t>(inv->Statistics()->getChannelFieldValue(t, c, FLD_UDC) * 10));
-                        mb.Hreg(chan * 20 + 0x1005, static_cast<uint16_t>(inv->Statistics()->getChannelFieldValue(t, c, FLD_IDC) * 100));
-                        mb.Hreg(chan * 20 + 0x1008, static_cast<uint16_t>(inv->Statistics()->getChannelFieldValue(t, c, FLD_PDC) * 10));
+                        mb.Hreg(chan * 20 + 0x1004, static_cast<uint16_t>(inv->Statistics()->getChannelFieldValue(t, c, FLD_UDC)) * 10);
+                        mb.Hreg(chan * 20 + 0x1005, static_cast<uint16_t>(inv->Statistics()->getChannelFieldValue(t, c, FLD_IDC)) * 100);
+                        mb.Hreg(chan * 20 + 0x1008, static_cast<uint16_t>(inv->Statistics()->getChannelFieldValue(t, c, FLD_PDC)) * 10);
                     }
 
-                    mb.Hreg(chan * 20 + 0x1006, static_cast<uint16_t>(inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_UAC) * 10));
-                    mb.Hreg(chan * 20 + 0x1007, static_cast<uint16_t>(inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_F) * 100));
+                    mb.Hreg(chan * 20 + 0x1006, static_cast<uint16_t>(inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_UAC)) * 10);
+                    mb.Hreg(chan * 20 + 0x1007, static_cast<uint16_t>(inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_F)) * 100);
                     mb.Hreg(chan * 20 + 0x1009, static_cast<uint16_t>(inv->Statistics()->getChannelFieldValue(t, c, FLD_YD)));
-                    mb.Hreg(chan * 20 + 0x100A, static_cast<uint16_t>(((uint32_t)(inv->Statistics()->getChannelFieldValue(t, c, FLD_YT) * 1000)) >> 16)) & 0xFFFF);
-                    mb.Hreg(chan * 20 + 0x100B, ((static_cast<uint16_t>(inv->Statistics()->getChannelFieldValue(t, c, FLD_YT) * 1000))) & 0xFFFF);
-                    mb.Hreg(chan * 20 + 0x100C, static_cast<uint16_t>(inv->Statistics()->getChannelFieldValue(TYPE_INV, CH0, FLD_T) * 10));
+                    mb.Hreg(chan * 20 + 0x100A, static_cast<uint16_t>(static_cast<uint32_t>(inv->Statistics()->getChannelFieldValue(t, c, FLD_YT)) * 1000 >> 16) & 0xFFFF);
+                    mb.Hreg(chan * 20 + 0x100B, static_cast<uint16_t>(static_cast<uint32_t>(inv->Statistics()->getChannelFieldValue(t, c, FLD_YT)) * 1000) & 0xFFFF);
+                    mb.Hreg(chan * 20 + 0x100C, static_cast<uint16_t>(inv->Statistics()->getChannelFieldValue(TYPE_INV, CH0, FLD_T)) * 10);
                     mb.Hreg(chan * 20 + 0x100D, 3);
                     mb.Hreg(chan * 20 + 0x100E, 0);
                     mb.Hreg(chan * 20 + 0x100F, 0);
