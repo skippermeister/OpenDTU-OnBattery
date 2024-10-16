@@ -6,6 +6,7 @@
 #include "PinMapping.h"
 #include <driver/twai.h>
 #include "SpiManager.h"
+#include "mcp2515_init_spi.h"
 
 bool BatteryCanReceiver::init(char const* providerName)
 {
@@ -29,7 +30,9 @@ bool BatteryCanReceiver::init(char const* providerName)
             MessageOutput.printf(" clk = %d, miso = %d, mosi = %d, cs = %d, irq = %d\r\n",
                 pin.mcp2515.clk, pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.cs, pin.mcp2515.irq);
 
-            _CAN = new MCP2515Class(pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.clk, pin.mcp2515.cs, pin.mcp2515.irq);
+            spi_device_handle_t spi = mcp2515_init_spi(pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.clk, pin.mcp2515.cs);
+
+            _CAN = new MCP2515Class(spi, pin.mcp2515.irq);
 
             auto frequency = Configuration.get().MCP2515.Controller_Frequency;
             auto mcp_frequency = MCP_8MHZ;
@@ -39,7 +42,7 @@ bool BatteryCanReceiver::init(char const* providerName)
                 MessageOutput.printf("Unknown frequency %u Hz, using 8 MHz\r\n", frequency);
             }
             MessageOutput.printf("MCP2515 Quarz = %u Mhz\r\n", (unsigned int)(frequency/1000000UL));
-            if ((rc = _CAN->initMCP2515(MCP_ANY, CAN_500KBPS, mcp_frequency)) != CAN_OK) {
+            if ((rc = _CAN->begin(MCP_ANY, CAN_500KBPS, mcp_frequency)) != CAN_OK) {
                 MessageOutput.printf("%s MCP2515 failed to initialize. Error code: %d\r\n", _providerName, rc);
                 return false;
             }

@@ -18,6 +18,7 @@
 #include <math.h>
 #include <AsyncJson.h>
 #include "SpiManager.h"
+#include "mcp2515_init_spi.h"
 
 #include <Preferences.h>
 Preferences preferences;
@@ -170,7 +171,9 @@ void MeanWellCanClass::updateSettings()
             MessageOutput.printf("MCP2515 CAN: miso = %d, mosi = %d, clk = %d, cs = %d, irq = %d.\r\n",
                                 pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.clk, pin.mcp2515.cs, pin.mcp2515.irq);
 
-            CAN = new MCP2515Class(pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.clk, pin.mcp2515.cs, pin.mcp2515.irq);
+            spi_device_handle_t spi = mcp2515_init_spi(pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.clk, pin.mcp2515.cs);
+
+            CAN = new MCP2515Class(spi, pin.mcp2515.irq);
 
             auto frequency = config.MCP2515.Controller_Frequency;
 	        auto mcp_frequency = MCP_8MHZ;
@@ -181,7 +184,7 @@ void MeanWellCanClass::updateSettings()
     	    }
             MessageOutput.printf("MCP2515 CAN: Quarz = %u Mhz\r\n", (unsigned int)(frequency/1000000UL));
 
-            if ((rc = CAN->initMCP2515(MCP_ANY, CAN_250KBPS, mcp_frequency)) != CAN_OK) {
+            if ((rc = CAN->begin(MCP_ANY, CAN_250KBPS, mcp_frequency)) != CAN_OK) {
                 MessageOutput.printf("%s MCP2515 failed to initialize. Error code: %d\r\n", _providerName, rc);
                 return;
             };
@@ -302,7 +305,7 @@ bool MeanWellCanClass::parseCanPackets(void)
 
                 int rc;
                 if ((rc = CAN->readMsgBuf(reinterpret_cast<can_message_t*>(&rx_message))) != CAN_OK) { // Read data: len = data length, buf = data byte(s)
-                        MessageOutput.printf("%s failed to read CAN message: Error code %d\r\n", _providerName, rc);
+                    MessageOutput.printf("%s failed to read CAN message: Error code %d\r\n", _providerName, rc);
                     xSemaphoreGive(xSemaphore);
                     return false;
                 }

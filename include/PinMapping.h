@@ -10,7 +10,7 @@
 
 #define MAPPING_NAME_STRLEN 31
 
-#if defined(OPENDTU_ETHERNET)
+#if defined(CONFIG_ETH_USE_ESP32_EMAC) && defined(USE_EMAC)
 struct ETH_t {
     bool enabled;
     int8_t phy_addr;
@@ -22,7 +22,7 @@ struct ETH_t {
 };
 #endif
 
-#ifdef USE_W5500
+#if defined(CONFIG_ETH_USE_ESP32_EMAC) && defined(USE_W5500)
 struct W5500_t {
     int8_t sclk;
     int8_t mosi;
@@ -121,11 +121,11 @@ struct PinMapping_t {
     int8_t cmt_chip_int2gpio;
 #endif
 
-#if defined(OPENDTU_ETHERNET)
+#if defined(CONFIG_ETH_USE_ESP32_EMAC) && defined(USE_EMAC)
     ETH_t eth;
 #endif
 
-#ifdef USE_W5500
+#if defined(CONFIG_ETH_USE_ESP32_EMAC) && defined(USE_W5500)
     W5500_t w5500;
 #endif
 
@@ -176,10 +176,10 @@ public:
 #if defined(USE_RADIO_CMT)
     bool isValidCmt2300Config() const;
 #endif
-#ifdef USE_W5500
-bool isValidW5500Config() const;
+#if defined(CONFIG_ETH_USE_ESP32_EMAC) && defined(USE_W5500)
+    bool isValidW5500Config() const;
 #endif
-#if defined(OPENDTU_ETHERNET)
+#if defined(CONFIG_ETH_USE_ESP32_EMAC) && defined(USE_EMAC)
     bool isValidEthConfig() const;
 #endif
     bool isValidBatteryConfig() const;

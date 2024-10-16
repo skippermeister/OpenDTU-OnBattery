@@ -50,7 +50,7 @@ void cmt_spi3_init(const int8_t pin_sdio, const int8_t pin_clk, const int8_t pin
         .post_cb = post_cb,
     };
 
-    spi = SpiManagerInst.alloc_device("SPI", bus_config, device_config);
+    spi = SpiManagerInst.alloc_device("Shared SPI", bus_config, device_config);
     if (!spi)
         ESP_ERROR_CHECK(ESP_FAIL);
 

@@ -14,6 +14,7 @@
 //#include <mcp_can.h>
 #include <mcp2515_can.h>
 #include "SpiManager.h"
+#include "mcp2515_init_spi.h"
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
@@ -120,7 +121,9 @@ bool HuaweiCanCommClass::init() {
             MessageOutput.printf("MCP2515 CAN: miso = %d, mosi = %d, clk = %d, cs = %d, irq = %d, power = %d.\r\n",
                 pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.clk, pin.mcp2515.cs, pin.mcp2515.irq, pin.power);
 
-            _CAN = new MCP2515Class(pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.clk, pin.mcp2515.cs, pin.mcp2515.irq);
+            spi_device_handle_t spi = mcp2515_init_spi(pin.mcp2515.miso, pin.mcp2515.mosi, pin.mcp2515.clk, pin.mcp2515.cs);
+
+            _CAN = new MCP2515Class(spi, pin.mcp2515.irq);
 
             auto frequency = Configuration.get().MCP2515.Controller_Frequency;
             auto mcp_frequency = MCP_8MHZ;
@@ -130,7 +133,7 @@ bool HuaweiCanCommClass::init() {
                 MessageOutput.printf("MCP2515 CAN: unknown frequency %d Hz, using 8 MHz\r\n", mcp_frequency);
             }
             MessageOutput.printf("MCP2515 CAN: Quarz = %u Mhz\r\n", (unsigned int)(frequency/1000000UL));
-            if ((rc = _CAN->initMCP2515(MCP_ANY, CAN_125KBPS, mcp_frequency)) != CAN_OK) {
+            if ((rc = _CAN->begin(MCP_ANY, CAN_125KBPS, mcp_frequency)) != CAN_OK) {
                 MessageOutput.printf("MCP2515 failed to initialize. Error code: %d\r\n", rc);
                 return false;
             };

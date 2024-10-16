@@ -166,7 +166,10 @@
         "RxFailCorrupt": "RX Échouer: Recevoir corrompu",
         "TxReRequest": "TX Fragment de nouvelle demande",
         "StatsReset": "Réinitialiser les statistiques",
-        "StatsResetting": "Réinitialisation..."
+        "StatsResetting": "Réinitialisation...",
+        "Rssi": "RSSI of last received packet",
+        "RssiHint": "HM inverters only support RSSI values < -64 dBm and > -64 dBm. In this case, -80 dbm and -30 dbm is shown.",
+        "dBm": "{dbm} dBm"
     },
     "refusolhome": {
         "SerialNumber": "@:home.SerialNumber",

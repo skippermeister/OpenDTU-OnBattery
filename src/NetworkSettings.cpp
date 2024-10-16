@@ -11,7 +11,7 @@
 #include "__compiled_constants.h"
 #include "defaults.h"
 #include <ESPmDNS.h>
-#ifdef OPENDTU_ETHERNET
+#if defined(CONFIG_ETH_USE_ESP32_EMAC) && (defined(USE_EMAC) || defined(USE_W5500))
 #include <ETH.h>
 #endif
 
@@ -43,10 +43,10 @@ void NetworkSettingsClass::init(Scheduler& scheduler)
         MessageOutput.printf("W5500: Connection %s\r\n", _w5500?"successful":"error!!");
     }
 #endif
-#if defined(USE_W5500) && defined(OPENDTU_ETHERNET)
+#if defined(USE_W5500) && defined(CONFIG_ETH_USE_ESP32_EMAC) && defined(USE_EMAC)
     else
 #endif
-#ifdef OPENDTU_ETHERNET
+#if defined(CONFIG_ETH_USE_ESP32_EMAC) && defined(USE_EMAC)
     // Phy LAN8720
     if (PinMapping.isValidEthConfig()) {
         const auto& eth = PinMapping.get().eth;
@@ -72,7 +72,7 @@ void NetworkSettingsClass::init(Scheduler& scheduler)
 void NetworkSettingsClass::NetworkEvent(const WiFiEvent_t event, WiFiEventInfo_t info)
 {
     switch (event) {
-#ifdef OPENDTU_ETHERNET
+#if defined(CONFIG_ETH_USE_ESP32_EMAC) && (defined(USE_EMAC) || defined(USE_W5500))
     case ARDUINO_EVENT_ETH_START:
         MessageOutput.println("ETH start");
         if (_networkMode == network_mode::Ethernet) {
@@ -112,7 +112,7 @@ void NetworkSettingsClass::NetworkEvent(const WiFiEvent_t event, WiFiEventInfo_t
         break;
     case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
         // Reason codes can be found here: https://github.com/espressif/esp-idf/blob/5454d37d496a8c58542eb450467471404c606501/components/esp_wifi/include/esp_wifi_types_generic.h#L79-L141
-        MessageOutput.printf("WiFi disconnected: %d\r\n", info.wifi_sta_disconnected.reason);
+        MessageOutput.printf("WiFi disconnected: %" PRIu8 "\r\n", info.wifi_sta_disconnected.reason);
         if (_networkMode == network_mode::WiFi) {
             MessageOutput.println("Try reconnecting");
             WiFi.disconnect(true, false);
@@ -136,7 +136,7 @@ bool NetworkSettingsClass::onEvent(DtuNetworkEventCb cbEvent, const network_even
     if (!cbEvent) {
         return pdFALSE;
     }
-    NetworkEventCbList_t newEventHandler;
+    DtuNetworkEventCbList_t newEventHandler;
     newEventHandler.cb = cbEvent;
     newEventHandler.event = event;
     _cbEventList.push_back(newEventHandler);
@@ -219,7 +219,7 @@ String NetworkSettingsClass::getApName() const
 
 void NetworkSettingsClass::loop()
 {
-#ifdef OPENDTU_ETHERNET
+#if defined(CONFIG_ETH_USE_ESP32_EMAC) && (defined(USE_EMAC) || defined(USE_W5500))
     if (_ethConnected) {
         if (_networkMode != network_mode::Ethernet) {
             // Do stuff when switching to Ethernet mode
@@ -243,7 +243,7 @@ void NetworkSettingsClass::loop()
         if (_adminEnabled && _adminTimeoutCounterMax > 0) {
             _adminTimeoutCounter++;
             if (_adminTimeoutCounter % 10 == 0) {
-                MessageOutput.printf("Admin AP remaining seconds: %d / %d\r\n", _adminTimeoutCounter, _adminTimeoutCounterMax);
+                MessageOutput.printf("Admin AP remaining seconds: %" PRIu32 " / %" PRIu32 "\r\n", _adminTimeoutCounter, _adminTimeoutCounterMax);
             }
         }
         _connectTimeoutTimer++;
@@ -335,7 +335,7 @@ void NetworkSettingsClass::setHostname()
         WiFi.mode(WIFI_MODE_STA);
         setupMode();
     }
-#ifdef OPENDTU_ETHERNET
+#if defined(CONFIG_ETH_USE_ESP32_EMAC) && (defined(USE_EMAC) || defined(USE_W5500))
     else if (_networkMode == network_mode::Ethernet) {
         if (ETH.setHostname(getHostname().c_str())) {
             MessageOutput.println("done");
@@ -366,7 +366,7 @@ void NetworkSettingsClass::setStaticIp()
             MessageOutput.println("done");
         }
     }
-#ifdef OPENDTU_ETHERNET
+#if defined(CONFIG_ETH_USE_ESP32_EMAC) && (defined(USE_EMAC) || defined(USE_W5500))
     else if (_networkMode == network_mode::Ethernet) {
         if (cWiFi.Dhcp) {
             MessageOutput.print("Configuring Ethernet DHCP IP... ");
@@ -389,7 +389,7 @@ void NetworkSettingsClass::setStaticIp()
 IPAddress NetworkSettingsClass::localIP() const
 {
     switch (_networkMode) {
-#ifdef OPENDTU_ETHERNET
+#if defined(CONFIG_ETH_USE_ESP32_EMAC) && (defined(USE_EMAC) || defined(USE_W5500))
     case network_mode::Ethernet:
         return ETH.localIP();
         break;
@@ -405,7 +405,7 @@ IPAddress NetworkSettingsClass::localIP() const
 IPAddress NetworkSettingsClass::subnetMask() const
 {
     switch (_networkMode) {
-#ifdef OPENDTU_ETHERNET
+#if defined(CONFIG_ETH_USE_ESP32_EMAC) && (defined(USE_EMAC) || defined(USE_W5500))
     case network_mode::Ethernet:
         return ETH.subnetMask();
         break;
@@ -421,7 +421,7 @@ IPAddress NetworkSettingsClass::subnetMask() const
 IPAddress NetworkSettingsClass::gatewayIP() const
 {
     switch (_networkMode) {
-#ifdef OPENDTU_ETHERNET
+#if defined(CONFIG_ETH_USE_ESP32_EMAC) && (defined(USE_EMAC) || defined(USE_W5500))
     case network_mode::Ethernet:
         return ETH.gatewayIP();
         break;
@@ -437,7 +437,7 @@ IPAddress NetworkSettingsClass::gatewayIP() const
 IPAddress NetworkSettingsClass::dnsIP(const uint8_t dns_no) const
 {
     switch (_networkMode) {
-#ifdef OPENDTU_ETHERNET
+#if defined(CONFIG_ETH_USE_ESP32_EMAC) && (defined(USE_EMAC) || defined(USE_W5500))
     case network_mode::Ethernet:
         return ETH.dnsIP(dns_no);
         break;
@@ -453,13 +453,13 @@ IPAddress NetworkSettingsClass::dnsIP(const uint8_t dns_no) const
 String NetworkSettingsClass::macAddress() const
 {
     switch (_networkMode) {
-#if defined(OPENDTU_ETHERNET) || defined(USE_W5500)
+#if defined(CONFIG_ETH_USE_ESP32_EMAC) && (defined(USE_EMAC) || defined(USE_W5500))
     case network_mode::Ethernet:
 #ifdef USE_W5500
         if (_w5500)
             return _w5500.macAddress();
 #endif
-#ifdef OPENDTU_ETHERNET
+#if defined(USE_EMAC)
         return ETH.macAddress();
 #endif
         break;
@@ -512,7 +512,7 @@ String NetworkSettingsClass::getHostname()
 
 bool NetworkSettingsClass::isConnected() const
 {
-#ifdef OPENDTU_ETHERNET
+#if defined(CONFIG_ETH_USE_ESP32_EMAC) && (defined(USE_EMAC) || defined(USE_W5500))
     return WiFi.localIP()[0] != 0 || ETH.localIP()[0] != 0;
 #else
     return WiFi.localIP()[0] != 0;

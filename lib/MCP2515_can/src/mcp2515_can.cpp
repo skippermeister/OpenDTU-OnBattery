@@ -7,14 +7,10 @@
 #include "esp_log.h"
 #include "mcp2515_can.h"
 
-MCP2515Class::MCP2515Class(const uint8_t pin_miso, const uint8_t pin_mosi, const uint8_t pin_clk, const uint8_t pin_cs, const uint8_t pin_irq, const uint32_t spi_speed)
+MCP2515Class::MCP2515Class(const spi_device_handle_t spi, const int8_t pin_irq)
 {
-    _pin_miso = pin_miso;
-    _pin_mosi = pin_mosi;
-    _pin_clk = pin_clk;
-    _pin_cs = pin_cs;
-    _pin_irq = pin_irq;
-    _spi_speed = spi_speed;
+    _pin_irq = static_cast<gpio_num_t>(pin_irq);
+    _spi = spi;
 }
 
 MCP2515Class::~MCP2515Class()
@@ -27,9 +23,9 @@ MCP2515Class::~MCP2515Class()
     if (RXB_ptr) free(RXB_ptr);
 }
 
-uint8_t MCP2515Class::initMCP2515(const int8_t canIDMode, const CAN_SPEED_t canSpeed, const MCP2515_CLOCK_t canClock)
+uint8_t MCP2515Class::begin(const int8_t canIDMode, const CAN_SPEED_t canSpeed, const MCP2515_CLOCK_t canClock)
 {
-    spi_init(_pin_miso, _pin_mosi, _pin_clk, _pin_cs, _pin_irq, _spi_speed);
+    spi_init();
 
 	TXB_ptr = (TXBn_REGS_t*)malloc(sizeof(TXBn_REGS_t[N_TXBUFFERS]));
 	RXB_ptr = (RXBn_REGS_t*)malloc(sizeof(RXBn_REGS_t[N_RXBUFFERS]));

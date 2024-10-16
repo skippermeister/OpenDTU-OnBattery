@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-#ifdef USE_W5500
+#if defined(CONFIG_ETH_USE_ESP32_EMAC) && defined(USE_W5500)
 
 #pragma once
 

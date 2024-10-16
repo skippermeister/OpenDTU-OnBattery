@@ -69,7 +69,7 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
     }
 #endif
 
-#ifdef USE_W5500
+#if defined(CONFIG_ETH_USE_ESP32_EMAC) && defined(USE_W5500)
     auto w5500PinObj = curPin["w5500"].to<JsonObject>();
     if (PinMapping.isValidW5500Config()) {
         w5500PinObj["sclk"] = pin.w5500.sclk;
@@ -79,11 +79,11 @@ void WebApiDeviceClass::onDeviceAdminGet(AsyncWebServerRequest* request)
         w5500PinObj["irq"] = pin.w5500.irq;
         w5500PinObj["rst"] = pin.w5500.rst;
     } else {
-        cmtPinObj["Pins"] = "invalid";
+        w5500PinObj["Pins"] = "invalid";
     }
 #endif
 
-#if defined(OPENDTU_ETHERNET)
+#if defined(CONFIG_ETH_USE_ESP32_EMAC) && defined(USE_EMAC)
     auto ethPinObj = curPin["eth"].to<JsonObject>();
     if (PinMapping.isValidEthConfig()) {
         ethPinObj["enabled"] = pin.eth.enabled;

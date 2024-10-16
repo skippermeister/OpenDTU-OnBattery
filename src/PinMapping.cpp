@@ -191,6 +191,7 @@
 #define POWERMETER_PIN_RTS -1
 #endif
 
+#if defined(CONFIG_ETH_USE_ESP32_EMAC) && defined(USE_W5500)
 #ifndef W5500_SCLK
 #define W5500_SCLK -1
 #endif
@@ -214,6 +215,35 @@
 #ifndef W5500_RST
 #define W5500_RST -1
 #endif
+#endif
+
+#if defined(CONFIG_ETH_USE_ESP32_EMAC) && defined(USE_EMAC)
+
+#ifndef ETH_PHY_ADDR
+#define ETH_PHY_ADDR -1
+#endif
+
+#ifndef ETH_PHY_POWER
+#define ETH_PHY_POWER -1
+#endif
+
+#ifndef ETH_PHY_MDC
+#define ETH_PHY_MDC -1
+#endif
+
+#ifndef ETH_PHY_MDIO
+#define ETH_PHY_MDIO -1
+#endif
+
+#ifndef ETH_PHY_TYPE
+#define ETH_PHY_TYPE ETH_PHY_LAN8720
+#endif
+
+#ifndef ETH_CLK_MODE
+#define ETH_CLK_MODE ETH_CLOCK_GPIO0_IN
+#endif
+
+#endif // CONFIG_ETH_USE_ESP32_EMAC
 
 #ifndef CHARGER_PIN_POWER
 #define CHARGER_PIN_POWER -1
@@ -242,7 +272,7 @@ PinMappingClass::PinMappingClass()
     _pinMapping.cmt_chip_int2gpio = 3;
 #endif
 
-#ifdef USE_W5500
+#if defined(CONFIG_ETH_USE_ESP32_EMAC) && defined(USE_W5500)
     _pinMapping.w5500.sclk = W5500_SCLK;
     _pinMapping.w5500.mosi = W5500_MOSI;
     _pinMapping.w5500.miso = W5500_MISO;
@@ -251,7 +281,7 @@ PinMappingClass::PinMappingClass()
     _pinMapping.w5500.rst = W5500_RST;
 #endif
 
-#if defined(OPENDTU_ETHERNET)
+#if defined(CONFIG_ETH_USE_ESP32_EMAC) && defined(USE_EMAC)
     _pinMapping.eth.enabled = true;
     _pinMapping.eth.phy_addr = ETH_PHY_ADDR;
     _pinMapping.eth.power = ETH_PHY_POWER;
@@ -374,7 +404,7 @@ void PinMappingClass::init(const String& deviceMapping)
                 _pinMapping.cmt_chip_int2gpio = doc[i]["cmt"]["chip_int2gpio"] | 3;
 #endif
 
-#ifdef USE_W5500
+#if defined(CONFIG_ETH_USE_ESP32_EMAC) && defined(USE_W5500)
                 _pinMapping.w5500.sclk = doc[i]["w5500"]["sclk"] | W5500_SCLK;
                 _pinMapping.w5500.mosi = doc[i]["w5500"]["mosi"] | W5500_MOSI;
                 _pinMapping.w5500.miso = doc[i]["w5500"]["miso"] | W5500_MISO;
@@ -383,7 +413,7 @@ void PinMappingClass::init(const String& deviceMapping)
                 _pinMapping.w5500.rst = doc[i]["w5500"]["rst"] | W5500_RST;
 #endif
 
-#if  defined(OPENDTU_ETHERNET)
+#if  defined(CONFIG_ETH_USE_ESP32_EMAC) && defined(USE_EMAC)
                 _pinMapping.eth.enabled = doc[i]["eth"]["enabled"] | true;
                 _pinMapping.eth.phy_addr = doc[i]["eth"]["phy_addr"] | ETH_PHY_ADDR;
                 _pinMapping.eth.power = doc[i]["eth"]["power"] | ETH_PHY_POWER;
@@ -594,7 +624,7 @@ bool PinMappingClass::isValidCmt2300Config() const
 }
 #endif
 
-#ifdef USE_W5500
+#if defined(CONFIG_ETH_USE_ESP32_EMAC) && defined(USE_W5500)
 bool PinMappingClass::isValidW5500Config() const
 {
     return _pinMapping.w5500.sclk >= 0
@@ -606,7 +636,7 @@ bool PinMappingClass::isValidW5500Config() const
 }
 #endif
 
-#if defined(OPENDTU_ETHERNET)
+#if defined(CONFIG_ETH_USE_ESP32_EMAC) && defined(USE_EMAC)
 bool PinMappingClass::isValidEthConfig() const
 {
     return _pinMapping.eth.enabled
@@ -739,7 +769,7 @@ void PinMappingClass::createPinMappingJson() const
     cmt["chip_int2gpio"] = _pinMapping.cmt_chip_int2gpio;
 #endif
 
-#ifdef USE_W5500
+#if defined(CONFIG_ETH_USE_ESP32_EMAC) && defined(USE_W5500)
     auto w5500PinObj = doc["w5500"].to<JsonObject>();
     w5500PinObj["sclk"] = pin.w5500.sclk;
     w5500PinObj["mosi"] = pin.w5500.mosi;
@@ -749,12 +779,12 @@ void PinMappingClass::createPinMappingJson() const
     w5500PinObj["rst"] = pin.w5500.rst;
 #endif
 
-#if defined(OPENDTU_ETHERNET)
+#if defined(CONFIG_ETH_USE_ESP32_EMAC) && defined(USE_EMAC)
     JsonObject eth = doc["eth"].to<JsonObject>();
     eth["enabled"]  = _pinMapping.eth.enabled;
     eth["phy_addr"] = _pinMapping.eth.phy_addr;
     eth["power"]    = _pinMapping.eth.power;
-    eth["mdc"]      = _pinMapping.ethmdc;
+    eth["mdc"]      = _pinMapping.eth.mdc;
     eth["mdio"]     = _pinMapping.eth.mdio;
     eth["type"]     = _pinMapping.eth.type;
     eth["clk_mode"] = _pinMapping.eth.clk_mode;
