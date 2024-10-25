@@ -440,10 +440,10 @@ void PinMappingClass::init(const String& deviceMapping)
 #if defined(USE_LED_STRIP)
                 _pinMapping.led_rgb = doc[i]["led"]["rgb"] | LED_RGB;
 #endif
-                for (int i=0; i<sizeof(_pinMapping.victron)/sizeof(RS232_t); i++) {
-                    String offset = (i>0)?String(i+1):String("");
-                    _pinMapping.victron[i].rx = doc[i]["victron"][String("rs232_rx")+offset] | -1;
-                    _pinMapping.victron[i].tx = doc[i]["victron"][String("rs232_tx")+offset] | -1;
+                for (int j=0; j<sizeof(_pinMapping.victron)/sizeof(RS232_t); j++) {
+                    String offset = (j>0)?String(j+1):String("");
+                    _pinMapping.victron[j].rx = doc[i]["victron"][String("rs232_rx")+offset] | -1;
+                    _pinMapping.victron[j].tx = doc[i]["victron"][String("rs232_tx")+offset] | -1;
                 }
 
 #if defined(USE_REFUsol_INVERTER)

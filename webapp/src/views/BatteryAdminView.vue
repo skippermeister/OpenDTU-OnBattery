@@ -54,6 +54,52 @@
             </CardElement>
 
             <div v-show="batteryConfigList.enabled">
+                <CardElement
+                    v-show="batteryConfigList.io_providername == 'MCP2515'"
+                    :text="$t('batteryadmin.CanControllerConfiguration')"
+                    textVariant="text-bg-primary"
+                    addSpace
+                >
+                    <div class="row mb-3">
+                        <label class="col-sm-4 col-form-label">
+                            {{ $t('batteryadmin.CanControllerFrequency') }}
+                        </label>
+                        <div class="col-sm-2">
+                            <select class="form-select" v-model="batteryConfigList.can_controller_frequency">
+                                <option
+                                    v-for="frequency in frequencyTypeList"
+                                    :key="frequency.key"
+                                    :value="frequency.value"
+                                >
+                                    {{ frequency.key }} MHz
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+                </CardElement>
+
+                <CardElement
+                    v-show="
+                        batteryConfigList.io_providername == 'RS232' || batteryConfigList.io_providername == 'RS485'
+                    "
+                    :text="$t('batteryadmin.SerialConfiguration')"
+                    textVariant="text-bg-primary"
+                    addSpace
+                >
+                    <div class="row mb-3">
+                        <label class="col-sm-4 col-form-label">
+                            {{ $t('batteryadmin.Baudrate') }}
+                        </label>
+                        <div class="col-sm-2">
+                            <select class="form-select" v-model="batteryConfigList.baudrate">
+                                <option v-for="baudrate in baudrateList" :key="baudrate.key" :value="baudrate.value">
+                                    {{ baudrate.value }} Baud
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+                </CardElement>
+
                 <CardElement :text="$t('batteryadmin.BatteryParameter')" textVariant="text-bg-primary" add-space>
                     <InputElement
                         v-show="batteryConfigList.provider < 7"
@@ -67,7 +113,7 @@
                     />
 
                     <InputElement
-                        v-if="batteryConfigList.provider >= 7"
+                        v-if="batteryConfigList.provider >= 7 || batteryConfigList.provider == 4"
                         :label="$t('batteryadmin.RecommendedChargeVoltage')"
                         v-model="batteryConfigList.recommended_charge_voltage"
                         type="number"
@@ -79,7 +125,7 @@
                     />
 
                     <InputElement
-                        v-if="batteryConfigList.provider >= 7"
+                        v-if="batteryConfigList.provider >= 7 || batteryConfigList.provider == 4"
                         :label="$t('batteryadmin.RecommendedDischargeVoltage')"
                         v-model="batteryConfigList.recommended_discharge_voltage"
                         type="number"
@@ -146,30 +192,6 @@
                         :tooltip="$t('batteryadmin.StopChargingSoCHint')"
                         :postfix="$t('batteryadmin.Percent')"
                     />
-                </CardElement>
-
-                <CardElement
-                    v-show="batteryConfigList.io_providername == 'MCP2515'"
-                    :text="$t('batteryadmin.CanControllerConfiguration')"
-                    textVariant="text-bg-primary"
-                    addSpace
-                >
-                    <div class="row mb-3">
-                        <label class="col-sm-4 col-form-label">
-                            {{ $t('batteryadmin.CanControllerFrequency') }}
-                        </label>
-                        <div class="col-sm-2">
-                            <select class="form-select" v-model="batteryConfigList.can_controller_frequency">
-                                <option
-                                    v-for="frequency in frequencyTypeList"
-                                    :key="frequency.key"
-                                    :value="frequency.value"
-                                >
-                                    {{ frequency.key }} MHz
-                                </option>
-                            </select>
-                        </div>
-                    </div>
                 </CardElement>
 
                 <template
@@ -470,6 +492,12 @@ export default defineComponent({
                 { key: 8, value: 'VictronSense' },
                 { key: 9, value: 'Mqtt' },
                 { key: 10, value: 'ZendureLocalMqtt' },
+            ],
+            baudrateList: [
+                { key: 0, value: 9600 },
+                { key: 1, value: 19200 },
+                { key: 2, value: 38400 },
+                { key: 2, value: 115200 },
             ],
             zendureDeviceTypeList: [
                 { key: 0, value: 'Hub 1200' },

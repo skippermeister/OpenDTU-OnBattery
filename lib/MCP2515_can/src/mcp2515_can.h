@@ -178,7 +178,13 @@
 static const uint8_t CANSTAT_OPMOD = 0xE0;
 static const uint8_t CANSTAT_ICOD = 0x0E;
 
-static const uint8_t CNF3_SOF = 0x80;
+/*
+ *   CNF3 Register Values
+ */
+static const uint8_t SOF_ENABLE     = 0x80;
+static const uint8_t SOF_DISABLE    = 0x00;
+static const uint8_t WAKFIL_ENABLE  = 0x40;
+static const uint8_t WAKFIL_DISABLE = 0x00;
 
 static const uint8_t TXB_EXIDE_MASK = 0x08;
 static const uint8_t DLC_MASK       = 0x0F;
@@ -220,7 +226,9 @@ static const uint8_t CANCTRL_CLKPRE = 0x03;
 enum MCP2515_CLOCK_t {
     MCP_20MHZ,
     MCP_16MHZ,
-    MCP_8MHZ
+    MCP_8MHZ,
+    MCP_CLOCK_SELECT,
+    MCP_CLKOUT_ENABLE
 };
 
 enum CAN_SPEED_t {
@@ -347,7 +355,10 @@ public:
     bool isInterrupt(void);
 
     void setSleepWakeup(const bool enable);
+    uint8_t sleep(void);
+    uint8_t wake(void);
     uint8_t setMode(const CANCTRL_REQOP_MODE_t mode);
+    uint8_t getMode(void);
 
     uint8_t setOneShotMode(bool set);
     uint8_t setClkOut(const CAN_CLKOUT_t divisor);
@@ -377,6 +388,7 @@ private:
     enum TXBn_t { TXB0 = 0, TXB1 = 1, TXB2 = 2 };
 
     uint8_t initCANBuffers(void);
+    uint8_t setCANCTRL_Mode(const CANCTRL_REQOP_MODE_t mode);
     uint8_t requestNewMode(const uint8_t newmode);
 
     uint8_t setBitrate(const CAN_SPEED_t canSpeed, const MCP2515_CLOCK_t mcp2515Clock);
@@ -385,6 +397,8 @@ private:
     uint8_t readMessage(const RXBn_t rxbn, can_message_t *rx_message);
 
     void prepareId(uint8_t *buffer, const bool ext, const uint32_t id);
+
+    CANCTRL_REQOP_MODE_t mcpMode;          // Current controller mode
 
     struct TXBn_REGS_t {
 	    REGISTER_t CTRL;

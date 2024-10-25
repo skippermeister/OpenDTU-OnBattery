@@ -503,6 +503,9 @@ void JkBmsBatteryStats::generatePackCommonJsonResponse(JsonObject& packObject, c
     auto oChargeLowTempThresholdCelsius = _dataPoints.get<Label::ChargeLowTempThresholdCelsius>();
     auto oDischargeHighTempThresholdCelsius = _dataPoints.get<Label::DischargeHighTempThresholdCelsius>();
     auto oDischargeLowTempThresholdCelsius = _dataPoints.get<Label::DischargeLowTempThresholdCelsius>();
+    auto oTotalOvervoltageThresholdMilliVolt = _dataPoints.get<Label::TotalOvervoltageThresholdMilliVolt>();
+    auto oTotalUndervoltageThresholdMilliVolt = _dataPoints.get<Label::TotalUndervoltageThresholdMilliVolt>();
+
     if (oCellOvervoltageThresholdMilliVolt.has_value())
         addLiveViewPackParameter(packObject, "cellHighVoltageLimit", static_cast<float>(*oCellOvervoltageThresholdMilliVolt) / 1000, "V", 3);
     if (oCellUndervoltageThresholdMilliVolt.has_value())
@@ -515,6 +518,10 @@ void JkBmsBatteryStats::generatePackCommonJsonResponse(JsonObject& packObject, c
         addLiveViewPackParameter(packObject, "dischargeHighTemperatureLimit",*oDischargeHighTempThresholdCelsius, "°C", 0);
     if (oDischargeLowTempThresholdCelsius.has_value())
         addLiveViewPackParameter(packObject, "dischargeLowTemperatureLimit", *oDischargeLowTempThresholdCelsius, "°C", 0);
+    if (oTotalOvervoltageThresholdMilliVolt.has_value())
+        addLiveViewPackParameter(packObject, "chargeOverVoltage", (float)*oTotalOvervoltageThresholdMilliVolt/1000.0, "V", 2);
+    if (oTotalUndervoltageThresholdMilliVolt.has_value())
+        addLiveViewPackParameter(packObject, "dischargeUnderVoltage", (float)*oTotalUndervoltageThresholdMilliVolt/1000.0, "V", 2);
     }
 }
 

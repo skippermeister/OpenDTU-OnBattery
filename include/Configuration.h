@@ -251,6 +251,7 @@ struct BATTERY_CONFIG_T {
     uint8_t numberOfBatteries;
     uint32_t PollInterval;
     uint8_t Provider;
+    uint32_t Baudrate;
 #ifdef USE_MQTT_BATTERY
     struct {
         char SocTopic[MQTT_MAX_TOPIC_STRLEN + 1];

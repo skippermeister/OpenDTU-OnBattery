@@ -402,6 +402,7 @@ void ConfigurationClass::serializeBatteryConfig(BatteryConfig const& source, Jso
     target["numberOfBatteries"] = source.numberOfBatteries;
     target["pollinterval"] = source.PollInterval;
     target["provider"] = source.Provider;
+    target["baudrate"] = source.Baudrate;
 #ifdef USE_MQTT_BATTERY
     JsonObject battery_mqtt = target["mqtt"].to<JsonObject>();
     battery_mqtt["soc_topic"] = source.Mqtt.SocTopic;
@@ -447,6 +448,7 @@ void ConfigurationClass::deserializeBatteryConfig(JsonObject const& source, Batt
     if (target.numberOfBatteries > MAX_BATTERIES) target.numberOfBatteries = MAX_BATTERIES;
     target.PollInterval = source["pollinterval"] | BATTERY_POLLINTERVAL;
     target.Provider = source["provider"] | BATTERY_PROVIDER;
+    target.Baudrate = source["baudrate"] | 115200;
 #ifdef USE_MQTT_BATTERY
     strlcpy(target.Mqtt.SocTopic, source["mqtt"]["soc_topic"] | "", sizeof(target.Mqtt.SocTopic));
     strlcpy(target.Mqtt.SocJsonPath, source["mqtt"]["soc_json_path"] | "", sizeof(target.Mqtt.SocJsonPath));

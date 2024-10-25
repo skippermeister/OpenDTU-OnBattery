@@ -14,8 +14,8 @@ void MCP2515SPIClass::spi_init(void)
         ESP_ERROR_CHECK(ESP_FAIL);
     }
 
-    if (!connection_check_interrupt(_pin_irq))
-        ESP_ERROR_CHECK(ESP_FAIL);
+//    if (!connection_check_interrupt(_pin_irq))
+//        ESP_ERROR_CHECK(ESP_FAIL);
 
     // Return to default state once again after connection check
     ESP_ERROR_CHECK(gpio_reset_pin(_pin_irq));

@@ -27,6 +27,7 @@ export interface BatteryConfig {
     provider: number;
     io_providername: string;
     can_controller_frequency: number;
+    baudrate: number;
 
     min_charge_temp: number;
     max_charge_temp: number;

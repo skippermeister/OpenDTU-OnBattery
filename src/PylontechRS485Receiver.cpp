@@ -42,8 +42,10 @@ bool PylontechRS485Receiver::init()
 
     auto const& pin = PinMapping.get().battery;
 
-    _upSerial->begin(115200, SERIAL_8N1, pin.rs485.rx, pin.rs485.tx);
-    MessageOutput.printf("Port= %d, RS485 (Type %d) port rx = %d, tx = %d", *oHwSerialPort, pin.rs485.rts >= 0 ? 1 : 2, pin.rs485.rx, pin.rs485.tx);
+    auto Baudrate = Configuration.get().Battery.Baudrate;
+
+    _upSerial->begin(Baudrate, SERIAL_8N1, pin.rs485.rx, pin.rs485.tx);
+    MessageOutput.printf("Baud=%u, Port=%d, RS485 (Type %d), Pin rx=%d tx=%d", Baudrate, *oHwSerialPort, pin.rs485.rts >= 0 ? 1 : 2, pin.rs485.rx, pin.rs485.tx);
     if (pin.rs485.rts >= 0) {
         /*
          * Pylontech is connected via a RS485 module. Two different types of modules are supported.

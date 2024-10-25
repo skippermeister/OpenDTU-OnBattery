@@ -38,7 +38,8 @@ bool Controller::init()
 
     _upSerial = std::make_unique<HardwareSerial>(*oHwSerialPort);
 
-    _upSerial->begin(9600, SERIAL_8N1, pin.rs485.rx, pin.rs485.tx);
+    auto Baudrate = Configuration.get().Battery.Baudrate;
+    _upSerial->begin(Baudrate, SERIAL_8N1, pin.rs485.rx, pin.rs485.tx);
     if (pin.provider == Battery_Provider_t::RS485) {
         /*
          * JK BMS is connected via a RS485 module. Two different types of modules are supported.
@@ -47,7 +48,7 @@ bool Controller::init()
          * Type 2: If the GPIO is -1, we assume that we have a RS485 TTL module with a self controlled DE/RE circuit.
          *         In this case we only need a TX and RX pin.
          */
-        MessageOutput.printf("RS485 module (Type %d) rx = %d, tx = %d", pin.rs485.rts >= 0 ? 1 : 2, pin.rs485.rx, pin.rs485.tx);
+        MessageOutput.printf("Baud = %u, RS485 (Type %d), Pin rx = %d, tx = %d", Baudrate, pin.rs485.rts >= 0 ? 1 : 2, pin.rs485.rx, pin.rs485.tx);
         if (pin.rs485.rts >= 0) {
             MessageOutput.printf(", rts = %d", pin.rs485.rts);
             _upSerial->setPins(pin.rs485.rx, pin.rs485.tx, UART_PIN_NO_CHANGE, pin.rs485.rts);
