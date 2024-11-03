@@ -519,9 +519,9 @@ void JkBmsBatteryStats::generatePackCommonJsonResponse(JsonObject& packObject, c
     if (oDischargeLowTempThresholdCelsius.has_value())
         addLiveViewPackParameter(packObject, "dischargeLowTemperatureLimit", *oDischargeLowTempThresholdCelsius, "°C", 0);
     if (oTotalOvervoltageThresholdMilliVolt.has_value())
-        addLiveViewPackParameter(packObject, "chargeOverVoltage", (float)*oTotalOvervoltageThresholdMilliVolt/1000.0, "V", 2);
+        addLiveViewPackParameter(packObject, "chargeOverVoltage", static_cast<float>(*oTotalOvervoltageThresholdMilliVolt)/1000.0, "V", 2);
     if (oTotalUndervoltageThresholdMilliVolt.has_value())
-        addLiveViewPackParameter(packObject, "dischargeUnderVoltage", (float)*oTotalUndervoltageThresholdMilliVolt/1000.0, "V", 2);
+        addLiveViewPackParameter(packObject, "dischargeUnderVoltage", static_cast<float>(*oTotalUndervoltageThresholdMilliVolt)/1000.0, "V", 2);
     }
 }
 

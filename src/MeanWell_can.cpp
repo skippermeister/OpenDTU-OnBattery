@@ -966,13 +966,41 @@ void MeanWellCanClass::loop()
 
     // static_cast<unsigned int>(inv0->Statistics()->getChannelFieldDigits(TYPE_AC, CH0, FLD_PAC)));
     float GridPower = PowerMeter.getPowerTotal();
-    if (_verboseLogging)
-        MessageOutput.printf("%s %lu ms, House Power: %.1fW, Grid Power: %.1fW, Inverter (%s) Day Power: %.1fW, Batt con. Inverter (%s), Charger Power: %.1fW\r\n", _providerName,
-            millis() - t_start, PowerMeter.getHousePower(), GridPower, invName.c_str(), InverterPower, BattInvName.c_str(), _rp.outputPower);
+    if (_verboseLogging) {
+        MessageOutput.printf("%s %lu ms, House Power: %.1fW, Grid Power: %.1fW, Inverter (%s) Day Power: %.1fW, Batt con. Inverter (%s), Charger AC-Power: %.1fW\r\n", _providerName,
+            millis() - t_start,
+            PowerMeter.getHousePower(),
+            GridPower,
+            invName.c_str(),
+            InverterPower,
+            BattInvName.c_str(),
+            _rp.inputPower);
+    }
 
     auto stats = Battery.getStats();
 
     if (!Battery.initialized()) goto exit;
+
+    if (_verboseLogging) {
+        MessageOutput.printf("%s POUT: %.2fW, VOUT: %.2fV, IOUT: %.2fA, VOUT_SET: %.2fV, IOUT_SET: %.2fA, CV: %.2fV, CC: %.2fA, FV: %.2fV, TC: %.3fA\r\n", _providerName,
+            _rp.outputPower,
+            _rp.outputVoltage,
+            _rp.outputCurrent,
+            _rp.outputVoltageSet,
+            _rp.outputCurrentSet,
+            _rp.curveCV,
+            _rp.curveCC,
+            _rp.curveFV,
+            _rp.curveTC);
+        MessageOutput.printf("%s Min.Current: %.2fA, Max.Current: %.2fA, Min.Voltage: %.2fV, Max.Voltage: %.2fV\r\n", _providerName,
+            config.MeanWell.MinCurrent,
+            config.MeanWell.MaxCurrent,
+            config.MeanWell.MinVoltage,
+            config.MeanWell.MaxVoltage);
+        MessageOutput.printf("%s Actual Batterie Voltage: %.2fV, Recommended Charge Voltage Limit: %.2fV\r\n", _providerName,
+            stats->getVoltage(),
+            stats->getRecommendedChargeVoltageLimit());
+    }
 
     if (_automaticCharge) {
         if (_verboseLogging)
@@ -1065,7 +1093,7 @@ void MeanWellCanClass::loop()
                 _chargeImmediateRequested = true;
             } else {
                 // Zero Grid Export Charging Algorithm (Charger consums at operation minimum 180 Watt = 3.6A*50V)
-                if (_verboseLogging) MessageOutput.printf("%s Zero Grid Charger controller", _providerName);
+                if (_verboseLogging) MessageOutput.printf("%s Zero Grid Charger controller, outputCurrent %.2fA", _providerName, _rp.outputCurrent);
                 float pCharger = config.MeanWell.MinCurrent * stats->getVoltage(); // Minimum power usage of charger
                 float hysteresis = 25.0;
                 float minPowerNeeded = pCharger;
@@ -1090,10 +1118,10 @@ void MeanWellCanClass::loop()
                     {
                         float increment = fabs(GridPower) / stats->getVoltage() * efficiency;
                         if (_verboseLogging) MessageOutput.printf(" by %.2f A", increment);
-                        setValue(_rp.outputCurrentSet + increment, MEANWELL_SET_CURRENT);
+                        setValue(_rp.outputCurrent + increment, MEANWELL_SET_CURRENT); // FIXME: changed from outputCurrentSet
                         setValue(_rp.outputCurrentSet, MEANWELL_SET_CURVE_CC);
                     }
-                } else if ((GridPower >= 0.0) && (_rp.outputCurrent > 0.0f)) {
+                } else if ((GridPower >= 0.0) && (_rp.outputCurrent > 0.0f)) { // we consuming grid power to charge the batterie
                     if (_verboseLogging) MessageOutput.printf(", decrement");
                     float decrement = GridPower / stats->getVoltage() * efficiency;
                     // check if Solar Inverter produces not enough power, then we have to reduce switch off the charger
@@ -1102,7 +1130,7 @@ void MeanWellCanClass::loop()
                          _rp.outputCurrentSet >= config.MeanWell.MinCurrent - 0.01f &&
                          _rp.outputCurrentSet <= config.MeanWell.MinCurrent + 0.024f
                         ) ||
-                        (_rp.outputCurrentSet - decrement < config.MeanWell.MinCurrent)
+                        (_rp.outputCurrent - decrement < config.MeanWell.MinCurrent)  // FIXME: changed from outputCurrentSet
                        )
                     {
                         // we have to switch off the charger, the charger consums with minimum OutputCurrent to much power.
@@ -1111,10 +1139,9 @@ void MeanWellCanClass::loop()
                         // set current to minimum value
                         switchChargerOff(", not enough solar power");
                     }
-                    // else if (_rp.OutputCurrent > _rp.CurveCC && _rp.OutputCurrent < _rp.OutputCurrentSetting) {
                     else if (_rp.outputCurrent > config.MeanWell.MinCurrent) {
                         if (_verboseLogging) MessageOutput.printf(" by %.2f A", decrement);
-                        setValue(_rp.outputCurrentSet - decrement, MEANWELL_SET_CURRENT);
+                        setValue(_rp.outputCurrent - decrement, MEANWELL_SET_CURRENT); // FIXME: changed from outputCurrentSet
                         setValue(_rp.outputCurrentSet, MEANWELL_SET_CURVE_CC);
                     } else {
                         if (_verboseLogging) MessageOutput.printf(", sorry I don't know, OutputCurrent: %.3f, MinCurrent: %.3f",
