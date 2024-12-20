@@ -556,7 +556,8 @@ void HuaweiCanClass::loop()
     if (PowerLimiter.isGovernedInverterProducing()) {
       _setValue(0.0, HUAWEI_ONLINE_CURRENT);
       // Don't run auto mode for a second now. Otherwise we may send too much over the CAN bus
-      _autoModeBlockedTillMillis = millis() + 1000;
+      _autoModeBlockedTillMillisPeriod = 1000;
+      _lastAutoModeBlockedTillMillis = millis();
       MessageOutput.printf("%s%s] Inverter is active, disable\r\n", TAG, __FUNCTION__);
       return;
     }
