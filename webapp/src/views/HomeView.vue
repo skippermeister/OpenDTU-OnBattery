@@ -17,17 +17,12 @@
             :powerMeterData="liveData.power_meter"
             :chargerData="liveData.charger"
         />
-        <br/>
+        <br />
         <HoursChartElement :data="liveData.hours" />
 
         <div class="row gy-3 mt-0">
             <div class="col-sm-3 col-md-2" :style="[inverterData.length == 1 ? { display: 'none' } : {}]">
-                <div
-                    class="nav nav-pills row-cols-sm-1"
-                    id="v-pills-tab"
-                    role="tablist"
-                    aria-orientation="vertical"
-                >
+                <div class="nav nav-pills row-cols-sm-1" id="v-pills-tab" role="tablist" aria-orientation="vertical">
                     <button
                         v-for="inverter in inverterData"
                         :key="inverter.serial"
@@ -812,8 +807,8 @@ export default defineComponent({
         },
         onShowEventlog(serial: string) {
             this.eventLogLoading = true;
-            fetch('/api/eventlog/status?inv=' + serial + '&locale=' + this.$i18n.locale,{
-                headers: authHeader()
+            fetch('/api/eventlog/status?inv=' + serial + '&locale=' + this.$i18n.locale, {
+                headers: authHeader(),
             })
                 .then((response) => handleResponse(response, this.$emitter, this.$router))
                 .then((data) => {

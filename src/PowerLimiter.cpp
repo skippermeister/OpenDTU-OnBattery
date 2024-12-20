@@ -58,7 +58,8 @@ void PowerLimiterClass::init(Scheduler& scheduler)
     if (noDCpowerSwitch) {
         MessageOutput.print("no MosFET pins configured to control DC power of inverter ");
         for (auto const& upInv : _inverters) {
-            if (!upInv->isSolarPowered()) {
+//            if (!upInv->isSolarPowered())
+            {
                 MessageOutput.printf("%" PRIx64 " ", upInv->getSerial());
             }
         }
@@ -67,7 +68,8 @@ void PowerLimiterClass::init(Scheduler& scheduler)
         // switch PowerMOSFETs for inverter DC power off (battery powered Hoymiles inverter)
         MessageOutput.print("switch DC power of inverter ");
         for (auto const& upInv : _inverters) {
-            if (!upInv->isSolarPowered()) {
+//            if (!upInv->isSolarPowered())
+            {
                 MessageOutput.printf("%" PRIx64 " ", upInv->getSerial());
                 Hoymiles.getInverterBySerial(upInv->getSerial())->setConnected(noDCpowerSwitch);
                 flag = true;
@@ -313,7 +315,8 @@ void PowerLimiterClass::loop()
         if (diff < halfOfAllMillis) { return; }
 
         for (auto& upInv : _inverters) {
-            if (!upInv->isSolarPowered()) {
+            if (!upInv->isSolarPowered())
+            {
                 MessageOutput.printf("%s%s] sending restart command to inverter %s\r\n", TAG, __FUNCTION__,
                     upInv->getSerialStr());
                 upInv->restart();
@@ -991,6 +994,18 @@ bool PowerLimiterClass::isGovernedInverterProducing()
     return false;
 }
 
+bool PowerLimiterClass::isInverterGoverned(uint64_t serial)
+{
+    for (auto const& upInv : _inverters) {
+        if (serial == upInv->getSerial()) {
+            return true;
+        }
+    }
+
+    // inverter not found and not governed via PowerLimiter
+    return false;
+}
+
 bool PowerLimiterClass::isInverterSolarPowered(uint64_t serial)
 {
     for (auto const& upInv : _inverters) {
@@ -1013,7 +1028,8 @@ bool PowerLimiterClass::manageBatteryDCpowerSwitch()
     bool commandsEnabled = true;
     auto iter = _inverters.begin();
     while(iter != _inverters.end()) {
-        if ((*iter)->isSolarPowered() == false) {
+//        if ((*iter)->isSolarPowered() == false)
+        {
             auto inv = Hoymiles.getInverterBySerial((*iter)->getSerial());
             if (inv->getEnablePolling() == false) pollingEnabled = false;
             if (inv->getEnableCommands() == false) commandsEnabled = false;
@@ -1039,7 +1055,8 @@ bool PowerLimiterClass::manageBatteryDCpowerSwitch()
             if ((millis() - _lastPreCharge > _preChargeDelay) && (isStartThresholdReached() /*|| (!isStopThresholdReached() && _lastDCState == false)*/ )) {
                 MessageOutput.printf("%s%s] switch DC power of inverter ", TAG, __FUNCTION__);
                 for (auto const& upInv : _inverters) {
-                    if (!upInv->isSolarPowered()) {
+//                    if (!upInv->isSolarPowered())
+                    {
                         MessageOutput.printf("%" PRIx64 " ", upInv->getSerial());
                     }
                 }
@@ -1059,7 +1076,8 @@ bool PowerLimiterClass::manageBatteryDCpowerSwitch()
             if (millis() - _lastPreCharge > _preChargeDelay) {
                 MessageOutput.printf("%s%s] switch DC pre charging of inverter ", TAG, __FUNCTION__);
                 for (auto const& upInv : _inverters) {
-                    if (!upInv->isSolarPowered()) {
+//                    if (!upInv->isSolarPowered())
+                    {
                         MessageOutput.printf("%" PRIx64 " ", upInv->getSerial());
                     }
                 }
@@ -1078,7 +1096,8 @@ bool PowerLimiterClass::manageBatteryDCpowerSwitch()
             if (millis() - _lastPreCharge > _preChargeDelay) {
                 MessageOutput.printf("%s%s] switch DC full power of inverter ", TAG, __FUNCTION__);
                 for (auto const& upInv : _inverters) {
-                    if (!upInv->isSolarPowered()) {
+//                    if (!upInv->isSolarPowered())
+                    {
                         MessageOutput.printf("%" PRIx64 " ", upInv->getSerial());
                         Hoymiles.getInverterBySerial(upInv->getSerial())->setConnected(true);
                     }
@@ -1127,7 +1146,8 @@ void PowerLimiterClass::switchMosFetsOff()
     if (!_inverters.empty()) {
         MessageOutput.printf("%s%s] inverter:\r\n", TAG, __FUNCTION__);
         for (auto const& upInv : _inverters) {
-            if (!upInv->isSolarPowered()) {
+//            if (!upInv->isSolarPowered())
+            {
                 MessageOutput.printf("    %" PRIx64 " is %s producing. AC power: %.1f\r\n",
                     upInv->getSerial(),
                     upInv->isProducing() ? "still" : "not",
@@ -1140,7 +1160,8 @@ void PowerLimiterClass::switchMosFetsOff()
     if (digitalRead(PinMapping.get().full_power) == LOW || digitalRead(PinMapping.get().pre_charge) == LOW) {
         MessageOutput.printf("%s%s] switch DC power of inverter ", TAG, __FUNCTION__);
         for (auto const& upInv : _inverters) {
-            if (!upInv->isSolarPowered()) {
+//            if (!upInv->isSolarPowered())
+            {
                 MessageOutput.printf("%" PRIx64 " ", upInv->getSerial());
                 Hoymiles.getInverterBySerial(upInv->getSerial())->setConnected(false);
             }

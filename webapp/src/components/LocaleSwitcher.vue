@@ -1,5 +1,10 @@
 <template>
-    <select id="locale" class="form-select" @change="setLocale(($event.target as HTMLSelectElement).value)" :value="$i18n.locale">
+    <select
+        id="locale"
+        class="form-select"
+        @change="setLocale(($event.target as HTMLSelectElement).value)"
+        :value="$i18n.locale"
+    >
         <option v-for="locale in allLocales" :key="`locale-${locale.code}`" :value="locale.code">
             {{ locale.name }}
         </option>

@@ -365,7 +365,7 @@ export default defineComponent({
                 .catch((error) => {
                     if (error.status != 404) {
                         this.alertMessage = this.$t('deviceadmin.ParseError', {
-                            error: error.message
+                            error: error.message,
                         });
                         this.alertType = 'danger';
                         this.showAlert = true;

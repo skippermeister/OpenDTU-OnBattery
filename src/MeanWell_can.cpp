@@ -940,13 +940,23 @@ void MeanWellCanClass::loop()
     String BattInvName;
     bool isProducing = false;
     bool isReachable = false;
+    bool first_governed = true;
     bool first = true;
     bool batteryConnected_isProducing = false;
 
     for (uint8_t i = 0; i < Hoymiles.getNumInverters(); i++) {
         auto inv = Hoymiles.getInverterByPos(i);
         if (inv != NULL) {
-            if (PowerLimiter.isInverterSolarPowered(inv->serial()) ) {
+            if (PowerLimiter.isInverterGoverned(inv->serial()) ) {
+                if (first_governed) {
+                    batteryConnected_isProducing = inv->isProducing();
+                    BattInvName = inv->name();
+                    first_governed = false;
+                } else {
+                    batteryConnected_isProducing = (batteryConnected_isProducing || inv->isProducing()) ? true : false;
+                    BattInvName += String(" + ") + inv->name();
+                }
+            } else {
                 InverterPower += inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_PAC);
                 if (first) {
                     isProducing = inv->isProducing();
@@ -954,13 +964,10 @@ void MeanWellCanClass::loop()
                     invName = inv->name();
                     first = false;
                 } else {
-                    isProducing = (isProducing && inv->isProducing()) ? true : false;
-                    isReachable = (isReachable && inv->isReachable()) ? true : false;
+                    isProducing = (isProducing || inv->isProducing()) ? true : false;
+                    isReachable = (isReachable || inv->isReachable()) ? true : false;
                     invName += String(" + ") + inv->name();
                 }
-            } else {
-                batteryConnected_isProducing = inv->isProducing();
-                BattInvName = inv->name();
             }
         }
     }

@@ -57,7 +57,12 @@
             <div v-else-if="!uploading">
                 <div class="row g-3 align-items-center form-group pt-2">
                     <div class="col-sm">
-                        <select id="filename" class="form-select" v-model="restoreFileSelect" @change="onUploadFileChange">
+                        <select
+                            id="filename"
+                            class="form-select"
+                            v-model="restoreFileSelect"
+                            @change="onUploadFileChange"
+                        >
                             <option v-for="file in restoreList" :key="file.name" :value="file.name">
                                 {{ file.descr }}
                             </option>
@@ -236,7 +241,7 @@ export default defineComponent({
                 headers: authHeader(),
                 body: formData,
             })
-            .then((response) => handleResponse(response, this.$emitter, this.$router))
+                .then((response) => handleResponse(response, this.$emitter, this.$router))
                 .then((data) => {
                     this.getFileList();
                     this.alert = data;

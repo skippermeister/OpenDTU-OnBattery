@@ -205,7 +205,7 @@ export default defineComponent({
         if (!isLoggedIn()) {
             this.$router.push({
                 path: '/login',
-                query: { returnUrl: this.$router.currentRoute.value.fullPath }
+                query: { returnUrl: this.$router.currentRoute.value.fullPath },
             });
         }
         this.loading = false;

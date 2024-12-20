@@ -189,7 +189,6 @@
                     add-space
                     v-if="governingBatteryPoweredInverters"
                 >
-
                     <InputElement
                         v-if="canUseSolarPassthrough"
                         :label="$t('powerlimiteradmin.EnableSolarPassthrough')"
@@ -454,7 +453,7 @@ import type {
     PowerLimiterConfig,
     PowerLimiterInverterConfig,
     PowerLimiterMetaData,
-    PowerLimiterInverterInfo
+    PowerLimiterInverterInfo,
 } from '@/types/PowerLimiterConfig';
 
 export default defineComponent({
@@ -567,7 +566,10 @@ export default defineComponent({
                         continue;
                     }
                     const commEnabled =
-                        inv.poll_enable_day && inv.command_enable_day && inv.poll_enable_night && inv.command_enable_night;
+                        inv.poll_enable_day &&
+                        inv.command_enable_day &&
+                        inv.poll_enable_night &&
+                        inv.command_enable_night;
                     const governed = this.governedInverters.some(
                         (cfgInv: PowerLimiterInverterConfig) => cfgInv.serial === inv.serial
                     );
@@ -580,7 +582,7 @@ export default defineComponent({
             }
 
             if (!meta.charger_enabled) {
-                   hints.push({ severity: 'optional', subject: 'NoCharger' });
+                hints.push({ severity: 'optional', subject: 'NoCharger' });
             }
 
             if (this.governingBatteryPoweredInverters) {

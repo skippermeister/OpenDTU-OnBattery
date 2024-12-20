@@ -64,6 +64,7 @@ public:
 
     // added by skippermeister
     bool isInverterSolarPowered(uint64_t serial);
+    bool isInverterGoverned(uint64_t serial);
 
 private:
     void loop();

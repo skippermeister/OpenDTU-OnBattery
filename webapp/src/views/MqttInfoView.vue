@@ -106,7 +106,11 @@
             </div>
         </CardElement>
 
-        <CardElement :text="$t('mqttinfo.HassSummary')" textVariant="text-bg-primary" add-space table
+        <CardElement
+            :text="$t('mqttinfo.HassSummary')"
+            textVariant="text-bg-primary"
+            add-space
+            table
             v-show="'hass_enabled' in mqttDataList"
         >
             <div class="table-responsive">
