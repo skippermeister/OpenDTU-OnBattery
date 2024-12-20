@@ -716,7 +716,7 @@ uint16_t PowerLimiterClass::calcPowerBusUsage(uint16_t powerRequested)
     // will shut down as a consequence.
     if (!isFullSolarPassthroughActive() && (
 #ifdef USE_CHARGER_HUAWEI
-        HuaweiCan.getAutoPowerStatus())
+        HuaweiCan.getAutoPowerStatus()
 #endif
 #if defined(USE_CHARGER_HUAWEI) && defined(USE_CHARGER_MEANWELL)
         ||
