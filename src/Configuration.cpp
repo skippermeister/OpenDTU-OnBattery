@@ -193,7 +193,7 @@ bool ConfigurationClass::write()
     display["screensaver"] = config.Display.ScreenSaver;
     display["rotation"] = config.Display.Rotation;
     display["contrast"] = config.Display.Contrast;
-    display["language"] = config.Display.Language;
+    display["locale"] = config.Display.Locale;
     display["diagram_duration"] = config.Display.Diagram.Duration;
     display["diagram_mode"] = config.Display.Diagram.Mode;
 #endif
@@ -334,10 +334,8 @@ bool ConfigurationClass::write()
     return true;
 }
 
-void ConfigurationClass::deserializeHttpRequestConfig(JsonObject const& source, HttpRequestConfig& target)
+void ConfigurationClass::deserializeHttpRequestConfig(JsonObject const& source_http_config, HttpRequestConfig& target)
 {
-    JsonObject source_http_config = source["http_request"];
-
     strlcpy(target.Url, source_http_config["url"] | "", sizeof(target.Url));
     target.AuthType = source_http_config["auth_type"] | HttpRequestConfig::Auth::None;
     strlcpy(target.Username, source_http_config["username"] | "", sizeof(target.Username));
@@ -377,7 +375,7 @@ void ConfigurationClass::deserializePowerMeterHttpJsonConfig(JsonObject const& s
         PowerMeterHttpJsonValue& t = target.Values[i];
         JsonObject s = values[i];
 
-        deserializeHttpRequestConfig(s, t.HttpRequest);
+        deserializeHttpRequestConfig(s["http_request"], t.HttpRequest);
 
         t.Enabled = s["enabled"] | false;
         strlcpy(t.JsonPath, s["json_path"] | "", sizeof(t.JsonPath));
@@ -391,7 +389,7 @@ void ConfigurationClass::deserializePowerMeterHttpJsonConfig(JsonObject const& s
 void ConfigurationClass::deserializePowerMeterHttpSmlConfig(JsonObject const& source, PowerMeterHttpSmlConfig& target)
 {
     target.PollingInterval = source["polling_interval"] | POWERMETER_POLLING_INTERVAL;
-    deserializeHttpRequestConfig(source, target.HttpRequest);
+    deserializeHttpRequestConfig(source["http_request"], target.HttpRequest);
 }
 
 void ConfigurationClass::serializeBatteryConfig(BatteryConfig const& source, JsonObject& target)
@@ -488,81 +486,127 @@ void ConfigurationClass::deserializeBatteryConfig(JsonObject const& source, Batt
 
 void ConfigurationClass::serializePowerLimiterConfig(PowerLimiterConfig const& source, JsonObject& target)
 {
+    char serialBuffer[sizeof(uint64_t) * 8 + 1];
+    auto serialStr = [&serialBuffer](uint64_t const& serial) -> String {
+        snprintf(serialBuffer, sizeof(serialBuffer), "%0x%08x",
+            static_cast<uint32_t>((serial >> 32) & 0xFFFFFFFF),
+            static_cast<uint32_t>(serial & 0xFFFFFFFF));
+        return String(serialBuffer);
+    };
+
+    // we want a representation of our floating-point value in the JSON that
+    // uses the least amount of decimal digits possible to convey the value that
+    // is actually represented by the float. this is no easy task. ArduinoJson
+    // does this for us, however, it does it as expected only for variables of
+    // type double. this is probably because it assumes all floating-point
+    // values to have the precision of a double (64 bits), so it prints the
+    // respective number of siginificant decimals, which are too many if the
+    // actual value is a float (32 bits).
+    auto roundedFloat = [](float val) -> double {
+        return static_cast<int>(val * 100 + (val > 0 ? 0.5 : -0.5)) / 100.0;
+    };
+
     target["enabled"] = source.Enabled;
     target["updatesonly"] = source.UpdatesOnly;
     target["verbose_logging"] = source.VerboseLogging;
     target["solar_passthrough_enabled"] = source.SolarPassThroughEnabled;
-    target["solar_passthrough_losses"] = source.SolarPassThroughLosses;
+    target["conduction_losses"] = source.ConductionLosses;
     target["battery_always_use_at_night"] = source.BatteryAlwaysUseAtNight;
-    target["is_inverter_behind_powermeter"] = source.IsInverterBehindPowerMeter;
-    target["is_inverter_solar_powered"] = source.IsInverterSolarPowered;
-    target["use_overscaling_to_compensate_shading"] = source.UseOverscalingToCompensateShading;
-    target["inverter_serial"] = String(source.InverterId); //config.Inverter[config.PowerLimiter.InverterId].Serial;
-    target["inverter_channel_id"] = source.InverterChannelId;
     target["target_power_consumption"] = source.TargetPowerConsumption;
     target["target_power_consumption_hysteresis"] = source.TargetPowerConsumptionHysteresis;
-    target["lower_power_limit"] = source.LowerPowerLimit;
     target["base_load_limit"] = source.BaseLoadLimit;
-    target["upper_power_limit"] = source.UpperPowerLimit;
     target["ignore_soc"] = source.IgnoreSoc;
     target["battery_soc_start_threshold"] = source.BatterySocStartThreshold;
     target["battery_soc_stop_threshold"] = source.BatterySocStopThreshold;
-    target["voltage_start_threshold"] = static_cast<int>(source.VoltageStartThreshold * 100.0 + 0.5) / 100.0;
-    target["voltage_stop_threshold"] = static_cast<int>(source.VoltageStopThreshold * 100.0 + 0.5) / 100.0;
+    target["voltage_start_threshold"] = roundedFloat(source.VoltageStartThreshold);
+    target["voltage_stop_threshold"] = roundedFloat(source.VoltageStopThreshold);
     target["voltage_load_correction_factor"] = source.VoltageLoadCorrectionFactor;
-    target["inverter_restart_hour"] = source.RestartHour;
     target["full_solar_passthrough_soc"] = source.FullSolarPassThroughSoc;
-    target["full_solar_passthrough_start_voltage"] = static_cast<int>(source.FullSolarPassThroughStartVoltage * 100.0 + 0.5) / 100.0;
-    target["full_solar_passthrough_stop_voltage"] = static_cast<int>(source.FullSolarPassThroughStopVoltage * 100.0 + 0.5) / 100.0;
+    target["full_solar_passthrough_start_voltage"] = roundedFloat(source.FullSolarPassThroughStartVoltage);
+    target["full_solar_passthrough_stop_voltage"] = roundedFloat(source.FullSolarPassThroughStopVoltage);
+    target["inverter_serial_for_dc_voltage"] = serialStr(source.InverterSerialForDcVoltage);
+    target["inverter_channel_id_for_dc_voltage"] = source.InverterChannelIdForDcVoltage;
+    target["inverter_restart_hour"] = source.RestartHour;
+    target["total_upper_power_limit"] = source.TotalUpperPowerLimit;
+
 #ifdef USE_SURPLUSPOWER
     target["surplus_power_enabled"] = source.SurplusPowerEnabled;
 #endif
 
+    JsonArray inverters = target["inverters"].to<JsonArray>();
+    for (size_t i = 0; i < INV_MAX_COUNT; ++i) {
+        PowerLimiterInverterConfig const& s = source.Inverters[i];
+        if (s.Serial == 0ULL) { break; }
+        JsonObject t = inverters.add<JsonObject>();
+
+        t["serial"] = serialStr(s.Serial);
+        t["is_governed"] = s.IsGoverned;
+        t["is_behind_powermeter"] = s.IsBehindPowerMeter;
+        t["is_solar_powered"] = s.IsSolarPowered;
+        t["use_overscaling_to_compensate_shading"] = s.UseOverscalingToCompensateShading;
+        t["lower_power_limit"] = s.LowerPowerLimit;
+        t["upper_power_limit"] = s.UpperPowerLimit;
+    }
 }
 
 void ConfigurationClass::deserializePowerLimiterConfig(JsonObject const& source, PowerLimiterConfig& target)
 {
+    auto serialBin = [](String const& input) -> uint64_t {
+        return strtoll(input.c_str(), NULL, 16);
+    };
+
     target.Enabled = source["enabled"] | POWERLIMITER_ENABLED;
     target.VerboseLogging = source["verbose_logging"] | false;
     target.UpdatesOnly = source["updatesonly"] | POWERLIMITER_UPDATESONLY;
     target.SolarPassThroughEnabled = source["solar_passthrough_enabled"] | POWERLIMITER_SOLAR_PASSTHROUGH_ENABLED;
-    target.SolarPassThroughLosses = source["solar_passthrough_losses"] | POWERLIMITER_SOLAR_PASSTHROUGH_LOSSES;
+    target.ConductionLosses = source["conduction_losses"] | POWERLIMITER_CONDUCTION_LOSSES;
     target.BatteryAlwaysUseAtNight = source["battery_always_use_at_night"] | POWERLIMITER_BATTERY_ALWAYS_USE_AT_NIGHT;
-    if (source["battery_drain_strategy"].as<uint8_t>() == 1) { target.BatteryAlwaysUseAtNight = true; } // convert legacy setting
-    target.IsInverterBehindPowerMeter = source["is_inverter_behind_powermeter"] | POWERLIMITER_IS_INVERTER_BEHIND_POWER_METER;
-    target.IsInverterSolarPowered = source["is_inverter_solar_powered"] | POWERLIMITER_IS_INVERTER_SOLAR_POWERED;
-    target.UseOverscalingToCompensateShading = source["use_overscaling_to_compensate_shading"] | POWERLIMITER_USE_OVERSCALING_TO_COMPENSATE_SHADING;
-    target.InverterId = source["inverter_serial"].as<uint64_t>() | POWERLIMITER_INVERTER_ID;
-    if (target.InverterId == POWERLIMITER_INVERTER_ID) // legacy
-        target.InverterId = source["inverter_id"].as<uint64_t>() | POWERLIMITER_INVERTER_ID;
-    target.InverterChannelId = source["inverter_channel_id"].as<uint8_t>() | POWERLIMITER_INVERTER_CHANNEL_ID;
     target.TargetPowerConsumption = source["target_power_consumption"] | POWERLIMITER_TARGET_POWER_CONSUMPTION;
     target.TargetPowerConsumptionHysteresis = source["target_power_consumption_hysteresis"] | POWERLIMITER_TARGET_POWER_CONSUMPTION_HYSTERESIS;
-    target.LowerPowerLimit = source["lower_power_limit"] | POWERLIMITER_LOWER_POWER_LIMIT;
     target.BaseLoadLimit = source["base_load_limit"] | POWERLIMITER_BASE_LOAD_LIMIT;
-    target.UpperPowerLimit = source["upper_power_limit"] | POWERLIMITER_UPPER_POWER_LIMIT;
-    target.VoltageStartThreshold = source["voltage_start_threshold"] | POWERLIMITER_VOLTAGE_START_THRESHOLD;
-    target.VoltageStartThreshold = static_cast<int>(target.VoltageStartThreshold * 100.0 + 0.5) / 100.0;
-    target.VoltageStopThreshold = source["voltage_stop_threshold"] | POWERLIMITER_VOLTAGE_STOP_THRESHOLD;
-    target.VoltageStopThreshold = static_cast<int>(target.VoltageStopThreshold * 100.0 + 0.5) / 100.0;
-    target.VoltageLoadCorrectionFactor = source["voltage_load_correction_factor"] | POWERLIMITER_VOLTAGE_LOAD_CORRECTION_FACTOR;
-    target.RestartHour = source["inverter_restart_hour"].as<int8_t>() | POWERLIMITER_RESTART_HOUR;
-
     target.IgnoreSoc = source["ignore_soc"] | POWERLIMITER_IGNORE_SOC;
     target.BatterySocStartThreshold = source["battery_soc_start_threshold"] | POWERLIMITER_BATTERY_SOC_START_THRESHOLD;
     target.BatterySocStopThreshold = source["battery_soc_stop_threshold"] | POWERLIMITER_BATTERY_SOC_STOP_THRESHOLD;
+    target.VoltageStartThreshold = source["voltage_start_threshold"] | POWERLIMITER_VOLTAGE_START_THRESHOLD;
+    target.VoltageStopThreshold = source["voltage_stop_threshold"] | POWERLIMITER_VOLTAGE_STOP_THRESHOLD;
+    target.VoltageLoadCorrectionFactor = source["voltage_load_correction_factor"] | POWERLIMITER_VOLTAGE_LOAD_CORRECTION_FACTOR;
     target.FullSolarPassThroughSoc = source["full_solar_passthrough_soc"] | POWERLIMITER_FULL_SOLAR_PASSTHROUGH_SOC;
     target.FullSolarPassThroughStartVoltage = source["full_solar_passthrough_start_voltage"] | POWERLIMITER_FULL_SOLAR_PASSTHROUGH_START_VOLTAGE;
     target.FullSolarPassThroughStopVoltage = source["full_solar_passthrough_stop_voltage"] | POWERLIMITER_FULL_SOLAR_PASSTHROUGH_STOP_VOLTAGE;
+    target.InverterSerialForDcVoltage = serialBin(source["inverter_serial_for_dc_voltage"] | String("0"));
+    target.InverterChannelIdForDcVoltage = source["inverter_channel_id_for_dc_voltage"] | POWERLIMITER_INVERTER_CHANNEL_ID;
+    target.RestartHour = source["inverter_restart_hour"].as<int8_t>() | POWERLIMITER_RESTART_HOUR;
+    target.TotalUpperPowerLimit = source["total_upper_power_limit"] | POWERLIMITER_UPPER_POWER_LIMIT;
 
 #ifdef USE_SURPLUSPOWER
     target.SurplusPowerEnabled = source["surplus_power_enabled"] | false;
 #endif
+
+    JsonArray inverters = source["inverters"].as<JsonArray>();
+    for (size_t i = 0; i < INV_MAX_COUNT; ++i) {
+        PowerLimiterInverterConfig& inv = target.Inverters[i];
+        JsonObject s = inverters[i];
+
+        inv.Serial = serialBin(s["serial"] | String("0")); // 0 marks inverter slot as unused
+        inv.IsGoverned = s["is_governed"] | false;
+        inv.IsBehindPowerMeter = s["is_behind_powermeter"] | POWERLIMITER_IS_INVERTER_BEHIND_POWER_METER;
+        inv.IsSolarPowered = s["is_solar_powered"] | POWERLIMITER_IS_INVERTER_SOLAR_POWERED;
+        inv.UseOverscalingToCompensateShading = s["use_overscaling_to_compensate_shading"] | POWERLIMITER_USE_OVERSCALING_TO_COMPENSATE_SHADING;
+        inv.LowerPowerLimit = s["lower_power_limit"] | POWERLIMITER_LOWER_POWER_LIMIT;
+        inv.UpperPowerLimit = s["upper_power_limit"] | POWERLIMITER_UPPER_POWER_LIMIT;
+    }
 }
 
 bool ConfigurationClass::read()
 {
     File f = LittleFS.open(CONFIG_FILENAME, "r", false);
+
+ // skip Byte Order Mask (BOM). valid JSON docs always start with '{' or '['.
+    while (f.available() > 0) {
+        int c = f.peek();
+        if (c == '{' || c == '[') { break; }
+        f.read();
+    }
 
     JsonDocument doc;
 
@@ -711,7 +755,7 @@ bool ConfigurationClass::read()
     config.Display.ScreenSaver = display["screensaver"] | DISPLAY_SCREENSAVER;
     config.Display.Rotation = display["rotation"] | DISPLAY_ROTATION;
     config.Display.Contrast = display["contrast"] | DISPLAY_CONTRAST;
-    config.Display.Language = display["language"] | DISPLAY_LANGUAGE;
+    strlcpy(config.Display.Locale, display["locale"] | DISPLAY_LOCALE, sizeof(config.Display.Locale));
     config.Display.Diagram.Duration = display["diagram_duration"] | DISPLAY_DIAGRAM_DURATION;
     config.Display.Diagram.Mode = display["diagram_mode"] | DISPLAY_DIAGRAM_MODE;
 #endif
@@ -774,11 +818,9 @@ bool ConfigurationClass::read()
 
     deserializePowerMeterSerialSdmConfig(powermeter["serial_sdm"], config.PowerMeter.SerialSdm);
 
-    JsonObject powermeter_http_json = powermeter["http_json"];
-    deserializePowerMeterHttpJsonConfig(powermeter_http_json, config.PowerMeter.HttpJson);
+    deserializePowerMeterHttpJsonConfig(powermeter["http_json"], config.PowerMeter.HttpJson);
 
-    JsonObject powermeter_sml = powermeter["http_sml"];
-    deserializePowerMeterHttpSmlConfig(powermeter_sml, config.PowerMeter.HttpSml);
+    deserializePowerMeterHttpSmlConfig(powermeter["http_sml"], config.PowerMeter.HttpSml);
 
     deserializePowerLimiterConfig(doc["powerlimiter"], config.PowerLimiter);
 

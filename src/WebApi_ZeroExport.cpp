@@ -68,8 +68,6 @@ void WebApiZeroExportClass::onMetaData(AsyncWebServerRequest* request)
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& root = response->getRoot();
 
-    root["powerlimiter_inverter_serial"] = config.PowerLimiter.InverterId;
-
     JsonObject inverters = root["inverters"].to<JsonObject>();
     for (uint8_t i = 0; i < INV_MAX_COUNT; i++) {
         if (config.Inverter[i].Serial == 0) { continue; }

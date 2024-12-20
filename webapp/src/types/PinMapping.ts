@@ -56,6 +56,14 @@ export interface Battery {
     rts: number;
 }
 
+export interface PowerMeter {
+    rx: number;
+    tx: number;
+    dere: number;
+    rxen: number;
+    txen: number;
+}
+
 export interface Device {
     name: string;
     links: Array<Links>;
@@ -66,6 +74,7 @@ export interface Device {
     victron: Victron;
     refusol: REFUsol;
     battery: Battery;
+    powermeter: PowerMeter;
 }
 
 export type PinMapping = Array<Device>;

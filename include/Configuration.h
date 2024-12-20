@@ -33,6 +33,7 @@
 #define CHAN_MAX_NAME_STRLEN 31
 
 #define DEV_MAX_MAPPING_NAME_STRLEN 63
+#define LOCALE_STRLEN 2
 
 #define VICTRON_MAX_COUNT 2
 
@@ -209,36 +210,44 @@ struct PowerMeter_CONFIG_T {
     PowerMeterHttpSmlConfig HttpSml;
 };
 
+struct POWERLIMITER_INVERTER_CONFIG_T {
+    uint64_t Serial;
+    bool IsGoverned;
+    bool IsBehindPowerMeter;
+    bool IsSolarPowered;
+    bool UseOverscalingToCompensateShading;
+    uint16_t LowerPowerLimit;
+    uint16_t UpperPowerLimit;
+};
+using PowerLimiterInverterConfig = struct POWERLIMITER_INVERTER_CONFIG_T;
+
 struct PowerLimiter_CONFIG_T {
     bool Enabled;
+    bool UpdatesOnly;
     bool VerboseLogging;
     bool SolarPassThroughEnabled;
-    uint8_t SolarPassThroughLosses;
+    uint8_t ConductionLosses;
     bool BatteryAlwaysUseAtNight;
-    bool UpdatesOnly;
-    bool IsInverterBehindPowerMeter;
-    bool IsInverterSolarPowered;
-    bool UseOverscalingToCompensateShading;
-    uint64_t InverterId;
-    uint8_t InverterChannelId;
     int32_t TargetPowerConsumption;
     int32_t TargetPowerConsumptionHysteresis;
-    int32_t LowerPowerLimit;
     int32_t BaseLoadLimit;
-    int32_t UpperPowerLimit;
     bool IgnoreSoc;
     uint32_t BatterySocStartThreshold;
     uint32_t BatterySocStopThreshold;
     float VoltageStartThreshold;
     float VoltageStopThreshold;
     float VoltageLoadCorrectionFactor;
-    int8_t RestartHour;
     uint32_t FullSolarPassThroughSoc;
     float FullSolarPassThroughStartVoltage;
     float FullSolarPassThroughStopVoltage;
+    uint64_t InverterSerialForDcVoltage;
+    uint8_t InverterChannelIdForDcVoltage;
+    int8_t RestartHour;
+    uint16_t TotalUpperPowerLimit;
 #ifdef USE_SURPLUSPOWER
     bool SurplusPowerEnabled;
 #endif
+    PowerLimiterInverterConfig Inverters[INV_MAX_COUNT];
 };
 using PowerLimiterConfig = struct PowerLimiter_CONFIG_T;
 
@@ -397,7 +406,7 @@ struct Display_CONFIG_T {
     bool ScreenSaver;
     uint8_t Rotation;
     uint8_t Contrast;
-    uint8_t Language;
+    char Locale[LOCALE_STRLEN + 1];
     struct {
         uint32_t Duration;
         uint8_t Mode;
@@ -492,7 +501,7 @@ public:
     static void serializeBatteryConfig(BatteryConfig const& source, JsonObject& target);
     static void serializePowerLimiterConfig(PowerLimiterConfig const& source, JsonObject& target);
 
-    static void deserializeHttpRequestConfig(JsonObject const& source, HttpRequestConfig& target);
+    static void deserializeHttpRequestConfig(JsonObject const& source_http_config, HttpRequestConfig& target);
     static void deserializePowerMeterMqttConfig(JsonObject const& source, PowerMeterMqttConfig& target);
     static void deserializePowerMeterSerialSdmConfig(JsonObject const& source, PowerMeterSerialSdmConfig& target);
     static void deserializePowerMeterHttpJsonConfig(JsonObject const& source, PowerMeterHttpJsonConfig& target);

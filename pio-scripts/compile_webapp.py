@@ -33,22 +33,29 @@ def check_files(directories, filepaths, hash_file):
 
     print("INFO: compiling webapp (hang on, this can take a while and there might be little output)...")
 
+    # we need shell=True as on Windows, path resolution to find the yarn
+    # "exectuable" (a shell script) is only performed by cmd.exe, not by
+    # Python itself. as we are calling yarn with fixed arguments, using
+    # shell=True is fine.
+    # we need to change the working directory to the webapp directory such
+    # that corepack installs and uses the expected version of yarn. otherwise,
+    # corepack installs a copy of yarn into the repository root directory.
     yarn = "yarn"
     try:
-        subprocess.check_output([yarn, "--version"], shell=True)
+        subprocess.check_output(yarn + " --version", cwd="webapp", shell=True)
     except FileNotFoundError:
         yarn = "yarnpkg"
         try:
-            subprocess.check_output([yarn, "--version"], shell=True)
+            subprocess.check_output(yarn + " --version", cwd="webapp", shell=True)
         except FileNotFoundError:
             raise Exception("it seems neither 'yarn' nor 'yarnpkg' is installed/available on your system")
 
     # if these commands fail, an exception will prevent us from
     # persisting the current hashes => commands will be executed again
-    subprocess.run([yarn, "--cwd", "webapp", "install", "--frozen-lockfile"], shell=True,
-                   check=True)
+    subprocess.run(yarn + " install --frozen-lockfile",
+                   cwd="webapp", check=True, shell=True)
 
-    subprocess.run([yarn, "--cwd", "webapp", "build"], shell=True, check=True)
+    subprocess.run(yarn + " build", cwd="webapp", check=True, shell=True)
 
     with open(hash_file, 'wb') as f:
         pickle.dump(file_hashes, f)

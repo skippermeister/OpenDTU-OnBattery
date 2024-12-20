@@ -29,6 +29,7 @@ std::optional<uint8_t> SerialPortManagerClass::allocatePort(std::string const& o
     }
 
     MessageOutput.printf("%s Cannot assign another HW UART port to '%s'\r\n", TAG, owner.c_str());
+    _rejects.insert(owner);
     return std::nullopt;
 }
 
@@ -40,4 +41,16 @@ void SerialPortManagerClass::freePort(std::string const& owner)
         MessageOutput.printf("%s Freeing HW UART %d, owner was '%s'\r\n", TAG, i, owner.c_str());
         _ports[i] = "";
     }
+}
+
+SerialPortManagerClass::allocations_t SerialPortManagerClass::getAllocations() const
+{
+    allocations_t res;
+    for (int8_t i = 0; i < _ports.size(); ++i) {
+        res.push_back({i, _ports[i]});
+    }
+    for (auto const& reject : _rejects) {
+        res.push_back({-1, reject});
+    }
+    return res;
 }

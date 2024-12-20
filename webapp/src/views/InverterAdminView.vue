@@ -23,8 +23,8 @@
                 <div class="ml-auto text-right">
                     <button type="submit" class="btn btn-primary my-2">{{ $t('inverteradmin.Add') }}</button>
                 </div>
-                <div class="alert alert-secondary" role="alert" v-html="$t('inverteradmin.AddHint')"></div>
             </form>
+            <div class="alert alert-secondary" role="alert" v-html="$t('inverteradmin.AddHint')"></div>
         </CardElement>
 
         <CardElement :text="$t('inverteradmin.InverterList')" textVariant="text-bg-primary" add-space>
@@ -392,8 +392,8 @@ export default defineComponent({
         return {
             modal: {} as bootstrap.Modal,
             modalDelete: {} as bootstrap.Modal,
-            newInverterData: {} as Inverter,
-            selectedInverterData: {} as Inverter,
+            newInverterData: { serial: '' } as Inverter,
+            selectedInverterData: { serial: '' } as Inverter,
             inverters: [] as Inverter[],
             dataLoading: true,
             alert: {} as AlertResponse,
@@ -449,7 +449,7 @@ export default defineComponent({
         },
         onSubmit() {
             this.callInverterApiEndpoint('add', JSON.stringify(this.newInverterData));
-            this.newInverterData = {} as Inverter;
+            this.newInverterData = { serial: '' } as Inverter;
         },
         onDelete() {
             this.callInverterApiEndpoint('del', JSON.stringify({ id: this.selectedInverterData.id }));

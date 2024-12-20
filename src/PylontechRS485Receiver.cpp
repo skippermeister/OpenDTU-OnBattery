@@ -81,20 +81,26 @@ void PylontechRS485Receiver::readParameter()
 
     _verboseLogging = true;
 
-    _masterBatteryID = 2; // Master battery starts with ID = 2
-
     // search the amount of connected batteries
-    uint8_t number_of_packs = 0;
-    for (uint8_t i = _masterBatteryID; i < _masterBatteryID + 8; i++) {
-        if (get_pack_count(REQUEST_AND_GET, i) == false) {
-            break;
+    uint8_t found_number_of_packs = 0;
+    uint8_t found_number_of_groups = 0;
+    for (uint8_t m = 0; m < 8; m++) {
+        _masterBatteryID = 2; // Master battery starts with ID = 2
+        for (uint8_t n = _masterBatteryID; n < _masterBatteryID + 12; n++) {
+            if (get_pack_count(REQUEST_AND_GET, 0x10*m + n) == false) {
+                break;
+            }
+            found_number_of_packs++;
+            if (n == _masterBatteryID) found_number_of_groups++;
+            vTaskDelay(500);
         }
-        number_of_packs++;
         vTaskDelay(500);
     }
-    MessageOutput.printf("%s Found %d Battery Packs\r\n", TAG, number_of_packs);
+    MessageOutput.printf("%s Found %d groups with in total %d Battery Packs\r\n", TAG, found_number_of_groups, found_number_of_packs);
 
     _stats->_number_of_packs = Configuration.get().Battery.numberOfBatteries;
+
+    if (found_number_of_packs < _stats->_number_of_packs) _stats->_number_of_packs = found_number_of_packs;
 
     _lastSlaveBatteryID = _masterBatteryID + _stats->_number_of_packs;
 
@@ -358,8 +364,8 @@ void PylontechRS485Receiver::get_version_info(const PylontechRS485Receiver::Func
 bool PylontechRS485Receiver::get_pack_count(const PylontechRS485Receiver::Function function, uint8_t module, uint8_t InfoCommand)
 {
     if (_verboseLogging)
-        MessageOutput.printf("%s::%s %s Module %d InfoCommand %02X\r\n", TAG, __FUNCTION__,
-            _Function_[function], module, InfoCommand == 0 ? 0 : InfoCommand == 1 ? module
+        MessageOutput.printf("%s::%s %s Group %d Module %d InfoCommand %02X\r\n", TAG, __FUNCTION__,
+            _Function_[function], module>>4, module&0xF, InfoCommand == 0 ? 0 : InfoCommand == 1 ? module
                                                                                   : 0xFF);
 
     if (function != PylontechRS485Receiver::Function::GET) {

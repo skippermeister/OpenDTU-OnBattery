@@ -5,7 +5,10 @@ export function timestampToString(
     timestampSeconds: number,
     includeDays = false
 ): [number, string] | [string] {
-    const timeString = new Date(timestampSeconds * 1000).toLocaleTimeString(locale, { timeZone: 'UTC', hour12: false });
+    const timeString = new Date(timestampSeconds * 1000).toLocaleTimeString(locale, {
+        timeZone: 'UTC',
+        hour12: false,
+    });
     if (!includeDays) return [timeString];
 
     const secondsPerDay = 60 * 60 * 24;

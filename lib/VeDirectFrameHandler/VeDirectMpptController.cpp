@@ -23,13 +23,13 @@ void VeDirectMpptController::init(int8_t rx, int8_t tx, Print* msgOut, bool verb
 bool VeDirectMpptController::processTextDataDerived(std::string const& name, std::string const& value)
 {
 	if (name == "IL") {
-		_tmpFrame.loadCurrent_IL_mA = atol(value.c_str());
-        _tmpFrame.hasLoad = true;
+		_tmpFrame.loadCurrent_IL_mA.second = atol(value.c_str());
+        _tmpFrame.loadCurrent_IL_mA.first = millis();
 		return true;
 	}
 	if (name == "LOAD") {
-		_tmpFrame.loadOutputState_LOAD = (value == "ON");
-        _tmpFrame.hasLoad = true;
+		_tmpFrame.loadOutputState_LOAD.second = (value == "ON");
+        _tmpFrame.loadOutputState_LOAD.first = millis();
 		return true;
 	}
 	if (name == "CS") {
@@ -100,7 +100,8 @@ void VeDirectMpptController::frameValidEvent() {
 	}
 
 	// calculation of the MPPT efficiency
-	float totalPower_W = (_tmpFrame.loadCurrent_IL_mA / 1000.0f + _tmpFrame.batteryCurrent_I_mA / 1000.0f) * _tmpFrame.batteryVoltage_V_mV /1000.0f;
+    float loadCurrent = (_tmpFrame.loadCurrent_IL_mA.first > 0) ? _tmpFrame.loadCurrent_IL_mA.second / 1000.0f : 0.0f;
+	float totalPower_W = (loadCurrent + _tmpFrame.batteryCurrent_I_mA / 1000.0f) * _tmpFrame.batteryVoltage_V_mV / 1000.0f;
 	if (_tmpFrame.panelPower_PPV_W > 0) {
 		_efficiency.addNumber(totalPower_W * 100.0f / _tmpFrame.panelPower_PPV_W);
 		_tmpFrame.mpptEfficiency_Percent = _efficiency.getAverage();
@@ -119,14 +120,18 @@ void VeDirectMpptController::loop()
 	// Second we read Text- and HEX-Messages
 	VeDirectFrameHandler::loop();
 
-	// Third we check if HEX-Data is outdated
 	// Note: Room for improvement, longer data valid time for slow changing values?
-	if (!isHexCommandPossible()) { return; }
 	auto resetTimestamp = [this](auto& pair) {
 		if (pair.first > 0 && (millis() - pair.first) > (10 * 1000)) {
 			pair.first = 0;
 		}
 	};
+
+    // Check if optional TEXT-Data is outdated
+    resetTimestamp(_tmpFrame.loadOutputState_LOAD);
+	resetTimestamp(_tmpFrame.loadCurrent_IL_mA);
+	// Third we check if HEX-Data is outdated
+    if (!isHexCommandPossible()) { return; }
 
 	resetTimestamp(_tmpFrame.Capabilities);
 	resetTimestamp(_tmpFrame.ChargerVoltage);
@@ -134,10 +139,8 @@ void VeDirectMpptController::loop()
 	resetTimestamp(_tmpFrame.ChargerMaximumCurrent);
 	resetTimestamp(_tmpFrame.VoltageSettingsRange);
     if (_tmpFrame.Capabilities.second & 1) {
-    	resetTimestamp(_tmpFrame.LoadOutputState);
 	    resetTimestamp(_tmpFrame.LoadOutputControl);
 	    resetTimestamp(_tmpFrame.LoadOutputVoltage);
-	    resetTimestamp(_tmpFrame.LoadOutputControl);
     }
 	resetTimestamp(_tmpFrame.BatteryType);
 	resetTimestamp(_tmpFrame.BatteryMaximumCurrent);
@@ -228,7 +231,7 @@ boolean forceLogging = false;
 			return true;
 
 		case VeDirectHexRegister::LoadOutputState:
-			_tmpFrame.LoadOutputState = { millis(), static_cast<uint8_t>(data.value) };
+			_tmpFrame.loadOutputState_LOAD = { millis(), static_cast<uint8_t>(data.value) };
 
 			if (_verboseLogging) {
 				_msgOut->printf("%s%sLoad output state (0x%04X): 0x%X\r\n", _logId, TAG, regLog, data.value);

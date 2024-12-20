@@ -6,7 +6,9 @@
 <script lang="ts">
 import BootstrapAlert from './BootstrapAlert.vue';
 import { defineComponent } from 'vue';
+
 const chars32 = '0123456789ABCDEFGHJKLMNPRSTUVWXY';
+
 export default defineComponent({
     components: {
         BootstrapAlert,

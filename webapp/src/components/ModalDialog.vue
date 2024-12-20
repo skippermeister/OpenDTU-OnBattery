@@ -21,7 +21,7 @@
                     <slot v-else> </slot>
                 </div>
                 <div class="modal-footer">
-                    <slot name="footer"></slot>
+                    <slot name="footer"> </slot>
                     <button type="button" class="btn btn-secondary" @click="close" data-bs-dismiss="modal">
                         {{ getCloseText }}
                     </button>

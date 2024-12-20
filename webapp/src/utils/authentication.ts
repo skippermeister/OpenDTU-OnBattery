@@ -78,11 +78,17 @@ export function handleResponse(
                 // auto logout if 401 response returned from api
                 logout();
                 emitter.emit('logged-out');
-                router.push({ path: '/login', query: { returnUrl: router.currentRoute.value.fullPath } });
+                router.push({
+                    path: '/login',
+                    query: { returnUrl: router.currentRoute.value.fullPath },
+                });
                 return Promise.reject();
             }
 
-            const error = { message: (data && data.message) || response.statusText, status: response.status || 0 };
+            const error = {
+                message: (data && data.message) || response.statusText,
+                status: response.status || 0,
+            };
             if (!ignore_error) {
                 router.push({ name: 'Error', params: error });
             }

@@ -26,10 +26,13 @@ void WebApiPowerLimiterClass::init(AsyncWebServer& server, Scheduler& scheduler)
 
 void WebApiPowerLimiterClass::onStatus(AsyncWebServerRequest* request)
 {
-    auto const& config = Configuration.get();
+    if (!WebApi.checkCredentialsReadonly(request)) {
+        return;
+    }
 
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto root = response->getRoot().as<JsonObject>();
+    auto const& config = Configuration.get();
 
     ConfigurationClass::serializePowerLimiterConfig(config.PowerLimiter, root);
 /*
@@ -46,11 +49,6 @@ void WebApiPowerLimiterClass::onMetaData(AsyncWebServerRequest* request)
 
     auto const& config = Configuration.get();
 
-    size_t invAmount = 0;
-    for (uint8_t i = 0; i < INV_MAX_COUNT; i++) {
-        if (config.Inverter[i].Serial != 0) { ++invAmount; }
-    }
-
     AsyncJsonResponse* response = new AsyncJsonResponse();
     auto& root = response->getRoot();
 
@@ -64,30 +62,24 @@ void WebApiPowerLimiterClass::onMetaData(AsyncWebServerRequest* request)
     root["charger_enabled"] = config.Huawei.Enabled;
 #endif
 
-    auto inverters = root["inverters"].to<JsonObject>();
+    auto inverters = root["inverters"].to<JsonArray>();
     for (uint8_t i = 0; i < INV_MAX_COUNT; i++) {
-        if (config.Inverter[i].Serial == 0) { continue; }
+        auto inv = Hoymiles.getInverterBySerial(config.Inverter[i].Serial);
+        if (!inv) { continue; }
 
-        // we use the integer (base 10) representation of the inverter serial,
-        // rather than the hex represenation as used when handling the inverter
-        // serial elsewhere in the web application, because in this case, the
-        // serial is actually not displayed but only used as a value/index.
-        auto obj = inverters[String(config.Inverter[i].Serial)].to<JsonObject>();
+        auto obj = inverters.add<JsonObject>();
+        obj["serial"] = inv->serialString();
         obj["pos"] = i;
+        obj["order"] = config.Inverter[i].Order;
         obj["name"] = String(config.Inverter[i].Name);
         obj["poll_enable_day"] = config.Inverter[i].Poll_Enable_Day;
         obj["poll_enable_night"] = config.Inverter[i].Poll_Enable_Night;
         obj["command_enable_day"] = config.Inverter[i].Command_Enable_Day;
         obj["command_enable_night"] = config.Inverter[i].Command_Enable_Night;
-
-        obj["type"] = "Unknown";
-        obj["channels"] = 1;
-        auto inv = Hoymiles.getInverterBySerial(config.Inverter[i].Serial);
-        if (inv != nullptr) {
-            obj["type"] = inv->typeName();
-            auto channels = inv->Statistics()->getChannelsByType(TYPE_DC);
-            obj["channels"] = channels.size();
-        }
+        obj["max_power"] = inv->DevInfo()->getMaxPower(); // okay if zero/unknown
+        obj["type"] = inv->typeName();
+        auto channels = inv->Statistics()->getChannelsByType(TYPE_DC);
+        obj["channels"] = channels.size();
     }
 
     WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
@@ -139,30 +131,12 @@ void WebApiPowerLimiterClass::onAdminPost(AsyncWebServerRequest* request)
     auto& config = Configuration.get();
     ConfigurationClass::deserializePowerLimiterConfig(root.as<JsonObject>(), config.PowerLimiter);
 
-/*
-    if (config.Vedirect.Enabled) {
-        config.PowerLimiter.SolarPassThroughEnabled = root["solar_passthrough_enabled"];
-        config.PowerLimiter.SolarPassThroughLosses = root["solar_passthrough_losses"].as<uint8_t>();
-        config.PowerLimiter.FullSolarPassThroughStartVoltage = static_cast<int>(root["full_solar_passthrough_start_voltage"].as<float>() * 100) / 100.0;
-        config.PowerLimiter.FullSolarPassThroughStopVoltage = static_cast<int>(root["full_solar_passthrough_stop_voltage"].as<float>() * 100) / 100.0;
-    }
-
-    if (config.Battery.Enabled) {
-        config.PowerLimiter.IgnoreSoc = root["ignore_soc"];
-        config.PowerLimiter.BatterySocStartThreshold = root["battery_soc_start_threshold"].as<uint32_t>();
-        config.PowerLimiter.BatterySocStopThreshold = root["battery_soc_stop_threshold"].as<uint32_t>();
-        if (config.Vedirect.Enabled) {
-            config.PowerLimiter.FullSolarPassThroughSoc = root["full_solar_passthrough_soc"].as<uint32_t>();
-        }
-    }
-*/
-
     WebApi.writeConfig(retMsg);
 
     WebApi.sendJsonResponse(request, response, __FUNCTION__, __LINE__);
 
-    PowerLimiter.calcNextInverterRestart();
-
+    //PowerLimiter.calcNextInverterRestart();
+    PowerLimiter.triggerReloadingConfig();
 #ifdef USE_HASS
     // potentially make thresholds auto-discoverable
     MqttHandlePowerLimiterHass.forceUpdate();

@@ -6,7 +6,6 @@
 #include "Display_Graphic_Diagram.h"
 #include "defaults.h"
 #include <TaskSchedulerDeclarations.h>
-#include <TimeoutHelper.h>
 #include <U8g2lib.h>
 
 #define CHART_HEIGHT 20 // chart area hight in pixels
@@ -45,7 +44,7 @@ public:
     void setContrast(const uint8_t contrast);
     void setStatus(const bool turnOn);
     void setOrientation(const uint8_t rotation = DISPLAY_ROTATION);
-    void setLanguage(const uint8_t language);
+    void setLocale(const String& locale);
     void setDiagramMode(DiagramMode_t mode);
     void setStartupDisplay();
 
@@ -71,14 +70,25 @@ private:
 
     DisplayType_t _display_type = DisplayType_t::None;
     DiagramMode_t _diagram_mode = DiagramMode_t::Off;
-    uint8_t _display_language = DISPLAY_LANGUAGE;
+    String _display_language = DISPLAY_LOCALE;
     uint8_t _mExtra;
     const uint16_t _period = 1000;
     const uint16_t _interval = 60000; // interval at which to power save (milliseconds)
-    TimeoutHelper _previousMillis;
+    uint32_t _previousMillis = 0;
     char _fmtText[32];
     bool _isLarge = false;
     uint8_t _lineOffsets[5];
+
+    String _i18n_offline;
+    String _i18n_yield_today_kwh;
+    String _i18n_yield_today_wh;
+    String _i18n_date_format;
+    String _i18n_current_power_kw;
+    String _i18n_current_power_w;
+    String _i18n_meter_power_w;
+    String _i18n_meter_power_kw;
+    String _i18n_yield_total_mwh;
+    String _i18n_yield_total_kwh;
 };
 
 extern DisplayGraphicClass Display;

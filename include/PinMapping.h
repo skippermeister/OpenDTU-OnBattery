@@ -170,6 +170,8 @@ public:
     void init(const String& deviceMapping);
     PinMapping_t& get();
 
+    bool isMappingSelected() const { return _mappingSelected; }
+
 #if defined(USE_RADIO_NRF)
     bool isValidNrf24Config() const;
 #endif
@@ -193,6 +195,8 @@ private:
     void createPinMappingJson() const;
 
     PinMapping_t _pinMapping;
+
+    bool _mappingSelected = false;
 
     const char* help[7] = {"unknown", "CAN0 Bus", "MCP2515 CAN Bus", "I2C0/CAN Bus", "I2C1/CAN Bus", "RS232", "RS485"};
 };

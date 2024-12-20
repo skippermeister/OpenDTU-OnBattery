@@ -12,7 +12,6 @@ export interface ZeroExportInverterInfo {
 // meta-data not directly part of the DPL settings,
 // to control visibility of DPL settings
 export interface ZeroExportMetaData {
-    powerlimiter_inverter_serial: string;
     inverters: { [key: string]: ZeroExportInverterInfo };
 }
 

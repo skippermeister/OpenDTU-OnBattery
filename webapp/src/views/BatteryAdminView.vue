@@ -47,7 +47,7 @@
                         v-model="batteryConfigList.numberOfBatteries"
                         type="number"
                         min="1"
-                        max="5"
+                        max="12"
                         wide4_1
                     />
                 </div>

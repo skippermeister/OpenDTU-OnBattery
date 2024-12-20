@@ -57,6 +57,7 @@ bool SunPositionClass::isDayPeriod() const
     return (minutesPastMidnight >= _sunriseMinutes) && (minutesPastMidnight < _sunsetMinutes);
 }
 
+// Returns if sunset/sunrise exists (e.g. in norway sunset/sunrise don't happen in summer months)
 bool SunPositionClass::isSunsetAvailable() const
 {
     return _isSunsetAvailable;

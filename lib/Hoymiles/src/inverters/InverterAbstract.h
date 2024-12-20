@@ -24,6 +24,20 @@ enum {
     FRAGMENT_OK = 0
 };
 
+enum MpptNum_t {
+    MPPT_A = 0,
+    MPPT_B,
+    MPPT_C,
+    MPPT_D,
+    MPPT_CNT
+};
+
+// additional meta data per input channel
+typedef struct {
+    ChannelNum_t ch; // channel 0 - 5
+    MpptNum_t mppt; // mppt a - d (0 - 3)
+} channelMetaData_t;
+
 #define MAX_RF_FRAGMENT_COUNT 13
 
 class CommandAbstract;
@@ -39,6 +53,9 @@ public:
     virtual String typeName() const = 0;
     virtual const byteAssign_t* getByteAssignment() const = 0;
     virtual uint8_t getByteAssignmentSize() const = 0;
+
+    virtual const channelMetaData_t* getChannelMetaData() const = 0;
+    virtual uint8_t getChannelMetaDataSize() const = 0;
 
     void setConnected(bool value) { _connected = value; };
     bool isConnected() { return _connected; };
@@ -73,17 +90,23 @@ public:
     void performDailyTask();
 
     void resetRadioStats();
+
     struct {
         // TX Request Data
         uint32_t TxRequestData;
+
         // TX Re-Request Fragment
         uint32_t TxReRequestFragment;
+
         // RX Success
         uint32_t RxSuccess;
+
         // RX Fail Partial Answer
         uint32_t RxFailPartialAnswer;
+
         // RX Fail No Answer
         uint32_t RxFailNoAnswer;
+
         // RX Fail Corrupt Data
         uint32_t RxFailCorruptData;
     } RadioStats = {};
@@ -108,6 +131,10 @@ public:
     PowerCommandParser* PowerCommand();
     StatisticsParser* Statistics();
     SystemConfigParaParser* SystemConfigPara();
+
+    std::vector<MpptNum_t> getMppts() const;
+    std::vector<ChannelNum_t> getChannelsDC() const;
+    std::vector<ChannelNum_t> getChannelsDCByMppt(const MpptNum_t mppt) const;
 
 protected:
     HoymilesRadio* _radio;

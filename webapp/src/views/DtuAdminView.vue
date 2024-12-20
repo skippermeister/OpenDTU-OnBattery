@@ -54,7 +54,7 @@
                         <BIconInfoCircle v-tooltip :title="$t('dtuadmin.CmtPaLevelHint')" />
                     </label>
                     <div class="col-sm-4">
-                        <div class="input-group mb-3">
+                        <div class="input-group">
                             <input
                                 type="range"
                                 class="form-control form-range"
@@ -95,7 +95,7 @@
                         <BIconInfoCircle v-tooltip :title="$t('dtuadmin.CmtFrequencyHint')" />
                     </label>
                     <div class="col-sm-4">
-                        <div class="input-group mb-3">
+                        <div class="input-group">
                             <input
                                 type="range"
                                 class="form-control form-range"

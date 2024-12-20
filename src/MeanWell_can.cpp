@@ -13,6 +13,7 @@
 #include "Battery.h"
 #include "SunPosition.h"
 #include "PowerMeter.h"
+#include "PowerLimiter.h"
 #include "Configuration.h"
 #include <Hoymiles.h>
 #include <math.h>
@@ -945,7 +946,7 @@ void MeanWellCanClass::loop()
     for (uint8_t i = 0; i < Hoymiles.getNumInverters(); i++) {
         auto inv = Hoymiles.getInverterByPos(i);
         if (inv != NULL) {
-            if (inv->serial() != config.PowerLimiter.InverterId) {
+            if (PowerLimiter.isInverterSolarPowered(inv->serial()) ) {
                 InverterPower += inv->Statistics()->getChannelFieldValue(TYPE_AC, CH0, FLD_PAC);
                 if (first) {
                     isProducing = inv->isProducing();

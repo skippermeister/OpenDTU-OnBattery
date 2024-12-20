@@ -189,10 +189,10 @@
                 />
 
                 <div class="row mb-3">
-                    <label class="col-sm-2 col-form-label">
+                    <label class="col-sm-3 col-form-label">
                         {{ $t('mqttadmin.LwtQos') }}
                     </label>
-                    <div class="col-sm-10">
+                    <div class="col-sm-3">
                         <select class="form-select" v-model="mqttConfigList.lwt_qos">
                             <option v-for="qostype in qosTypeList" :key="qostype.key" :value="qostype.key">
                                 {{ $t(`mqttadmin.` + qostype.value) }}

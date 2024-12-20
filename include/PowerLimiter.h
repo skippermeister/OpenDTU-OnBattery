@@ -1,13 +1,17 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #pragma once
 
-#include <Hoymiles.h>
-#include <TaskSchedulerDeclarations.h>
-#include <TimeoutHelper.h>
+#include "Configuration.h"
+#include "PowerLimiterBatteryInverter.h"
 #include <espMqttClient.h>
-#include <frozen/string.h>
-#include <functional>
+//#include <Hoymiles.h>
+#include <Arduino.h>
+#include <atomic>
 #include <memory>
+#include <functional>
+#include <optional>
+#include <TaskSchedulerDeclarations.h>
+#include <frozen/string.h>
 
 #define PL_UI_STATE_INACTIVE 0
 #define PL_UI_STATE_CHARGING 1
@@ -18,18 +22,10 @@
 #define PL_MODE_FULL_DISABLE 1
 #define PL_MODE_SOLAR_PT_ONLY 2
 
-typedef enum {
-    SHUTDOWN = 0,
-    ACTIVE
-} plStates;
-
-typedef enum {
-    EMPTY_WHEN_FULL = 0,
-    EMPTY_AT_NIGHT
-} batDrainStrategy;
-
 class PowerLimiterClass {
 public:
+    PowerLimiterClass();
+
     enum class Status : unsigned {
         Initializing,
         DisabledByConfig,
@@ -37,30 +33,22 @@ public:
         WaitingForValidTimestamp,
         PowerMeterPending,
         InverterInvalid,
-        InverterChanged,
-        InverterOffline,
-        InverterCommandsDisabled,
-        InverterLimitPending,
-        InverterPowerCmdPending,
-        InverterDevInfoPending,
+        InverterCmdPending,
+        ConfigReload,
         InverterStatsPending,
-        CalculatedLimitBelowMinLimit,
         UnconditionalSolarPassthrough,
-        NoVeDirect,
-        NoEnergy,
-        ChargerPsu,
         Stable,
+
         TemperatureRange,
         BatteryNotInitialized,
         DisconnectFromBattery
-        //        WaitingInverterPowerOn
     };
 
-    PowerLimiterClass();
     void init(Scheduler& scheduler);
-    uint8_t getInverterUpdateTimeouts() const { return _inverterUpdateTimeouts; }
+    void triggerReloadingConfig() { _reloadConfigFlag = true; }
+    uint8_t getInverterUpdateTimeouts() const;
     uint8_t getPowerLimiterState();
-    int32_t getLastRequestedPowerLimit() { return _lastRequestedPowerLimit; }
+    int32_t getInverterOutput() { return _lastExpectedInverterOutput; }
     bool getFullSolarPassThroughEnabled() const { return _fullSolarPassThroughEnabled; }
 
     enum class Mode : unsigned {
@@ -71,62 +59,69 @@ public:
 
     void setMode(Mode m) { _mode = m; }
     Mode getMode() const { return _mode; }
-    void calcNextInverterRestart();
+    bool usesBatteryPoweredInverter();
+    bool isGovernedInverterProducing();
+
+    // added by skippermeister
+    bool isInverterSolarPowered(uint64_t serial);
 
 private:
     void loop();
 
     Task _loopTask;
 
-    int32_t _lastRequestedPowerLimit = 0;
+    std::atomic<bool> _reloadConfigFlag = true;
+    uint16_t _lastExpectedInverterOutput = 0;
     bool _shutdownPending = false;
-    std::optional<uint32_t> _oInverterStatsMillis = std::nullopt;
-    std::optional<uint32_t> _oUpdateStartMillis = std::nullopt;
-    std::optional<int32_t> _oTargetPowerLimitWatts = std::nullopt;
-    std::optional<bool> _oTargetPowerState = std::nullopt;
     Status _lastStatus = Status::Initializing;
-    TimeoutHelper _lastStatusPrinted;
+    uint32_t _lastStatusPrinted = 0;
     uint32_t _lastCalculation = 0;
     static constexpr uint32_t _calculationBackoffMsDefault = 128;
     uint32_t _calculationBackoffMs = _calculationBackoffMsDefault;
     Mode _mode = Mode::Normal;
-    std::shared_ptr<InverterAbstract> _inverter = nullptr;
+
+    std::deque<std::unique_ptr<PowerLimiterInverter>> _inverters;
     bool _batteryDischargeEnabled = false;
     bool _nighttimeDischarging = false;
-    uint32_t _nextInverterRestart = 0; // Values: 0->not calculated / 1->no restart configured / >1->time of next inverter restart in millis()
-    uint32_t _nextCalculateCheck = 5000; // time in millis for next NTP check to calulate restart
+    std::pair<bool, uint32_t> _nextInverterRestart = { false, 0 };
     bool _fullSolarPassThroughEnabled = false;
-    uint8_t _inverterUpdateTimeouts = 0;
+    bool _verboseLogging = false;
 
     frozen::string const& getStatusText(Status status);
     void announceStatus(Status status);
-    void switchMosFetsOff();
     bool shutdown(Status status);
     bool shutdown() { return shutdown(_lastStatus); }
+    void reloadConfig();
+    std::pair<float, char const*> getInverterDcVoltage();
     float getBatteryVoltage(bool log = false);
-    int32_t inverterPowerDcToAc(std::shared_ptr<InverterAbstract> inverter, int32_t dcPower);
-    void unconditionalSolarPassthrough(std::shared_ptr<InverterAbstract> inverter);
-    bool calcPowerLimit(std::shared_ptr<InverterAbstract> inverter, int32_t solarPower, int32_t batteryPowerLimit, bool batteryPower);
-    bool setNewPowerLimit(std::shared_ptr<InverterAbstract> inverter, int32_t newPowerLimit);
-    bool updateInverter();
-    int32_t scalePowerLimit(std::shared_ptr<InverterAbstract> inverter, int32_t newLimit, int32_t currentLimitWatts);
-    int32_t getSolarPower();
-    int32_t getBatteryDischargeLimit();
+    uint16_t dcPowerBusToInverterAc(uint16_t dcPower);
+    void fullSolarPassthrough(PowerLimiterClass::Status reason);
+    int16_t calcConsumption();
+    using inverter_filter_t = std::function<bool(PowerLimiterInverter const&)>;
+    uint16_t updateInverterLimits(uint16_t powerRequested, inverter_filter_t filter, std::string const& filterExpression);
+    uint16_t calcPowerBusUsage(uint16_t powerRequested);
+    bool updateInverters();
+    uint16_t getSolarPassthroughPower();
+    std::optional<uint16_t> getBatteryDischargeLimit();
+    float getBatteryInvertersOutputAcWatts();
+
+    std::optional<float> _oLoadCorrectedVoltage = std::nullopt;
     float getLoadCorrectedVoltage();
+
     bool testThreshold(float socThreshold, float voltThreshold, std::function<bool(float, float)> compare);
     bool isStartThresholdReached();
     bool isStopThresholdReached();
     bool isBelowStopThreshold();
-    bool useFullSolarPassthrough();
+    void calcNextInverterRestart();
+    bool isFullSolarPassthroughActive();
 
+    void switchMosFetsOff();
     bool manageBatteryDCpowerSwitch();
 //    bool _lastDCState = false;
     uint32_t _switchMosFetOffTimer;
     int8_t _preChargePowerState;
     uint32_t _preChargeDelay = 0;
     uint32_t _lastPreCharge = 0;
-
-    bool _verboseLogging = false;
 };
 
 extern PowerLimiterClass PowerLimiter;

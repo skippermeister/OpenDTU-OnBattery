@@ -8,11 +8,11 @@ import DtuAdminView from '@/views/DtuAdminView.vue';
 import ErrorView from '@/views/ErrorView.vue';
 import FirmwareUpgradeView from '@/views/FirmwareUpgradeView.vue';
 import HomeView from '@/views/HomeView.vue';
-import REFUsolAdminView from '@/views/REFUsolAdminView.vue';
 import VedirectAdminView from '@/views/VedirectAdminView.vue';
-import ZeroExportAdminView from '@/views/ZeroExportAdminView.vue';
 import PowerMeterAdminView from '@/views/PowerMeterAdminView.vue';
 import PowerLimiterAdminView from '@/views/PowerLimiterAdminView.vue';
+import REFUsolAdminView from '@/views/REFUsolAdminView.vue';
+import ZeroExportAdminView from '@/views/ZeroExportAdminView.vue';
 import REFUsolInfoView from '@/views/REFUsolInfoView.vue';
 import VedirectInfoView from '@/views/VedirectInfoView.vue';
 import InverterAdminView from '@/views/InverterAdminView.vue';
@@ -26,11 +26,19 @@ import NtpAdminView from '@/views/NtpAdminView.vue';
 import NtpInfoView from '@/views/NtpInfoView.vue';
 import SecurityAdminView from '@/views/SecurityAdminView.vue';
 import SystemInfoView from '@/views/SystemInfoView.vue';
+import WaitRestartView from '@/views/WaitRestartView.vue';
 import { createRouter, createWebHistory } from 'vue-router';
 
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
     linkActiveClass: 'active',
+    scrollBehavior() {
+        return new Promise((resolve) => {
+            setTimeout(() => {
+                resolve({ top: 0 });
+            }, 100);
+        });
+    },
     routes: [
         {
             path: '/',
@@ -171,6 +179,11 @@ const router = createRouter({
             path: '/maintenance/reboot',
             name: 'Device Reboot',
             component: MaintenanceRebootView,
+        },
+        {
+            path: '/wait',
+            name: 'Wait Restart',
+            component: WaitRestartView,
         },
     ],
 });

@@ -19,9 +19,10 @@ enum WebApiError {
     DtuInvalidCmtFrequency,
     DtuInvalidCmtCountry,
 
-    ConfigBase = 3000,
-    ConfigNotDeleted,
-    ConfigSuccess,
+    FileBase = 3000,
+    FileNotDeleted,
+    FileSuccess,
+    FileDeleteSuccess,
 
     InverterBase = 4000,
     InverterSerialZero,

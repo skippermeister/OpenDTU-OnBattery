@@ -32,7 +32,7 @@ private:
         VoltageStopThreshold,
         FullSolarPassThroughStartVoltage,
         FullSolarPassThroughStopVoltage,
-        UpperPowerLimit,
+        TotalUpperPowerLimit,
         TargetPowerConsumption
     };
 
@@ -46,7 +46,7 @@ private:
         { "threshold/voltage/full_solar_passthrough_start", MqttPowerLimiterCommand::FullSolarPassThroughStartVoltage },
         { "threshold/voltage/full_solar_passthrough_stop",  MqttPowerLimiterCommand::FullSolarPassThroughStopVoltage },
         { "mode",                                           MqttPowerLimiterCommand::Mode },
-        { "upper_power_limit",                              MqttPowerLimiterCommand::UpperPowerLimit },
+        { "upper_power_limit",                              MqttPowerLimiterCommand::TotalUpperPowerLimit },
         { "target_power_consumption",                       MqttPowerLimiterCommand::TargetPowerConsumption },
     };
 

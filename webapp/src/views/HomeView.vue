@@ -10,16 +10,24 @@
         <HintView :hints="liveData.hints" />
         <InverterTotalInfo
             :totalData="liveData.total"
+            :hasInverters="hasInverters"
             :totalREFUsolData="liveData.refusol"
             :totalVeData="liveData.vedirect"
             :totalBattData="liveData.battery"
             :powerMeterData="liveData.power_meter"
             :chargerData="liveData.charger"
-        /><br />
+        />
+        <br/>
         <HoursChartElement :data="liveData.hours" />
+
         <div class="row gy-3 mt-0">
             <div class="col-sm-3 col-md-2" :style="[inverterData.length == 1 ? { display: 'none' } : {}]">
-                <div class="nav nav-pills row-cols-sm-1" id="v-pills-tab" role="tablist" aria-orientation="vertical">
+                <div
+                    class="nav nav-pills row-cols-sm-1"
+                    id="v-pills-tab"
+                    role="tablist"
+                    aria-orientation="vertical"
+                >
                     <button
                         v-for="inverter in inverterData"
                         :key="inverter.serial"
@@ -32,8 +40,8 @@
                         aria-controls="'v-pills-' + inverter.serial"
                         aria-selected="true"
                     >
-                        <div class="row">
-                            <div class="col-auto col-sm-2">
+                        <div class="d-flex align-items-center">
+                            <div class="me-2">
                                 <BIconXCircleFill class="fs-4" v-if="!inverter.reachable" />
                                 <BIconExclamationCircleFill
                                     class="fs-4"
@@ -218,8 +226,8 @@
                                     <span>{{ $t('home.LoadingInverter') }}</span>
                                 </div>
                             </BootstrapAlert>
-                            <div class="accordion mt-5" id="accordionExample">
-                                <div class="accordion-item">
+                            <div class="accordion mt-5" id="accordionRadioStats">
+                                <div class="accordion-item accordion-table">
                                     <h2 class="accordion-header">
                                         <button
                                             class="accordion-button collapsed"
@@ -534,27 +542,19 @@ import {
     BIconToggleOff,
     BIconToggleOn,
     BIconXCircleFill,
-    //BIconArrowDownCircleFill,
-    //BIconArrowUpCircleFill,
-    //BIconCaretDownSquareFill,
-    //BIconCaretUpSquareFill,
-    //BIconSunFill,
-    //BIconSunriseFill,
-    //BIconSunsetFill,
-    //BIconMoonFill
 } from 'bootstrap-icons-vue';
 import { defineComponent } from 'vue';
 import HoursChartElement from '@/components/HoursChartElement.vue';
 
 export default defineComponent({
     components: {
-        HoursChartElement,
         BasePage,
         BootstrapAlert,
         DevInfo,
         EventLog,
         GridProfile,
         HintView,
+        HoursChartElement,
         InverterChannelInfo,
         InverterTotalInfo,
         ModalDialog,
@@ -571,14 +571,6 @@ export default defineComponent({
         BIconToggleOff,
         BIconToggleOn,
         BIconXCircleFill,
-        //BIconArrowDownCircleFill,
-        //BIconArrowUpCircleFill,
-        //BIconCaretDownSquareFill,
-        //BIconCaretUpSquareFill,
-        //BIconSunFill,
-        //BIconSunriseFill,
-        //BIconSunsetFill,
-        //BIconMoonFill,
         REFUsolView,
         VedirectView,
         MeanWellView,
@@ -687,6 +679,9 @@ export default defineComponent({
             return this.liveData.inverters.slice().sort((a: Inverter, b: Inverter) => {
                 return a.order - b.order;
             });
+        },
+        hasInverters(): boolean {
+            return this.liveData?.inverters?.length > 0 || false;
         },
     },
     methods: {
@@ -817,7 +812,9 @@ export default defineComponent({
         },
         onShowEventlog(serial: string) {
             this.eventLogLoading = true;
-            fetch('/api/eventlog/status?inv=' + serial + '&locale=' + this.$i18n.locale, { headers: authHeader() })
+            fetch('/api/eventlog/status?inv=' + serial + '&locale=' + this.$i18n.locale,{
+                headers: authHeader()
+            })
                 .then((response) => handleResponse(response, this.$emitter, this.$router))
                 .then((data) => {
                     this.eventLogList = data;

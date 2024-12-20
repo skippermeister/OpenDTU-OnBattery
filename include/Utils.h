@@ -24,4 +24,5 @@ public:
     template<typename T>
     static std::optional<T> getJsonElement(JsonObjectConst root, char const* key, size_t nesting = 0);
 #endif
+    static String generateMd5FromFile(String file);
 };

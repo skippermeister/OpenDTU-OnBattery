@@ -43,14 +43,14 @@
                     <div class="card-body">
                         <div class="row flex-row flex-wrap align-items-start g-3">
                             <div class="col order-0">
-                                <div class="card" :class="{ 'border-info': true }">
+                                <div class="card card-table" :class="{ 'border-info': true }">
                                     <div class="card-header bg-info">{{ $t('huawei.Input') }}</div>
                                     <div class="table-responsive">
                                         <table class="table table-striped table-hover" style="margin: 0">
                                             <tbody>
                                                 <tr v-for="(prop, key) in huaweiData.inputValues" v-bind:key="key">
                                                     <th scope="row">{{ $t('huawei.' + key) }}</th>
-                                                    <td style="text-align: right; padding-right: 0">
+                                                    <td class="value">
                                                         <template v-if="typeof prop === 'string'">
                                                             {{ $t('huawei.' + prop) }}
                                                         </template>
@@ -72,7 +72,7 @@
                                 </div>
                             </div>
                             <div class="col order-1">
-                                <div class="card" :class="{ 'border-info': false }">
+                                <div class="card card-table" :class="{ 'border-info': false }">
                                     <div class="card-header bg-info">{{ $t('huawei.Output') }}</div>
 
                                     <div class="table-responsive">
@@ -80,7 +80,7 @@
                                             <tbody>
                                                 <tr v-for="(prop, key) in huaweiData.outputValues" v-bind:key="key">
                                                     <th scope="row">{{ $t('huawei.' + key) }}</th>
-                                                    <td style="text-align: right; padding-right: 0">
+                                                    <td class="value">
                                                         <template v-if="typeof prop === 'string'">
                                                             {{ $t('huawei.' + prop) }}
                                                         </template>

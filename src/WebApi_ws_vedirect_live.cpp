@@ -156,7 +156,7 @@ void WebApiWsVedirectLiveClass::generateCommonJsonResponse(JsonVariant& root, bo
 
     // power limiter state
     root["dpl"]["PLSTATE"] = (Configuration.get().PowerLimiter.Enabled) ? PowerLimiter.getPowerLimiterState() : -1;
-    root["dpl"]["PLLIMIT"] = PowerLimiter.getLastRequestedPowerLimit();
+    root["dpl"]["PLLIMIT"] = PowerLimiter.getInverterOutput();
 }
 
 void WebApiWsVedirectLiveClass::populateJson(const JsonObject &root, const VeDirectMpptController::data_t &mpptData) {
@@ -167,15 +167,25 @@ void WebApiWsVedirectLiveClass::populateJson(const JsonObject &root, const VeDir
     const JsonObject values = root["values"].to<JsonObject>();
 
     const JsonObject device = values["device"].to<JsonObject>();
-    if (mpptData.hasLoad || mpptData.Capabilities.second & (1<<0)) {  // Load output present ?
-        device["LOAD"] = mpptData.loadOutputState_LOAD ? "ON" : "OFF";
-        if (mpptData.hasLoad || mpptData.Capabilities.second & (1<<12) ) // Load current IL in Text protocol
-            addValue(device, "IL", mpptData.loadCurrent_IL_mA/1000.0, "A", 2);
-        else if (mpptData.LoadCurrent.first > 0)
-            addValue(device, "IL", mpptData.LoadCurrent.second / 1000.0, "A", 2);
-        if (mpptData.LoadOutputVoltage.first > 0)
-            addValue(device, "LoadOutputVoltage", mpptData.LoadOutputVoltage.second / 1000.0, "V", 2);
+
+    // LOAD     IL      UI label    result
+    // ------------------------------------
+    // false    false               Do not display LOAD and IL (device has no physical load output and virtual load is not configured)
+    // true     false   "VIRTLOAD"  We display just LOAD (device has no physical load output and virtual load is configured)
+    // true     true    "LOAD"      We display LOAD and IL (device has physical load output, regardless if virtual load is configured or not)
+    if (mpptData.loadOutputState_LOAD.first > 0) {
+        device[(mpptData.loadCurrent_IL_mA.first > 0) ? "LOAD" : "VIRTLOAD"] = mpptData.loadOutputState_LOAD.second ? "ON" : "OFF";
     }
+    if (mpptData.loadCurrent_IL_mA.first > 0) {
+        addValue(device, "IL", mpptData.loadCurrent_IL_mA.second / 1000.0, "A", 2);
+    }
+    if (mpptData.LoadOutputVoltage.first > 0) {
+        addValue(device, "LoadOutputVoltage", mpptData.LoadOutputVoltage.second / 1000.0, "V", 2);
+    }
+    if (mpptData.LoadCurrent.first > 0) {
+        addValue(device, "IL", mpptData.LoadCurrent.second / 1000.0, "A", 2);
+    }
+
     device["CS"]   = mpptData.getCsAsString();
     device["MPPT"] = mpptData.getMpptAsString();
     device["OR"]   = mpptData.getOrAsString();

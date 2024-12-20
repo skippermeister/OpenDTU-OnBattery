@@ -94,7 +94,7 @@ void WebApiWsBatteryLiveClass::sendDataTaskCb()
 
                 String buffer;
                 serializeJson(root, buffer);
-                //            Serial.println(buffer);
+                            Serial.println(buffer);
 
                 if (Configuration.get().Security.AllowReadonly) {
                     _ws.setAuthentication("", "");

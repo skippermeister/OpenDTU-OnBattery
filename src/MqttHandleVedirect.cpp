@@ -110,27 +110,28 @@ void MqttHandleVedirectClass::publish_mppt_data(const VeDirectMpptController::da
         MqttSettings.publish(topic + t, String(val)); \
     }
 
-    PUBLISH(productID_PID, "PID", currentData.getPidAsString().data());
-    PUBLISH(serialNr_SER, "SER", currentData.serialNr_SER);
-    PUBLISH(firmwareVer_FW, "FW", currentData.firmwareVer_FW);
-    PUBLISH(loadCurrent_IL_mA, "I", currentData.loadCurrent_IL_mA/1000.0);
-    PUBLISH(loadOutputState_LOAD, "LOAD", currentData.loadOutputState_LOAD ? "ON" : "OFF");
-    PUBLISH(currentState_CS, "CS", currentData.getCsAsString().data());
-    PUBLISH(errorCode_ERR, "ERR", currentData.getErrAsString().data());
-    PUBLISH(offReason_OR, "OR", currentData.getOrAsString().data());
-    PUBLISH(stateOfTracker_MPPT, "MPPT", currentData.getMpptAsString().data());
-    PUBLISH(daySequenceNr_HSDS, "HSDS", String(currentData.daySequenceNr_HSDS));
-    PUBLISH(batteryVoltage_V_mV, "V", currentData.batteryVoltage_V_mV/1000.0);
-    PUBLISH(batteryCurrent_I_mA, "I", currentData.batteryCurrent_I_mA/1000.0);
-    PUBLISH(batteryOutputPower_W, "P", currentData.batteryOutputPower_W);
-    PUBLISH(panelVoltage_VPV_mV, "VPV", currentData.panelVoltage_VPV_mV/1000.0);
-    PUBLISH(panelCurrent_mA, "IPV", currentData.panelCurrent_mA/1000.0);
-    PUBLISH(panelPower_PPV_W, "PPV", currentData.panelPower_PPV_W);
-    PUBLISH(mpptEfficiency_Percent, "E", currentData.mpptEfficiency_Percent);
-    PUBLISH(yieldTotal_H19_Wh, "H19", currentData.yieldTotal_H19_Wh/1000.0);
-    PUBLISH(yieldToday_H20_Wh, "H20", currentData.yieldToday_H20_Wh/1000.0);
-    PUBLISH(maxPowerToday_H21_W, "H21", currentData.maxPowerToday_H21_W);
-    PUBLISH(yieldYesterday_H22_Wh, "H22", currentData.yieldYesterday_H22_Wh/1000.0);
+    PUBLISH(productID_PID,           "PID", currentData.getPidAsString().data());
+    PUBLISH(serialNr_SER,            "SER", currentData.serialNr_SER);
+    PUBLISH(firmwareVer_FW,          "FWI", currentData.getFwVersionAsInteger());
+    PUBLISH(firmwareVer_FW,          "FWF", currentData.getFwVersionFormatted());
+    PUBLISH(firmwareVer_FW,           "FW", currentData.firmwareVer_FW);
+    PUBLISH(firmwareVer_FWE,         "FWE", currentData.firmwareVer_FWE);
+    PUBLISH(currentState_CS,          "CS", currentData.getCsAsString().data());
+    PUBLISH(errorCode_ERR,           "ERR", currentData.getErrAsString().data());
+    PUBLISH(offReason_OR,             "OR", currentData.getOrAsString().data());
+    PUBLISH(stateOfTracker_MPPT,    "MPPT", currentData.getMpptAsString().data());
+    PUBLISH(daySequenceNr_HSDS,     "HSDS", String(currentData.daySequenceNr_HSDS));
+    PUBLISH(batteryVoltage_V_mV,       "V", currentData.batteryVoltage_V_mV/1000.0);
+    PUBLISH(batteryCurrent_I_mA,       "I", currentData.batteryCurrent_I_mA/1000.0);
+    PUBLISH(batteryOutputPower_W,      "P", currentData.batteryOutputPower_W);
+    PUBLISH(panelVoltage_VPV_mV,     "VPV", currentData.panelVoltage_VPV_mV/1000.0);
+    PUBLISH(panelCurrent_mA,         "IPV", currentData.panelCurrent_mA/1000.0);
+    PUBLISH(panelPower_PPV_W,        "PPV", currentData.panelPower_PPV_W);
+    PUBLISH(mpptEfficiency_Percent,    "E", currentData.mpptEfficiency_Percent);
+    PUBLISH(yieldTotal_H19_Wh,       "H19", currentData.yieldTotal_H19_Wh/1000.0);
+    PUBLISH(yieldToday_H20_Wh,       "H20", currentData.yieldToday_H20_Wh/1000.0);
+    PUBLISH(maxPowerToday_H21_W,     "H21", currentData.maxPowerToday_H21_W);
+    PUBLISH(yieldYesterday_H22_Wh,   "H22", currentData.yieldYesterday_H22_Wh/1000.0);
     PUBLISH(maxPowerYesterday_H23_W, "H23", currentData.maxPowerYesterday_H23_W);
 #undef PUBLISH
 
@@ -139,6 +140,8 @@ void MqttHandleVedirectClass::publish_mppt_data(const VeDirectMpptController::da
         MqttSettings.publish(topic + t, String(val)); \
     }
 
+    PUBLISH_OPT(loadOutputState_LOAD,                     "LOAD",                         currentData.loadOutputState_LOAD.second ? "ON" : "OFF");
+    PUBLISH_OPT(loadCurrent_IL_mA,                        "IL",                           currentData.loadCurrent_IL_mA.second / 1000.0);
     PUBLISH_OPT(NetworkTotalDcInputPowerMilliWatts,       "NetworkTotalDcInputPower",     currentData.NetworkTotalDcInputPowerMilliWatts.second / 1000.0);
     PUBLISH_OPT(MpptTemperatureMilliCelsius,              "MpptTemperature",              currentData.MpptTemperatureMilliCelsius.second / 1000.0);
     PUBLISH_OPT(SmartBatterySenseTemperatureMilliCelsius, "SmartBatterySenseTemperature", currentData.SmartBatterySenseTemperatureMilliCelsius.second / 1000.0);

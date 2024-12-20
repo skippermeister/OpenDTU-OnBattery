@@ -353,6 +353,8 @@ public:
     void getLiveViewData(JsonVariant& root) const final;
     void generatePackCommonJsonResponse(JsonObject& packObject, const uint8_t m) const final;
 
+    uint8_t get_number_of_packs() const final { return _number_of_packs; };
+
     const Alarm_t& getAlarm() const final { return totals.Alarm; };
     const Warning_t& getWarning() const final { return totals.Warning; };
     bool getChargeEnabled() const final { return totals.ChargeDischargeManagementInfo.chargeEnabled; };

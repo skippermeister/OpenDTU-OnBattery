@@ -268,6 +268,9 @@ void WebApiWsLiveClass::generateCommonJsonResponse(JsonVariant& root)
         ;
 
     hintObj["default_password"] = strcmp(Configuration.get().Security.Password, ACCESS_POINT_PASSWORD) == 0;
+
+    bool isGeneric = std::string(PIOENV).find("generic") != std::string::npos;
+    hintObj["pin_mapping_issue"] = isGeneric && !PinMapping.isMappingSelected();
 }
 
 void WebApiWsLiveClass::generateInverterCommonJsonResponse(JsonObject& root, std::shared_ptr<InverterAbstract> inv)

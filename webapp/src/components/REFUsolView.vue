@@ -41,7 +41,7 @@
                     <div class="card-body">
                         <div class="row flex-row flex-wrap align-items-start g-3">
                             <div class="col order-0">
-                                <div class="card" :class="{ 'border-info': true }">
+                                <div class="card card-table" :class="{ 'border-info': true }">
                                     <div class="card-header text-bg-info">{{ $t('refusolhome.DeviceInfo') }}</div>
                                     <div class="card-body">
                                         <div class="table-responsive">
@@ -52,7 +52,7 @@
                                                         v-bind:key="key"
                                                     >
                                                         <th scope="row">{{ $t('refusolhome.' + key) }}</th>
-                                                        <td style="text-align: right; padding-right: 0">
+                                                        <td class="value">
                                                             <template v-if="typeof prop === 'string'">
                                                                 {{ $t('refusolhome.' + prop) }}
                                                             </template>
@@ -75,7 +75,7 @@
                                 </div>
                             </div>
                             <div class="col order-1">
-                                <div class="card" :class="{ 'border-info': false }">
+                                <div class="card card-table" :class="{ 'border-info': false }">
                                     <div class="card-header">{{ $t('refusolhome.AC') }}</div>
                                     <div class="card-body">
                                         <div class="table-responsive">
@@ -83,7 +83,7 @@
                                                 <tbody>
                                                     <tr v-for="(prop, key) in refusolData.acValues" v-bind:key="key">
                                                         <th scope="row">{{ $t('refusolhome.' + key) }}</th>
-                                                        <td style="text-align: right; padding-right: 0">
+                                                        <td class="value">
                                                             <template v-if="typeof prop === 'string'">
                                                                 {{ $t('refusolhome.' + prop) }}
                                                             </template>
@@ -106,7 +106,7 @@
                                 </div>
                             </div>
                             <div class="col order-2">
-                                <div class="card" :class="{ 'border-info': false }">
+                                <div class="card card-table" :class="{ 'border-info': false }">
                                     <div class="card-header">{{ $t('refusolhome.Delivered') }}</div>
                                     <div class="card-body">
                                         <div class="table-responsive">
@@ -114,7 +114,7 @@
                                                 <tbody>
                                                     <tr v-for="(prop, key) in refusolData.yieldValues" v-bind:key="key">
                                                         <th scope="row">{{ $t('refusolhome.' + key) }}</th>
-                                                        <td style="text-align: right; padding-right: 0">
+                                                        <td class="value">
                                                             <template v-if="typeof prop === 'string'">
                                                                 {{ $t('refusolhome.' + prop) }}
                                                             </template>
@@ -137,7 +137,7 @@
                                 </div>
                             </div>
                             <div class="col order-3">
-                                <div class="card" :class="{ 'border-info': false }">
+                                <div class="card card-table" :class="{ 'border-info': false }">
                                     <div class="card-header">{{ $t('refusolhome.Panel') }}</div>
                                     <div class="card-body">
                                         <div class="table-responsive">
@@ -145,7 +145,7 @@
                                                 <tbody>
                                                     <tr v-for="(prop, key) in refusolData.dcValues" v-bind:key="key">
                                                         <th scope="row">{{ $t('refusolhome.' + key) }}</th>
-                                                        <td style="text-align: right; padding-right: 0">
+                                                        <td class="value">
                                                             <template v-if="typeof prop === 'string'">
                                                                 {{ $t('refusolhome.' + prop) }}
                                                             </template>

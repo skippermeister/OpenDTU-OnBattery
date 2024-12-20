@@ -6,6 +6,7 @@
 #include "Configuration.h"
 #include "Datastore.h"
 #include "Display_Graphic.h"
+#include "I18n.h"
 #include "InverterSettings.h"
 #include "Led_Single.h"
 #include "Led_Strip.h"
@@ -103,6 +104,9 @@ void setup()
         Configuration.migrate();
     }
     MessageOutput.println("done");
+
+    // Read languate pack
+    I18n.init(scheduler);
 
     PinMapping.init(String(config.Dev_PinMapping)); // Load PinMapping
 

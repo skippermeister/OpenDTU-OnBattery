@@ -17,13 +17,14 @@ void WebApiClass::init(Scheduler& scheduler)
 {
     MessageOutput.print("Initialize WebApi... ");
 
-    _webApiConfig.init(_server, scheduler);
     _webApiDevice.init(_server, scheduler);
     _webApiDevInfo.init(_server, scheduler);
     _webApiDtu.init(_server, scheduler);
     _webApiEventlog.init(_server, scheduler);
+    _webApiFile.init(_server, scheduler);
     _webApiFirmware.init(_server, scheduler);
     _webApiGridprofile.init(_server, scheduler);
+    _webApiI18n.init(_server, scheduler);
     _webApiInverter.init(_server, scheduler);
     _webApiLimit.init(_server, scheduler);
     _webApiMaintenance.init(_server, scheduler);

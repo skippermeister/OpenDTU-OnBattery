@@ -117,14 +117,14 @@
                         <div class="card-body">
                             <div class="row flex-row flex-wrap align-items-start g-3">
                                 <div class="col order-0">
-                                    <div class="card" :class="{ 'border-info': true }" style="overflow: hidden">
+                                    <div class="card card-table" :class="{ 'border-info': true }" style="overflow: hidden">
                                         <div class="card-header bg-info">{{ $t('battery.Status') }}</div>
                                         <div class="table-responsive">
                                             <table class="table table-striped table-hover" style="margin: 0">
                                                 <tbody>
                                                     <tr v-for="(prop, key) in batteryData.values" v-bind:key="key">
                                                         <th scope="row">{{ $t('battery.' + key) }}</th>
-                                                        <td style="text-align: right; padding-right: 0">
+                                                        <td class="value">
                                                             <template v-if="isStringValue(prop) && prop.translate">
                                                                 {{ $t('battery.' + prop.value) }}
                                                             </template>
@@ -153,7 +153,7 @@
                                 </div>
 
                                 <div class="col order-1" v-if="batteryData.issues != null">
-                                    <div class="card" style="overflow: hidden">
+                                    <div class="card card-table" style="overflow: hidden">
                                         <div :class="{ 'card-header': true, 'border-bottom-0': maxIssueValue === 0 }">
                                             <div class="d-flex flex-row justify-content-between align-items-baseline">
                                                 {{ $t('battery.issues') }}
@@ -198,7 +198,7 @@
                                 </div>
 
                                 <div class="col order-2">
-                                    <div class="card">
+                                    <div class="card card-table">
                                         <div class="card-body">
                                             <div class="row flex-row flex-wrap align-items-start g-3">
                                                 <div
@@ -208,7 +208,7 @@
                                                     "
                                                 >
                                                     <div
-                                                        class="card"
+                                                        class="card card-table"
                                                         :class="{ 'border-info': true }"
                                                         style="overflow: hidden"
                                                     >
@@ -228,7 +228,7 @@
                                                                         v-bind:key="key"
                                                                     >
                                                                         <th scope="row">{{ $t('battery.' + key) }}</th>
-                                                                        <td style="text-align: right; padding-right: 0">
+                                                                        <td class="value">
                                                                             <template
                                                                                 v-if="
                                                                                     isStringValue(prop) &&
@@ -263,7 +263,7 @@
 
                                                 <div class="col order-1" v-if="pack.cell != null">
                                                     <div
-                                                        class="card"
+                                                        class="card card-table"
                                                         :class="{ 'border-info': false }"
                                                         style="overflow: hidden"
                                                     >
@@ -280,18 +280,12 @@
                                                                         <th scope="row">
                                                                             {{ $t('battery.cellMinVoltage') }}
                                                                         </th>
-                                                                        <td style="text-align: right; padding-right: 0">
+                                                                        <td class="value">
                                                                             {{
-                                                                                $n(
-                                                                                    pack.cell.cellMinVoltage.v,
-                                                                                    'decimal',
-                                                                                    {
-                                                                                        minimumFractionDigits:
-                                                                                            pack.cell.cellMinVoltage.d,
-                                                                                        maximumFractionDigits:
-                                                                                            pack.cell.cellMinVoltage.d,
-                                                                                    }
-                                                                                )
+                                                                                $n(pack.cell.cellMinVoltage.v,'decimal',{
+                                                                                    minimumFractionDigits: pack.cell.cellMinVoltage.d,
+                                                                                    maximumFractionDigits: pack.cell.cellMinVoltage.d,
+                                                                                })
                                                                             }}
                                                                         </td>
                                                                         <td>{{ pack.cell.cellMinVoltage.u }}</td>
@@ -299,18 +293,12 @@
                                                                         <th scope="row">
                                                                             {{ $t('battery.cellMaxVoltage') }}
                                                                         </th>
-                                                                        <td style="text-align: right; padding-right: 0">
+                                                                        <td class="value">
                                                                             {{
-                                                                                $n(
-                                                                                    pack.cell.cellMaxVoltage.v,
-                                                                                    'decimal',
-                                                                                    {
-                                                                                        minimumFractionDigits:
-                                                                                            pack.cell.cellMaxVoltage.d,
-                                                                                        maximumFractionDigits:
-                                                                                            pack.cell.cellMaxVoltage.d,
-                                                                                    }
-                                                                                )
+                                                                                $n(pack.cell.cellMaxVoltage.v,'decimal',{
+                                                                                    minimumFractionDigits: pack.cell.cellMaxVoltage.d,
+                                                                                    maximumFractionDigits: pack.cell.cellMaxVoltage.d,
+                                                                                })
                                                                             }}
                                                                         </td>
                                                                         <td>{{ pack.cell.cellMaxVoltage.u }}</td>
@@ -318,18 +306,12 @@
                                                                         <th scope="row">
                                                                             {{ $t('battery.cellDiffVoltage') }}
                                                                         </th>
-                                                                        <td style="text-align: right; padding-right: 0">
+                                                                        <td class="value">
                                                                             {{
-                                                                                $n(
-                                                                                    pack.cell.cellDiffVoltage.v,
-                                                                                    'decimal',
-                                                                                    {
-                                                                                        minimumFractionDigits:
-                                                                                            pack.cell.cellDiffVoltage.d,
-                                                                                        maximumFractionDigits:
-                                                                                            pack.cell.cellDiffVoltage.d,
-                                                                                    }
-                                                                                )
+                                                                                $n(pack.cell.cellDiffVoltage.v,'decimal',{
+                                                                                    minimumFractionDigits: pack.cell.cellDiffVoltage.d,
+                                                                                    maximumFractionDigits: pack.cell.cellDiffVoltage.d,
+                                                                                })
                                                                             }}
                                                                         </td>
                                                                         <td>{{ pack.cell.cellDiffVoltage.u }}</td>
@@ -337,16 +319,12 @@
 
                                                                     <template v-if="pack.cell.voltage != null">
                                                                         <template
-                                                                            v-for="i in Math.floor(
-                                                                                (pack.cell.voltage.length + 2) / 3
-                                                                            )"
+                                                                            v-for="i in Math.floor((pack.cell.voltage.length + 2) / 3)"
                                                                             v-bind:key="i"
                                                                         >
                                                                             <tr>
                                                                                 <template
-                                                                                    v-for="(
-                                                                                        voltage, index
-                                                                                    ) in pack.cell.voltage.slice(
+                                                                                    v-for="(voltage, index) in pack.cell.voltage.slice(
                                                                                         (i - 1) * 3,
                                                                                         (i - 1) * 3 + 3
                                                                                     )"
@@ -356,18 +334,11 @@
                                                                                         {{ $t('battery.cell') }}
                                                                                         {{ (i - 1) * 3 + index + 1 }}
                                                                                     </th>
-                                                                                    <td
-                                                                                        style="
-                                                                                            text-align: right;
-                                                                                            padding-right: 0;
-                                                                                        "
-                                                                                    >
+                                                                                    <td class="value">
                                                                                         {{
                                                                                             $n(voltage.v, 'decimal', {
-                                                                                                minimumFractionDigits:
-                                                                                                    voltage.d,
-                                                                                                maximumFractionDigits:
-                                                                                                    voltage.d,
+                                                                                                minimumFractionDigits: voltage.d,
+                                                                                                maximumFractionDigits: voltage.d,
                                                                                             })
                                                                                         }}
                                                                                     </td>
@@ -391,16 +362,12 @@
                                                                 >
                                                                     <tbody>
                                                                         <template
-                                                                            v-for="i in Math.floor(
-                                                                                (pack.tempSensor.length + 2) / 3
-                                                                            )"
+                                                                            v-for="i in Math.floor((pack.tempSensor.length + 2) / 3)"
                                                                             v-bind:key="i"
                                                                         >
                                                                             <tr>
                                                                                 <template
-                                                                                    v-for="(
-                                                                                        tempSensor, index
-                                                                                    ) in pack.tempSensor.slice(
+                                                                                    v-for="(tempSensor, index) in pack.tempSensor.slice(
                                                                                         (i - 1) * 3,
                                                                                         (i - 1) * 3 + 3
                                                                                     )"
@@ -410,23 +377,12 @@
                                                                                         {{ $t('battery.tempSensor') }}
                                                                                         {{ (i - 1) * 3 + index + 1 }}
                                                                                     </th>
-                                                                                    <td
-                                                                                        style="
-                                                                                            text-align: right;
-                                                                                            padding-right: 0;
-                                                                                        "
-                                                                                    >
+                                                                                    <td class="value">
                                                                                         {{
-                                                                                            $n(
-                                                                                                tempSensor.v,
-                                                                                                'decimal',
-                                                                                                {
-                                                                                                    minimumFractionDigits:
-                                                                                                        tempSensor.d,
-                                                                                                    maximumFractionDigits:
-                                                                                                        tempSensor.d,
-                                                                                                }
-                                                                                            )
+                                                                                            $n(tempSensor.v, 'decimal',{
+                                                                                                minimumFractionDigits: tempSensor.d,
+                                                                                                maximumFractionDigits: tempSensor.d,
+                                                                                            })
                                                                                         }}
                                                                                     </td>
                                                                                     <td>{{ tempSensor.u }}</td>
@@ -455,12 +411,7 @@
                                                                             <th scope="row">
                                                                                 {{ $t('battery.' + key) }}
                                                                             </th>
-                                                                            <td
-                                                                                style="
-                                                                                    text-align: right;
-                                                                                    padding-right: 0;
-                                                                                "
-                                                                            >
+                                                                            <td class="value">
                                                                                 <template
                                                                                     v-if="
                                                                                         isStringValue(prop) &&
@@ -477,10 +428,8 @@
                                                                                 <template v-else>
                                                                                     {{
                                                                                         $n(prop.v, 'decimal', {
-                                                                                            minimumFractionDigits:
-                                                                                                prop.d,
-                                                                                            maximumFractionDigits:
-                                                                                                prop.d,
+                                                                                            minimumFractionDigits: prop.d,
+                                                                                            maximumFractionDigits: prop.d,
                                                                                         })
                                                                                     }}
                                                                                 </template>

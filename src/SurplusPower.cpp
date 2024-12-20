@@ -107,7 +107,7 @@ int32_t SurplusPowerClass::calcSurplusPower(int32_t const requestedPower) {
 
         case SurplusState::IDLE:
             // start check if all necessary information is available
-            _powerStep = config.PowerLimiter.UpperPowerLimit / MAX_STEPS;
+            _powerStep = config.PowerLimiter.TotalUpperPowerLimit / MAX_STEPS;
             _surplusPower = requestedPower;
             _surplusState = SurplusState::TRY_MORE;
             _qualityCounter = 0;
@@ -175,8 +175,8 @@ int32_t SurplusPowerClass::calcSurplusPower(int32_t const requestedPower) {
     _surplusPower += addPower;
 
     // we do not go above the maximum power limit
-    if (_surplusPower > config.PowerLimiter.UpperPowerLimit) {
-        _surplusPower = config.PowerLimiter.UpperPowerLimit;
+    if (_surplusPower > config.PowerLimiter.TotalUpperPowerLimit) {
+        _surplusPower = config.PowerLimiter.TotalUpperPowerLimit;
         _surplusState = SurplusState::MAXIMUM_POWER;
     }
 
